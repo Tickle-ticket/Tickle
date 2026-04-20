@@ -1,0 +1,59 @@
+# --- Data (로컬에만 유지, git 제외) ---
+data/
+*.jsonl
+
+# --- Models (학습 완료 전까지 git 제외) ---
+models/**/*.pkl
+models/**/*.pt
+models/**/*.joblib
+models/**/*.onnx
+models/**/saved/
+models/**/checkpoints/
+
+# --- DB ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Logs / artifacts ---
+*.log
+logs/
+artifacts/
+outputs/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- Node (front-demo 에 node 생기면 대비) ---
+node_modules/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Temp ---
+tmp/
+temp/
+*.tmp
+
+# --- 개인 research / 로컬 전용 docs (팀 리뷰 부담 감축) ---
+docs/macro_kinematics.md
+docs/poc/mouse/REPORT.md
+docs/feature_research_mouse_macro.md
+docs/feature_definitions_v0.md
