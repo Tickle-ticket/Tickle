@@ -29,7 +29,7 @@ public class VenueSection {
     // 공연장 구역 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "section_id", nullable = false, updatable = false)
+    @Column(name = "venue_section_id", nullable = false, updatable = false)
     private Long id;
 
     // 공연장 FK
