@@ -1,5 +1,9 @@
 ```bash
 ai/
+├── macro/
+│    ├── browser_automation/     # (마우스 + 키보드 포함된 고수준 매크로)
+│    └── mouse_automation/       # 순수 좌표 기반 매크로
+│
 ├── demo/                      # 웹 이벤트 수집 + feature 검증용
 │   ├── front-demo/
 │   └── demo-api/
