@@ -28,34 +28,43 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "cancellation_offers")
 public class CancellationOffer {
 
+    // 취소표 제안 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cancellation_offer_id", nullable = false, updatable = false)
     private Long id;
 
+    // 취소표 대기 ID FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cancellation_candidate_id", nullable = false)
     private CancellationCandidate cancellationCandidate;
 
+    // 제안 시각
     @Column(name = "offered_at", nullable = false)
     private Instant offeredAt;
 
+    // 제안 만료 시각
     @Column(name = "offer_expires_at", nullable = false)
     private Instant offerExpiresAt;
 
+    // 제안 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "offer_status", nullable = false, length = 30)
     private OfferStatus offerStatus;
 
+    // 수락 시각
     @Column(name = "accepted_at")
     private Instant acceptedAt;
 
+    // 패스 시각
     @Column(name = "passed_at")
     private Instant passedAt;
 
+    // 생성 시각
     @Column(name = "created_at")
     private Instant createdAt;
 
+    // 변경 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

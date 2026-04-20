@@ -30,30 +30,37 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "session_seats")
 public class SessionSeat {
 
+    // 회차 좌석 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "session_seat_id", nullable = false, updatable = false)
     private Long id;
 
+    // 회차 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "session_id", nullable = false)
     private EventSession session;
 
+    // 좌석 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_seat_id", nullable = false)
     private EventSeat eventSeat;
 
+    // 구역 FK
     @Column(name = "event_section_id")
     private Long eventSectionId;
 
+    // 판매 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "sale_status", nullable = false, length = 30)
     private SaleStatus saleStatus;
 
+    // 버전
     @Version
     @Column(name = "version_no", nullable = false)
     private Long versionNo;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

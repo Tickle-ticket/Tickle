@@ -28,28 +28,35 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "event_images")
 public class EventImage {
 
+    // 공연 이미지 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "event_image_id", nullable = false, updatable = false)
     private Long id;
 
+    // 공연 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    // 이미지 유형
     @Enumerated(EnumType.STRING)
     @Column(name = "image_type", nullable = false, length = 30)
     private ImageType imageType;
 
+    // 이미지 URL
     @Column(name = "image_url", nullable = false, length = 1000)
     private String imageUrl;
 
+    // 노출 순서
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

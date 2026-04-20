@@ -25,30 +25,38 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "organizers")
 public class Organizer {
 
+    // 주최자 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "organizer_id", nullable = false, updatable = false)
     private Long id;
 
+    // 이름
     @Column(name = "organizer_name", nullable = false, length = 200)
     private String organizerName;
 
+    // 사업자번호
     @Column(name = "business_no", length = 50)
     private String businessNo;
 
+    // 이메일
     @Column(name = "contact_email", length = 255)
     private String contactEmail;
 
+    // 전화번호
     @Column(name = "contact_phone", length = 30)
     private String contactPhone;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

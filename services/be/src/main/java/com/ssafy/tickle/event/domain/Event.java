@@ -30,53 +30,67 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "events")
 public class Event {
 
+    // 공연 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "event_id", nullable = false, updatable = false)
     private Long id;
 
+    // 주최자 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organizer_id", nullable = false)
     private Organizer organizer;
 
+    // 공연장 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "venue_id", nullable = false)
     private Venue venue;
 
+    // 제목
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
+    // 카테고리 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    // 판매 시작 시각
     @Column(name = "sales_start_at", nullable = false)
     private Instant salesStartAt;
 
+    // 판매 종료 시각
     @Column(name = "sales_end_at", nullable = false)
     private Instant salesEndAt;
 
+    // 이벤트 시작 시각
     @Column(name = "event_start_at", nullable = false)
     private Instant eventStartAt;
 
+    // 이벤트 종료 시각
     @Column(name = "event_end_at", nullable = false)
     private Instant eventEndAt;
 
+    // 메타데이터
     @Lob
     @Column(name = "metadata")
     private String metadata;
 
+    // 공지사항
     @Lob
     @Column(name = "notice")
     private String notice;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

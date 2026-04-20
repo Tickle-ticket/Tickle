@@ -30,63 +30,81 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "payment_transactions")
 public class PaymentTransaction {
 
+    // 결제 트랜잭션 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "payment_transaction_id", nullable = false, updatable = false)
     private Long id;
 
+    // 결제 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "payment_id", nullable = false)
     private Payment payment;
 
+    // 타입
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, length = 30)
     private TransactionType transactionType;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_status", nullable = false, length = 30)
     private TransactionStatus transactionStatus;
 
+    // 금액
     @Column(name = "amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal amount;
 
+    // 통화
     @Column(name = "currency_code", nullable = false, length = 3)
     private String currencyCode;
 
+    // PG사
     @Column(name = "provider_name", nullable = false, length = 50)
     private String providerName;
 
+    // PG 거래 ID
     @Column(name = "provider_transaction_id", length = 255)
     private String providerTransactionId;
 
+    // 승인번호
     @Column(name = "provider_approval_no", length = 100)
     private String providerApprovalNo;
 
+    // 이벤트 ID
     @Column(name = "provider_event_id", length = 255)
     private String providerEventId;
 
+    // 요청 ID
     @Column(name = "request_id", length = 200)
     private String requestId;
 
+    // 멱등키
     @Column(name = "idempotency_key", length = 255)
     private String idempotencyKey;
 
+    // 발생 시각
     @Column(name = "transacted_at", nullable = false)
     private Instant transactedAt;
 
+    // 처리 시각
     @Column(name = "processed_at")
     private Instant processedAt;
 
+    // 실패 코드
     @Column(name = "failure_code", length = 100)
     private String failureCode;
 
+    // 실패 메시지
     @Column(name = "failure_message", length = 255)
     private String failureMessage;
 
+    // 원본 응답
     @Lob
     @Column(name = "raw_response_json")
     private String rawResponseJson;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

@@ -23,35 +23,45 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "venues")
 public class Venue {
 
+    // 공연장 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "venue_id", nullable = false, updatable = false)
     private Long id;
 
+    // 공연장 이름
     @Column(name = "venue_name", nullable = false, length = 200)
     private String venueName;
 
+    // 타임존
     @Column(name = "timezone_code", nullable = false, length = 50)
     private String timezoneCode;
 
+    // 국가코드
     @Column(name = "country_code", nullable = false, length = 2)
     private String countryCode;
 
+    // 주소1
     @Column(name = "address", nullable = false, length = 255)
     private String address;
 
+    // 주소2
     @Column(name = "address_line2", length = 255)
     private String addressLine2;
 
+    // 도시명
     @Column(name = "city_name", nullable = false, length = 100)
     private String cityName;
 
+    // 총 좌석수
     @Column(name = "capacity", nullable = false)
     private Integer capacity;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

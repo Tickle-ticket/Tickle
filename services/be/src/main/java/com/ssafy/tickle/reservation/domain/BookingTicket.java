@@ -30,41 +30,52 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "booking_tickets")
 public class BookingTicket {
 
+    // 티켓 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "booking_ticket_id", nullable = false, updatable = false)
     private Long id;
 
+    // 예매 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
+    // 좌석 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "session_seat_id", nullable = false)
     private SessionSeat sessionSeat;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "ticket_status", nullable = false, length = 30)
     private Status ticketStatus;
 
+    // 외부 노출 티켓 번호
     @Column(name = "ticket_no", nullable = false, length = 50)
     private String ticketNo;
 
+    // 실판매가
     @Column(name = "actual_price_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal actualPriceAmount;
 
+    // 수수료
     @Column(name = "service_fee_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal serviceFeeAmount;
 
+    // 최종 결제 금액
     @Column(name = "final_price_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal finalPriceAmount;
 
+    // 취소 시각
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

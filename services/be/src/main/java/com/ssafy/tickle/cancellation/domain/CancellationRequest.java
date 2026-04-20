@@ -29,19 +29,23 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "cancellation_requests")
 public class CancellationRequest {
 
+    // 취소 요청 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cancellation_request_id", nullable = false, updatable = false)
     private Long id;
 
+    // 예매 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "booking_ticket_id", nullable = false)
     private BookingTicket bookingTicket;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "cancellation_status", nullable = false, length = 30)
     private Status cancellationStatus;
 
+    // 요청 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

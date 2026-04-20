@@ -26,21 +26,26 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "booking_ticket_status_histories")
 public class BookingTicketStatusHistory {
 
+    // 예매 상태 변경 이력 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "booking_ticket_status_history_id", nullable = false, updatable = false)
     private Long id;
 
+    // 티켓 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "booking_ticket_id", nullable = false)
     private BookingTicket bookingTicket;
 
+    // 이전 상태
     @Column(name = "from_status", length = 30)
     private String fromStatus;
 
+    // 변경 상태
     @Column(name = "to_status", nullable = false, length = 30)
     private String toStatus;
 
+    // 변경 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
