@@ -5,10 +5,11 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.event.application.EventService;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.GetMapping;
 
 /**
  * 이벤트 상세 조회 API를 제공하는 컨트롤러입니다.
@@ -28,7 +29,9 @@ public class EventController implements EventApiDoc {
      */
     @Override
     @GetMapping("/{eventId}")
-    public BaseResponse<EventDetailResponse> getEventDetail(@PathVariable Long eventId) {
-        return BaseResponse.success(SuccessCode.OK, eventService.getEventDetail(eventId));
+    public ResponseEntity<BaseResponse<EventDetailResponse>> getEventDetail(@PathVariable Long eventId) {
+        return ResponseEntity
+                .status(SuccessCode.OK.getStatus())
+                .body(BaseResponse.success(SuccessCode.OK, eventService.getEventDetail(eventId)));
     }
 }
