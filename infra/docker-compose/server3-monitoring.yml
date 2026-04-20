@@ -83,7 +83,7 @@ services:
     volumes:
       - redis-replica1-data:/data
     ports:
-      - "6380:6379"
+      - "6379:6379"
 
   # ─── Redis Sentinel 2 ─────────────────────────────
   redis-sentinel2:
@@ -93,7 +93,7 @@ services:
     mem_limit: 80m
     command: redis-sentinel /etc/redis/sentinel.conf
     volumes:
-      - ../../infra/redis/sentinel-server3.conf:/etc/redis/sentinel.conf
+      - sentinel2-data:/etc/redis
     ports:
       - "26379:26379"
 
@@ -103,3 +103,4 @@ volumes:
   tempo-data:
   loki-data:
   redis-replica1-data:
+  sentinel2-data:
