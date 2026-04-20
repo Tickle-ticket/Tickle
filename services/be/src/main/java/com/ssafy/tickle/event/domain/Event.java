@@ -10,7 +10,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Builder;
@@ -72,13 +71,11 @@ public class Event {
     private Instant eventEndAt;
 
     // 메타데이터
-    @Lob
-    @Column(name = "metadata")
+    @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata;
 
     // 공지사항
-    @Lob
-    @Column(name = "notice")
+    @Column(name = "notice", columnDefinition = "TEXT")
     private String notice;
 
     // 상태
