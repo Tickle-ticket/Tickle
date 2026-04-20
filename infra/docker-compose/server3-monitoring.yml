@@ -37,12 +37,13 @@ services:
     container_name: tickle-tempo
     restart: always
     mem_limit: 200m
-    command: ["-config.file=/etc/tempo.yml"]
+    user: root
+    command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
       - ../../infra/tempo/tempo.yml:/etc/tempo.yml
-      - tempo-data:/tmp/tempo
+      - /tmp/tempo:/tmp/tempo
     ports:
-      - "4317:4317"   # OTLP gRPC
+      - "4317:4317"
 
   # ─── Grafana Loki ─────────────────────────────────
   loki:
