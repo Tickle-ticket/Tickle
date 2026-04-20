@@ -56,6 +56,12 @@ public class Event {
     @Column(name = "sales_end_at", nullable = false)
     private Instant salesEndAt;
 
+    @Column(name = "event_start_at", nullable = false)
+    private Instant eventStartAt;
+
+    @Column(name = "event_end_at", nullable = false)
+    private Instant eventEndAt;
+
     @Lob
     @Column(name = "metadata")
     private String metadata;
@@ -100,6 +106,8 @@ public class Event {
      * @param eventType 이벤트 유형
      * @param salesStartAt 판매 시작 시각
      * @param salesEndAt 판매 종료 시각
+     * @param eventStartAt 이벤트 시작 시각
+     * @param eventEndAt 이벤트 종료 시각
      * @param metadata 추가 메타데이터
      * @param notice 공지 사항
      * @param status 이벤트 상태
@@ -112,6 +120,8 @@ public class Event {
             EventType eventType,
             Instant salesStartAt,
             Instant salesEndAt,
+            Instant eventStartAt,
+            Instant eventEndAt,
             String metadata,
             String notice,
             Status status
@@ -122,6 +132,8 @@ public class Event {
         this.eventType = eventType;
         this.salesStartAt = salesStartAt;
         this.salesEndAt = salesEndAt;
+        this.eventStartAt = eventStartAt;
+        this.eventEndAt = eventEndAt;
         this.metadata = metadata;
         this.notice = notice;
         this.status = status;
