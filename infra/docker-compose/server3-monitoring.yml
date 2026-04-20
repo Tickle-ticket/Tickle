@@ -83,7 +83,7 @@ services:
     volumes:
       - redis-replica1-data:/data
     ports:
-      - "6380:6379"
+      - "6379:6379"
 
   # ─── Redis Sentinel 2 ─────────────────────────────
   redis-sentinel2:
