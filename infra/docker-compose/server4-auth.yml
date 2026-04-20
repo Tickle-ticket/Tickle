@@ -24,7 +24,7 @@ services:
     mem_limit: 80m
     command: redis-sentinel /etc/redis/sentinel.conf
     volumes:
-      - ../../infra/redis/sentinel-server4.conf:/etc/redis/sentinel.conf
+      - sentinel3-data:/etc/redis
     ports:
       - "26379:26379"
 
@@ -43,3 +43,4 @@ services:
 
 volumes:
   redis-replica2-data:
+  sentinel3-data:
