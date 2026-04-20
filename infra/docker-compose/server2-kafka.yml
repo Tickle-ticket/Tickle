@@ -43,7 +43,7 @@ services:
     mem_limit: 80m
     command: redis-sentinel /etc/redis/sentinel.conf
     volumes:
-      - ../../infra/redis/sentinel-server2.conf:/etc/redis/sentinel.conf
+      - sentinel1-data:/etc/redis
     ports:
       - "26379:26379"
 
@@ -51,3 +51,4 @@ volumes:
   zookeeper-data:
   zookeeper-log:
   kafka-data:
+  sentinel1-data:
