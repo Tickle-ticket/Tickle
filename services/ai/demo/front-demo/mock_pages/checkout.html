@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280, initial-scale=1.0">
+    <title>TicketDemo - 결제 확인</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <script src="../event_logger.js"></script>
+    <script src="../app.js"></script>
+    <header>
+        <h1>TicketDemo</h1>
+        <div class="sub">Step 3/4 결제 확인</div>
+    </header>
+    <div class="container">
+        <h2>예매 내역 확인</h2>
+        <div class="card">
+            <div class="summary" id="summary"></div>
+        </div>
+        <div class="card">
+            <h3>결제 수단</h3>
+            <p>
+                <label><input type="radio" name="pay" value="card" id="pay-card" checked> 신용/체크 카드</label><br>
+                <label><input type="radio" name="pay" value="bank" id="pay-bank"> 무통장 입금</label><br>
+                <label><input type="radio" name="pay" value="point" id="pay-point"> 포인트 결제</label>
+            </p>
+        </div>
+        <div class="card">
+            <h3>동의 사항</h3>
+            <p>
+                <label><input type="checkbox" id="agree-1"> (필수) 개인정보 수집 및 이용에 동의합니다</label><br>
+                <label><input type="checkbox" id="agree-2"> (필수) 취소/환불 규정에 동의합니다</label>
+            </p>
+        </div>
+        <div class="actions">
+            <a href="seat.html" class="btn btn-secondary" id="btn-back">← 좌석 선택</a>
+            <button class="btn disabled" id="btn-pay" disabled>결제하기</button>
+        </div>
+    </div>
+    <script>
+        const state = JSON.parse(localStorage.getItem('ticket_booking') || 'null');
+        const summary = document.getElementById('summary');
+        if (!state) {
+            summary.innerHTML = '<p>예매 정보가 없습니다. <a href="../index.html">처음으로</a></p>';
+        } else {
+            const total = state.seats.length * state.price;
+            summary.innerHTML =
+                '<div class="summary-row"><span class="label">공연</span><span>' + state.title + '</span></div>' +
+                '<div class="summary-row"><span class="label">좌석</span><span>' + state.seats.join(', ') + '</span></div>' +
+                '<div class="summary-row"><span class="label">수량</span><span>' + state.seats.length + '매</span></div>' +
+                '<div class="summary-row"><span class="label">1매 가격</span><span>₩ ' + state.price.toLocaleString() + '</span></div>' +
+                '<div class="summary-row"><span>결제 금액</span><span>₩ ' + total.toLocaleString() + '</span></div>';
+        }
+
+        const payBtn = document.getElementById('btn-pay');
+        const agree1 = document.getElementById('agree-1');
+        const agree2 = document.getElementById('agree-2');
+        function refreshBtn() {
+            const ok = agree1.checked && agree2.checked && !!state;
+            if (ok) { payBtn.classList.remove('disabled'); payBtn.disabled = false; }
+            else { payBtn.classList.add('disabled'); payBtn.disabled = true; }
+        }
+        agree1.addEventListener('change', refreshBtn);
+        agree2.addEventListener('change', refreshBtn);
+
+        payBtn.addEventListener('click', () => {
+            if (!state) return;
+            location.href = 'done.html';
+        });
+    </script>
+</body>
+</html>

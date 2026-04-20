@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280, initial-scale=1.0">
+    <title>TicketDemo - 예매 완료</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <script src="../event_logger.js"></script>
+    <script src="../app.js"></script>
+    <header>
+        <h1>TicketDemo</h1>
+        <div class="sub">Step 4/4 예매 완료</div>
+    </header>
+    <div class="container">
+        <div class="card" style="text-align:center; padding: 40px 20px;">
+            <h2 style="color: #28a745;">✓ 예매가 완료되었습니다</h2>
+            <div id="receipt" style="margin: 20px 0;"></div>
+            <a href="../index.html" class="btn" id="btn-home">처음으로</a>
+        </div>
+    </div>
+    <script>
+        const state = JSON.parse(localStorage.getItem('ticket_booking') || 'null');
+        const receipt = document.getElementById('receipt');
+        if (state) {
+            const total = state.seats.length * state.price;
+            receipt.innerHTML =
+                '<p>' + state.title + '</p>' +
+                '<p>좌석: ' + state.seats.join(', ') + ' (' + state.seats.length + '매)</p>' +
+                '<p>결제 금액: ₩ ' + total.toLocaleString() + '</p>';
+            localStorage.removeItem('ticket_booking');
+        } else {
+            receipt.innerHTML = '<p>예매 내역이 없습니다.</p>';
+        }
+    </script>
+</body>
+</html>
