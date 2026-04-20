@@ -1,0 +1,45 @@
+# infra/docker-compose/server4-auth.yml
+services:
+
+  # ─── Redis Replica 2 ──────────────────────────────
+  redis-replica2:
+    image: redis:7
+    container_name: tickle-redis-replica2
+    restart: always
+    mem_limit: 400m
+    command: >
+      redis-server
+      --replicaof ${SERVER1_PRIVATE_IP} 6379
+      --appendonly yes
+    volumes:
+      - redis-replica2-data:/data
+    ports:
+      - "6381:6379"
+
+  # ─── Redis Sentinel 3 ─────────────────────────────
+  redis-sentinel3:
+    image: redis:7
+    container_name: tickle-sentinel3
+    restart: always
+    mem_limit: 80m
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ../../infra/redis/sentinel-server4.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26379:26379"
+
+  # ─── Promtail ─────────────────────────────────────
+  promtail:
+    image: grafana/promtail:latest
+    container_name: tickle-promtail
+    restart: always
+    mem_limit: 60m
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ../../infra/promtail/promtail-server4.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - redis-replica2
+
+volumes:
+  redis-replica2-data:
