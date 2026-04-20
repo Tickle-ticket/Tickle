@@ -1,0 +1,17 @@
+# infra/prometheus/prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'server1-be'
+    static_configs:
+      - targets: ['${SERVER1_PRIVATE_IP}:9090']
+
+  - job_name: 'server2-kafka'
+    static_configs:
+      - targets: ['${SERVER2_PRIVATE_IP}:9090']
+
+  - job_name: 'server4-auth'
+    static_configs:
+      - targets: ['${SERVER4_PRIVATE_IP}:9090']
