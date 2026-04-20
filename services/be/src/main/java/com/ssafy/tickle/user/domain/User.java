@@ -26,36 +26,46 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "users")
 public class User {
 
+    // 사용자 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id", nullable = false, updatable = false)
     private Long id;
 
+    // 외부 노출 사용자 번호
     @Column(name = "user_no", nullable = false, length = 50)
     private String userNo;
 
+    // 이메일
     @Column(name = "email", length = 255)
     private String email;
 
+    // 전화번호
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
 
+    // 이름
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    // 생년월일
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
 
+    // 마지막 로그인 시각
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

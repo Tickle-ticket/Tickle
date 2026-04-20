@@ -28,28 +28,35 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "cancellation_candidates")
 public class CancellationCandidate {
 
+    // 취소표 대기열 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cancellation_candidate_id", nullable = false, updatable = false)
     private Long id;
 
+    // 공연 좌석 ID FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "session_seat_id", nullable = false)
     private SessionSeat sessionSeat;
 
+    // 사용자 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // 대기 순번
     @Column(name = "waiting_rank", nullable = false)
     private Integer waitingRank;
 
+    // 대기 취소 시각
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    // 대기 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 변경 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

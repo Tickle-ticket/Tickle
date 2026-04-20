@@ -28,37 +28,47 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "event_sessions")
 public class EventSession {
 
+    // 회차 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "session_id", nullable = false, updatable = false)
     private Long id;
 
+    // 공연 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    // 회차 번호
     @Column(name = "session_no", nullable = false)
     private Integer sessionNo;
 
+    // 시작 시각
     @Column(name = "start_at", nullable = false)
     private Instant startAt;
 
+    // 종료 시각
     @Column(name = "end_at", nullable = false)
     private Instant endAt;
 
+    // 판매 오픈 시각
     @Column(name = "sales_open_at", nullable = false)
     private Instant salesOpenAt;
 
+    // 판매 종료 시각
     @Column(name = "sales_close_at", nullable = false)
     private Instant salesCloseAt;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private Status status;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

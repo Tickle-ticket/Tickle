@@ -25,17 +25,21 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "categories")
 public class Category {
 
+    // 카테고리 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "category_id", nullable = false, updatable = false)
     private Long id;
 
+    // 카테고리명
     @Column(name = "category_name", nullable = false, length = 100)
     private String categoryName;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

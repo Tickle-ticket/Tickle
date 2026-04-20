@@ -31,35 +31,44 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "bookings")
 public class Booking {
 
+    // 예매 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "booking_id", nullable = false, updatable = false)
     private Long id;
 
+    // 예매번호
     @Column(name = "booking_no", nullable = false, length = 50)
     private String bookingNo;
 
+    // 사용자 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // 회차 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "session_id", nullable = false)
     private EventSession session;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_status", nullable = false, length = 30)
     private Status bookingStatus;
 
+    // 결제금액
     @Column(name = "total_paid_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal totalPaidAmount;
 
+    // 수량
     @Column(name = "ticket_count", nullable = false)
     private Integer ticketCount;
 
+    // 예매 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

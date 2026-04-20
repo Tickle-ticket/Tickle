@@ -26,36 +26,46 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "user_access_logs")
 public class UserAccessLog {
 
+    // 접속 로그 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_access_log_id", nullable = false, updatable = false)
     private Long id;
 
+    // 사용자 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // 디바이스 fingerprint hash
     @Column(name = "device_fingerprint_hash", nullable = false, length = 64)
     private String deviceFingerprintHash;
 
+    // user agent hash
     @Column(name = "user_agent_hash", nullable = false, length = 64)
     private String userAgentHash;
 
+    // IP 주소
     @Column(name = "ip_address", nullable = false, length = 50)
     private String ipAddress;
 
+    // 국가명
     @Column(name = "country_name", nullable = false, length = 100)
     private String countryName;
 
+    // 국가 코드
     @Column(name = "country_iso_code", nullable = false, length = 2)
     private String countryIsoCode;
 
+    // 도시명
     @Column(name = "city_name", nullable = false, length = 100)
     private String cityName;
 
+    // 통신사
     @Column(name = "isp", length = 100)
     private String isp;
 
+    // 접속 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

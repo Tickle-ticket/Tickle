@@ -28,34 +28,43 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "venue_seats")
 public class VenueSeat {
 
+    // 공연장 좌석 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "venue_seat_id", nullable = false, updatable = false)
     private Long id;
 
+    // 구역 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "section_id", nullable = false)
     private VenueSection section;
 
+    // 공연장 FK
     @Column(name = "venue_id")
     private Long venueId;
 
+    // 열
     @Column(name = "row_label", nullable = false, length = 30)
     private String rowLabel;
 
+    // 번호
     @Column(name = "seat_number", nullable = false, length = 30)
     private String seatNumber;
 
+    // 표시명
     @Column(name = "seat_label", nullable = false, length = 50)
     private String seatLabel;
 
+    // 좌석 유형
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_type", nullable = false, length = 30)
     private SeatType seatType;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

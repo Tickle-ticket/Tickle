@@ -27,27 +27,34 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "event_sections")
 public class EventSection {
 
+    // 공연 구역 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "event_section_id", nullable = false, updatable = false)
     private Long id;
 
+    // 공연 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    // 공연장 FK
     @Column(name = "venue_id")
     private Long venueId;
 
+    // 구역명
     @Column(name = "section_name", nullable = false, length = 100)
     private String sectionName;
 
+    // 정렬순서
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 수정 시각
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

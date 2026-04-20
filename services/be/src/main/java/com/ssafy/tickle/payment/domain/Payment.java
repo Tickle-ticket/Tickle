@@ -30,44 +30,56 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "payments")
 public class Payment {
 
+    // 결제 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "payment_id", nullable = false, updatable = false)
     private Long id;
 
+    // 예매 FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
+    // 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 30)
     private Status paymentStatus;
 
+    // 결제 수단
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method_type", nullable = false, length = 50)
     private MethodType paymentMethodType;
 
+    // 금액
     @Column(name = "order_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal orderAmount;
 
+    // 통화
     @Column(name = "currency_code", nullable = false, length = 3)
     private String currencyCode;
 
+    // 승인 금액
     @Column(name = "approved_amount", precision = 18, scale = 2)
     private BigDecimal approvedAmount;
 
+    // PG사
     @Column(name = "provider_name", nullable = false, length = 50)
     private String providerName;
 
+    // 승인 시각
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    // 실패 시각
     @Column(name = "failed_at")
     private Instant failedAt;
 
+    // 생성 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    // 변경 시각
     @Column(name = "updated_at")
     private Instant updatedAt;
 
