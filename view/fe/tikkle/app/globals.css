@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes dot-bounce {
+  0% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-4px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.5; }
+}
+
+.animate-dot-bounce {
+  animation: dot-bounce 1s infinite ease-in-out;
+}
