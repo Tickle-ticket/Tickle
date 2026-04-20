@@ -1,0 +1,41 @@
+# infra/docker-compose/server1-main.yml
+services:
+
+  # ─── MySQL ────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: tickle-mysql
+    restart: always
+    mem_limit: 640m
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: tickle_core
+    command: >
+      --innodb-buffer-pool-size=512M
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+
+  # ─── Redis Master ─────────────────────────────────
+  redis-master:
+    image: redis:7
+    container_name: tickle-redis-master
+    restart: always
+    mem_limit: 400m
+    command: >
+      redis-server
+      --maxmemory 300mb
+      --maxmemory-policy volatile-ttl
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  mysql-data:
+  redis-data:
