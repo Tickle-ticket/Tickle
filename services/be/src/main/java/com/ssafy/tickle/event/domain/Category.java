@@ -32,7 +32,7 @@ public class Category {
     private Long id;
 
     // 카테고리명
-    @Column(name = "category_name", nullable = false, length = 100)
+    @Column(name = "category_name", nullable = false, length = 30)
     private String categoryName;
 
     // 생성 시각
