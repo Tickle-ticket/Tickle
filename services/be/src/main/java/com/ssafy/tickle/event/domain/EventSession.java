@@ -31,7 +31,7 @@ public class EventSession {
     // 회차 PK
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "session_id", nullable = false, updatable = false)
+    @Column(name = "event_session_id", nullable = false, updatable = false)
     private Long id;
 
     // 공연 FK
