@@ -47,8 +47,17 @@ public class BookingTicket {
     @Column(name = "ticket_status", nullable = false, length = 30)
     private Status ticketStatus;
 
-    @Column(name = "face_price_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal facePriceAmount;
+    @Column(name = "ticket_no", nullable = false, length = 50)
+    private String ticketNo;
+
+    @Column(name = "actual_price_amount", nullable = false, precision = 18, scale = 2)
+    private BigDecimal actualPriceAmount;
+
+    @Column(name = "service_fee_amount", nullable = false, precision = 18, scale = 2)
+    private BigDecimal serviceFeeAmount;
+
+    @Column(name = "final_price_amount", nullable = false, precision = 18, scale = 2)
+    private BigDecimal finalPriceAmount;
 
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
@@ -72,7 +81,10 @@ public class BookingTicket {
      * @param booking 상위 예매
      * @param sessionSeat 연결된 회차 좌석
      * @param ticketStatus 티켓 상태
-     * @param facePriceAmount 권면가
+     * @param ticketNo 외부 노출 티켓 번호
+     * @param actualPriceAmount 실판매가
+     * @param serviceFeeAmount 수수료
+     * @param finalPriceAmount 최종 결제 금액
      * @param cancelledAt 취소 시각
      */
     @Builder
@@ -80,13 +92,19 @@ public class BookingTicket {
             Booking booking,
             SessionSeat sessionSeat,
             Status ticketStatus,
-            BigDecimal facePriceAmount,
+            String ticketNo,
+            BigDecimal actualPriceAmount,
+            BigDecimal serviceFeeAmount,
+            BigDecimal finalPriceAmount,
             Instant cancelledAt
     ) {
         this.booking = booking;
         this.sessionSeat = sessionSeat;
         this.ticketStatus = ticketStatus;
-        this.facePriceAmount = facePriceAmount;
+        this.ticketNo = ticketNo;
+        this.actualPriceAmount = actualPriceAmount;
+        this.serviceFeeAmount = serviceFeeAmount;
+        this.finalPriceAmount = finalPriceAmount;
         this.cancelledAt = cancelledAt;
     }
 }
