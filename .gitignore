@@ -1,0 +1,6 @@
+# IDE
+.idea/
+*.iml
+
+# 환경변수
+.env
