@@ -46,9 +46,9 @@ public class Event {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "event_type", nullable = false, length = 30)
-    private EventType eventType;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     @Column(name = "sales_start_at", nullable = false)
     private Instant salesStartAt;
@@ -80,15 +80,6 @@ public class Event {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public enum EventType {
-        CONCERT,
-        MUSICAL,
-        PLAY,
-        CLASSIC,
-        SPORTS,
-        FANMEETING
-    }
-
     public enum Status {
         PENDING,
         OPENED,
@@ -103,7 +94,7 @@ public class Event {
      * @param organizer 주최자
      * @param venue 공연장
      * @param title 이벤트 제목
-     * @param eventType 이벤트 유형
+     * @param category 이벤트 카테고리
      * @param salesStartAt 판매 시작 시각
      * @param salesEndAt 판매 종료 시각
      * @param eventStartAt 이벤트 시작 시각
@@ -117,7 +108,7 @@ public class Event {
             Organizer organizer,
             Venue venue,
             String title,
-            EventType eventType,
+            Category category,
             Instant salesStartAt,
             Instant salesEndAt,
             Instant eventStartAt,
@@ -129,7 +120,7 @@ public class Event {
         this.organizer = organizer;
         this.venue = venue;
         this.title = title;
-        this.eventType = eventType;
+        this.category = category;
         this.salesStartAt = salesStartAt;
         this.salesEndAt = salesEndAt;
         this.eventStartAt = eventStartAt;
