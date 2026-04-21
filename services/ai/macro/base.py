@@ -1,4 +1,18 @@
-"""매크로 추상 베이스 클래스."""
+"""매크로 추상 베이스 클래스.
+
+모든 매크로 구현체의 공통 부모. 서브클래스는 `source_name` 과 `execute` 만 구현하면
+세션 생명주기 관리 + 이벤트 로깅 + 타겟 YAML 로드 가 자동으로 처리됨.
+
+상속 관계:
+    BaseMacro
+      ├─ PyAutoGUILv1  (mouse_automation/pyautogui_lv1.py)   — 고정좌표 즉시이동
+      ├─ PyAutoGUILv2  (mouse_automation/pyautogui_lv2.py)   — 베지어 + 노이즈
+      └─ (PlaywrightLv1/Lv2 는 임찬혁 담당 — browser_automation/)
+
+사용 흐름:
+    macro = PyAutoGUILv1(target_name="local_login")    # YAML 로드, Session 생성
+    macro.run()                                        # session.start → execute → flush
+"""
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -12,10 +26,13 @@ class BaseMacro(ABC):
     """모든 매크로의 베이스 클래스. 세션 생명주기와 로깅을 통합 관리."""
 
     def __init__(self, target_name: str, config_path: str = "config/default.yaml"):
+        # 전역 매크로 설정 (configs/macro.yaml) + 타겟 시나리오 (configs/macro_targets/{name}.yaml)
         self.config = load_config(config_path)
         self.target = load_target(target_name)
+        # 매크로 좌표의 기준 해상도 (YAML 의 coords 는 이 해상도 기준으로 작성됨)
         self.base_resolution = get_base_resolution(self.config)
 
+        # EventLogger 는 session.label 을 폴더명으로 사용 ("macro" → data/raw/macro/)
         raw_dir = self.config.get("logging", {}).get("raw_dir", "data/raw")
         self.session = Session(source=self.source_name, label="macro")
         self.logger = EventLogger(self.session, base_dir=raw_dir)

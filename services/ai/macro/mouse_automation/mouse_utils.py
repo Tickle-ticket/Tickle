@@ -1,4 +1,18 @@
-"""마우스 유틸리티: 베지어 곡선, 좌표 노이즈, 랜덤 딜레이."""
+"""마우스 유틸리티 — 베지어 곡선 / 좌표 노이즈 / 랜덤 딜레이 / Fitts 법칙 기반 타이밍.
+
+Lv2 매크로(`pyautogui_lv2.py`) 가 사람처럼 보이는 움직임을 만들기 위해 사용.
+4개 함수 조합으로 다음을 구현:
+
+  사람같은 마우스 이동 =
+      (시작→끝) 베지어 곡선 경로                ← bezier_curve()
+    + 각 점에 가우시안 노이즈                    ← add_noise()
+    + 전체 이동 시간은 Fitts 법칙으로 결정       ← human_like_duration()
+    + 액션 간은 로그정규 분포 랜덤 delay         ← random_delay()
+
+관련 스토리:
+  - #123 베지어 곡선 궤적 생성기 → bezier_curve()
+  - #125 human-like 속도·jitter 프로파일 → add_noise + human_like_duration + random_delay
+"""
 import random
 import time
 import numpy as np
