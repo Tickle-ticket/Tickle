@@ -24,6 +24,28 @@ public class EventController implements EventApiDoc {
     private final EventService eventService;
 
     /**
+     * 이벤트 목록을 키워드/조건 기반 검색 합니다.
+     *
+     * @param keyword 제목 검색어
+     * @param categoryId 카테고리 식별자
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 이벤트 목록 응답
+     */
+    @Override
+    @GetMapping
+    public ResponseEntity<BaseResponse<EventListResponse>> getEvents(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(eventService.getEvents(keyword, categoryId, page, size)));
+    }
+
+    /**
      * 이벤트 상세 정보를 조회합니다.
      *
      * @param eventId 이벤트 식별자
