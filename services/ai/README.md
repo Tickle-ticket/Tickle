@@ -18,13 +18,15 @@
 macro/                       매크로 구현
   base.py                    BaseMacro 추상 클래스 (세션/로깅 공통 처리)
   _config.py                 YAML 설정 로더
-  mouse_automation/          PyAutoGUI 기반 (OS 레벨 마우스 제어) ← 이 MR 담당
+  mouse_automation/          PyAutoGUI 기반 (OS 레벨 마우스 제어) — 김보겸 담당
     pyautogui_lv1.py         Lv1 — 고정좌표 즉시이동 (baseline)
     pyautogui_lv2.py         Lv2 — 베지어 + 노이즈 (회피 시도)
     mouse_utils.py           베지어 곡선 + 노이즈 + Fitts 타이밍 유틸
     _dpi.py                  Windows DPI 인식 (pyautogui import 전 설정)
-
-automouse.py                 Tkinter GUI 매크로 도구 (좌표 캡처 + 시퀀스 실행 + 로깅)
+  automouse/                 Tkinter GUI 매크로 도구 — 김보겸 담당 (2026-04-21 신설)
+    automouse.py             GUI + 시퀀스 저장 + EventLogger 연동
+    automouse_data.json      사용자 로컬 슬롯 저장 (gitignored)
+  browser_automation/        Playwright 기반 (브라우저 자동화) — 임찬혁 담당
 
 configs/
   macro.yaml                 매크로 전역 설정 (해상도, Lv1/Lv2 파라미터)
@@ -55,7 +57,7 @@ python run_macro.py --type pyautogui --level 2 --target local_login --repeat 50
 
 **방법 2: GUI 기반 사용자 정의 시퀀스** (#110 에서 실제 티켓팅 수집에 사용한 방법)
 ```bash
-python automouse.py
+python macro/automouse/automouse.py
 # → 탭2 "시퀀스 매크로" → "➕ 추가" → "좌표 캡처 모드" 로 각 요소 좌표 수집
 # → F1 (또는 "▶ 매크로 실행") 버튼으로 실행 → data/raw/macro/{session_id}.jsonl 자동 로그
 # → 배치 반복은 F1 연타 또는 "매크로 실행" 버튼 반복
