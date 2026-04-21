@@ -7,7 +7,7 @@
 - 일부 값은 raw event 자체가 아니라, 클릭/이동 로그로부터 계산된 파생 feature입니다.
 - 분석 노트북에서는 아래 한글 이름을 짧은 라벨로 사용할 수 있습니다.
 
-## 클릭/타이밍 계열
+## 클릭/타이밍 계열 (15)
 | feature | 한글명 | 수집 기준 | 메모 |
 | --- | --- | --- | --- |
 | `time_to_first_click_ms` | 첫 클릭 시간 | 세션 시작 후 첫 클릭까지 시간 | 시작 반응 속도 |
@@ -26,7 +26,7 @@
 | `pre_click_scroll_flag` | 클릭 전 스크롤 | 클릭 직전에 스크롤이 있었는지 | 0 또는 1 |
 | `immediate_post_render_click_rate` | 즉시 클릭 비율 | 렌더 직후 매우 빠른 클릭 비율 | 매크로 의심 신호 |
 
-## 마우스 이동 계열
+## 마우스 이동 계열 (17)
 | feature | 한글명 | 수집 기준 | 메모 |
 | --- | --- | --- | --- |
 | `mouse_total_travel_distance_px` | 총 이동 거리 | 세션 내 총 이동 거리 | 전체 탐색량 |
@@ -47,7 +47,7 @@
 | `inter_element_move_interval_std_ms` | 이동 간격 표준편차 | 요소 간 이동 시간의 표준편차 | 리듬 일정성 |
 | `edge_or_fixed_point_visit_rate` | 고정점 방문률 | 화면 모서리/고정점 방문 비율 | 비정상 패턴 탐색 |
 
-## 키보드 입력 계열
+## 키보드 입력 계열 (10)
 | feature | 한글명 | 수집 기준 | 메모 |
 | --- | --- | --- | --- |
 | `time_to_first_keydown_ms` | 첫 키 입력 시간 | captcha input 포커스 후 첫 keydown까지 시간 | 입력 시작 반응 |
