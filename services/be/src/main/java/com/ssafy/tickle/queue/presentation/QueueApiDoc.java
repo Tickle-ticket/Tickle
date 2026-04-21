@@ -1,0 +1,44 @@
+package com.ssafy.tickle.queue.presentation;
+
+import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
+import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+
+/**
+ * 대기열 API 문서 인터페이스입니다.
+ */
+@Tag(name = "Queue", description = "대기열 API")
+public interface QueueApiDoc {
+
+    /**
+     * 대기열 진입 등록 API 문서 정의입니다.
+     *
+     * @param request 대기열 진입 요청
+     * @return 대기열 진입 접수 응답
+     */
+    @Operation(
+            summary = "대기열 진입 등록",
+            description = "사용자의 대기열 진입 요청을 접수하고 비동기 추적용 requestId를 반환합니다."
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "대기열 진입 요청 접수 성공"
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "예매 오픈 전이거나 이미 종료된 회차",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "대기열 진입용 회차 오픈 정보를 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(QueueEnterRequest request);
+}
