@@ -76,6 +76,30 @@ def wait_ms(page: Page, ms: int) -> None:
         page.wait_for_timeout(ms)
 
 
+def wait_for_collector_ready(page: Page, timeout_ms: int) -> None:
+    """Wait until the simulator has loaded existing trials from collector API.
+
+    If we click 'Start Booking' too fast (especially in headless/macro mode),
+    the simulator may not have finished fetching /api/trials yet, so it will
+    start from trialId=1 and overwrite trial_00001.json repeatedly.
+    """
+
+    connected = page.locator("text=collector API connected")
+    unavailable = page.locator("text=collector API unavailable")
+
+    # Wait for either "connected" or "unavailable".
+    try:
+        connected.or_(unavailable).first.wait_for(state="visible", timeout=timeout_ms)
+    except PlaywrightTimeoutError as error:
+        raise PlaywrightTimeoutError(
+            f"Timed out waiting for collector API status message within {timeout_ms}ms"
+        ) from error
+
+    if unavailable.count() > 0:
+        # Give caller a clear error so we don't silently write trialId=1 forever.
+        raise RuntimeError("collector API unavailable: simulator could not load existing trials")
+
+
 def move_and_click(page: Page, locator: Locator, config: MacroConfig) -> None:
     # 사람처럼 요소 중앙으로 마우스를 이동한 뒤 클릭한다.
     locator.wait_for(state="visible", timeout=config.timeout_ms)
@@ -130,6 +154,9 @@ def run_single(page: Page, config: MacroConfig, attempt: int, progress: Progress
     emit(f"[1/5] Opening {config.url}")
     page.goto(config.url, wait_until="domcontentloaded")
     wait_ms(page, config.action_delay_ms)
+
+    emit("[pre] Waiting for collector API connection")
+    wait_for_collector_ready(page, timeout_ms=min(config.timeout_ms, 15000))
 
     emit("[2/5] Starting booking flow")
     move_and_click(page, page.get_by_role("button", name="Start Booking"), config)
