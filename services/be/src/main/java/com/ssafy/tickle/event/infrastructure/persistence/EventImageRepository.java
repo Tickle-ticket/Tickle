@@ -16,5 +16,17 @@ public interface EventImageRepository extends JpaRepository<EventImage, Long> {
      * @param eventId 이벤트 식별자
      * @return 이미지 목록
      */
-    List<EventImage> findByEvent_IdOrderByDisplayOrderAsc(Long eventId);
+    List<EventImage> findByEventIdOrderByDisplayOrderAsc(Long eventId);
+
+    /**
+     * 여러 이벤트의 특정 타입 이미지를 이벤트별, 노출 순서별로 조회합니다.
+     *
+     * @param eventIds 이벤트 식별자 목록
+     * @param imageType 이미지 타입
+     * @return 이미지 목록
+     */
+    List<EventImage> findByEventIdInAndImageTypeOrderByEventIdAscDisplayOrderAsc(
+            List<Long> eventIds,
+            EventImage.ImageType imageType
+    );
 }
