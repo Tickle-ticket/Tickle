@@ -50,6 +50,11 @@ export function createSession(trialId = null) {
     moves: [],
     scrolls: [],
     hoverSamples: [],
+    keydowns: [],
+    keyPresses: [],
+    pasteEvents: [],
+    captchaFocusTs: null,
+    pressedKeys: {},
     currentHover: null,
     visibleAt: {},
     clickableAt: {},
@@ -134,6 +139,9 @@ export function isValidTrackForStage(stage, trackId) {
 export function deriveMetrics(session) {
   const clicks = session.clicks;
   const moves = session.moves;
+  const keydowns = session.keydowns;
+  const keyPresses = session.keyPresses;
+  const pasteEvents = session.pasteEvents;
   const totalWindowMs =
     session.startTs == null ? 0 : Math.max(1, (session.freezeTs ?? performance.now()) - session.startTs);
 
@@ -244,6 +252,24 @@ export function deriveMetrics(session) {
   }
 
   const latestClickTs = clicks.length ? clicks[clicks.length - 1].ts : performance.now();
+  const keyIntervals = [];
+  for (let i = 1; i < keydowns.length; i += 1) {
+    keyIntervals.push(keydowns[i].ts - keydowns[i - 1].ts);
+  }
+  const keyHoldDurations = keyPresses.map((entry) => entry.holdMs).filter((value) => value != null);
+  const firstKeydownTs = keydowns[0]?.ts ?? null;
+  const lastKeydownTs = keydowns.length ? keydowns[keydowns.length - 1].ts : null;
+  const captchaConfirmClick = clicks.find((click) => click.trackId === "captcha-confirm");
+  const focusToSubmitMs =
+    session.captchaFocusTs != null && captchaConfirmClick ? captchaConfirmClick.ts - session.captchaFocusTs : null;
+  const typingTotalDurationMs =
+    firstKeydownTs != null && lastKeydownTs != null && keydowns.length >= 2 ? lastKeydownTs - firstKeydownTs : null;
+  const typingSpeedCps =
+    typingTotalDurationMs != null && typingTotalDurationMs > 0 ? keydowns.length / (typingTotalDurationMs / 1000) : null;
+  const backspaceRate =
+    keydowns.length > 0
+      ? keydowns.filter((entry) => entry.key === "Backspace").length / keydowns.length
+      : null;
 
   return {
     time_to_first_click_ms: clicks[0] ? clicks[0].ts - session.startTs : null,
@@ -278,6 +304,16 @@ export function deriveMetrics(session) {
     pre_click_mouse_path_pattern_500ms: summarizePath(moves, latestClickTs, 500),
     inter_element_move_interval_std_ms: std(interElementIntervals),
     edge_or_fixed_point_visit_rate: edgeVisitRate,
+    time_to_first_keydown_ms: firstKeydownTs != null && session.captchaFocusTs != null ? firstKeydownTs - session.captchaFocusTs : null,
+    inter_key_interval_ms_mean: mean(keyIntervals),
+    inter_key_interval_ms_std: std(keyIntervals),
+    keydown_to_keyup_ms_mean: mean(keyHoldDurations),
+    typing_total_duration_ms: typingTotalDurationMs,
+    typing_speed_cps: typingSpeedCps,
+    backspace_rate: backspaceRate,
+    correction_count: keydowns.filter((entry) => entry.key === "Backspace").length,
+    paste_flag: pasteEvents.length > 0 ? 1 : 0,
+    focus_to_submit_ms: focusToSubmitMs,
   };
 }
 

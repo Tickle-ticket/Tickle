@@ -539,6 +539,19 @@ function DashboardPanel({ metrics, recentClicks, active, tab, onTabChange }) {
     "edge_or_fixed_point_visit_rate",
   ];
 
+  const keyboardMetrics = [
+    "time_to_first_keydown_ms",
+    "inter_key_interval_ms_mean",
+    "inter_key_interval_ms_std",
+    "keydown_to_keyup_ms_mean",
+    "typing_total_duration_ms",
+    "typing_speed_cps",
+    "backspace_rate",
+    "correction_count",
+    "paste_flag",
+    "focus_to_submit_ms",
+  ];
+
   return (
     <SectionShell title="Live Feature Dashboard">
       <div style={{ display: "grid", gap: 16 }}>
@@ -567,6 +580,7 @@ function DashboardPanel({ metrics, recentClicks, active, tab, onTabChange }) {
           <div style={{ display: "grid", gap: 18 }}>
             <MetricGrid title="Click Features" keysList={clickMetrics} metrics={metrics} />
             <MetricGrid title="Mouse Features" keysList={mouseMetrics} metrics={metrics} />
+            <MetricGrid title="Keyboard Features" keysList={keyboardMetrics} metrics={metrics} />
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
@@ -1037,13 +1051,127 @@ export default function TicketingWireframeDemoApp() {
       scheduleMetricsUpdate();
     };
 
+    const onFocusIn = (event) => {
+      const session = sessionRef.current;
+      if (!session.active) return;
+      const trackElement = event.target.closest?.("[data-track-id]");
+      const trackId = trackElement?.getAttribute("data-track-id");
+      if (trackId !== "captcha-input") return;
+
+      const ts = performance.now();
+      session.captchaFocusTs = ts;
+      session.eventRows.push({
+        trial_id: session.trialId,
+        event_index: session.eventRows.length + 1,
+        relative_ms: Math.round(relativeMs(session, ts)),
+        stage: stageRef.current,
+        event_type: "focus",
+        track_id: trackId,
+      });
+      scheduleMetricsUpdate();
+    };
+
+    const onKeyDown = (event) => {
+      const session = sessionRef.current;
+      if (!session.active) return;
+      const trackElement = event.target.closest?.("[data-track-id]");
+      const trackId = trackElement?.getAttribute("data-track-id");
+      if (trackId !== "captcha-input") return;
+
+      const ts = performance.now();
+      const keyId = event.code || event.key;
+      if (!event.repeat && session.pressedKeys[keyId] == null) {
+        session.pressedKeys[keyId] = ts;
+      }
+
+      session.keydowns.push({
+        ts,
+        key: event.key,
+        code: event.code,
+        repeat: event.repeat ? 1 : 0,
+      });
+      session.eventRows.push({
+        trial_id: session.trialId,
+        event_index: session.eventRows.length + 1,
+        relative_ms: Math.round(relativeMs(session, ts)),
+        stage: stageRef.current,
+        event_type: "keydown",
+        track_id: trackId,
+        key: event.key,
+        code: event.code,
+        is_repeat: event.repeat ? 1 : 0,
+      });
+      scheduleMetricsUpdate();
+    };
+
+    const onKeyUp = (event) => {
+      const session = sessionRef.current;
+      if (!session.active) return;
+      const trackElement = event.target.closest?.("[data-track-id]");
+      const trackId = trackElement?.getAttribute("data-track-id");
+      if (trackId !== "captcha-input") return;
+
+      const ts = performance.now();
+      const keyId = event.code || event.key;
+      const downTs = session.pressedKeys[keyId];
+      const holdMs = downTs != null ? ts - downTs : null;
+      delete session.pressedKeys[keyId];
+
+      session.keyPresses.push({
+        ts,
+        key: event.key,
+        code: event.code,
+        holdMs,
+      });
+      session.eventRows.push({
+        trial_id: session.trialId,
+        event_index: session.eventRows.length + 1,
+        relative_ms: Math.round(relativeMs(session, ts)),
+        stage: stageRef.current,
+        event_type: "keyup",
+        track_id: trackId,
+        key: event.key,
+        code: event.code,
+        hold_ms: holdMs,
+      });
+      scheduleMetricsUpdate();
+    };
+
+    const onPaste = (event) => {
+      const session = sessionRef.current;
+      if (!session.active) return;
+      const trackElement = event.target.closest?.("[data-track-id]");
+      const trackId = trackElement?.getAttribute("data-track-id");
+      if (trackId !== "captcha-input") return;
+
+      const ts = performance.now();
+      session.pasteEvents.push({ ts });
+      session.eventRows.push({
+        trial_id: session.trialId,
+        event_index: session.eventRows.length + 1,
+        relative_ms: Math.round(relativeMs(session, ts)),
+        stage: stageRef.current,
+        event_type: "paste",
+        track_id: trackId,
+      });
+      scheduleMetricsUpdate();
+    };
+
     document.addEventListener("mousemove", onMouseMove, true);
     document.addEventListener("click", onClick, true);
+    document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keyup", onKeyUp, true);
+    document.addEventListener("paste", onPaste, true);
     window.addEventListener("scroll", onScroll, true);
 
     return () => {
       document.removeEventListener("mousemove", onMouseMove, true);
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("keyup", onKeyUp, true);
+      document.removeEventListener("paste", onPaste, true);
       window.removeEventListener("scroll", onScroll, true);
     };
   }, []);
