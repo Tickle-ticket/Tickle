@@ -1,4 +1,20 @@
-"""PyAutoGUI Lv1 매크로: 고정 좌표, 일정 간격."""
+"""PyAutoGUI Lv1 매크로 — 탐지 난이도 최하 샘플 (baseline).
+
+위치: 매크로 탐지 모델 학습에서 "가장 쉬운 공격" 클래스.
+모델이 이것도 못 잡으면 심각한 구조 문제. sanity check 용.
+
+특징:
+  - 고정 좌표 (YAML 지정) 로 `pyautogui.moveTo(duration=0)` → 순간이동
+  - mousemove 이벤트 생성되지 않음 (경로 없음)
+  - 일정 `interval=0.5s` 간격으로 액션
+  - 타이핑은 `pyautogui.press()` 로 순간 입력 (hold ~10ms)
+
+대비 매크로:
+  - Lv2 (pyautogui_lv2): bezier + 노이즈 (중간 난이도)
+  - automouse (automouse.py): 사용자 시퀀스 + 동일 Lv1 kinematics
+
+탐지 핵심 시그널: 경로 속도 0 (mousemove 부재), 일정한 dt, 좌표 완전 일치.
+"""
 # isort: skip_file  # ensure_dpi_aware()는 pyautogui import 전에 실행되어야 함
 import time
 

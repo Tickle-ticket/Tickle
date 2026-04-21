@@ -1,4 +1,27 @@
-"""PyAutoGUI Lv2 매크로: 좌표 노이즈, 랜덤 딜레이, 베지어 커브 이동."""
+"""PyAutoGUI Lv2 매크로 — 중간 난이도 회피 샘플.
+
+위치: 사람처럼 보이려는 "가벼운 회피" 레벨. 상용 탐지 시스템이라면 잡을 수 있는 수준.
+
+특징:
+  - 베지어 곡선 경로 (20개 중간점) → 자연스러운 곡선 이동
+  - 좌표에 가우시안 노이즈 σ=4px → 완전히 같은 지점 반복 안 함
+  - Fitts 법칙 기반 `human_like_duration()` 타이밍
+  - 액션 간 로그정규 랜덤 delay (0.1~0.8s)
+  - 타이핑 글자 간 uniform(50, 200)ms
+
+한계 (탐지 목표):
+  - 경로가 기하적 bezier → **대칭적 속도 프로필** (사람은 비대칭)
+  - **생리적 tremor (8-12Hz) 없음** — FFT 파워 비교 가능
+  - **minimum-jerk 모델 이탈** — Flash-Hogan 근사와 RMSE 큼
+  - click-hold 시간 Lv1 수준 (~10ms, 사람은 50~150ms)
+
+대비 매크로:
+  - Lv1 (pyautogui_lv1): instant move + 고정 좌표 (탐지 쉬움)
+  - automouse (automouse.py): 사용자 정의 시퀀스지만 instant move (kinematics 수준 Lv1)
+
+탐지 핵심 시그널 (→ docs/feature_research_mouse_macro.md C 그룹 참고):
+  tremor_power_ratio, velocity_asymmetry, minimum_jerk_deviation, click_hold_duration.
+"""
 # isort: skip_file  # ensure_dpi_aware()는 pyautogui import 전에 실행되어야 함
 import random
 import time
