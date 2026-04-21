@@ -16,8 +16,6 @@ import static lombok.AccessLevel.PROTECTED;
 
 /**
  * 이벤트 분류 체계를 관리하는 카테고리 엔티티입니다.
- *
- * <p>콘서트, 뮤지컬, 연극과 같은 상위 이벤트 유형을 정의합니다.</p>
  */
 @Getter
 @NoArgsConstructor(access = PROTECTED)

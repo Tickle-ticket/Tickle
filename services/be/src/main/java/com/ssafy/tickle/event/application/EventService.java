@@ -26,9 +26,6 @@ import java.util.Map;
 
 /**
  * 이벤트 조회 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
- *
- * <p>이벤트 상세 및 목록 조회 유스케이스를 담당하며,
- * 목록 응답에 필요한 썸네일 이미지 매핑을 함께 처리합니다.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -89,9 +86,6 @@ public class EventService {
     /**
      * 이벤트 검색어를 정규화합니다.
      *
-     * <p>공백만 포함된 검색어는 검색 조건이 없는 것으로 간주하여
-     * {@code null}로 변환합니다.</p>
-     *
      * @param keyword 원본 검색어
      * @return 정규화된 검색어
      */
@@ -106,9 +100,6 @@ public class EventService {
 
     /**
      * 이벤트별 썸네일 이미지 URL을 조회합니다.
-     *
-     * <p>{@link EventImage.ImageType#THUMBNAIL} 타입 이미지만 조회하며,
-     * 동일 이벤트에 썸네일이 여러 장인 경우 노출 순서가 가장 앞선 이미지를 사용합니다.</p>
      *
      * @param eventIds 이벤트 식별자 목록
      * @return 이벤트별 썸네일 URL 매핑
