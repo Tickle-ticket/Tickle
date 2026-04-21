@@ -6,8 +6,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from .macro_jobs import consume_next_label, get_job, list_jobs, start_macro_job
-from .schemas import MacroJobStatus, MacroRunRequest, MacroRunResponse, TrialRecord, TrialSaveResponse
+from .macro_jobs import consume_next_label, enqueue_labels, get_job, list_jobs, start_macro_job
+from .schemas import (
+    LabelEnqueueRequest,
+    LabelEnqueueResponse,
+    MacroJobStatus,
+    MacroRunRequest,
+    MacroRunResponse,
+    TrialRecord,
+    TrialSaveResponse,
+)
 from .storage import ensure_storage, list_trials, save_trial_payload
 
 
@@ -28,7 +36,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
-    # 데이터 저장 디렉터리를 미리 준비한다.
+    # 데이터 저장 디렉토리를 미리 준비한다.
     ensure_storage()
 
 
@@ -39,7 +47,7 @@ def health() -> dict[str, bool]:
 
 @app.get("/macro-control")
 def macro_control() -> FileResponse:
-    # 매크로 실행용 단순 제어 페이지를 정적 파일로 제공한다.
+    # 매크로 실행을 위한 간단한 제어 페이지를 정적 파일로 제공한다.
     return FileResponse(STATIC_DIR / "macro_control.html")
 
 
@@ -51,13 +59,22 @@ def get_trials() -> list[dict]:
 @app.post("/api/trials", response_model=TrialSaveResponse)
 def post_trial(record: TrialRecord) -> TrialSaveResponse:
     payload = record.model_dump()
-    # 프런트가 라벨을 직접 보내지 않은 경우, 매크로 실행 큐의 라벨을 사용한다.
-    label = payload.get("trialLabel") or payload.get("summary", {}).get("trialLabel") or consume_next_label(default="human")
-    payload["trialLabel"] = label
+
+    # 매크로 실행 신호가 없으면 기본은 human이다.
+    # 프론트에서 임의로 label을 보내더라도, 서버에서 최종 label을 확정한다.
+    label = consume_next_label(default="human")
+    payload["label"] = label
     payload.setdefault("summary", {})
-    payload["summary"]["trialLabel"] = label
+    payload["summary"]["label"] = label
+
     file_path = save_trial_payload(payload)
     return TrialSaveResponse(ok=True, trial_id=record.trialId, saved_to=str(file_path))
+
+
+@app.post("/api/labels/enqueue", response_model=LabelEnqueueResponse)
+def post_enqueue_labels(request: LabelEnqueueRequest) -> LabelEnqueueResponse:
+    enqueue_labels(request.label, max(1, int(request.repeat)))
+    return LabelEnqueueResponse(ok=True)
 
 
 @app.get("/api/macro/jobs", response_model=list[MacroJobStatus])
@@ -78,3 +95,4 @@ def post_macro_run(request: MacroRunRequest) -> MacroRunResponse:
     # 매크로 실행은 백그라운드 job으로 시작하고 job_id만 즉시 반환한다.
     job = start_macro_job(request)
     return MacroRunResponse(ok=True, job_id=job.job_id)
+
