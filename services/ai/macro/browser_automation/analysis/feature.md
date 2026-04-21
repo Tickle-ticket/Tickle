@@ -7,7 +7,7 @@
 - 일부 값은 raw event 자체가 아니라, 클릭/이동 로그로부터 계산된 파생 feature입니다.
 - 분석 노트북에서는 아래 한글 이름을 짧은 라벨로 사용할 수 있습니다.
 
-## 클릭/타이밍 계열 (15)
+## 클릭/타이밍 계열
 | feature | 한글명 | 수집 기준 | 메모 |
 | --- | --- | --- | --- |
 | `time_to_first_click_ms` | 첫 클릭 시간 | 세션 시작 후 첫 클릭까지 시간 | 시작 반응 속도 |
@@ -26,7 +26,7 @@
 | `pre_click_scroll_flag` | 클릭 전 스크롤 | 클릭 직전에 스크롤이 있었는지 | 0 또는 1 |
 | `immediate_post_render_click_rate` | 즉시 클릭 비율 | 렌더 직후 매우 빠른 클릭 비율 | 매크로 의심 신호 |
 
-## 마우스 이동 계열 (17)
+## 마우스 이동 계열
 | feature | 한글명 | 수집 기준 | 메모 |
 | --- | --- | --- | --- |
 | `mouse_total_travel_distance_px` | 총 이동 거리 | 세션 내 총 이동 거리 | 전체 탐색량 |
@@ -47,7 +47,7 @@
 | `inter_element_move_interval_std_ms` | 이동 간격 표준편차 | 요소 간 이동 시간의 표준편차 | 리듬 일정성 |
 | `edge_or_fixed_point_visit_rate` | 고정점 방문률 | 화면 모서리/고정점 방문 비율 | 비정상 패턴 탐색 |
 
-## 키보드 입력 계열 (10)
+## 키보드 입력 계열
 | feature | 한글명 | 수집 기준 | 메모 |
 | --- | --- | --- | --- |
 | `time_to_first_keydown_ms` | 첫 키 입력 시간 | captcha input 포커스 후 첫 keydown까지 시간 | 입력 시작 반응 |
@@ -74,3 +74,78 @@
 1. `trial_analysis.ipynb`에서 전체 분포와 상관관계를 먼저 확인합니다.
 2. 차이가 큰 feature를 이 문서에서 다시 해석합니다.
 3. 필요하면 `eventRows`로 돌아가 새로운 feature를 재정의합니다.
+
+---
+
+## 매크로 vs 사람 구별용 feature 랭킹
+경험 기반 휴리스틱입니다. 상관관계(|corr|) 클러스터에서 중복이 확인되면, **rank가 낮은(덜 중요한)** feature를 우선 제거하는데 사용됩니다.
+
+### Click (전체 15)
+| rank | feature | 이유(요약) |
+| --- | --- | --- |
+| 1 | `immediate_post_render_click_rate` | 렌더 직후 즉시 클릭은 자동화에서 두드러짐 |
+| 2 | `time_from_element_visible_to_click_ms` | 인지/반응시간 차이 |
+| 3 | `time_from_element_clickable_to_click_ms` | clickable 상태 변화 반응 |
+| 4 | `inter_click_interval_ms` | 클릭 리듬(속도/변동성) |
+| 5 | `pre_click_hover_time_ms` | 클릭 전 머뭄 패턴 |
+| 6 | `misclick_rate` | 오클릭/헷갈림 패턴 |
+| 7 | `reclick_rate` | 반복 클릭/확인 클릭 |
+| 8 | `click_offset_from_element_center_px` | 클릭 정밀도 |
+| 9 | `click_position_repeat_rate` | 좌표 반복 성향 |
+| 10 | `click_sequence_consistency_score` | 순서/타이밍 일관성 |
+| 11 | `time_to_first_click_ms` | 시작 반응속도(세션 적응) |
+| 12 | `pre_click_mousemove_count` | 클릭 직전 탐색/움직임 정도 |
+| 13 | `pre_click_scroll_flag` | 스크롤 개입 여부(0/1) |
+| 14 | `double_click_rate` | 연타/오동작 패턴(사람/툴 영향) |
+| 15 | `click_offset_variance_px` | 클릭 흔들림(분산)은 보조 신호 |
+
+### Mouse (전체 17 + 파생 4)
+| rank | feature | 이유(요약) |
+| --- | --- | --- |
+| 1 | `mousemove_event_rate` | 사람의 미세 움직임/자동화 패턴 |
+| 2 | `mouse_speed_change_mean` | 가감속 패턴 차이 |
+| 3 | `mouse_path_straightness_score` | 직선/최단 경로 성향 |
+| 4 | `mouse_direction_change_count` | 미세 수정/방향 전환 |
+| 5 | `mouse_overshoot_flag` | 지나침 후 복귀 패턴 |
+| 6 | `inter_element_move_interval_std_ms` | 불규칙성(변동성) |
+| 7 | `edge_or_fixed_point_visit_rate` | 고정점 반복 신호 |
+| 8 | `mouse_total_travel_distance_px` | 탐색/이동량 |
+| 9 | `mouse_avg_speed_px_per_ms` | 평균 속도(보조) |
+| 10 | `mouse_max_speed_px_per_ms` | 최대 속도(보조) |
+| 11 | `mouse_acceleration_mean` | 가속도 패턴(보조) |
+| 12 | `mouse_jerk_mean` | 급격 조작/끊김(보조) |
+| 13 | `mouse_path_curvature_mean` | 굴곡/우회 정도(보조) |
+| 14 | `mouse_hover_dwell_time_ms` | 읽고 판단하는 시간(보조) |
+| 15 | `mouse_stop_segment_count` | 멈춤 구간 수(보조) |
+| 16 | `pre_click_mouse_path_pattern_300ms` | 문자열 요약값(전처리 필요) |
+| 17 | `pre_click_mouse_path_pattern_500ms` | 문자열 요약값(전처리 필요) |
+| 18 | `pre_click_path_300ms_total_distance_px` | (파생) 클릭 직전 준비 동작 |
+| 19 | `pre_click_path_300ms_straightness` | (파생) 클릭 직전 직선성 |
+| 20 | `pre_click_path_500ms_total_distance_px` | (파생) 클릭 직전 준비 동작(500ms) |
+| 21 | `pre_click_path_500ms_straightness` | (파생) 클릭 직전 직선성(500ms) |
+
+### Keyboard (전체 10)
+| rank | feature | 이유(요약) |
+| --- | --- | --- |
+| 1 | `paste_flag` | 붙여넣기 여부는 강한 단서 |
+| 2 | `inter_key_interval_ms_std` | 리듬 불규칙성(사람 특성) |
+| 3 | `inter_key_interval_ms_mean` | 평균 타이핑 속도 |
+| 4 | `backspace_rate` | 수정 행동 |
+| 5 | `correction_count` | 수정 횟수 |
+| 6 | `keydown_to_keyup_ms_mean` | dwell(키 누름) 시간 |
+| 7 | `typing_speed_cps` | 타이핑 속도(보조) |
+| 8 | `typing_total_duration_ms` | 전체 입력 시간 |
+| 9 | `time_to_first_keydown_ms` | 첫 입력 반응시간 |
+| 10 | `focus_to_submit_ms` | 입력 후 확인/제출 지연 |
+
+---
+
+## 마우스 파생 feature (분석용)
+아래 feature는 raw 수집값(`pre_click_mouse_path_pattern_*`)에서 파싱해 만든 **분석용 숫자 feature**입니다.
+
+| feature | 한글명 | 수집 기준 | 메모 |
+| --- | --- | --- | --- |
+| `pre_click_path_300ms_total_distance_px` | 300ms 이동거리 | `pre_click_mouse_path_pattern_300ms` 파싱 | 숫자(거리) |
+| `pre_click_path_300ms_straightness` | 300ms 직선성 | `pre_click_mouse_path_pattern_300ms` 파싱 | 숫자(직선성) |
+| `pre_click_path_500ms_total_distance_px` | 500ms 이동거리 | `pre_click_mouse_path_pattern_500ms` 파싱 | 숫자(거리) |
+| `pre_click_path_500ms_straightness` | 500ms 직선성 | `pre_click_mouse_path_pattern_500ms` 파싱 | 숫자(직선성) |
