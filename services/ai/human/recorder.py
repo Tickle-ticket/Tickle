@@ -1,6 +1,13 @@
-"""사람 행동 데이터 수집기. pynput으로 마우스/키보드 글로벌 캡처."""
-import time
+"""사람 행동 데이터 수집기. pynput으로 마우스/키보드 글로벌 캡처.
+
+녹화 시작 트리거 (2026-04-21 변경):
+- 프로그램 실행 시 리스너 활성화만 되고 녹화는 대기 상태
+- **첫 mouse click 감지 시 자동으로 세션 시작** — F9 같은 인위적 트리거 제거
+  (F9 키 입력 자체가 데이터에 섞여 오염되는 문제 해결)
+- F10 으로 종료
+"""
 import threading
+import time
 import webbrowser
 
 from pynput import mouse, keyboard
@@ -8,30 +15,27 @@ from pynput import mouse, keyboard
 from utils.logging.session import Session
 from utils.logging.event_logger import EventLogger
 
-# F9 키 반복 방지용 최소 간격 (초)
-TOGGLE_DEBOUNCE_SEC = 0.5
-# 마우스 이동 이벤트 쓰로틀링 간격 (초) - 너무 빈번한 이벤트 방지
+# 마우스 이동 이벤트 쓰로틀링 (초) — 너무 빈번한 이벤트 제한
 MOUSE_MOVE_THROTTLE_SEC = 0.01  # 10ms = 최대 100 이벤트/초
 
 
 class HumanRecorder:
     """
     실제 사람의 마우스/키보드 행동을 기록.
-    F9로 녹화 시작/중지.
+    첫 click 에 자동 시작, F10 으로 종료.
     """
 
     def __init__(self, base_dir: str = "data/raw"):
-        self.session = Session(source="human", label=1)
+        self.session = Session(source="human", label="human")
         self.logger = EventLogger(self.session, base_dir=base_dir)
         self._recording = False
         self._mouse_listener = None
         self._keyboard_listener = None
         self._stop_event = threading.Event()
-        self._last_toggle_time = 0.0
         self._last_mouse_move_time = 0.0
 
     def start(self, url: str = None):
-        """녹화 시작. URL이 주어지면 브라우저를 열어줌."""
+        """녹화 대기 시작. URL 이 주어지면 브라우저를 열어줌."""
         if url:
             webbrowser.open(url)
             print(f"브라우저에서 열림: {url}")
@@ -39,11 +43,10 @@ class HumanRecorder:
         print("=" * 50)
         print("사람 행동 녹화기")
         print("=" * 50)
-        print("F9: 녹화 시작/중지")
+        print("첫 마우스 클릭 감지 시 자동 녹화 시작")
         print("F10: 종료")
         print("=" * 50)
 
-        # 키보드 리스너 (핫키 감지)
         self._keyboard_listener = keyboard.Listener(
             on_press=self._on_key_press,
             on_release=self._on_key_release,
@@ -69,33 +72,9 @@ class HumanRecorder:
         print(f"  소요: {self.session.duration_ms:.0f}ms")
         print(f"  로그: {self.logger.file_path}")
 
-    def _toggle_recording(self):
-        # 키 반복에 의한 연속 토글 방지
-        now = time.monotonic()
-        if now - self._last_toggle_time < TOGGLE_DEBOUNCE_SEC:
-            return
-        self._last_toggle_time = now
-
-        if not self._recording:
-            self._recording = True
-            self.session.start()
-            print("\n[REC] 녹화 시작! 자연스럽게 웹사이트를 사용하세요.")
-        else:
-            self._recording = False
-            self.session.end()
-            self.logger.flush()
-            print(f"\n[STOP] 녹화 중지. 이벤트 저장됨.")
-
     def _on_key_press(self, key):
         try:
-            if key == keyboard.Key.f9:
-                self._toggle_recording()
-                return
             if key == keyboard.Key.f10:
-                now = time.monotonic()
-                if now - self._last_toggle_time < TOGGLE_DEBOUNCE_SEC:
-                    return
-                self._last_toggle_time = now
                 if self._recording:
                     self._recording = False
                     self.session.end()
@@ -107,7 +86,6 @@ class HumanRecorder:
 
         if not self._recording:
             return
-
         key_name = self._key_to_str(key)
         self.logger.log("key_down", key=key_name)
 
@@ -120,7 +98,6 @@ class HumanRecorder:
     def _on_mouse_move(self, x, y):
         if not self._recording:
             return
-        # 쓰로틀링: 너무 빈번한 마우스 이동 이벤트 제한
         now = time.monotonic()
         if now - self._last_mouse_move_time < MOUSE_MOVE_THROTTLE_SEC:
             return
@@ -128,10 +105,20 @@ class HumanRecorder:
         self.logger.log("mouse_move", x=x, y=y)
 
     def _on_mouse_click(self, x, y, button, pressed):
+        btn = "left" if button == mouse.Button.left else "right"
+
+        # 첫 클릭 감지 → 자동 녹화 시작
+        if not self._recording and pressed:
+            self._recording = True
+            self.session.start()
+            print("\n[REC] 첫 클릭 감지 — 녹화 시작!")
+            # 이 클릭도 의미 있는 이벤트이므로 함께 기록
+            self.logger.log("mouse_click", x=x, y=y, button=btn)
+            return
+
         if not self._recording:
             return
         if pressed:
-            btn = "left" if button == mouse.Button.left else "right"
             self.logger.log("mouse_click", x=x, y=y, button=btn)
 
     def _on_mouse_scroll(self, x, y, dx, dy):

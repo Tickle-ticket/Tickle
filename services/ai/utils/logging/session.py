@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Session:
     source: str
-    label: int = 0  # 0=macro, 1=human
+    label: str = "macro"  # "macro" | "human"
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     _start_ns: int = field(default=0, repr=False)
     _end_ns: int = field(default=0, repr=False)

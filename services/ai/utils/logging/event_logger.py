@@ -22,7 +22,7 @@ class InputEvent:
     dt_ms: Optional[float] = None  # 같은 타입 이전 이벤트와의 시간차
     speed: Optional[float] = None  # px/ms
     source: str = ""
-    label: int = 0                 # 0=macro, 1=human
+    label: str = "macro"           # "macro" | "human"
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -35,7 +35,7 @@ class EventLogger:
 
     def __init__(self, session: Session, base_dir: str = "data/raw"):
         self.session = session
-        subfolder = "human" if session.label == 1 else "macro"
+        subfolder = session.label if session.label in ("macro", "human") else "macro"
         self.output_dir = Path(base_dir) / subfolder
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.file_path = self.output_dir / f"{session.session_id}.jsonl"

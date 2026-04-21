@@ -33,6 +33,11 @@
         } else {
             receipt.innerHTML = '<p>예매 내역이 없습니다.</p>';
         }
+
+        // 예매 완료 후 '처음으로' 누르면 세션 ID 리셋 → 다음 티켓팅은 새 세션 파일로 기록
+        document.getElementById('btn-home').addEventListener('click', () => {
+            localStorage.removeItem('tdemo_session');
+        });
     </script>
 </body>
 </html>

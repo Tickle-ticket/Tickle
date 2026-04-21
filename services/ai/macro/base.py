@@ -17,7 +17,7 @@ class BaseMacro(ABC):
         self.base_resolution = get_base_resolution(self.config)
 
         raw_dir = self.config.get("logging", {}).get("raw_dir", "data/raw")
-        self.session = Session(source=self.source_name, label=0)
+        self.session = Session(source=self.source_name, label="macro")
         self.logger = EventLogger(self.session, base_dir=raw_dir)
 
     @property

@@ -229,7 +229,7 @@ class InfiniteClickTab(tk.Frame):
 
         def worker():
             global _running
-            session = Session(source="automouse_infclick", label=0)
+            session = Session(source="automouse_infclick", label="macro")
             logger = EventLogger(session)
             session.start()
             n = 0
@@ -636,7 +636,7 @@ class MacroTab(tk.Frame):
 
         def worker():
             global _running
-            session = Session(source=source, label=0)
+            session = Session(source=source, label="macro")
             logger = EventLogger(session)
             session.start()
             try:
