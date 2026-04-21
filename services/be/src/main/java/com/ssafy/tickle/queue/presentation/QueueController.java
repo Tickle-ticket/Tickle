@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/queue")
 @RequiredArgsConstructor
-public class QueueController {
+public class QueueController implements QueueApiDoc {
 
     private final QueueService queueService;
 
@@ -30,6 +30,7 @@ public class QueueController {
      * @return 접수된 요청 정보
      */
     @PostMapping("/enter")
+    @Override
     public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(@Valid @RequestBody QueueEnterRequest request) {
         QueueEnterResponse response = queueService.enter(request);
 
