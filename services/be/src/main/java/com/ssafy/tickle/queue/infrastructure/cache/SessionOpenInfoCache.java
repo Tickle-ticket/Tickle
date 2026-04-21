@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 대기열 진입 검증용 회차 메타데이터를 Redis에 저장하고 조회합니다.
+ * 대기열 진입 검증용 회차 예매 오픈 정보를 Redis에 저장하고 조회합니다.
  */
 @Component
 @RequiredArgsConstructor
@@ -23,36 +23,36 @@ public class SessionOpenInfoCache {
     private final StringRedisTemplate stringRedisTemplate;
 
     /**
-     * 회차 메타데이터를 Redis에 저장합니다.
+     * 회차 예매 오픈 정보를 Redis에 저장합니다.
      *
-     * @param metadata 저장할 회차 메타데이터
+     * @param info 저장할 회차 예매 오픈 정보
      */
-    public void save(SessionOpenInfo metadata) {
+    public void save(SessionOpenInfo info) {
         stringRedisTemplate.opsForHash().putAll(
-                key(metadata.sessionId()),
+                key(info.sessionId()),
                 Map.of(
-                        SALES_OPEN_AT, metadata.salesOpenAt().toString(),
-                        SALES_CLOSE_AT, metadata.salesCloseAt().toString()
+                        SALES_OPEN_AT, info.salesOpenAt().toString(),
+                        SALES_CLOSE_AT, info.salesCloseAt().toString()
                 )
         );
     }
 
     /**
-     * 여러 회차 메타데이터를 Redis에 저장합니다.
+     * 여러 회차 예매 오픈 정보를 Redis에 저장합니다.
      *
-     * @param metadataList 저장할 회차 메타데이터 목록
+     * @param infoList 저장할 회차 오픈 정보 목록
      */
-    public void saveAll(List<SessionOpenInfo> metadataList) {
-        for (SessionOpenInfo metadata : metadataList) {
-            save(metadata);
+    public void saveAll(List<SessionOpenInfo> infoList) {
+        for (SessionOpenInfo info : infoList) {
+            save(info);
         }
     }
 
     /**
-     * 회차 식별자로 메타데이터를 조회합니다.
+     * 회차 식별자로 예매 오픈 정보를 조회합니다.
      *
      * @param sessionId 회차 식별자
-     * @return 회차 메타데이터
+     * @return 회차 예매 오픈 정보
      */
     public Optional<SessionOpenInfo> findBySessionId(Long sessionId) {
         Object salesOpenAt = stringRedisTemplate.opsForHash().get(key(sessionId), SALES_OPEN_AT);
