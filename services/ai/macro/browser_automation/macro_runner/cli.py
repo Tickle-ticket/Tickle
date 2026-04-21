@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 import random
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import Callable, Iterable
 
 from playwright.sync_api import Locator
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -30,6 +31,9 @@ class MacroConfig:
     mouse_steps: int
 
 
+ProgressCallback = Callable[[str], None]
+
+
 def parse_args() -> MacroConfig:
     parser = argparse.ArgumentParser(description="Automate the browser automation simulator with Playwright.")
     parser.add_argument("--url", default=DEFAULT_URL, help="Simulator URL.")
@@ -46,7 +50,6 @@ def parse_args() -> MacroConfig:
     parser.add_argument("--mouse-steps", type=int, default=6, help="Mouse move interpolation steps.")
 
     args = parser.parse_args()
-    
     return MacroConfig(
         url=args.url,
         seats=tuple(args.seats),
@@ -54,13 +57,18 @@ def parse_args() -> MacroConfig:
         skip_queue=args.skip_queue,
         confirm_booking=args.confirm_booking,
         repeat=max(1, args.repeat),
-        timeout_ms=args.timeout_ms,
-        slow_mo_ms=args.slow_mo_ms,
+        timeout_ms=max(1000, args.timeout_ms),
+        slow_mo_ms=max(0, args.slow_mo_ms),
         action_delay_ms=max(0, args.action_delay_ms),
         hover_ms=max(0, args.hover_ms),
         typing_delay_ms=max(0, args.typing_delay_ms),
         mouse_steps=max(1, args.mouse_steps),
     )
+
+
+def config_for_single_run(config: MacroConfig) -> MacroConfig:
+    """GUI에서 여러 config를 따로 실행할 수 있게 1회 실행용 config를 만든다."""
+    return replace(config, repeat=1)
 
 
 def wait_ms(page: Page, ms: int) -> None:
@@ -69,7 +77,7 @@ def wait_ms(page: Page, ms: int) -> None:
 
 
 def move_and_click(page: Page, locator: Locator, config: MacroConfig) -> None:
-    # 사람처럼 보이도록 목표 좌표까지 마우스를 움직인 뒤 클릭한다.
+    # 사람처럼 요소 중앙으로 마우스를 이동한 뒤 클릭한다.
     locator.wait_for(state="visible", timeout=config.timeout_ms)
     box = locator.bounding_box()
     if box:
@@ -84,7 +92,7 @@ def move_and_click(page: Page, locator: Locator, config: MacroConfig) -> None:
 
 
 def wait_for_captcha(page: Page, config: MacroConfig) -> None:
-    # 설정에 따라 대기열을 건너뛰고 captcha 화면이 뜰 때까지 기다린다.
+    # 큐를 기다리거나 스킵해서 captcha 단계로 이동한다.
     if config.skip_queue:
         move_and_click(page, page.locator('[data-track-id="queue-skip"]'), config)
     page.locator('[data-track-id="captcha-input"]').wait_for(state="visible", timeout=config.timeout_ms)
@@ -113,58 +121,81 @@ def jitter_seats(seats: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(values)
 
 
-def run_single(page: Page, config: MacroConfig, attempt: int) -> None:
-    # 예매 시작 -> captcha -> 좌석 선택 -> 선택적으로 확정까지 한 번 수행한다.
-    print(f"[1/5] Opening {config.url}")
+def run_single(page: Page, config: MacroConfig, attempt: int, progress: ProgressCallback | None = None) -> None:
+    def emit(message: str) -> None:
+        print(message)
+        if progress:
+            progress(message)
+
+    emit(f"[1/5] Opening {config.url}")
     page.goto(config.url, wait_until="domcontentloaded")
     wait_ms(page, config.action_delay_ms)
 
-    print("[2/5] Starting booking flow")
+    emit("[2/5] Starting booking flow")
     move_and_click(page, page.get_by_role("button", name="Start Booking"), config)
 
-    print("[3/5] Waiting for captcha")
+    emit("[3/5] Waiting for captcha")
     wait_for_captcha(page, config)
 
-    print("[4/5] Filling captcha")
+    emit("[4/5] Filling captcha")
     fill_captcha(page, config)
 
     seats = jitter_seats(config.seats) if len(config.seats) > 1 else config.seats
-    print(f"[5/5] Selecting seats: {', '.join(seats)}")
+    emit(f"[5/5] Selecting seats: {', '.join(seats)}")
     select_seats(page, seats, config)
 
     if config.confirm_booking:
-        print("[extra] Confirming booking")
+        emit("[extra] Confirming booking")
         move_and_click(page, page.locator('[data-track-id="proceed-booking"]'), config)
         page.get_by_role("heading", name="Booking Confirmed").wait_for(state="visible", timeout=config.timeout_ms)
     else:
         page.locator('[data-track-id="proceed-booking"]').wait_for(state="visible", timeout=config.timeout_ms)
 
-    print(f"Run {attempt} completed successfully.")
+    emit(f"Run {attempt} completed successfully.")
 
 
-def run_macro(config: MacroConfig) -> int:
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=config.headless, slow_mo=config.slow_mo_ms)
+def run_macro_sequence(configs: Iterable[MacroConfig], progress: ProgressCallback | None = None) -> int:
+    """여러 config를 순차 실행한다. GUI의 랜덤 반복 실행에서 사용한다."""
+    config_list = list(configs)
+    if not config_list:
+        return 0
 
-        try:
-            for attempt in range(1, config.repeat + 1):
-                print(f"=== Run {attempt}/{config.repeat} ===")
+    for attempt, config in enumerate(config_list, start=1):
+        if progress:
+            progress(f"=== Run {attempt}/{len(config_list)} ===")
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=config.headless, slow_mo=config.slow_mo_ms)
+            try:
                 context = browser.new_context(viewport={"width": 1440, "height": 1400})
                 page = context.new_page()
                 page.set_default_timeout(config.timeout_ms)
-                run_single(page, config, attempt)
+                run_single(page, config, attempt, progress)
                 context.close()
+                browser.close()
+            except PlaywrightTimeoutError as error:
+                message = f"Timeout while running macro: {error}"
+                if progress:
+                    progress(message)
+                else:
+                    print(message, file=sys.stderr)
+                browser.close()
+                return 1
+            except Exception as error:  # noqa: BLE001
+                message = f"Macro failed: {error}"
+                if progress:
+                    progress(message)
+                else:
+                    print(message, file=sys.stderr)
+                browser.close()
+                return 1
 
-            browser.close()
-            return 0
-        except PlaywrightTimeoutError as error:
-            print(f"Timeout while running macro: {error}", file=sys.stderr)
-            browser.close()
-            return 1
-        except Exception as error:  # noqa: BLE001
-            print(f"Macro failed: {error}", file=sys.stderr)
-            browser.close()
-            return 1
+    return 0
+
+
+def run_macro(config: MacroConfig) -> int:
+    runs = [config_for_single_run(config) for _ in range(config.repeat)]
+    return run_macro_sequence(runs)
 
 
 if __name__ == "__main__":
