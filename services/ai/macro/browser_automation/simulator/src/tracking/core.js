@@ -1,6 +1,6 @@
 export const seatRows = 9;
 export const seatCols = 12;
-export const queueDuration = 5;
+export const queueDuration = 1;
 
 export const prices = {
   VIP: 170000,
