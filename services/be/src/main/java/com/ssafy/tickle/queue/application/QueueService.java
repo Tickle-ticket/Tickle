@@ -32,8 +32,7 @@ public class QueueService {
     public QueueEnterResponse enter(QueueEnterRequest request) {
         SessionOpenInfo sessionOpenInfo = sessionOpenInfoCache.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new BaseException(
-                        GlobalErrorCode.RESOURCE_NOT_FOUND,
-                        "대기열 진입용 회차 메타데이터를 찾을 수 없습니다."
+                        GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 회차이거나, 예매 예정인 회차가 아닙니다."
                 ));
 
         validateQueueEntry(sessionOpenInfo, Instant.now());
@@ -47,16 +46,16 @@ public class QueueService {
     /**
      * 회차의 예매 가능 상태를 검증합니다.
      *
-     * @param session 대상 회차
+     * @param sessionOpenInfo 대상 회차
      * @param now 현재 시각
      */
     private void validateQueueEntry(SessionOpenInfo sessionOpenInfo, Instant now) {
         if (now.isBefore(sessionOpenInfo.salesOpenAt())) {
-            throw new BaseException(GlobalErrorCode.QUEUE_NOT_OPEN);
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "아직 예매 오픈 전인 회차입니다.");
         }
 
         if (!now.isBefore(sessionOpenInfo.salesCloseAt())) {
-            throw new BaseException(GlobalErrorCode.QUEUE_CLOSED);
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "예매가 종료된 회차입니다.");
         }
     }
 }
