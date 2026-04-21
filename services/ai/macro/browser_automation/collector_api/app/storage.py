@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+import threading
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
@@ -10,6 +11,7 @@ TRIALS_DIR = DATA_DIR / "trials"
 SUMMARY_FILE = DATA_DIR / "trial_summary.jsonl"
 EVENTS_FILE = DATA_DIR / "event_rows.jsonl"
 WINDOWS_FILE = DATA_DIR / "window_rows.jsonl"
+_ALLOC_LOCK = threading.Lock()
 
 
 def ensure_storage() -> None:
@@ -30,10 +32,49 @@ def trial_file_path(trial_id: int) -> Path:
     return TRIALS_DIR / f"trial_{trial_id:05d}.json"
 
 
-def save_trial_payload(payload: dict[str, Any]) -> Path:
+def _current_max_trial_id() -> int:
+    ensure_storage()
+    max_id = 0
+    for path in TRIALS_DIR.glob("trial_*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            max_id = max(max_id, int(data.get("trialId") or 0))
+        except Exception:
+            # best-effort scan
+            continue
+    return max_id
+
+
+def allocate_trial_id() -> int:
+    """Allocate a new monotonically increasing trial id.
+
+    This prevents accidental overwrites when a client starts from trialId=1
+    (e.g. macro clicking before the simulator loads existing trials).
+    """
+    with _ALLOC_LOCK:
+        return _current_max_trial_id() + 1
+
+
+def _rewrite_nested_trial_ids(payload: dict[str, Any], trial_id: int) -> None:
+    # Update top-level
+    payload["trialId"] = int(trial_id)
+
+    # Update nested rows if they carry trial_id already (simulator usually does)
+    for row in payload.get("eventRows") or []:
+        if isinstance(row, dict) and "trial_id" in row:
+            row["trial_id"] = int(trial_id)
+    for row in payload.get("windowRows") or []:
+        if isinstance(row, dict) and "trial_id" in row:
+            row["trial_id"] = int(trial_id)
+
+
+def save_trial_payload(payload: dict[str, Any]) -> tuple[Path, int]:
     ensure_storage()
 
-    trial_id = int(payload["trialId"])
+    # Always assign server-side id to avoid overwriting existing files.
+    trial_id = allocate_trial_id()
+    _rewrite_nested_trial_ids(payload, trial_id)
+
     summary = dict(payload.get("summary", {}))
     event_rows_payload = list(payload.get("eventRows", []))
     window_rows_payload = list(payload.get("windowRows", []))
@@ -55,7 +96,7 @@ def save_trial_payload(payload: dict[str, Any]) -> Path:
     append_jsonl(EVENTS_FILE, event_rows)
     append_jsonl(WINDOWS_FILE, window_rows)
 
-    return file_path
+    return file_path, trial_id
 
 
 def list_trials() -> list[dict[str, Any]]:
