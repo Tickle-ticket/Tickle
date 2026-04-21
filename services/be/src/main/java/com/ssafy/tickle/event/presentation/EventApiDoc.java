@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 /**
  * 공연 조회 API 문서 인터페이스입니다.
  */
-@Tag(name = "Event", description = "공연 공연 조회 API")
+@Tag(name = "Event", description = "공연 조회 API")
 public interface EventApiDoc {
 
     /**
@@ -53,7 +53,7 @@ public interface EventApiDoc {
             responseCode = "200",
             description = "공연 상세 조회 성공"
     )
-    @ApiResponse(responseCode = "404", description = "공연를 찾을 수 없음")
+    @ApiResponse(responseCode = "404", description = "공연을 찾을 수 없음")
     ResponseEntity<BaseResponse<EventDetailResponse>> getEventDetail(
             @Parameter(description = "공연 식별자", required = true)
             Long eventId
