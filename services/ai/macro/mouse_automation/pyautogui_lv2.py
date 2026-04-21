@@ -1,0 +1,107 @@
+"""PyAutoGUI Lv2 매크로 — 중간 난이도 회피 샘플.
+
+위치: 사람처럼 보이려는 "가벼운 회피" 레벨. 상용 탐지 시스템이라면 잡을 수 있는 수준.
+
+특징:
+  - 베지어 곡선 경로 (20개 중간점) → 자연스러운 곡선 이동
+  - 좌표에 가우시안 노이즈 σ=4px → 완전히 같은 지점 반복 안 함
+  - Fitts 법칙 기반 `human_like_duration()` 타이밍
+  - 액션 간 로그정규 랜덤 delay (0.1~0.8s)
+  - 타이핑 글자 간 uniform(50, 200)ms
+
+한계 (탐지 목표):
+  - 경로가 기하적 bezier → **대칭적 속도 프로필** (사람은 비대칭)
+  - **생리적 tremor (8-12Hz) 없음** — FFT 파워 비교 가능
+  - **minimum-jerk 모델 이탈** — Flash-Hogan 근사와 RMSE 큼
+  - click-hold 시간 Lv1 수준 (~10ms, 사람은 50~150ms)
+
+대비 매크로:
+  - Lv1 (pyautogui_lv1): instant move + 고정 좌표 (탐지 쉬움)
+  - automouse (automouse.py): 사용자 정의 시퀀스지만 instant move (kinematics 수준 Lv1)
+
+탐지 핵심 시그널 (→ docs/feature_research_mouse_macro.md C 그룹 참고):
+  tremor_power_ratio, velocity_asymmetry, minimum_jerk_deviation, click_hold_duration.
+"""
+# isort: skip_file  # ensure_dpi_aware()는 pyautogui import 전에 실행되어야 함
+import random
+import time
+
+from macro.mouse_automation._dpi import ensure_dpi_aware, scale_coords
+
+ensure_dpi_aware()
+import pyautogui
+
+from macro.base import BaseMacro
+from macro.mouse_automation.mouse_utils import bezier_curve, add_noise, random_delay, human_like_duration
+
+
+class PyAutoGUILv2(BaseMacro):
+    """
+    Lv2 회피 매크로:
+    - 좌표에 가우시안 노이즈 추가
+    - 액션 간 랜덤 딜레이 (로그정규분포)
+    - 마우스 이동 시 베지어 곡선 경로
+    """
+
+    @property
+    def source_name(self) -> str:
+        return "pyautogui_lv2"
+
+    def execute(self):
+        cfg = self.config.get("macro", {}).get("lv2", {})
+        min_delay = cfg.get("min_delay", 0.1)
+        max_delay = cfg.get("max_delay", 0.8)
+        noise_sigma = cfg.get("coord_noise_sigma", 4)
+        bezier_pts = cfg.get("bezier_points", 20)
+        bezier_spread = cfg.get("bezier_spread", 80)
+        base_w, base_h = self.base_resolution
+
+        pyautogui.FAILSAFE = self.config.get("pyautogui", {}).get("failsafe", True)
+        pyautogui.PAUSE = self.config.get("pyautogui", {}).get("pause", 0.01)
+
+        actions = self.target.get("actions", [])
+        current_pos = pyautogui.position()
+
+        for action in actions:
+            action_type = action["type"]
+
+            if action_type == "click":
+                coords = action.get("coords")
+                if coords:
+                    # 기준 좌표 -> 실제 좌표 -> 노이즈 추가
+                    target_x, target_y = scale_coords(coords[0], coords[1], base_w, base_h)
+                    target_x, target_y = add_noise(target_x, target_y, sigma=noise_sigma)
+
+                    # 베지어 곡선으로 이동
+                    start = (current_pos[0], current_pos[1])
+                    path = bezier_curve(
+                        start, (target_x, target_y),
+                        num_points=bezier_pts,
+                        spread=bezier_spread,
+                    )
+
+                    dist = ((target_x - start[0])**2 + (target_y - start[1])**2) ** 0.5
+                    total_duration = human_like_duration(dist)
+                    step_time = total_duration / max(len(path), 1)
+
+                    for px, py in path:
+                        pyautogui.moveTo(px, py, duration=0)
+                        self.logger.log("mouse_move", x=px, y=py)
+                        time.sleep(step_time)
+
+                    # 클릭
+                    pyautogui.click(target_x, target_y)
+                    self.logger.log("mouse_click", x=target_x, y=target_y, button="left")
+                    current_pos = (target_x, target_y)
+
+            elif action_type == "type":
+                text = action.get("text", "")
+                for char in text:
+                    pyautogui.press(char)
+                    self.logger.log("key_down", key=char)
+                    self.logger.log("key_up", key=char)
+                    # 글자 간 랜덤 딜레이 (50~200ms)
+                    time.sleep(random.uniform(0.05, 0.2))
+
+            # 액션 간 랜덤 딜레이
+            random_delay(min_delay, max_delay)
