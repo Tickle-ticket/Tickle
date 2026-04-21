@@ -18,6 +18,9 @@ _jobs: dict[str, MacroJobStatus] = {}
 _label_queue: list[dict[str, float | str]] = []
 _lock = threading.Lock()
 
+# 반복 실행이 길어지면(예: 200회) 라벨 큐가 중간에 만료되어 human으로 떨어질 수 있어 넉넉히 둔다.
+LABEL_TTL_SECONDS = 30 * 60
+
 
 def default_python_path() -> str:
     return os.environ.get("MACRO_PYTHON_PATH") or sys.executable
@@ -25,8 +28,7 @@ def default_python_path() -> str:
 
 def enqueue_labels(label: str, repeat: int) -> None:
     with _lock:
-        # 실행 직후 저장될 trial에 사용할 라벨을 임시 큐에 넣어 둔다.
-        expires_at = time.time() + 180
+        expires_at = time.time() + LABEL_TTL_SECONDS
         _label_queue.extend([{"label": label, "expires_at": expires_at}] * max(1, repeat))
 
 
@@ -101,13 +103,14 @@ def start_macro_job(request: MacroRunRequest) -> MacroJobStatus:
         repeat=request.repeat,
     )
     _store_job(job)
+
+    # 매크로 실행 직후 저장될 trial들을 macro로 라벨링하기 위한 큐를 채운다.
     enqueue_labels(request.trial_label, request.repeat)
 
     def runner() -> None:
         job.status = "running"
         _store_job(job)
         try:
-            # 실제 브라우저 자동화는 별도 프로세스로 실행한다.
             completed = subprocess.run(
                 command,
                 cwd=str(ROOT_DIR),
@@ -129,3 +132,4 @@ def start_macro_job(request: MacroRunRequest) -> MacroJobStatus:
     thread = threading.Thread(target=runner, daemon=True)
     thread.start()
     return job
+
