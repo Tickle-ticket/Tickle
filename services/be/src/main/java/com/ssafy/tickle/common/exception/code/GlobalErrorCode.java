@@ -17,7 +17,9 @@ public enum GlobalErrorCode implements ErrorCode {
     ENTITY_NOT_FOUND(404, "대상을 찾을 수 없습니다."),
     RESOURCE_NOT_FOUND(404, "해당 리소스를 찾을 수 없습니다."),
     ACCESS_DENIED(403, "접근 권한이 없습니다."),
-    CONFLICT(409, "이미 존재하는 리소스입니다.");
+    CONFLICT(409, "이미 존재하는 리소스입니다."),
+    QUEUE_NOT_OPEN(400, "아직 예매 오픈 전인 회차입니다."),
+    QUEUE_CLOSED(400, "예매가 종료된 회차입니다.");
 
     private final int status;
     private final String message;
