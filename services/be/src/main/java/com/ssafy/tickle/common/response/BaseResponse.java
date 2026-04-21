@@ -5,8 +5,6 @@ import com.ssafy.tickle.common.exception.code.SuccessCode;
 /**
  * 모든 API 응답에서 사용하는 공통 응답 포맷입니다.
  *
- * <p>상태 코드, 메시지, 데이터를 일관된 형태로 반환합니다.</p>
- *
  * @param <T> 응답 데이터 타입
  */
 public record BaseResponse<T>(
