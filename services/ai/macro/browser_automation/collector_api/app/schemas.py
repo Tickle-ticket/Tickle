@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import Literal
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+
+
+LabelValue = Literal["macro", "human"]
 
 
 class TrialRecord(BaseModel):
@@ -37,7 +41,16 @@ class MacroRunRequest(BaseModel):
     typing_delay_ms: int = 80
     mouse_steps: int = 5
     python_path: str | None = None
-    trial_label: str = "macro"
+    trial_label: LabelValue = "macro"
+
+
+class LabelEnqueueRequest(BaseModel):
+    label: LabelValue = "macro"
+    repeat: int = 1
+
+
+class LabelEnqueueResponse(BaseModel):
+    ok: bool
 
 
 class MacroRunResponse(BaseModel):
