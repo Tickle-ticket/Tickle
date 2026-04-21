@@ -1,0 +1,14 @@
+# --- AI 탐지 시스템 / 데모 API ---
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+
+# --- 매크로 시뮬레이터 (training/datasets/simulator) ---
+pyautogui>=0.9.54
+playwright>=1.40.0
+pynput>=1.7.6
+
+# --- 공통 ---
+pyyaml>=6.0
+numpy>=1.24.0
+pandas>=2.0.0

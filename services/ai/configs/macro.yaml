@@ -1,0 +1,26 @@
+screen:
+  base_resolution: [1920, 1080]
+  dpi_aware: true
+
+logging:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+
+pyautogui:
+  failsafe: true
+  pause: 0.01
+
+playwright:
+  browser: "chromium"
+  headless: false
+  viewport: [1280, 720]
+
+macro:
+  lv1:
+    interval: 0.5        # 액션 간 고정 대기 (초)
+  lv2:
+    min_delay: 0.1        # 랜덤 딜레이 최소 (초)
+    max_delay: 0.8        # 랜덤 딜레이 최대 (초)
+    coord_noise_sigma: 4  # 좌표 가우시안 노이즈 (px)
+    bezier_points: 20     # 베지어 곡선 중간점 수
+    bezier_spread: 80     # 베지어 제어점 랜덤 범위 (px)

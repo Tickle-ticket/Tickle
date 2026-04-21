@@ -1,0 +1,18 @@
+name: "sample_login"
+url: "https://practicetestautomation.com/practice-test-login/"
+actions:
+  - type: "click"
+    selector: "#username"
+    coords: [960, 400]
+  - type: "type"
+    selector: "#username"
+    text: "student"
+  - type: "click"
+    selector: "#password"
+    coords: [960, 460]
+  - type: "type"
+    selector: "#password"
+    text: "Password123"
+  - type: "click"
+    selector: "#submit"
+    coords: [960, 520]
