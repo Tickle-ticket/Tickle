@@ -1,12 +1,10 @@
-package com.ssafy.tickle.queue.application;
+package com.ssafy.tickle.queue.application.scheduler;
 
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.queue.domain.SessionOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
