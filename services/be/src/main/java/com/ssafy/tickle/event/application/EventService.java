@@ -50,9 +50,9 @@ public class EventService {
         Event event = eventRepository.findWithDetailsById(eventId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
 
-        List<EventImage> images = eventImageRepository.findByEvent_IdOrderByDisplayOrderAsc(eventId);
-        List<EventSession> sessions = eventSessionRepository.findByEvent_IdOrderByStartAtAsc(eventId);
-        List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEvent_IdOrderByDisplayOrderAsc(eventId);
+        List<EventImage> images = eventImageRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
+        List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
+        List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
 
         return EventDetailResponse.from(event, images, sessions, pricePolicies);
     }
@@ -118,7 +118,7 @@ public class EventService {
             return Map.of();
         }
 
-        List<EventImage> images = eventImageRepository.findByEvent_IdInAndImageTypeOrderByEvent_IdAscDisplayOrderAsc(
+        List<EventImage> images = eventImageRepository.findByEventIdInAndImageTypeOrderByEventIdAscDisplayOrderAsc(
                 eventIds,
                 EventImage.ImageType.THUMBNAIL
         );

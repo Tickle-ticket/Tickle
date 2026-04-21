@@ -16,5 +16,5 @@ public interface EventPricePolicyRepository extends JpaRepository<EventPricePoli
      * @param eventId 이벤트 식별자
      * @return 가격 정책 목록
      */
-    List<EventPricePolicy> findByEvent_IdOrderByDisplayOrderAsc(Long eventId);
+    List<EventPricePolicy> findByEventIdOrderByDisplayOrderAsc(Long eventId);
 }

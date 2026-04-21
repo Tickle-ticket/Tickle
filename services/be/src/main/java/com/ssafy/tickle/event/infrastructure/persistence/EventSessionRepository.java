@@ -16,5 +16,5 @@ public interface EventSessionRepository extends JpaRepository<EventSession, Long
      * @param eventId 이벤트 식별자
      * @return 회차 목록
      */
-    List<EventSession> findByEvent_IdOrderByStartAtAsc(Long eventId);
+    List<EventSession> findByEventIdOrderByStartAtAsc(Long eventId);
 }
