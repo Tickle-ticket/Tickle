@@ -67,8 +67,8 @@ def post_trial(record: TrialRecord) -> TrialSaveResponse:
     payload.setdefault("summary", {})
     payload["summary"]["label"] = label
 
-    file_path = save_trial_payload(payload)
-    return TrialSaveResponse(ok=True, trial_id=record.trialId, saved_to=str(file_path))
+    file_path, saved_trial_id = save_trial_payload(payload)
+    return TrialSaveResponse(ok=True, trial_id=saved_trial_id, saved_to=str(file_path))
 
 
 @app.post("/api/labels/enqueue", response_model=LabelEnqueueResponse)
@@ -95,4 +95,3 @@ def post_macro_run(request: MacroRunRequest) -> MacroRunResponse:
     # 매크로 실행은 백그라운드 job으로 시작하고 job_id만 즉시 반환한다.
     job = start_macro_job(request)
     return MacroRunResponse(ok=True, job_id=job.job_id)
-
