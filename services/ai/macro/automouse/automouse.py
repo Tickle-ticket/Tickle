@@ -30,7 +30,9 @@ import json, os, sys, time, threading
 from pathlib import Path
 
 # sys.path 부트스트랩 — services/ai/ 를 Python 루트로 삼아 utils.logging 임포트 가능하게
-_PROJECT_ROOT = Path(__file__).resolve().parent
+# 이 파일 위치: services/ai/macro/automouse/automouse.py
+# parents[0]=automouse/, parents[1]=macro/, parents[2]=services/ai/ (← PYTHONPATH 루트)
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 os.chdir(_PROJECT_ROOT)
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
