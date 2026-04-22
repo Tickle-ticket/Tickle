@@ -1,6 +1,6 @@
 package com.ssafy.tickle.queue.presentation.dto;
 
-import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.cache.QueueRequestStatus;
 
 /**
  * 대기열 진입 등록 응답 DTO입니다.

@@ -1,4 +1,4 @@
-package com.ssafy.tickle.queue.domain;
+package com.ssafy.tickle.queue.domain.cache;
 
 import com.ssafy.tickle.event.domain.EventSession;
 
