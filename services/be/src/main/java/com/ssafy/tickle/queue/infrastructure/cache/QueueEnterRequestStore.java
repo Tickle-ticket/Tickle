@@ -1,12 +1,12 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
+import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueEnterRequestReferenceHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -17,10 +17,9 @@ import java.util.Optional;
 public class QueueEnterRequestStore {
 
     private static final Duration REQUEST_TTL = Duration.ofMinutes(5);
-    private static final String SESSION_ID = "sessionId";
-    private static final String USER_ID = "userId";
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final QueueEnterRequestReferenceHashMapper queueEnterRequestReferenceHashMapper;
 
     /**
      * 사용자-회차 조합으로 이미 저장된 요청 식별자를 조회합니다.
@@ -51,10 +50,10 @@ public class QueueEnterRequestStore {
         if (Boolean.TRUE.equals(saved)) {
             // requestId만으로 다시 사용자/회차를 복구할 수 있게 reference hash를 별도로 둔다.
             String referenceKey = referenceKey(requestId);
-            stringRedisTemplate.opsForHash().putAll(referenceKey, Map.of(
-                    SESSION_ID, String.valueOf(sessionId),
-                    USER_ID, String.valueOf(userId)
-            ));
+            stringRedisTemplate.opsForHash().putAll(
+                    referenceKey,
+                    queueEnterRequestReferenceHashMapper.toHash(sessionId, userId)
+            );
             stringRedisTemplate.expire(referenceKey, REQUEST_TTL);
         }
 
@@ -68,22 +67,9 @@ public class QueueEnterRequestStore {
      * @return 사용자/회차 식별자
      */
     public Optional<QueueEnterRequestReference> findReferenceByRequestId(String requestId) {
-        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(referenceKey(requestId));
-        if (entries.isEmpty()) {
-            return Optional.empty();
-        }
-
-        // reference hash는 최소 sessionId/userId 두 필드가 모두 있어야 유효.
-        Object sessionId = entries.get(SESSION_ID);
-        Object userId = entries.get(USER_ID);
-        if (sessionId == null || userId == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(new QueueEnterRequestReference(
-                Long.parseLong(sessionId.toString()),
-                Long.parseLong(userId.toString())
-        ));
+        return queueEnterRequestReferenceHashMapper.fromHash(
+                stringRedisTemplate.opsForHash().entries(referenceKey(requestId))
+        );
     }
 
     /**
