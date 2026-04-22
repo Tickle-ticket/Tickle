@@ -11,6 +11,7 @@ TRIALS_DIR = DATA_DIR / "trials"
 SUMMARY_FILE = DATA_DIR / "trial_summary.jsonl"
 EVENTS_FILE = DATA_DIR / "event_rows.jsonl"
 WINDOWS_FILE = DATA_DIR / "window_rows.jsonl"
+MACRO_RUN_PARAMS_FILE = DATA_DIR / "macro_run_params.jsonl"
 _ALLOC_LOCK = threading.Lock()
 
 
@@ -97,6 +98,13 @@ def save_trial_payload(payload: dict[str, Any]) -> tuple[Path, int]:
     append_jsonl(WINDOWS_FILE, window_rows)
 
     return file_path, trial_id
+
+
+def append_macro_run_params(trial_id: int, run_params: dict[str, Any]) -> None:
+    """Append macro run parameters in a sidecar JSONL without changing trial payload schema."""
+
+    row = {"trial_id": int(trial_id), "run_params": run_params}
+    append_jsonl(MACRO_RUN_PARAMS_FILE, [row])
 
 
 def list_trials() -> list[dict[str, Any]]:
