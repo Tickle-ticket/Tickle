@@ -1,47 +1,13 @@
 """
-오토마우스 v1.7 스타일 — 무한클릭 + 시퀀스 매크로 (GUI 기반)
-
-위치: 사람이 GUI 로 직접 시나리오 구성 가능한 매크로 도구. Lv1/Lv2 와 **병존**하며
-      **"실전에 가까운 클릭 시퀀스"** 를 만들기 위한 샘플 생성.
-
-특징:
-  - Tkinter GUI — 클릭 좌표 캡처, 슬롯 3개, 핫키 실행 (F1~F3)
-  - 탭 1: 무한 클릭 (CPS, 고정/현재 좌표)
-  - 탭 2: 시퀀스 매크로 (JSON 저장, 클릭/딜레이/메모 편집)
-  - 2026-04-21: EventLogger 연동 — 실행 시 data/raw/macro/{session_id}.jsonl 에 로그
-
-kinematics 수준: **Lv1 과 동일** (pyautogui.click 즉시 이동, 경로 없음).
-  → 마우스 이동 feature 로 보면 Lv1 급 탐지 용이.
-  → 그러나 **시퀀스가 사람이 설계한 실제 공격 흐름** (공연 선택→좌석→결제 등) 이라
-    "매크로 클라이언트가 사람 시나리오를 그대로 실행" 하는 공격을 모사.
-
-대비:
-  - Lv1 (pyautogui_lv1): YAML 정의 고정 시나리오, instant kinematics
-  - Lv2 (pyautogui_lv2): YAML 정의 + bezier+노이즈 kinematics
-  - automouse: **사용자 정의 시나리오** + instant kinematics
-
-source 명명: "automouse_infclick" (탭1) / "automouse_sequence_{name}" (탭2)
+오토마우스 v1.7 스타일 - 무한클릭 + 시퀀스 매크로
 """
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 import tkinter.simpledialog
 import json, os, sys, time, threading
-from pathlib import Path
-
-# sys.path 부트스트랩 — services/ai/ 를 Python 루트로 삼아 utils.logging 임포트 가능하게
-# 이 파일 위치: services/ai/macro/automouse/automouse.py
-# parents[0]=automouse/, parents[1]=macro/, parents[2]=services/ai/ (← PYTHONPATH 루트)
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-os.chdir(_PROJECT_ROOT)
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
-
 import pyautogui
 from pynput import keyboard as kb
-
-from utils.logging.session import Session
-from utils.logging.event_logger import EventLogger
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0
@@ -231,40 +197,29 @@ class InfiniteClickTab(tk.Frame):
 
         def worker():
             global _running
-            session = Session(source="automouse_infclick", label="macro")
-            logger = EventLogger(session)
-            session.start()
             n = 0
-            try:
-                while _running:
-                    if not infinite and n >= max_cnt:
-                        break
-                    try:
-                        if mode == "fixed":
-                            cx, cy = fx, fy
-                            if btn == "double":
-                                pyautogui.doubleClick(fx, fy)
-                            else:
-                                pyautogui.click(fx, fy, button=btn)
+            while _running:
+                if not infinite and n >= max_cnt:
+                    break
+                try:
+                    if mode == "fixed":
+                        if btn == "double":
+                            pyautogui.doubleClick(fx, fy)
                         else:
-                            cx, cy = pyautogui.position()
-                            if btn == "double":
-                                pyautogui.doubleClick()
-                            else:
-                                pyautogui.click(button=btn)
-                        log_btn = "double" if btn == "double" else btn
-                        logger.log("mouse_click", x=int(cx), y=int(cy), button=log_btn)
-                        n += 1
-                        self.after(0, self.click_count.set, n)
-                    except Exception:
-                        break
-                    time.sleep(interval)
-            finally:
-                session.end()
-                logger.flush()
-                _running = False
-                self.after(0, self.run_btn.config, {"state": "normal"})
-                self.after(0, self._status, f"완료 — 총 {n}회 클릭 · 세션 {session.session_id}")
+                            pyautogui.click(fx, fy, button=btn)
+                    else:
+                        if btn == "double":
+                            pyautogui.doubleClick()
+                        else:
+                            pyautogui.click(button=btn)
+                    n += 1
+                    self.after(0, self.click_count.set, n)
+                except Exception:
+                    break
+                time.sleep(interval)
+            _running = False
+            self.after(0, self.run_btn.config, {"state": "normal"})
+            self.after(0, self._status, f"완료 — 총 {n}회 클릭")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -631,16 +586,8 @@ class MacroTab(tk.Frame):
         _running = True
         self.run_btn.config(state="disabled")
 
-        idx = self._cur_idx()
-        slot_name = self.data["macros"][idx]["name"] if idx >= 0 else "unknown"
-        slug = "".join(c if c.isalnum() else "_" for c in slot_name).strip("_") or "unnamed"
-        source = f"automouse_sequence_{slug}"
-
         def worker():
             global _running
-            session = Session(source=source, label="macro")
-            logger = EventLogger(session)
-            session.start()
             try:
                 for i, ev in enumerate(events):
                     if not _running: break
@@ -657,14 +604,10 @@ class MacroTab(tk.Frame):
                         pyautogui.doubleClick(x, y)
                     else:
                         pyautogui.click(x, y, button=btn)
-                    log_btn = "double" if btn == "double" else btn
-                    logger.log("mouse_click", x=x, y=y, button=log_btn)
-                self.after(0, self._status, f"✅ 매크로 완료! 세션 {session.session_id}")
+                self.after(0, self._status, "✅ 매크로 완료!")
             except Exception as e:
                 self.after(0, self._status, f"❌ {e}")
             finally:
-                session.end()
-                logger.flush()
                 _running = False
                 self.after(0, self.run_btn.config, {"state":"normal"})
 

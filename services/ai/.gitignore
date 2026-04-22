@@ -1,3 +1,8 @@
+__pycache__/
+data/
+node_modules/
+
+=======
 # --- Data (로컬에만 유지, git 제외) ---
 data/
 *.jsonl
@@ -60,3 +65,10 @@ docs/feature_definitions_v0.md
 
 # --- automouse 사용자 로컬 설정 ---
 automouse_data.json
+<<<<<<< HEAD
+>>>>>>> services/ai/.gitignore
+=======
+__pycache__/
+data/
+node_modules/
+>>>>>>> 9e59941 ([AI] 156 chore: ai gitignore 정리)
