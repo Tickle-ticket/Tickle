@@ -8,6 +8,7 @@ import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -69,10 +70,10 @@ class QueueStatusServiceTest {
 
             QueueEnterResponse enterResponse = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
 
-            QueueStatusResponse statusResponse = queueStatusService.getQueueToken(enterResponse.requestId());
+            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(enterResponse.requestId());
 
-            assertThat(statusResponse.queueToken()).isNotBlank();
-            assertThat(statusResponse.status()).isEqualTo(QueueRequestStatus.WAITING);
+            assertThat(tokenResponse.queueToken()).isNotBlank();
+            assertThat(tokenResponse.status()).isEqualTo(QueueRequestStatus.WAITING);
         }
 
         @Test
@@ -88,8 +89,8 @@ class QueueStatusServiceTest {
 
             QueueEnterResponse enterResponse = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
 
-            QueueStatusResponse first = queueStatusService.getQueueToken(enterResponse.requestId());
-            QueueStatusResponse second = queueStatusService.getQueueToken(enterResponse.requestId());
+            QueueTokenResponse first = queueStatusService.getQueueToken(enterResponse.requestId());
+            QueueTokenResponse second = queueStatusService.getQueueToken(enterResponse.requestId());
 
             assertThat(first.queueToken()).isNotBlank();
             assertThat(second.queueToken()).isEqualTo(first.queueToken());
@@ -103,6 +104,35 @@ class QueueStatusServiceTest {
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("getStatusByQueueToken")
+    class GetStatusByQueueToken {
+
+        @Test
+        @DisplayName("queueToken으로 현재 순번과 ETA를 조회할 수 있다")
+        void getStatusByQueueToken_returnsWaitingStatus() {
+            long sessionId = 30L;
+            long userId = 1L;
+            sessionOpenInfoCache.save(new SessionOpenInfo(
+                    sessionId,
+                    Instant.now().minusSeconds(60),
+                    Instant.now().plusSeconds(600)
+            ));
+
+            QueueEnterResponse enterResponse = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(enterResponse.requestId());
+
+            QueueStatusResponse statusResponse = queueStatusService.getStatusByQueueToken(tokenResponse.queueToken());
+
+            assertThat(statusResponse.queueToken()).isEqualTo(tokenResponse.queueToken());
+            assertThat(statusResponse.status()).isEqualTo(QueueRequestStatus.WAITING);
+            assertThat(statusResponse.rank()).isEqualTo(1L);
+            assertThat(statusResponse.waitingCount()).isEqualTo(1L);
+            assertThat(statusResponse.estimatedWaitSeconds()).isEqualTo(0L);
+            assertThat(statusResponse.estimatedEntryAt()).isNotNull();
         }
     }
 }
