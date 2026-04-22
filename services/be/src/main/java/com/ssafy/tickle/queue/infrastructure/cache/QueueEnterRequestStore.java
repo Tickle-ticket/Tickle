@@ -49,6 +49,7 @@ public class QueueEnterRequestStore {
         );
 
         if (Boolean.TRUE.equals(saved)) {
+            // requestId만으로 다시 사용자/회차를 복구할 수 있게 reference hash를 별도로 둔다.
             String referenceKey = referenceKey(requestId);
             stringRedisTemplate.opsForHash().putAll(referenceKey, Map.of(
                     SESSION_ID, String.valueOf(sessionId),
@@ -72,6 +73,7 @@ public class QueueEnterRequestStore {
             return Optional.empty();
         }
 
+        // reference hash는 최소 sessionId/userId 두 필드가 모두 있어야 유효.
         Object sessionId = entries.get(SESSION_ID);
         Object userId = entries.get(USER_ID);
         if (sessionId == null || userId == null) {

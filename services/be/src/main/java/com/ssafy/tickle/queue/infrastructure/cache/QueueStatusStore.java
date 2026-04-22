@@ -44,6 +44,7 @@ public class QueueStatusStore {
             return;
         }
 
+        // 개별 사용자 상태를 조회할 때 사용
         stringRedisTemplate.opsForHash().putAll(statusKey, Map.of(
                 "requestId", requestId,
                 "userId", String.valueOf(userId),
@@ -51,6 +52,8 @@ public class QueueStatusStore {
                 "status", QueueRequestStatus.WAITING.name(),
                 "registeredAt", String.valueOf(registeredAt.toEpochMilli())
         ));
+
+        // 해당 회차에서 현재 순번을 계산할 때 사용
         stringRedisTemplate.opsForZSet().add(waitingKey(sessionId), queueToken, registeredAt.toEpochMilli());
     }
 
@@ -66,6 +69,7 @@ public class QueueStatusStore {
             return Optional.empty();
         }
 
+        // Redis hash를 내부 스냅샷으로 변환한 뒤 서비스가 rank/ETA 계산에 사용.
         return Optional.of(new QueueStatusSnapshot(
                 queueToken,
                 entries.get("requestId").toString(),

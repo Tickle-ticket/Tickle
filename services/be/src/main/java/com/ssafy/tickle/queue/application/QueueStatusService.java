@@ -43,6 +43,7 @@ public class QueueStatusService {
         QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
 
+        // requestId 기준으로 queueToken을 고정해두면 새로고침/재호출에도 같은 토큰을 재사용할 수 있다.
         String queueToken = issueQueueToken(requestId);
         queueStatusStore.registerWaitingIfAbsent(
                 queueToken,
@@ -65,6 +66,7 @@ public class QueueStatusService {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
 
+        // 순번과 ETA는 조회 시점의 redis 상태를 읽어 계산.
         Long rank = queueStatusStore.findRank(snapshot.sessionId(), queueToken);
         long waitingCount = queueStatusStore.countWaiting(snapshot.sessionId());
         long estimatedWaitSeconds = estimateWaitSeconds(snapshot.sessionId(), rank);
@@ -96,6 +98,7 @@ public class QueueStatusService {
             return queueToken;
         }
 
+        // 동시에 여러 요청이 들어오면 이미 다른 스레드가 저장한 queueToken을 다시 읽어 반환.
         return stringRedisTemplate.opsForValue().get(requestKey);
     }
 
@@ -106,6 +109,7 @@ public class QueueStatusService {
 
         Instant now = Instant.now();
         long recentAdmissionCount = queueStatusStore.countRecentAdmissions(sessionId, now.minus(ETA_WINDOW), now);
+        // 아직 admission 기록이 없으면 fallback 처리량으로만 ETA를 추정한다.
         long admissionRatePerMinute = recentAdmissionCount == 0L
                 ? DEFAULT_ADMISSION_RATE_PER_MINUTE
                 : Math.max(1L, recentAdmissionCount / ETA_WINDOW.toMinutes());

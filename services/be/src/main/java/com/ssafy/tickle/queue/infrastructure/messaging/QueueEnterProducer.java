@@ -23,6 +23,7 @@ public class QueueEnterProducer {
 
     public void publish(QueueEnterMessage command) {
         try {
+            // send().get()으로 브로커 ack까지 확인해야 enter API가 적재 실패를 감지할 수 있다.
             kafkaTemplate.send(TOPIC, command.sessionId().toString(), objectMapper.writeValueAsString(command)).get();
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("대기열 진입 요청 직렬화에 실패했습니다.", exception);
