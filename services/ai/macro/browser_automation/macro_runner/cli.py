@@ -32,6 +32,11 @@ class MacroConfig:
 
 
 ProgressCallback = Callable[[str], None]
+StopCallback = Callable[[], bool]
+
+
+class MacroCancelled(RuntimeError):
+    pass
 
 
 def parse_args() -> MacroConfig:
@@ -145,31 +150,47 @@ def jitter_seats(seats: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(values)
 
 
-def run_single(page: Page, config: MacroConfig, attempt: int, progress: ProgressCallback | None = None) -> None:
+def run_single(
+    page: Page,
+    config: MacroConfig,
+    attempt: int,
+    progress: ProgressCallback | None = None,
+    should_stop: StopCallback | None = None,
+) -> None:
     def emit(message: str) -> None:
         print(message)
         if progress:
             progress(message)
 
+    def check_stop(where: str) -> None:
+        if should_stop and should_stop():
+            raise MacroCancelled(f"Cancelled: {where}")
+
     emit(f"[1/5] Opening {config.url}")
     page.goto(config.url, wait_until="domcontentloaded")
     wait_ms(page, config.action_delay_ms)
+    check_stop("after goto")
 
     emit("[pre] Waiting for collector API connection")
     wait_for_collector_ready(page, timeout_ms=min(config.timeout_ms, 15000))
+    check_stop("after collector ready")
 
     emit("[2/5] Starting booking flow")
     move_and_click(page, page.get_by_role("button", name="Start Booking"), config)
+    check_stop("after start booking")
 
     emit("[3/5] Waiting for captcha")
     wait_for_captcha(page, config)
+    check_stop("after captcha ready")
 
     emit("[4/5] Filling captcha")
     fill_captcha(page, config)
+    check_stop("after captcha fill")
 
     seats = jitter_seats(config.seats) if len(config.seats) > 1 else config.seats
     emit(f"[5/5] Selecting seats: {', '.join(seats)}")
     select_seats(page, seats, config)
+    check_stop("after seat select")
 
     if config.confirm_booking:
         emit("[extra] Confirming booking")
@@ -181,13 +202,21 @@ def run_single(page: Page, config: MacroConfig, attempt: int, progress: Progress
     emit(f"Run {attempt} completed successfully.")
 
 
-def run_macro_sequence(configs: Iterable[MacroConfig], progress: ProgressCallback | None = None) -> int:
+def run_macro_sequence(
+    configs: Iterable[MacroConfig],
+    progress: ProgressCallback | None = None,
+    should_stop: StopCallback | None = None,
+) -> int:
     """여러 config를 순차 실행한다. GUI의 랜덤 반복 실행에서 사용한다."""
     config_list = list(configs)
     if not config_list:
         return 0
 
     for attempt, config in enumerate(config_list, start=1):
+        if should_stop and should_stop():
+            if progress:
+                progress("Cancelled before starting next run.")
+            return 130
         if progress:
             progress(f"=== Run {attempt}/{len(config_list)} ===")
 
@@ -197,9 +226,17 @@ def run_macro_sequence(configs: Iterable[MacroConfig], progress: ProgressCallbac
                 context = browser.new_context(viewport={"width": 1440, "height": 1400})
                 page = context.new_page()
                 page.set_default_timeout(config.timeout_ms)
-                run_single(page, config, attempt, progress)
+                run_single(page, config, attempt, progress, should_stop=should_stop)
                 context.close()
                 browser.close()
+            except MacroCancelled as error:
+                message = str(error)
+                if progress:
+                    progress(message)
+                else:
+                    print(message, file=sys.stderr)
+                browser.close()
+                return 130
             except PlaywrightTimeoutError as error:
                 message = f"Timeout while running macro: {error}"
                 if progress:
