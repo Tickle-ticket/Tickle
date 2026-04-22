@@ -65,6 +65,22 @@ services:
       - mysql
       - redis-master
 
+  # ─── Node Exporter ────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: tickle-node-exporter
+    restart: always
+    mem_limit: 50m
+    ports:
+      - "9090:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+
 volumes:
   mysql-data:
   redis-data:
