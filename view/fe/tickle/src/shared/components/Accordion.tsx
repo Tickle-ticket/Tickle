@@ -25,19 +25,19 @@ export const Accordion = ({
 
   if (isLoading) {
     return (
-      <div className={`w-full border-b border-gray-100 dark:border-gray-800 last:border-b-0 py-4 md:py-5 ${className}`} aria-hidden="true">
+      <div className={`w-full border-b border-gray-100 last:border-b-0 py-4 md:py-5 ${className}`} aria-hidden="true">
         <div className="flex justify-between items-center shrink-0 w-full">
           {/* 타이틀 스켈레톤 */}
-          <div className="w-1/3 h-6 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse" />
+          <div className="w-1/3 h-6 bg-gray-200 rounded-md animate-pulse" />
           {/* 화살표 스켈레톤 */}
-          <div className="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+          <div className="w-5 h-5 bg-gray-200 rounded-full animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`w-full border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${className}`}>
+    <div className={`w-full border-b border-gray-100 last:border-b-0 ${className}`}>
       {/* 아코디언 헤더(토글 버튼) */}
       <button
         type="button"
@@ -45,7 +45,7 @@ export const Accordion = ({
         onClick={handleToggle}
         aria-expanded={isOpen}
       >
-        <div className="text-[17px] md:text-[19px] font-semibold text-gray-900 dark:text-gray-100 pr-4">
+        <div className="text-[17px] md:text-[19px] font-semibold text-gray-900 pr-4">
           {title}
         </div>
         {/* 우측 쉐브론 화살표 애니메이션 */}
@@ -67,7 +67,7 @@ export const Accordion = ({
         }`}
       >
         <div className="overflow-hidden min-h-0">
-          <div className="pb-4 md:pb-5 text-[15px] md:text-[16px] text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+          <div className="pb-4 md:pb-5 text-[15px] md:text-[16px] text-gray-600 leading-relaxed font-medium">
             {children}
           </div>
         </div>

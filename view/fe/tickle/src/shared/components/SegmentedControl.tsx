@@ -45,7 +45,7 @@ export const SegmentedControl = ({
             key={`skeleton-${idx}`}
             className={`relative flex items-center justify-center w-full h-full rounded-[8px] bg-transparent ${itemSizeClasses[size]}`}
           >
-            <div className="w-10 h-4 bg-gray-300 dark:bg-gray-400 rounded-[4px] animate-pulse" />
+            <div className="w-10 h-4 bg-gray-300 rounded-[4px] animate-pulse" />
           </div>
         ))}
       </div>

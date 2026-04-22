@@ -24,7 +24,7 @@ export const BannerPoster = ({
   if (isLoading) {
     return (
       <div
-        className={`relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-gray-200 dark:bg-gray-800 animate-pulse rounded-none md:rounded-2xl ${defaultDimensions} ${className}`}
+        className={`relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-gray-200 animate-pulse rounded-none md:rounded-2xl ${defaultDimensions} ${className}`}
         style={inlineStyle}
       />
     );
@@ -36,7 +36,7 @@ export const BannerPoster = ({
       style={inlineStyle}
     >
       {(!src || imgFailed) ? (
-        <div className="w-full h-full bg-[#f2f4f6] dark:bg-gray-800 flex flex-col items-center justify-center text-[#8B95A1]">
+        <div className="w-full h-full bg-[#f2f4f6] flex flex-col items-center justify-center text-[#8B95A1]">
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-semibold tracking-tight">준비중 입니다</span>
             <span className="flex gap-[3px] items-center mb-[2px]">

@@ -78,7 +78,7 @@ const SeatWrapper = ({
 
   return (
     <div className="flex flex-col items-center justify-end gap-1.5 h-[58px] w-[36px] shrink-0">
-      <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold tracking-tighter leading-none select-none">
+      <span className="text-[10px] text-gray-400 font-bold tracking-tighter leading-none select-none">
         {id}
       </span>
       <Seat
@@ -115,7 +115,7 @@ export const SSAFY_18 = ({ seatsData = {}, onSeatClick, className = '' }: SSAFY_
   };
 
   return (
-    <div className={`flex flex-col items-center gap-20 p-12 bg-white dark:bg-zinc-950 rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
+    <div className={`flex flex-col items-center gap-20 p-12 bg-white rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
       {/* 1. Stage Area */}
       <div className="flex flex-col items-center gap-3 w-full">
         <Stage width={480} height={96} label="무대" />

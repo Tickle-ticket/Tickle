@@ -25,7 +25,7 @@ export const InfoPoster = ({
   if (isLoading) {
     return (
       <div 
-        className={`relative overflow-hidden rounded-2xl shadow-md bg-gray-200 dark:bg-gray-800 animate-pulse ${defaultDimensions} ${className}`}
+        className={`relative overflow-hidden rounded-2xl shadow-md bg-gray-200 animate-pulse ${defaultDimensions} ${className}`}
         style={inlineStyle}
       />
     );
@@ -37,7 +37,7 @@ export const InfoPoster = ({
       style={inlineStyle}
     >
       {(!src || imgFailed) ? (
-        <div className={`absolute inset-0 w-full h-full bg-[#f2f4f6] dark:bg-gray-800 flex flex-col items-center justify-center text-[#8B95A1] transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`}>
+        <div className={`absolute inset-0 w-full h-full bg-[#f2f4f6] flex flex-col items-center justify-center text-[#8B95A1] transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`}>
           <div className="flex items-baseline gap-1">
             <span className="text-xs font-semibold tracking-tight">준비중 입니다</span>
             <span className="flex gap-[2.5px] items-center mb-[1px]">

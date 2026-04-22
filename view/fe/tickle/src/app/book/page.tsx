@@ -39,7 +39,7 @@ export default function BookPage() {
   // 데이터 로딩 중
   if (isLoading || !seatAvailability) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 gap-4">
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-500 font-medium">좌석 정보를 불러오는 중입니다...</p>
       </div>
@@ -75,8 +75,8 @@ export default function BookPage() {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col items-center bg-gray-50 dark:bg-zinc-900 overflow-y-auto">
-      <header className="w-full bg-white dark:bg-zinc-950 p-6 shadow-sm flex items-center justify-between sticky top-0 z-10">
+    <div className="flex h-screen w-full flex-col items-center bg-gray-50 overflow-y-auto">
+      <header className="w-full bg-white p-6 shadow-sm flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-xl font-bold">좌석 선택</h1>
         <div className="text-sm font-medium text-gray-500">
           선택된 좌석: <span className="text-blue-600 font-bold">{selectedSeats.size}</span>석
@@ -91,18 +91,18 @@ export default function BookPage() {
       </div>
 
       {/* 서버 수신 원본 데이터 확인 패널 */}
-      <div className="w-full max-w-5xl p-6 mb-32 bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800">
-        <h2 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-200">
+      <div className="w-full max-w-5xl p-6 mb-32 bg-white rounded-xl shadow-sm border border-gray-200">
+        <h2 className="text-lg font-bold mb-4 text-gray-800">
           서버 수신 원본 데이터 (true/false)
         </h2>
-        <pre className="bg-gray-50 dark:bg-zinc-900 p-4 rounded-lg text-sm text-gray-600 dark:text-gray-400 overflow-auto max-h-96 border border-gray-100 dark:border-zinc-800">
+        <pre className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 overflow-auto max-h-96 border border-gray-100">
           {JSON.stringify(seatAvailability, null, 2)}
         </pre>
       </div>
 
       {/* 하단 결제 바 */}
       {selectedSeats.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-800 shadow-lg flex justify-between items-center animate-slide-up">
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-200 shadow-lg flex justify-between items-center animate-slide-up">
           <div className="flex gap-2 text-sm font-bold">
             {Array.from(selectedSeats).join(', ')}
           </div>
