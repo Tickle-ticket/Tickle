@@ -1,10 +1,12 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
+import com.ssafy.tickle.queue.domain.cache.QueueEnterReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -15,6 +17,8 @@ import java.util.Optional;
 public class QueueEnterRequestCache {
 
     private static final Duration REQUEST_TTL = Duration.ofMinutes(5);
+    private static final String SESSION_ID = "sessionId";
+    private static final String USER_ID = "userId";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -45,20 +49,39 @@ public class QueueEnterRequestCache {
         );
 
         if (Boolean.TRUE.equals(saved)) {
-            stringRedisTemplate.opsForValue().set(requestKey(requestId), enterKey(userId, sessionId), REQUEST_TTL);
+            String referenceKey = referenceKey(requestId);
+            stringRedisTemplate.opsForHash().putAll(referenceKey, Map.of(
+                    SESSION_ID, String.valueOf(sessionId),
+                    USER_ID, String.valueOf(userId)
+            ));
+            stringRedisTemplate.expire(referenceKey, REQUEST_TTL);
         }
 
         return Boolean.TRUE.equals(saved);
     }
 
     /**
-     * requestId가 유효한 진입 요청인지 확인합니다.
+     * requestId에 연결된 사용자/회차 식별자를 조회합니다.
      *
      * @param requestId 요청 식별자
-     * @return 존재 여부
+     * @return 사용자/회차 식별자
      */
-    public boolean existsRequestId(String requestId) {
-        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(requestKey(requestId)));
+    public Optional<QueueEnterReference> findReferenceByRequestId(String requestId) {
+        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(referenceKey(requestId));
+        if (entries.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Object sessionId = entries.get(SESSION_ID);
+        Object userId = entries.get(USER_ID);
+        if (sessionId == null || userId == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new QueueEnterReference(
+                Long.parseLong(sessionId.toString()),
+                Long.parseLong(userId.toString())
+        ));
     }
 
     /**
@@ -69,14 +92,14 @@ public class QueueEnterRequestCache {
      */
     public void delete(Long userId, Long sessionId, String requestId) {
         stringRedisTemplate.delete(enterKey(userId, sessionId));
-        stringRedisTemplate.delete(requestKey(requestId));
+        stringRedisTemplate.delete(referenceKey(requestId));
     }
 
     private String enterKey(Long userId, Long sessionId) {
         return "queue:enter:" + sessionId + ":" + userId;
     }
 
-    private String requestKey(String requestId) {
-        return "queue:request:" + requestId;
+    private String referenceKey(String requestId) {
+        return "queue:enter:reference:" + requestId;
     }
 }
