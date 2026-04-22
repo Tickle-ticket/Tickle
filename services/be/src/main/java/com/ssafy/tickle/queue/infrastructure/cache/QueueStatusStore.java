@@ -107,15 +107,15 @@ public class QueueStatusStore {
      * 최근 admission 처리량 계산용 기록 수를 조회합니다.
      *
      * @param sessionId 회차 식별자
-     * @param fromInclusive 시작 시각
-     * @param toInclusive 종료 시각
+     * @param from 시작 시각
+     * @param to 종료 시각
      * @return 최근 admission 수
      */
-    public long countRecentAdmissions(Long sessionId, Instant fromInclusive, Instant toInclusive) {
+    public long countRecentAdmissions(Long sessionId, Instant from, Instant to) {
         Long admittedCount = stringRedisTemplate.opsForZSet().count(
                 admissionHistoryKey(sessionId),
-                fromInclusive.toEpochMilli(),
-                toInclusive.toEpochMilli()
+                from.toEpochMilli(),
+                to.toEpochMilli()
         );
 
         return admittedCount == null ? 0L : admittedCount;
