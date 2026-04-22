@@ -2,7 +2,7 @@ package com.ssafy.tickle.queue.infrastructure.messaging;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.tickle.queue.domain.messaging.QueueEnterCommand;
+import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;

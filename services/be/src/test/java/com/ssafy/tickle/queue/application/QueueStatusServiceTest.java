@@ -2,8 +2,8 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.queue.domain.cache.QueueRequestStatus;
-import com.ssafy.tickle.queue.domain.cache.SessionOpenInfo;
+import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;

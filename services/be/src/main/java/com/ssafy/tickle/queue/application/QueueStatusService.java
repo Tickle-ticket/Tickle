@@ -2,9 +2,8 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.queue.application.dto.QueueStatusSnapshot;
-import com.ssafy.tickle.queue.domain.cache.QueueEnterReference;
-import com.ssafy.tickle.queue.domain.cache.QueueRequestStatus;
+import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
+import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterReference;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestCache;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusCache;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;

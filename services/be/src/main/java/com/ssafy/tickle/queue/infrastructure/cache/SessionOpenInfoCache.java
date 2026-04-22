@@ -1,6 +1,6 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
-import com.ssafy.tickle.queue.domain.cache.SessionOpenInfo;
+import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;

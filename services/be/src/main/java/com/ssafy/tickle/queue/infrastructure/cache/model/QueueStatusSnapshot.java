@@ -1,9 +1,8 @@
-package com.ssafy.tickle.queue.application.dto;
+package com.ssafy.tickle.queue.infrastructure.cache.model;
 
-import com.ssafy.tickle.queue.domain.cache.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 
 import java.time.Instant;
-import java.util.Map;
 
 /**
  * queueToken 기준 상태 조회에 필요한 Redis 스냅샷입니다.
