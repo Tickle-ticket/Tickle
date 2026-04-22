@@ -6,5 +6,8 @@ package com.ssafy.tickle.queue.domain.cache;
 public enum QueueRequestStatus {
 
     // 대기
-    PENDING
+    PENDING,
+
+    // 대기열 등록 완료
+    WAITING
 }

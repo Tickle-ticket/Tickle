@@ -26,7 +26,7 @@ public class QueueEnterRequestCache {
      * @return 기존 요청 식별자
      */
     public Optional<String> findRequestId(Long userId, Long sessionId) {
-        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key(userId, sessionId)));
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(enterKey(userId, sessionId)));
     }
 
     /**
@@ -39,12 +39,26 @@ public class QueueEnterRequestCache {
      */
     public boolean saveIfAbsent(Long userId, Long sessionId, String requestId) {
         Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(
-                key(userId, sessionId),
+                enterKey(userId, sessionId),
                 requestId,
                 REQUEST_TTL
         );
 
+        if (Boolean.TRUE.equals(saved)) {
+            stringRedisTemplate.opsForValue().set(requestKey(requestId), enterKey(userId, sessionId), REQUEST_TTL);
+        }
+
         return Boolean.TRUE.equals(saved);
+    }
+
+    /**
+     * requestId가 유효한 진입 요청인지 확인합니다.
+     *
+     * @param requestId 요청 식별자
+     * @return 존재 여부
+     */
+    public boolean existsRequestId(String requestId) {
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(requestKey(requestId)));
     }
 
     /**
@@ -53,11 +67,16 @@ public class QueueEnterRequestCache {
      * @param userId 사용자 식별자
      * @param sessionId 회차 식별자
      */
-    public void delete(Long userId, Long sessionId) {
-        stringRedisTemplate.delete(key(userId, sessionId));
+    public void delete(Long userId, Long sessionId, String requestId) {
+        stringRedisTemplate.delete(enterKey(userId, sessionId));
+        stringRedisTemplate.delete(requestKey(requestId));
     }
 
-    private String key(Long userId, Long sessionId) {
+    private String enterKey(Long userId, Long sessionId) {
         return "queue:enter:" + sessionId + ":" + userId;
+    }
+
+    private String requestKey(String requestId) {
+        return "queue:request:" + requestId;
     }
 }
