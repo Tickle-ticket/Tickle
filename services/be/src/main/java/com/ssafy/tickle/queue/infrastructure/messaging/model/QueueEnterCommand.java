@@ -1,4 +1,4 @@
-package com.ssafy.tickle.queue.domain.messaging;
+package com.ssafy.tickle.queue.infrastructure.messaging.model;
 
 import java.time.Instant;
 

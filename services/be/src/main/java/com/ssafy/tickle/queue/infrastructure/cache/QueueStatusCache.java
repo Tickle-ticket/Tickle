@@ -1,7 +1,7 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
-import com.ssafy.tickle.queue.application.dto.QueueStatusSnapshot;
-import com.ssafy.tickle.queue.domain.cache.QueueRequestStatus;
+import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
+import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;

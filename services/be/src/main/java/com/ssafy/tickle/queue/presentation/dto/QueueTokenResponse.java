@@ -1,6 +1,6 @@
 package com.ssafy.tickle.queue.presentation.dto;
 
-import com.ssafy.tickle.queue.domain.cache.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 
 /**
  * 최초 queueToken 발급 응답 DTO입니다.
