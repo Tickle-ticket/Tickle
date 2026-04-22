@@ -1,5 +1,6 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
+import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueStatusHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import lombok.RequiredArgsConstructor;
@@ -7,7 +8,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -22,6 +22,7 @@ public class QueueStatusStore {
     private static final String ADMISSION_HISTORY_KEY_PREFIX = "queue:admission:history:";
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final QueueStatusHashMapper queueStatusHashMapper;
 
     /**
      * queueToken을 WAITING 상태로 최초 등록합니다.
@@ -45,13 +46,10 @@ public class QueueStatusStore {
         }
 
         // 개별 사용자 상태를 조회할 때 사용
-        stringRedisTemplate.opsForHash().putAll(statusKey, Map.of(
-                "requestId", requestId,
-                "userId", String.valueOf(userId),
-                "sessionId", String.valueOf(sessionId),
-                "status", QueueRequestStatus.WAITING.name(),
-                "registeredAt", String.valueOf(registeredAt.toEpochMilli())
-        ));
+        stringRedisTemplate.opsForHash().putAll(
+                statusKey,
+                queueStatusHashMapper.toHash(requestId, userId, sessionId, QueueRequestStatus.WAITING, registeredAt)
+        );
 
         // 해당 회차에서 현재 순번을 계산할 때 사용
         stringRedisTemplate.opsForZSet().add(waitingKey(sessionId), queueToken, registeredAt.toEpochMilli());
@@ -64,20 +62,11 @@ public class QueueStatusStore {
      * @return 상태 메타데이터
      */
     public Optional<QueueStatusSnapshot> findSnapshot(String queueToken) {
-        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(statusKey(queueToken));
-        if (entries.isEmpty()) {
-            return Optional.empty();
-        }
-
         // Redis hash를 내부 스냅샷으로 변환한 뒤 서비스가 rank/ETA 계산에 사용.
-        return Optional.of(new QueueStatusSnapshot(
+        return queueStatusHashMapper.fromHash(
                 queueToken,
-                entries.get("requestId").toString(),
-                Long.parseLong(entries.get("userId").toString()),
-                Long.parseLong(entries.get("sessionId").toString()),
-                QueueRequestStatus.valueOf(entries.get("status").toString()),
-                Instant.ofEpochMilli(Long.parseLong(entries.get("registeredAt").toString()))
-        ));
+                stringRedisTemplate.opsForHash().entries(statusKey(queueToken))
+        );
     }
 
     /**
