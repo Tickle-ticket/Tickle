@@ -36,6 +36,35 @@ services:
     ports:
       - "6379:6379"
 
+  # ─── Spring Boot BE ───────────────────────────────
+  be:
+    build:
+      context: ../../services/be
+      dockerfile: Dockerfile
+    container_name: tickle-be
+    restart: always
+    mem_limit: 1024m
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: tickle-mysql
+      DB_PORT: 3306
+      DB_NAME: tickle_core
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_HOST: ${SERVER1_PRIVATE_IP}
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      KAFKA_BOOTSTRAP_SERVERS: ${SERVER2_PRIVATE_IP}:9092
+      KAFKA_CONSUMER_GROUP_ID: tickle-group
+      SERVER_PORT: 8080
+      JPA_DDL_AUTO: update
+      JPA_SHOW_SQL: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis-master
+
 volumes:
   mysql-data:
   redis-data:
