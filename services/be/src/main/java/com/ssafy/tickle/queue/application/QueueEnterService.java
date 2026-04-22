@@ -33,6 +33,7 @@ public class QueueEnterService {
      * @return 접수된 요청 식별자
      */
     public QueueEnterResponse enter(QueueEnterRequest request) {
+        // queue enter는 DB를 직접 보지 않고 미리 적재된 회차 오픈 정보를 기준으로만 검증한다.
         SessionOpenInfo sessionOpenInfo = sessionOpenInfoStore.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new BaseException(
                         GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 회차이거나, 예매 예정인 회차가 아닙니다."
@@ -49,12 +50,14 @@ public class QueueEnterService {
         String requestId = UUID.randomUUID().toString();
         boolean saved = queueEnterRequestStore.saveIfAbsent(request.userId(), request.sessionId(), requestId);
         if (!saved) {
+            // setIfAbsent 경합에서 졌다면, 먼저 저장된 requestId를 그대로 재사용한다.
             String duplicatedRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
         }
 
         try {
+            // requestId는 Redis에 고정해두고, 실제 대기열 등록은 Kafka 비동기 소비 단계로 넘긴다.
             queueEnterProducer.publish(new QueueEnterMessage(
                     requestId,
                     request.userId(),

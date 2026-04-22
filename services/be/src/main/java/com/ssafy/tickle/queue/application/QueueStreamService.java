@@ -33,6 +33,7 @@ public class QueueStreamService {
         QueueStatusResponse initialStatus = queueStatusService.getStatusByQueueToken(queueToken);
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
+        // queueToken 기준으로 emitter를 보관해두고, 이후 scheduler가 같은 사용자에게 상태를 push.
         emitters.put(queueToken, emitter);
         emitter.onCompletion(() -> emitters.remove(queueToken));
         emitter.onTimeout(() -> emitters.remove(queueToken));
@@ -54,6 +55,7 @@ public class QueueStreamService {
                 QueueStatusResponse response = queueStatusService.getStatusByQueueToken(queueToken);
                 send(queueToken, emitter, response);
             } catch (RuntimeException exception) {
+                // 상태 조회나 전송이 실패한 emitter는 즉시 제거.
                 emitters.remove(queueToken);
                 emitter.complete();
             }

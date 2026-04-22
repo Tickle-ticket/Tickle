@@ -31,6 +31,7 @@ public class SessionOpenInfoScheduler {
         Instant now = Instant.now();
         Instant preloadUntil = now.plus(2, ChronoUnit.HOURS); // 2시간
 
+        // queue enter hot path에서 DB를 치지 않도록, 오픈 중/임박 회차만 미리 Redis에 올려둔다.
         List<SessionOpenInfo> sessionOpenInfos = eventSessionRepository
                 .findBySalesCloseAtAfterAndSalesOpenAtBefore(now, preloadUntil)
                 .stream()
