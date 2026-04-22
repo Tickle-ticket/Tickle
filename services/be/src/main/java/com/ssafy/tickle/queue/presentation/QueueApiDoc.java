@@ -4,12 +4,14 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 대기열 API 문서 인터페이스입니다.
@@ -50,8 +52,8 @@ public interface QueueApiDoc {
      * @return queueToken 발급 응답
      */
     @Operation(
-            summary = "대기열 상태 조회",
-            description = "requestId를 기반으로 최초 queueToken을 발급하고 현재 대기 상태를 반환합니다."
+            summary = "대기열 토큰 발급",
+            description = "requestId를 기반으로 최초 queueToken을 발급하고 현재 상태만 반환합니다."
     )
     @ApiResponse(
             responseCode = "200",
@@ -62,5 +64,42 @@ public interface QueueApiDoc {
             description = "존재하지 않는 대기열 진입 요청",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(String requestId);
+    ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(String requestId);
+
+    /**
+     * queueToken 기준 상태 조회 API 문서 정의입니다.
+     *
+     * @param queueToken 대기열 토큰
+     * @return 현재 순번과 ETA를 포함한 대기 상태
+     */
+    @Operation(
+            summary = "대기열 상태 조회",
+            description = "queueToken 기준으로 현재 순번, 대기 인원, ETA를 조회합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "대기열 상태 조회 성공"
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 대기열 토큰",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(String queueToken);
+
+    /**
+     * queueToken 기준 실시간 대기 상태 SSE API 문서 정의입니다.
+     *
+     * @param queueToken 대기열 토큰
+     * @return 실시간 상태 SSE 스트림
+     */
+    @Operation(
+            summary = "대기열 상태 SSE 구독",
+            description = "queueToken 기준으로 현재 순번과 ETA를 실시간으로 push 받습니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "SSE 연결 성공"
+    )
+    SseEmitter stream(String queueToken);
 }
