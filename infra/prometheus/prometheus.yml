@@ -6,12 +6,10 @@ global:
 scrape_configs:
   - job_name: 'server1-be'
     static_configs:
-      - targets: ['${SERVER1_PRIVATE_IP}:9090']
-
+      - targets: ['172.31.63.75:9090']
   - job_name: 'server2-kafka'
     static_configs:
-      - targets: ['${SERVER2_PRIVATE_IP}:9090']
-
+      - targets: ['172.31.52.183:9090']
   - job_name: 'server4-auth'
     static_configs:
-      - targets: ['${SERVER4_PRIVATE_IP}:9090']
+      - targets: ['172.31.57.10:9090']
