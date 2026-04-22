@@ -3,6 +3,7 @@ package com.ssafy.tickle.queue.presentation;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,4 +42,25 @@ public interface QueueApiDoc {
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
     ResponseEntity<BaseResponse<QueueEnterResponse>> enter(QueueEnterRequest request);
+
+    /**
+     * requestId 기반 최초 queueToken 발급 API 문서 정의입니다.
+     *
+     * @param requestId 대기열 진입 요청 식별자
+     * @return queueToken 발급 응답
+     */
+    @Operation(
+            summary = "대기열 상태 조회",
+            description = "requestId를 기반으로 최초 queueToken을 발급하고 현재 대기 상태를 반환합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "queueToken 발급 성공"
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 대기열 진입 요청",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(String requestId);
 }

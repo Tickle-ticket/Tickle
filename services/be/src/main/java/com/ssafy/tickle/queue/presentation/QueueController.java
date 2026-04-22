@@ -2,15 +2,19 @@ package com.ssafy.tickle.queue.presentation;
 
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
-import com.ssafy.tickle.queue.application.QueueService;
+import com.ssafy.tickle.queue.application.QueueEnterService;
+import com.ssafy.tickle.queue.application.QueueStatusService;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -21,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class QueueController implements QueueApiDoc {
 
-    private final QueueService queueService;
+    private final QueueEnterService queueEnterService;
+    private final QueueStatusService queueStatusService;
 
     /**
      * 사용자의 대기열 진입 등록 요청을 접수합니다.
@@ -32,10 +37,26 @@ public class QueueController implements QueueApiDoc {
     @PostMapping("/enter")
     @Override
     public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(@Valid @RequestBody QueueEnterRequest request) {
-        QueueEnterResponse response = queueService.enter(request);
+        QueueEnterResponse response = queueEnterService.enter(request);
 
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
                 .body(BaseResponse.success(SuccessCode.CREATED, response));
+    }
+
+    /**
+     * requestId 기반으로 최초 queueToken을 발급합니다.
+     *
+     * @param requestId 대기열 진입 요청 식별자
+     * @return queueToken과 현재 상태
+     */
+    @GetMapping("/status")
+    @Override
+    public ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(@RequestParam String requestId) {
+        QueueStatusResponse response = queueStatusService.getQueueToken(requestId);
+
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK, response));
     }
 }
