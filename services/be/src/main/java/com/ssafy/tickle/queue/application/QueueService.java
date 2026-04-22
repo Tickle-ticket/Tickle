@@ -23,7 +23,7 @@ import java.util.UUID;
 public class QueueService {
 
     private final SessionOpenInfoCache sessionOpenInfoCache;
-    private final QueueEnterRequestCache queueEnterRequestStore;
+    private final QueueEnterRequestCache queueEnterRequestCache;
     private final QueueEnterProducer queueEnterProducer;
 
     /**
@@ -41,7 +41,7 @@ public class QueueService {
         validateQueueEntry(sessionOpenInfo, Instant.now());
 
         // 중복 요청 체크
-        String existingRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
+        String existingRequestId = queueEnterRequestCache.findRequestId(request.userId(), request.sessionId())
                 .orElse(null);
         if (existingRequestId != null) {
             return QueueEnterResponse.pending(existingRequestId);
@@ -49,9 +49,9 @@ public class QueueService {
 
         // 추적용 요청 ID 생성
         String requestId = UUID.randomUUID().toString();
-        boolean saved = queueEnterRequestStore.saveIfAbsent(request.userId(), request.sessionId(), requestId);
+        boolean saved = queueEnterRequestCache.saveIfAbsent(request.userId(), request.sessionId(), requestId);
         if (!saved) {
-            String duplicatedRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
+            String duplicatedRequestId = queueEnterRequestCache.findRequestId(request.userId(), request.sessionId())
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
         }
@@ -65,7 +65,7 @@ public class QueueService {
                     Instant.now()
             ));
         } catch (RuntimeException exception) {
-            queueEnterRequestStore.delete(request.userId(), request.sessionId());
+            queueEnterRequestCache.delete(request.userId(), request.sessionId());
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "대기열 진입 요청 적재에 실패했습니다.");
         }
 
