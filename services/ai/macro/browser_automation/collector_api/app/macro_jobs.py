@@ -15,7 +15,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 MACRO_SCRIPT = ROOT_DIR / "macro_runner" / "cli.py"
 
 _jobs: dict[str, MacroJobStatus] = {}
-_label_queue: list[dict[str, float | str]] = []
+_trial_context_queue: list[dict] = []
 _lock = threading.Lock()
 
 # 반복 실행이 길어지면(예: 200회) 라벨 큐가 중간에 만료되어 human으로 떨어질 수 있어 넉넉히 둔다.
@@ -29,18 +29,38 @@ def default_python_path() -> str:
 def enqueue_labels(label: str, repeat: int) -> None:
     with _lock:
         expires_at = time.time() + LABEL_TTL_SECONDS
-        _label_queue.extend([{"label": label, "expires_at": expires_at}] * max(1, repeat))
+        _trial_context_queue.extend([{"label": label, "expires_at": expires_at, "run_params": None}] * max(1, repeat))
 
 
-def consume_next_label(default: str = "human") -> str:
+def enqueue_context_items(items: list[dict]) -> None:
+    """Enqueue trial contexts in FIFO order.
+
+    Each item should contain:
+      - label: "human" | "macro"
+      - run_params: optional dict (e.g., slow_mo_ms, action_delay_ms ...)
+    """
+
     with _lock:
-        if _label_queue:
+        expires_at = time.time() + LABEL_TTL_SECONDS
+        for item in items:
+            _trial_context_queue.append(
+                {
+                    "label": str(item.get("label", "human")),
+                    "expires_at": expires_at,
+                    "run_params": item.get("run_params"),
+                }
+            )
+
+
+def consume_next_context(default_label: str = "human") -> dict:
+    with _lock:
+        if _trial_context_queue:
             now = time.time()
-            while _label_queue:
-                item = _label_queue.pop(0)
+            while _trial_context_queue:
+                item = _trial_context_queue.pop(0)
                 if item["expires_at"] >= now:
-                    return str(item["label"])
-    return default
+                    return {"label": str(item.get("label", default_label)), "run_params": item.get("run_params")}
+    return {"label": default_label, "run_params": None}
 
 
 def list_jobs() -> list[MacroJobStatus]:
@@ -105,7 +125,15 @@ def start_macro_job(request: MacroRunRequest) -> MacroJobStatus:
     _store_job(job)
 
     # 매크로 실행 직후 저장될 trial들을 macro로 라벨링하기 위한 큐를 채운다.
-    enqueue_labels(request.trial_label, request.repeat)
+    # 매크로 실행 파라미터도 함께 기록할 수 있게 run_params를 같이 enqueue한다.
+    run_params = {
+        "slow_mo_ms": int(request.slow_mo_ms),
+        "action_delay_ms": int(request.action_delay_ms),
+        "hover_ms": int(request.hover_ms),
+        "typing_delay_ms": int(request.typing_delay_ms),
+        "mouse_steps": int(request.mouse_steps),
+    }
+    enqueue_context_items([{"label": request.trial_label, "run_params": run_params}] * max(1, int(request.repeat)))
 
     def runner() -> None:
         job.status = "running"
