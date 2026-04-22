@@ -1,0 +1,114 @@
+// Jenkinsfile.ci
+// 목적: 모든 브랜치에서 MR이 올라오면 빌드 + 테스트를 실행해서
+//       머지 전에 코드 품질을 검증한다.
+
+pipeline {
+    agent any
+
+    // ── 전역 환경변수 ──────────────────────────────────────────
+    environment {
+        // 변경된 서비스 감지 플래그 (Detect Changes 단계에서 설정)
+        BUILD_BE   = 'false'
+        BUILD_AUTH = 'false'
+    }
+
+    stages {
+
+        // ── 1단계: 코드 체크아웃 ───────────────────────────────
+        // Jenkins가 GitLab에서 코드를 내려받는다.
+        stage('Checkout') {
+            steps {
+                echo '===== [1/4] 코드 체크아웃 시작 ====='
+                checkout scm
+                echo "현재 브랜치: ${env.GIT_BRANCH}"
+                echo "커밋 해시: ${env.GIT_COMMIT}"
+            }
+        }
+
+        // ── 2단계: 변경된 서비스 감지 ─────────────────────────
+        // git diff로 어떤 서비스가 변경됐는지 확인한다.
+        // 변경된 서비스만 빌드해서 불필요한 빌드 시간을 줄인다.
+        stage('Detect Changes') {
+            steps {
+                echo '===== [2/4] 변경된 서비스 감지 시작 ====='
+                script {
+                    def changes = sh(
+                        // HEAD~1이 없는 첫 커밋 상황을 대비해 fallback 처리
+                        script: "git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "변경된 파일 목록:\n${changes}"
+
+                    env.BUILD_BE   = changes.contains('services/be/')   ? 'true' : 'false'
+                    env.BUILD_AUTH = changes.contains('services/auth/') ? 'true' : 'false'
+
+                    echo "BE 빌드 필요: ${env.BUILD_BE}"
+                    echo "Auth 빌드 필요: ${env.BUILD_AUTH}"
+                }
+            }
+        }
+
+        // ── 3단계: BE 빌드 ─────────────────────────────────────
+        // services/be/ 하위 파일이 변경된 경우에만 실행된다.
+        // Gradle로 컴파일하고 JAR 파일을 생성한다.
+        stage('Build BE') {
+            when {
+                environment name: 'BUILD_BE', value: 'true'
+            }
+            steps {
+                echo '===== [3/4] BE 빌드 시작 ====='
+                dir('services/be') {
+                    sh 'chmod +x ./gradlew'
+                    // -x test: 빌드와 테스트를 분리해서 실패 원인을 명확히 파악
+                    sh './gradlew clean build -x test --no-daemon'
+                    echo 'BE 빌드 성공!'
+                }
+            }
+        }
+
+        // ── 4단계: BE 테스트 ───────────────────────────────────
+        // 빌드가 성공한 경우에만 테스트를 실행한다.
+        // 테스트 코드가 추가되면 자동으로 실행된다.
+        stage('Test BE') {
+            when {
+                environment name: 'BUILD_BE', value: 'true'
+            }
+            steps {
+                echo '===== [4/4] BE 테스트 시작 ====='
+                dir('services/be') {
+                    sh './gradlew test --no-daemon'
+                    echo 'BE 테스트 성공!'
+                }
+            }
+        }
+
+    }
+
+    // ── 빌드 후 처리 ──────────────────────────────────────────
+    post {
+        success {
+            echo """
+            ========================================
+            ✅ CI 성공!
+            브랜치: ${env.GIT_BRANCH}
+            커밋: ${env.GIT_COMMIT}
+            MR을 머지해도 좋습니다.
+            ========================================
+            """
+        }
+        failure {
+            echo """
+            ========================================
+            ❌ CI 실패!
+            브랜치: ${env.GIT_BRANCH}
+            커밋: ${env.GIT_COMMIT}
+            빌드 로그를 확인해서 문제를 수정해주세요.
+            ========================================
+            """
+        }
+        always {
+            echo '===== CI 파이프라인 종료 ====='
+        }
+    }
+}
