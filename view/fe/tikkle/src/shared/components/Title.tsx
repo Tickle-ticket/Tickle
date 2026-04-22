@@ -9,8 +9,29 @@ export const Title = ({
   rightElement,
   transparent = false,
   bottomBorder = false,
+  isLoading = false,
   className = '',
 }: TitleProps) => {
+
+  if (isLoading) {
+    return (
+      <header className={`w-full bg-white flex flex-col ${className}`}>
+        {(leftIcon || rightElement) && (
+          <div className="flex items-center justify-between h-[48px] px-2">
+            <div className="flex items-center justify-start">
+              {leftIcon && <div className="w-10 h-10 ml-2 rounded-full bg-gray-200 animate-pulse" />}
+            </div>
+            <div className="flex items-center justify-end px-2">
+              {rightElement && <div className="w-10 h-10 mr-2 rounded-full bg-gray-200 animate-pulse" />}
+            </div>
+          </div>
+        )}
+        <div className="px-5 pt-4 pb-2">
+           <div className="h-8 w-[60%] rounded-md bg-gray-200 animate-pulse" />
+        </div>
+      </header>
+    );
+  }
 
   const renderLeftIcon = () => {
     if (leftIcon === 'back') {

@@ -11,6 +11,7 @@ const meta: Meta<typeof Text> = {
     fontWeight: { control: 'select', options: ['regular', 'medium', 'semibold', 'bold'] },
     textAlign: { control: 'select', options: ['left', 'center', 'right'] },
     ellipsis: { control: 'boolean' },
+    isLoading: { control: 'boolean' },
   },
 };
 
@@ -51,6 +52,19 @@ export const Colors: Story = {
       <Text typography="t4" color="tertiary">Tertiary (gray-400) - 덜 중요한 정보, 날짜 등</Text>
       <Text typography="t4" color="blue" fontWeight="bold">Blue (blue-500) - 토스의 상징적인 강조색, 성공</Text>
       <Text typography="t4" color="red">Red (red-500) - 에러, 잔액 부족, 위험</Text>
+    </div>
+  ),
+};
+
+/** 데이터가 도착하기 전 렌더링을 지연시킬 때 사용하는 스켈레톤(뼈대) UI 입니다. */
+export const LoadingState: Story = {
+  name: '스켈레톤(로딩) 상태',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px' }}>
+      <Text typography="t2" isLoading={true} style={{ width: '8em' }} />
+      <Text typography="t5" isLoading={true} style={{ width: '15em' }} />
+      <Text typography="t5" isLoading={true} style={{ width: '12em' }} />
+      <Text typography="t7" isLoading={true} style={{ width: '6em' }} />
     </div>
   ),
 };
