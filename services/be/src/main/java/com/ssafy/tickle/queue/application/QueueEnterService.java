@@ -2,10 +2,10 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.queue.domain.messaging.QueueEnterCommand;
-import com.ssafy.tickle.queue.domain.cache.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestCache;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
+import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
+import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterMessage;
+import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestStore;
+import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.messaging.QueueEnterProducer;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
@@ -16,14 +16,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * 대기열 진입 관련 비즈니스 로직을 처리합니다.
+ * 대기열 진입 요청 접수와 Kafka 적재를 담당합니다.
  */
 @Service
 @RequiredArgsConstructor
-public class QueueService {
+public class QueueEnterService {
 
-    private final SessionOpenInfoCache sessionOpenInfoCache;
-    private final QueueEnterRequestCache queueEnterRequestCache;
+    private final SessionOpenInfoStore sessionOpenInfoStore;
+    private final QueueEnterRequestStore queueEnterRequestStore;
     private final QueueEnterProducer queueEnterProducer;
 
     /**
@@ -33,39 +33,40 @@ public class QueueService {
      * @return 접수된 요청 식별자
      */
     public QueueEnterResponse enter(QueueEnterRequest request) {
-        SessionOpenInfo sessionOpenInfo = sessionOpenInfoCache.findBySessionId(request.sessionId())
+        // queue enter는 DB를 직접 보지 않고 미리 적재된 회차 오픈 정보를 기준으로만 검증한다.
+        SessionOpenInfo sessionOpenInfo = sessionOpenInfoStore.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new BaseException(
                         GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 회차이거나, 예매 예정인 회차가 아닙니다."
                 ));
 
         validateQueueEntry(sessionOpenInfo, Instant.now());
 
-        // 중복 요청 체크
-        String existingRequestId = queueEnterRequestCache.findRequestId(request.userId(), request.sessionId())
+        String existingRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
                 .orElse(null);
         if (existingRequestId != null) {
             return QueueEnterResponse.pending(existingRequestId);
         }
 
-        // 추적용 요청 ID 생성
         String requestId = UUID.randomUUID().toString();
-        boolean saved = queueEnterRequestCache.saveIfAbsent(request.userId(), request.sessionId(), requestId);
+        boolean saved = queueEnterRequestStore.saveIfAbsent(request.userId(), request.sessionId(), requestId);
         if (!saved) {
-            String duplicatedRequestId = queueEnterRequestCache.findRequestId(request.userId(), request.sessionId())
+            // setIfAbsent 경합에서 졌다면, 먼저 저장된 requestId를 그대로 재사용한다.
+            String duplicatedRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
         }
 
-        // Kafka 퍼블리싱
         try {
-            queueEnterProducer.publish(new QueueEnterCommand(
+            // requestId는 Redis에 고정해두고, 실제 대기열 등록은 Kafka 비동기 소비 단계로 넘긴다.
+            queueEnterProducer.publish(new QueueEnterMessage(
                     requestId,
                     request.userId(),
                     request.sessionId(),
                     Instant.now()
             ));
         } catch (RuntimeException exception) {
-            queueEnterRequestCache.delete(request.userId(), request.sessionId());
+            // Kafka 적재에 실패하면 중복 진입 방지 키도 함께 제거해 재시도를 허용한다.
+            queueEnterRequestStore.delete(request.userId(), request.sessionId(), requestId);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "대기열 진입 요청 적재에 실패했습니다.");
         }
 

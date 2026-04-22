@@ -1,13 +1,12 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
-import com.ssafy.tickle.queue.domain.cache.SessionOpenInfo;
+import com.ssafy.tickle.queue.infrastructure.cache.mapper.SessionOpenInfoHashMapper;
+import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -15,12 +14,10 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-public class SessionOpenInfoCache {
-
-    private static final String SALES_OPEN_AT = "salesOpenAt";
-    private static final String SALES_CLOSE_AT = "salesCloseAt";
+public class SessionOpenInfoStore {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final SessionOpenInfoHashMapper sessionOpenInfoHashMapper;
 
     /**
      * 회차 예매 오픈 정보를 Redis에 저장합니다.
@@ -28,13 +25,8 @@ public class SessionOpenInfoCache {
      * @param info 저장할 회차 예매 오픈 정보
      */
     public void save(SessionOpenInfo info) {
-        stringRedisTemplate.opsForHash().putAll(
-                key(info.sessionId()),
-                Map.of(
-                        SALES_OPEN_AT, info.salesOpenAt().toString(),
-                        SALES_CLOSE_AT, info.salesCloseAt().toString()
-                )
-        );
+        stringRedisTemplate.opsForHash().putAll(key(info.sessionId()),
+                sessionOpenInfoHashMapper.toHash(info));
     }
 
     /**
@@ -55,18 +47,10 @@ public class SessionOpenInfoCache {
      * @return 회차 예매 오픈 정보
      */
     public Optional<SessionOpenInfo> findBySessionId(Long sessionId) {
-        Object salesOpenAt = stringRedisTemplate.opsForHash().get(key(sessionId), SALES_OPEN_AT);
-        Object salesCloseAt = stringRedisTemplate.opsForHash().get(key(sessionId), SALES_CLOSE_AT);
-
-        if (salesOpenAt == null || salesCloseAt == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(new SessionOpenInfo(
+        return sessionOpenInfoHashMapper.fromHash(
                 sessionId,
-                Instant.parse(salesOpenAt.toString()),
-                Instant.parse(salesCloseAt.toString())
-        ));
+                stringRedisTemplate.opsForHash().entries(key(sessionId))
+        );
     }
 
     private String key(Long sessionId) {
