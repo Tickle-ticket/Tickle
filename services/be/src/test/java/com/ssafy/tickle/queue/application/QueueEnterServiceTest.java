@@ -4,7 +4,7 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
+import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -44,7 +44,7 @@ class QueueEnterServiceTest {
     private QueueEnterService queueEnterService;
 
     @Autowired
-    private SessionOpenInfoCache sessionOpenInfoCache;
+    private SessionOpenInfoStore sessionOpenInfoStore;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -69,7 +69,7 @@ class QueueEnterServiceTest {
         void enter_returnsPendingResponse() {
             long sessionId = 10L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -86,7 +86,7 @@ class QueueEnterServiceTest {
         void enter_savesRequestIdToRedis() {
             long sessionId = 10L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -104,7 +104,7 @@ class QueueEnterServiceTest {
         void enter_publishesEnterRequestToKafka() {
             long sessionId = 10L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -130,7 +130,7 @@ class QueueEnterServiceTest {
         void enter_returnsSameRequestIdOnDuplicateRequest() {
             long sessionId = 14L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -148,7 +148,7 @@ class QueueEnterServiceTest {
         @DisplayName("오픈 전 회차면 INVALID_REQUEST 예외가 발생한다")
         void enter_beforeOpen_throwsQueueNotOpen() {
             long sessionId = 11L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().plusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -164,7 +164,7 @@ class QueueEnterServiceTest {
         @DisplayName("판매 종료된 회차면 INVALID_REQUEST 예외가 발생한다")
         void enter_afterClose_throwsQueueClosed() {
             long sessionId = 12L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(600),
                     Instant.now().minusSeconds(60)

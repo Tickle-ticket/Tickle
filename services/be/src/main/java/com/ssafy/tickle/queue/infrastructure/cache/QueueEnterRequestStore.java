@@ -1,6 +1,6 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
-import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterReference;
+import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -14,7 +14,7 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-public class QueueEnterRequestCache {
+public class QueueEnterRequestStore {
 
     private static final Duration REQUEST_TTL = Duration.ofMinutes(5);
     private static final String SESSION_ID = "sessionId";
@@ -66,7 +66,7 @@ public class QueueEnterRequestCache {
      * @param requestId 요청 식별자
      * @return 사용자/회차 식별자
      */
-    public Optional<QueueEnterReference> findReferenceByRequestId(String requestId) {
+    public Optional<QueueEnterRequestReference> findReferenceByRequestId(String requestId) {
         Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(referenceKey(requestId));
         if (entries.isEmpty()) {
             return Optional.empty();
@@ -78,7 +78,7 @@ public class QueueEnterRequestCache {
             return Optional.empty();
         }
 
-        return Optional.of(new QueueEnterReference(
+        return Optional.of(new QueueEnterRequestReference(
                 Long.parseLong(sessionId.toString()),
                 Long.parseLong(userId.toString())
         ));

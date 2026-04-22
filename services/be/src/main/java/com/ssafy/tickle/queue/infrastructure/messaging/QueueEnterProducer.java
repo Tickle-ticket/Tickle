@@ -2,7 +2,7 @@ package com.ssafy.tickle.queue.infrastructure.messaging;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterCommand;
+import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,7 @@ public class QueueEnterProducer {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public void publish(QueueEnterCommand command) {
+    public void publish(QueueEnterMessage command) {
         try {
             kafkaTemplate.send(TOPIC, command.sessionId().toString(), objectMapper.writeValueAsString(command)).get();
         } catch (JsonProcessingException exception) {

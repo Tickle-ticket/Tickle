@@ -6,7 +6,7 @@ package com.ssafy.tickle.queue.infrastructure.cache.model;
  * @param sessionId 회차 식별자
  * @param userId 사용자 식별자
  */
-public record QueueEnterReference(
+public record QueueEnterRequestReference(
         Long sessionId,
         Long userId
 ) {

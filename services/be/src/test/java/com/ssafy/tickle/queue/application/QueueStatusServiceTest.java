@@ -4,7 +4,7 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
+import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
@@ -40,7 +40,7 @@ class QueueStatusServiceTest {
     private QueueStatusService queueStatusService;
 
     @Autowired
-    private SessionOpenInfoCache sessionOpenInfoCache;
+    private SessionOpenInfoStore sessionOpenInfoStore;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -62,7 +62,7 @@ class QueueStatusServiceTest {
         void getQueueToken_issuesQueueToken() {
             long sessionId = 20L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -81,7 +81,7 @@ class QueueStatusServiceTest {
         void getQueueToken_returnsSameQueueToken() {
             long sessionId = 21L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
@@ -116,7 +116,7 @@ class QueueStatusServiceTest {
         void getStatusByQueueToken_returnsWaitingStatus() {
             long sessionId = 30L;
             long userId = 1L;
-            sessionOpenInfoCache.save(new SessionOpenInfo(
+            sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)

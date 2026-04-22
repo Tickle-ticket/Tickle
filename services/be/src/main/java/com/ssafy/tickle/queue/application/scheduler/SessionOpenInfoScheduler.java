@@ -2,7 +2,7 @@ package com.ssafy.tickle.queue.application.scheduler;
 
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
+import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,7 +21,7 @@ import java.util.List;
 public class SessionOpenInfoScheduler {
 
     private final EventSessionRepository eventSessionRepository;
-    private final SessionOpenInfoCache sessionOpenInfoCache;
+    private final SessionOpenInfoStore sessionOpenInfoStore;
 
     /**
      * 1분마다 오픈 중이거나 2시간 내 오픈 예정인 회차 메타데이터를 Redis에 동기화합니다.
@@ -37,6 +37,6 @@ public class SessionOpenInfoScheduler {
                 .map(SessionOpenInfo::from)
                 .toList();
 
-        sessionOpenInfoCache.saveAll(sessionOpenInfos);
+        sessionOpenInfoStore.saveAll(sessionOpenInfos);
     }
 }

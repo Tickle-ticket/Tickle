@@ -3,9 +3,9 @@ package com.ssafy.tickle.queue.application;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
-import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterReference;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestCache;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusCache;
+import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
+import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestStore;
+import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +29,8 @@ public class QueueStatusService {
     private static final Duration ETA_WINDOW = Duration.ofMinutes(3);
     private static final long DEFAULT_ADMISSION_RATE_PER_MINUTE = 30L;
 
-    private final QueueEnterRequestCache queueEnterRequestCache;
-    private final QueueStatusCache queueStatusCache;
+    private final QueueEnterRequestStore queueEnterRequestStore;
+    private final QueueStatusStore queueStatusStore;
     private final StringRedisTemplate stringRedisTemplate;
 
     /**
@@ -40,11 +40,11 @@ public class QueueStatusService {
      * @return queueToken과 현재 상태
      */
     public QueueTokenResponse getQueueToken(String requestId) {
-        QueueEnterReference reference = queueEnterRequestCache.findReferenceByRequestId(requestId)
+        QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
 
         String queueToken = issueQueueToken(requestId);
-        queueStatusCache.registerWaitingIfAbsent(
+        queueStatusStore.registerWaitingIfAbsent(
                 queueToken,
                 requestId,
                 reference.userId(),
@@ -62,11 +62,11 @@ public class QueueStatusService {
      * @return 현재 대기 상태
      */
     public QueueStatusResponse getStatusByQueueToken(String queueToken) {
-        QueueStatusSnapshot snapshot = queueStatusCache.findSnapshot(queueToken)
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
 
-        Long rank = queueStatusCache.findRank(snapshot.sessionId(), queueToken);
-        long waitingCount = queueStatusCache.countWaiting(snapshot.sessionId());
+        Long rank = queueStatusStore.findRank(snapshot.sessionId(), queueToken);
+        long waitingCount = queueStatusStore.countWaiting(snapshot.sessionId());
         long estimatedWaitSeconds = estimateWaitSeconds(snapshot.sessionId(), rank);
         Instant estimatedEntryAt = Instant.now().plusSeconds(estimatedWaitSeconds);
 
@@ -105,7 +105,7 @@ public class QueueStatusService {
         }
 
         Instant now = Instant.now();
-        long recentAdmissionCount = queueStatusCache.countRecentAdmissions(sessionId, now.minus(ETA_WINDOW), now);
+        long recentAdmissionCount = queueStatusStore.countRecentAdmissions(sessionId, now.minus(ETA_WINDOW), now);
         long admissionRatePerMinute = recentAdmissionCount == 0L
                 ? DEFAULT_ADMISSION_RATE_PER_MINUTE
                 : Math.max(1L, recentAdmissionCount / ETA_WINDOW.toMinutes());

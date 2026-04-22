@@ -3,9 +3,9 @@ package com.ssafy.tickle.queue.application;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterCommand;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestCache;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoCache;
+import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterMessage;
+import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestStore;
+import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.messaging.QueueEnterProducer;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
@@ -22,8 +22,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class QueueEnterService {
 
-    private final SessionOpenInfoCache sessionOpenInfoCache;
-    private final QueueEnterRequestCache queueEnterRequestCache;
+    private final SessionOpenInfoStore sessionOpenInfoStore;
+    private final QueueEnterRequestStore queueEnterRequestStore;
     private final QueueEnterProducer queueEnterProducer;
 
     /**
@@ -33,29 +33,29 @@ public class QueueEnterService {
      * @return 접수된 요청 식별자
      */
     public QueueEnterResponse enter(QueueEnterRequest request) {
-        SessionOpenInfo sessionOpenInfo = sessionOpenInfoCache.findBySessionId(request.sessionId())
+        SessionOpenInfo sessionOpenInfo = sessionOpenInfoStore.findBySessionId(request.sessionId())
                 .orElseThrow(() -> new BaseException(
                         GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 회차이거나, 예매 예정인 회차가 아닙니다."
                 ));
 
         validateQueueEntry(sessionOpenInfo, Instant.now());
 
-        String existingRequestId = queueEnterRequestCache.findRequestId(request.userId(), request.sessionId())
+        String existingRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
                 .orElse(null);
         if (existingRequestId != null) {
             return QueueEnterResponse.pending(existingRequestId);
         }
 
         String requestId = UUID.randomUUID().toString();
-        boolean saved = queueEnterRequestCache.saveIfAbsent(request.userId(), request.sessionId(), requestId);
+        boolean saved = queueEnterRequestStore.saveIfAbsent(request.userId(), request.sessionId(), requestId);
         if (!saved) {
-            String duplicatedRequestId = queueEnterRequestCache.findRequestId(request.userId(), request.sessionId())
+            String duplicatedRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
         }
 
         try {
-            queueEnterProducer.publish(new QueueEnterCommand(
+            queueEnterProducer.publish(new QueueEnterMessage(
                     requestId,
                     request.userId(),
                     request.sessionId(),
@@ -63,7 +63,7 @@ public class QueueEnterService {
             ));
         } catch (RuntimeException exception) {
             // Kafka 적재에 실패하면 중복 진입 방지 키도 함께 제거해 재시도를 허용한다.
-            queueEnterRequestCache.delete(request.userId(), request.sessionId(), requestId);
+            queueEnterRequestStore.delete(request.userId(), request.sessionId(), requestId);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "대기열 진입 요청 적재에 실패했습니다.");
         }
 

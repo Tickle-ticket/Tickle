@@ -10,7 +10,7 @@ import java.time.Instant;
  * @param sessionId 회차 식별자
  * @param requestedAt 요청 시각
  */
-public record QueueEnterCommand(
+public record QueueEnterMessage(
         String requestId,
         Long userId,
         Long sessionId,
