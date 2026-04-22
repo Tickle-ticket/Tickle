@@ -1,5 +1,4 @@
 import React, { ElementType, ButtonHTMLAttributes, AnchorHTMLAttributes } from 'react';
-import { adaptive, colors } from '../styles/colors';
 import type { BaseButtonProps, ButtonProps } from './types';
 
 const sizeStyles: Record<string, React.CSSProperties> = {
@@ -42,17 +41,17 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
 
       if (variant === 'fill') {
         switch (color) {
-          case 'primary': baseStyle = { '--button-background-color': colors.blue500, '--button-color': colors.white } as React.CSSProperties; break;
-          case 'danger': baseStyle = { '--button-background-color': colors.red500, '--button-color': colors.white } as React.CSSProperties; break;
-          case 'dark': baseStyle = { '--button-background-color': adaptive.grey700, '--button-color': colors.white } as React.CSSProperties; break;
-          case 'light': baseStyle = { '--button-background-color': colors.white, '--button-color': adaptive.grey600 } as React.CSSProperties; break;
+          case 'primary': baseStyle = { '--button-background-color': 'var(--toss-blue-500)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
+          case 'danger': baseStyle = { '--button-background-color': 'var(--toss-red-500)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
+          case 'dark': baseStyle = { '--button-background-color': 'var(--toss-grey-700)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
+          case 'light': baseStyle = { '--button-background-color': 'var(--toss-white)', '--button-color': 'var(--toss-grey-600)' } as React.CSSProperties; break;
         }
       } else if (variant === 'weak') {
         switch (color) {
-          case 'primary': baseStyle = { '--button-background-color': colors.blue100, '--button-color': colors.blue600 } as React.CSSProperties; break;
-          case 'danger': baseStyle = { '--button-background-color': colors.red100, '--button-color': colors.red600 } as React.CSSProperties; break;
-          case 'dark': baseStyle = { '--button-background-color': adaptive.grey100, '--button-color': adaptive.grey600 } as React.CSSProperties; break;
-          case 'light': baseStyle = { '--button-background-color': 'rgba(255, 255, 255, 0.15)', '--button-color': colors.white } as React.CSSProperties; break;
+          case 'primary': baseStyle = { '--button-background-color': 'var(--toss-blue-100)', '--button-color': 'var(--toss-blue-600)' } as React.CSSProperties; break;
+          case 'danger': baseStyle = { '--button-background-color': 'var(--toss-red-100)', '--button-color': 'var(--toss-red-600)' } as React.CSSProperties; break;
+          case 'dark': baseStyle = { '--button-background-color': 'var(--toss-grey-100)', '--button-color': 'var(--toss-grey-600)' } as React.CSSProperties; break;
+          case 'light': baseStyle = { '--button-background-color': 'rgba(255, 255, 255, 0.15)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
         }
       }
       return baseStyle;

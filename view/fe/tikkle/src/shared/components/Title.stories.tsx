@@ -11,6 +11,7 @@ const meta: Meta<typeof Title> = {
     title: { control: 'text', description: '화면 좌측에 크게 나타나는 주요 제목' },
     leftIcon: { control: 'text', description: 'back, close 등의 상단 네비게이션 아이콘' },
     transparent: { control: 'boolean' },
+    isLoading: { control: 'boolean' },
   },
 };
 
@@ -35,6 +36,20 @@ export const WithBackButton: Story = {
   args: {
     title: '내 정보 설정',
     leftIcon: 'back',
+  },
+  render: (args) => (
+    <div style={{ paddingBottom: '40px', backgroundColor: '#fff', border: '1px solid #eee' }}>
+      <Title {...args} />
+    </div>
+  ),
+};
+
+export const LoadingState: Story = {
+  name: '스켈레톤 상태',
+  args: {
+    title: '로딩 제목',
+    leftIcon: 'back',
+    isLoading: true,
   },
   render: (args) => (
     <div style={{ paddingBottom: '40px', backgroundColor: '#fff', border: '1px solid #eee' }}>

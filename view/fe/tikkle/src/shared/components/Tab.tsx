@@ -1,5 +1,4 @@
 import React, { ReactNode } from 'react';
-import { adaptive, ui } from '../styles/colors';
 import type { TabProps, TabItemProps } from './types';
 
 const TabItem = ({ children, selected, redBean = false, onClick }: TabItemProps) => {
@@ -14,9 +13,9 @@ const TabItem = ({ children, selected, redBean = false, onClick }: TabItemProps)
         background: 'none',
         border: 'none',
         borderBottom: selected
-          ? `0.125em solid ${ui.tabText}`
+          ? `0.125em solid var(--toss-ui-tab-text)`
           : '0.125em solid transparent',
-        color: selected ? ui.tabText : ui.tabInactive,
+        color: selected ? 'var(--toss-ui-tab-text)' : 'var(--toss-ui-tab-inactive)',
         fontWeight: selected ? 'bold' : 'normal',
         cursor: 'pointer',
         padding: '0 0.5em',
@@ -36,7 +35,7 @@ const TabItem = ({ children, selected, redBean = false, onClick }: TabItemProps)
             right: '-0.25em',
             width: '0.3em',
             height: '0.3em',
-            backgroundColor: ui.redBean,
+            backgroundColor: 'var(--toss-ui-red-bean)',
             borderRadius: '50%',
           }}
         />
@@ -76,7 +75,7 @@ const Tab = ({
           flexDirection: 'row',
           gap: gapInEm,
           width: '100%',
-          borderBottom: `0.0625em solid ${adaptive.grey200}`,
+          borderBottom: `0.0625em solid var(--toss-grey-200)`,
           ...sizeStyles[size],
         }}
       >
@@ -111,7 +110,7 @@ const Tab = ({
         overflowX: fluid ? 'auto' : 'visible',
         whiteSpace: fluid ? 'nowrap' : 'normal',
         width: '100%',
-        borderBottom: `0.0625em solid ${adaptive.grey200}`,
+        borderBottom: `0.0625em solid var(--toss-grey-200)`,
         ...sizeStyles[size],
         msOverflowStyle: 'none',
         scrollbarWidth: 'none',

@@ -42,6 +42,7 @@ export const Text = ({
   fontWeight,     // 명시하지 않으면 typography의 시스템 기본 굵기를 따라감
   textAlign = 'left',
   ellipsis = false,
+  isLoading = false,
   className = '',
   children,
   ...props
@@ -56,6 +57,18 @@ export const Text = ({
     'tracking-[-0.01em]', // 디자인에 안착감을 주기 위한 살짝 좁은 자간 (토스 느낌)
     className
   ].filter(Boolean).join(' ');
+
+  if (isLoading) {
+    return (
+      <Component 
+        className={`inline-block bg-gray-200 dark:bg-gray-700 animate-pulse rounded-[4px] ${className}`} 
+        // 텍스트 컴포넌트 특성상, 글자가 없으면 높이가 사라지므로 높이를 1em(현재 폰트 크기 기준)으로 고정하고 기본 너비를 줍니다.
+        // Tailwind의 w-full 등이 들어왔을 때는 덮어씌워질 수 있도록 처리
+        style={{ minWidth: '4em', height: '1.2em', verticalAlign: 'text-bottom', ...props.style }}
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <Component className={combinedClasses} {...props}>

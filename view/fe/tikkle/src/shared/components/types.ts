@@ -77,6 +77,7 @@ export interface TextProps extends React.HTMLAttributes<HTMLSpanElement> {
   fontWeight?: 'regular' | 'medium' | 'bold' | 'semibold';
   textAlign?: 'left' | 'center' | 'right';
   ellipsis?: boolean;
+  isLoading?: boolean;
 }
 
 export interface TitleProps {
@@ -87,6 +88,7 @@ export interface TitleProps {
   transparent?: boolean;
   bottomBorder?: boolean;
   className?: string;
+  isLoading?: boolean;
 }
 
 export interface TableColumn<T = any> {
@@ -104,5 +106,196 @@ export interface TableProps<T = any> {
   tableLayout?: 'auto' | 'fixed';
   textAlign?: 'left' | 'center' | 'right';
   verticalAlign?: 'top' | 'middle' | 'bottom';
+  className?: string;
+}
+
+export interface BannerPosterProps {
+  src: string;
+  alt?: string;
+  width?: string | number;
+  height?: string | number;
+  className?: string;
+  children?: ReactNode;
+  isLoading?: boolean;
+}
+
+export interface BannerTitleProps {
+  title: string;
+  subtitle?: string;
+  date?: string;
+  venue?: string;
+  color?: string;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface PerformanceBannerProps {
+  src: string;
+  alt?: string;
+  width?: string | number;
+  height?: string | number;
+  title: string;
+  subtitle?: string;
+  date?: string;
+  venue?: string;
+  color?: string;
+  className?: string;
+  currentBadge?: number;
+  totalBadge?: number;
+  onNext?: () => void;
+  onPrev?: () => void;
+  isLoading?: boolean;
+}
+
+export interface BannerNavigationProps {
+  onNext?: () => void;
+  onPrev?: () => void;
+  current?: number;
+  total?: number;
+  variant?: 'arrow' | 'scroll-down' | 'badge' | 'dots';
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoPosterProps {
+  src: string;
+  alt?: string;
+  width?: string | number;
+  height?: string | number;
+  disabled?: boolean;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoTitleProps {
+  title: string;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoPlaceProps {
+  place: string;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoDayProps {
+  day: string;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoRankProps {
+  rank: number;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoTimeProps {
+  targetDate?: string | Date | number;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface InfoCardProps {
+  src: string;
+  alt?: string;
+  disabled?: boolean;
+  title: string;
+  place?: string;
+  day?: string;
+  badges?: Array<string | { text: string; color?: BadgeColor; variant?: BadgeVariant }>;
+  rank?: number;
+  showRank?: boolean;
+  targetDate?: string | Date | number;
+  showTime?: boolean;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface LogoProps {
+  variant?: 'primary' | 'white' | 'black';
+  size?: 'small' | 'medium' | 'large';
+  className?: string;
+  onClick?: () => void;
+}
+
+export interface SegmentedControlOption {
+  label: string;
+  value: string;
+}
+
+export interface SegmentedControlProps {
+  options: SegmentedControlOption[];
+  value: string;
+  onChange: (value: string) => void;
+  columns?: number;
+  rows?: number;
+  size?: 'small' | 'medium' | 'large';
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface BoxProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode;
+  padding?: 'none' | 'small' | 'medium' | 'large';
+  variant?: 'outline' | 'shadow' | 'flat' | 'gray';
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface ToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  isLoading?: boolean;
+  size?: 'small' | 'medium';
+  className?: string;
+}
+
+export interface AccordionProps {
+  title: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  isOpen?: boolean;
+  onToggle?: (isOpen: boolean) => void;
+  className?: string;
+  isLoading?: boolean;
+}
+
+export interface StageProps extends React.CanvasHTMLAttributes<HTMLCanvasElement> {
+  label?: string;
+  isLoading?: boolean;
+  className?: string;
+}
+
+export interface CalendarProps {
+  enabledDates?: (string | Date)[];
+  selectedDate?: Date | string | null;
+  onSelect?: (date: Date) => void;
+  isLoading?: boolean;
+  className?: string;
+}
+
+export type SeatStatus = 'selectable' | 'disabled';
+export type SeatColor = 'pink' | 'yellow' | 'mint' | 'red' | 'green' | 'blue';
+
+export interface SeatProps extends Omit<React.CanvasHTMLAttributes<HTMLCanvasElement>, 'onClick'> {
+  status?: SeatStatus;
+  color?: SeatColor;
+  isSelected?: boolean;
+  onClick?: () => void;
+  isLoading?: boolean;
+  className?: string;
+}
+
+export type ErrorType = '404' | '500' | '401' | 'timeout' | 'soldout';
+
+export interface ErrorViewProps {
+  type: ErrorType;
+  title?: string;
+  description?: string;
+  actionText?: string;
+  onAction?: () => void;
   className?: string;
 }
