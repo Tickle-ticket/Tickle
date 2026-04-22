@@ -15,7 +15,7 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-public class QueueStatusCache {
+public class QueueStatusStore {
 
     private static final String STATUS_KEY_PREFIX = "queue:status:";
     private static final String WAITING_KEY_PREFIX = "queue:waiting:";

@@ -15,7 +15,7 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-public class SessionOpenInfoCache {
+public class SessionOpenInfoStore {
 
     private static final String SALES_OPEN_AT = "salesOpenAt";
     private static final String SALES_CLOSE_AT = "salesCloseAt";
