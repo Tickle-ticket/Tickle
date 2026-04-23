@@ -47,16 +47,6 @@ const lowerRight = [
   ['P9', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16'],
 ];
 
-const getDefaultSeatColor = (id: string): SeatColor => {
-  const row = id[0];
-  const col = parseInt(id.slice(1));
-
-  if (['A', 'B', 'C'].includes(row)) return 'pink';
-  if (['G', 'H', 'I', 'J'].includes(row)) return (col >= 4 && col <= 11) ? 'yellow' : 'orange';
-  if (row === 'K') return (col >= 5 && col <= 12) ? 'yellow' : 'orange';
-  return 'blue';
-};
-
 const SeatWrapper = ({
   id,
   data,
@@ -68,19 +58,16 @@ const SeatWrapper = ({
   isDefaultMode: boolean;
   onClick?: (id: string) => void;
 }) => {
-  if (!id) return <div className="w-[36px] h-[58px] shrink-0" />;
+  if (!id) return <div className="w-[36px] h-[42px] shrink-0" />;
 
   const hasDataForThisSeat = data !== undefined;
   const isMissingSeat = !isDefaultMode && !hasDataForThisSeat;
 
-  const finalColor = isMissingSeat ? 'gray' : (data?.color || getDefaultSeatColor(id));
+  const finalColor = isMissingSeat ? 'gray' : (data?.color || 'gray');
   const finalStatus = isMissingSeat ? 'disabled' : (data?.status || 'selectable');
 
   return (
-    <div className="flex flex-col items-center justify-end gap-1.5 h-[58px] w-[36px] shrink-0">
-      <span className="text-[10px] text-gray-400 font-bold tracking-tighter leading-none select-none">
-        {id}
-      </span>
+    <div className="w-[36px] h-[42px] shrink-0">
       <Seat
         color={finalColor}
         status={finalStatus}
@@ -95,40 +82,78 @@ export const SSAFY_18 = ({ seatsData = {}, onSeatClick, className = '' }: SSAFY_
   const isDefaultMode = Object.keys(seatsData).length === 0;
 
   const renderGrid = (grid: (string | null)[][]) => {
+    const maxCols = Math.max(...grid.map(row => row.length));
+    
+    // 열 헤더 (각 열의 첫 번째 유효한 좌석에서 숫자 추출)
+    const colHeaders = Array.from({ length: maxCols }).map((_, colIndex) => {
+      for (const row of grid) {
+        if (row[colIndex]) {
+          return row[colIndex]!.replace(/[a-zA-Z]/g, '');
+        }
+      }
+      return '';
+    });
+
     return (
-      <div className="flex flex-col gap-3">
-        {grid.map((row, rowIndex) => (
-          <div key={`row-${rowIndex}`} className="flex gap-3">
-            {row.map((cellId, colIndex) => (
-              <SeatWrapper
-                key={cellId || `empty-${rowIndex}-${colIndex}`}
-                id={cellId}
-                data={cellId ? seatsData[cellId] : undefined}
-                isDefaultMode={isDefaultMode}
-                onClick={onSeatClick}
-              />
-            ))}
-          </div>
-        ))}
+      <div className="flex flex-col gap-1.5">
+        {/* 열 헤더 */}
+        <div className="flex gap-1.5 pl-6 mb-1">
+          {colHeaders.map((colNum, idx) => (
+            <div key={`col-${idx}`} className="w-[36px] shrink-0 flex justify-center items-end">
+              <span className="text-xs text-gray-400 dark:text-gray-500 font-bold">{colNum}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 행 및 좌석들 */}
+        {grid.map((row, rowIndex) => {
+          let rowLabel = '';
+          for (const cell of row) {
+            if (cell) {
+              rowLabel = cell.replace(/[0-9]/g, '');
+              break;
+            }
+          }
+
+          return (
+            <div key={`row-${rowIndex}`} className="flex gap-1.5 items-center">
+              {/* 행 헤더 */}
+              <div className="w-5 shrink-0 flex justify-end pr-1">
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">{rowLabel}</span>
+              </div>
+              
+              {/* 좌석 */}
+              {row.map((cellId, colIndex) => (
+                <SeatWrapper
+                  key={cellId || `empty-${rowIndex}-${colIndex}`}
+                  id={cellId}
+                  data={cellId ? seatsData[cellId] : undefined}
+                  isDefaultMode={isDefaultMode}
+                  onClick={onSeatClick}
+                />
+              ))}
+            </div>
+          );
+        })}
       </div>
     );
   };
 
   return (
-    <div className={`flex flex-col items-center gap-20 p-12 bg-white rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
+    <div className={`flex flex-col items-center gap-12 p-12 bg-white dark:bg-zinc-950 rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
       {/* 1. Stage Area */}
       <div className="flex flex-col items-center gap-3 w-full">
-        <Stage width={480} height={96} label="무대" />
+        <Stage width={480} height={72} label="무대" />
       </div>
 
       {/* 2. Upper Seats */}
-      <div className="flex gap-20">
+      <div className="flex gap-12">
         {renderGrid(upperLeft)}
         {renderGrid(upperRight)}
       </div>
 
       {/* 3. Lower Seats */}
-      <div className="flex gap-16">
+      <div className="flex gap-10">
         {renderGrid(lowerLeft)}
         {renderGrid(lowerRight)}
       </div>

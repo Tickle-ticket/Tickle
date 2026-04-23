@@ -4,9 +4,10 @@ import React, { useRef, useState, useEffect } from 'react';
 
 interface InteractiveMapViewerProps {
   children: React.ReactNode;
+  showZoomControls?: boolean;
 }
 
-export const InteractiveMapViewer = ({ children }: InteractiveMapViewerProps) => {
+export const InteractiveMapViewer = ({ children, showZoomControls = true }: InteractiveMapViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
@@ -17,29 +18,32 @@ export const InteractiveMapViewer = ({ children }: InteractiveMapViewerProps) =>
   const isDragging = useRef(false);
   const lastPosition = useRef({ x: 0, y: 0 });
 
+  const fitContent = () => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
+    const contentWidth = content.scrollWidth;
+    const contentHeight = content.scrollHeight;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    if (contentWidth === 0 || contentHeight === 0) return;
+
+    const scaleX = containerWidth / contentWidth;
+    const scaleY = containerHeight / contentHeight;
+    const fitScale = Math.min(scaleX, scaleY) * 0.95;
+    
+    setScale(fitScale);
+    setMinScale(fitScale);
+    setPosition({ x: 0, y: 0 });
+  };
+
   // 컴포넌트 마운트 및 리사이즈 시 화면에 딱 맞게(최대로) 초기 배율 계산
   useEffect(() => {
     const container = containerRef.current;
     const content = contentRef.current;
     if (!container || !content) return;
-
-    const fitContent = () => {
-      const contentWidth = content.scrollWidth;
-      const contentHeight = content.scrollHeight;
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-
-      if (contentWidth === 0 || contentHeight === 0) return;
-
-      // 여백을 약간(95%) 둔 상태로 꽉 차게 계산
-      const scaleX = containerWidth / contentWidth;
-      const scaleY = containerHeight / contentHeight;
-      const fitScale = Math.min(scaleX, scaleY) * 0.95;
-      
-      setScale(fitScale);
-      setMinScale(fitScale); // 축소 한계를 초기 꽉 찬 상태로 설정
-      setPosition({ x: 0, y: 0 }); // 중앙 정렬
-    };
 
     fitContent();
 
@@ -92,55 +96,62 @@ export const InteractiveMapViewer = ({ children }: InteractiveMapViewerProps) =>
     return () => container.removeEventListener('wheel', handleWheel);
   }, [minScale]);
 
+  const handleZoomIn = () => setScale(prev => Math.min(prev * 1.3, 3));
+  const handleZoomOut = () => setScale(prev => Math.max(prev / 1.3, minScale));
+  const handleResetZoom = () => fitContent();
+
   const hasDragged = useRef(false);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // 확대/축소 버튼 위에서 발생한 이벤트 무시
+    if ((e.target as HTMLElement).closest('.zoom-controls')) return;
+
     isDragging.current = true;
     hasDragged.current = false;
     lastPosition.current = { x: e.clientX, y: e.clientY };
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging.current) return;
     
     const dx = e.clientX - lastPosition.current.x;
     const dy = e.clientY - lastPosition.current.y;
     
     // 일정 거리 이상 움직이면 드래그로 판정
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+    if (!hasDragged.current && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
       hasDragged.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
     }
     
-    setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-    lastPosition.current = { x: e.clientX, y: e.clientY };
+    if (hasDragged.current) {
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      lastPosition.current = { x: e.clientX, y: e.clientY };
+    }
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     isDragging.current = false;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
   };
 
-  const handlePointerLeave = (e: React.PointerEvent) => {
-    isDragging.current = false;
-  };
-
-  // 캡처 페이즈에서 드래그 상태라면 클릭 이벤트를 차단 (좌석이 실수로 눌리는 것 방지)
   const handleClickCapture = (e: React.MouseEvent) => {
     if (hasDragged.current) {
       e.stopPropagation();
       e.preventDefault();
-      hasDragged.current = false; // 리셋
+      hasDragged.current = false;
     }
   };
 
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full min-h-[60vh] overflow-hidden relative cursor-grab active:cursor-grabbing touch-none select-none"
+      className="w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing touch-none select-none"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onPointerLeave={handlePointerLeave}
       onClickCapture={handleClickCapture}
     >
       <div 
@@ -153,11 +164,42 @@ export const InteractiveMapViewer = ({ children }: InteractiveMapViewerProps) =>
       >
         {children}
       </div>
-      
-      {/* 줌 컨트롤 힌트 */}
-      <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs backdrop-blur-sm pointer-events-none">
-        마우스 휠로 확대/축소 • 드래그하여 이동
-      </div>
+
+      {showZoomControls && (
+        <div className="zoom-controls absolute top-6 right-6 flex flex-col bg-white dark:bg-zinc-800 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-zinc-700 overflow-hidden cursor-auto z-20">
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
+            className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"
+            aria-label="확대"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleZoomOut(); }}
+            className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"
+            aria-label="축소"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleResetZoom(); }}
+            className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors"
+            aria-label="원래 크기로"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h6v6"></path>
+              <path d="M9 21H3v-6"></path>
+              <path d="M21 3l-7 7"></path>
+              <path d="M3 21l7-7"></path>
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

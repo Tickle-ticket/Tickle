@@ -50,6 +50,16 @@
   --seat-selected-side: #6d28d9;
   --seat-disabled-top: #e5e7eb;
   --seat-disabled-side: #d1d5db;
+
+  /* Seat Grade Variables for UI Elements (Canvas requires hex values) */
+  --seat-vip-top: #ff92a6;
+  --seat-vip-side: #ff5c77;
+  --seat-r-top: #ffd166;
+  --seat-r-side: #ffb933;
+  --seat-s-top: #fb923c;
+  --seat-s-side: #ea580c;
+  --seat-a-top: #60a5fa;
+  --seat-a-side: #3b82f6;
 }
 
 @theme inline {

@@ -41,7 +41,7 @@ export const DetailView = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isBooking, setIsBooking] = useState(false);
 
-  const scheduleData = data?.sections?.schedule?.data || [];
+  const scheduleData = data?.schedules || [];
   const enabledDates = scheduleData.map((item: any) => item.date.split(' ')[0].replace(/\./g, '-'));
   const selectedDateStr = selectedDate ? formatDateToDot(selectedDate) : '';
   const selectedSchedule = scheduleData.find((item: any) => item.date.startsWith(selectedDateStr));
@@ -113,7 +113,7 @@ export const DetailView = () => {
         {/* Hero Section */}
         <section className="max-w-2xl mt-3 flex flex-col items-start">
           <Title
-            title={data?.mainTitle || ''}
+            title={data?.title || ''}
             textColor="black"
             className="!bg-transparent [&>div]:!p-0 !text-5xl md:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.1] [&_h1]:whitespace-pre-line"
             bottomBorder={false}
@@ -122,7 +122,7 @@ export const DetailView = () => {
           <div className="flex flex-col gap-1 mt-4">
             <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-base md:!text-[17px]" />
             <BannerPlace place={data?.venue || ''} color="black" className="!text-base md:!text-[17px] font-bold" />
-            <BannerTime time={data?.date || ''} color="black" className="!text-base md:!text-[17px]" />
+            <BannerTime time={data?.startDate ? `${data.startDate} ~ ${data.endDate}` : ''} color="black" className="!text-base md:!text-[17px]" />
           </div>
 
           <div className="flex items-center gap-3 mt-6">
@@ -156,11 +156,16 @@ export const DetailView = () => {
                 <div className="flex flex-col items-start gap-4">
                   <Title title="공연 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
                   <div className="flex flex-col gap-6 w-full">
-                    {data?.sections?.info.content.map((item, idx) => (
+                    {[
+                      { title: '장소', descriptions: [data?.venue || '', data?.venueAddress || ''] },
+                      { title: '등급', descriptions: [data?.viewingAge || ''] },
+                      { title: '러닝타임', descriptions: [data?.runningTime || ''] },
+                      { title: '기타', descriptions: data?.ticketNotice?.split('\n') || [] }
+                    ].map((item, idx) => (
                       <div key={idx} className="flex flex-col gap-1.5">
                         <Text typography="t6" fontWeight="bold" color="primary">{item.title}</Text>
                         <div className="flex flex-col gap-0.5">
-                          {item.descriptions.map((desc, dIdx) => (
+                          {item.descriptions.map((desc, dIdx) => desc && (
                             <Text key={dIdx} typography="t6" color="secondary">{desc}</Text>
                           ))}
                         </div>
@@ -182,8 +187,11 @@ export const DetailView = () => {
                     <Title title="가격 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
                     <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
                       <Table
-                        columns={data?.sections?.price.columns || []}
-                        data={data?.sections?.price.data || []}
+                        columns={[
+                          { key: 'seat', header: '좌석 등급', align: 'left' },
+                          { key: 'price', header: '가격', align: 'right' }
+                        ]}
+                        data={data?.zonePrices?.map(p => ({ seat: p.grade, price: `${p.price.toLocaleString()}원` })) || []}
                         isLoading={isLoading}
                       />
                     </div>
@@ -214,12 +222,33 @@ export const DetailView = () => {
                           <div className="flex flex-col gap-4">
                             <Text typography="t5" fontWeight="bold" color="primary">선택하신 날짜의 회차</Text>
                             <div className="flex flex-wrap gap-3">
-                              {selectedSchedule.time.split(', ').map((timeStr: string, idx: number) => (
+                              {selectedSchedule.times.map((timeObj: { time: string, remainingSeats: { grade: string, count: number }[] }, idx: number) => (
                                 <div
                                   key={idx}
-                                  className="inline-flex items-center justify-center px-6 py-3 border border-gray-200 rounded-xl bg-white"
+                                  className="inline-flex flex-col items-center justify-center px-6 py-3 border border-gray-200 rounded-xl bg-white"
                                 >
-                                  <Text typography="t6" fontWeight="bold" color="primary">{timeStr}</Text>
+                                  <Text typography="t6" fontWeight="bold" color="primary">{timeObj.time}</Text>
+                                  <div className="flex gap-2 mt-1">
+                                    {timeObj.remainingSeats.map(seat => {
+                                      const gradeColors: Record<string, string> = {
+                                        'VIP': 'bg-pink-50 text-pink-600 border-pink-200',
+                                        'R': 'bg-yellow-50 text-yellow-600 border-yellow-200',
+                                        'S': 'bg-orange-50 text-orange-600 border-orange-200',
+                                        'A': 'bg-blue-50 text-blue-600 border-blue-200',
+                                      };
+                                      const defaultColor = 'bg-gray-50 text-gray-600 border-gray-200';
+                                      
+                                      return (
+                                        <span 
+                                          key={seat.grade} 
+                                          className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] border ${gradeColors[seat.grade] || defaultColor}`}
+                                        >
+                                          <span className="font-extrabold">{seat.grade}</span>
+                                          <span>{seat.count}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -241,18 +270,15 @@ export const DetailView = () => {
               <Box variant="flat" padding="medium" className="w-full border border-black/5">
                 <div className="flex flex-col items-start gap-4">
                   <Title title="상세 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
-                  {data?.sections?.details.imageUrl && (
+                  {data?.detailImageUrl && (
                     <div className="w-full mt-2 mb-4">
                       <img
-                        src={data.sections.details.imageUrl}
+                        src={data.detailImageUrl}
                         alt="공연 상세 안내"
                         className="w-full h-auto object-contain rounded-lg border border-black/5"
                       />
                     </div>
                   )}
-                  {data?.sections?.details.content?.map((text, idx) => (
-                    <Text key={idx} typography="t6" color="secondary">{text}</Text>
-                  ))}
                 </div>
               </Box>
             </div>
