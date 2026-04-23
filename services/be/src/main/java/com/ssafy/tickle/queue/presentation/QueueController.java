@@ -2,9 +2,9 @@ package com.ssafy.tickle.queue.presentation;
 
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
-import com.ssafy.tickle.queue.application.QueueEnterService;
-import com.ssafy.tickle.queue.application.QueueStatusService;
-import com.ssafy.tickle.queue.application.QueueSseHandler;
+import com.ssafy.tickle.queue.application.service.QueueEnterService;
+import com.ssafy.tickle.queue.application.service.QueueStatusService;
+import com.ssafy.tickle.queue.application.service.QueueSseHandler;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;

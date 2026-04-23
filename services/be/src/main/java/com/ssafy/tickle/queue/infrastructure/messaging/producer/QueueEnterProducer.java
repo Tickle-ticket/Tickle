@@ -1,4 +1,4 @@
-package com.ssafy.tickle.queue.infrastructure.messaging;
+package com.ssafy.tickle.queue.infrastructure.messaging.producer;
 
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.messaging.mapper.QueueEnterMessageMapper;

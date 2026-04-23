@@ -1,9 +1,9 @@
 package com.ssafy.tickle.queue.application.scheduler;
 
 import com.ssafy.tickle.common.util.RedisLockManager;
-import com.ssafy.tickle.queue.application.QueueStatusService;
+import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.config.QueueConstants;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

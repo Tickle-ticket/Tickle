@@ -1,4 +1,4 @@
-package com.ssafy.tickle.queue.application;
+package com.ssafy.tickle.queue.application.service;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
@@ -6,8 +6,8 @@ import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestStore;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.QueueEnterRequestStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import lombok.RequiredArgsConstructor;

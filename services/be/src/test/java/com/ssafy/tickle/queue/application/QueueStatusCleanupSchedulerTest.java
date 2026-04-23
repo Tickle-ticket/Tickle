@@ -2,9 +2,11 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.queue.application.scheduler.QueueAdmissionScheduler;
 import com.ssafy.tickle.queue.application.scheduler.QueueStatusCleanupScheduler;
+import com.ssafy.tickle.queue.application.service.QueueEnterService;
+import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.config.QueueConstants;
-import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
