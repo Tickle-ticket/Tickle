@@ -4,7 +4,7 @@ import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.application.QueueEnterService;
 import com.ssafy.tickle.queue.application.QueueStatusService;
-import com.ssafy.tickle.queue.application.QueueStreamService;
+import com.ssafy.tickle.queue.application.QueueSseHandler;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,13 +26,13 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * 대기열 진입 관련 API를 제공합니다.
  */
 @RestController
-@RequestMapping("/api/v1/queue")
+@RequestMapping("/api/v1/queues/{sessionId}")
 @RequiredArgsConstructor
 public class QueueController implements QueueApiDoc {
 
     private final QueueEnterService queueEnterService;
     private final QueueStatusService queueStatusService;
-    private final QueueStreamService queueStreamService;
+    private final QueueSseHandler queueSseHandler;
 
     /**
      * 사용자의 대기열 진입 등록 요청을 접수합니다.
@@ -41,8 +42,11 @@ public class QueueController implements QueueApiDoc {
      */
     @PostMapping("/enter")
     @Override
-    public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(@Valid @RequestBody QueueEnterRequest request) {
-        QueueEnterResponse response = queueEnterService.enter(request);
+    public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(
+            @PathVariable Long sessionId,
+            @Valid @RequestBody QueueEnterRequest request
+    ) {
+        QueueEnterResponse response = queueEnterService.enter(sessionId, request);
 
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
@@ -57,8 +61,11 @@ public class QueueController implements QueueApiDoc {
      */
     @GetMapping("/token")
     @Override
-    public ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(@RequestParam String requestId) {
-        QueueTokenResponse response = queueStatusService.getQueueToken(requestId);
+    public ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(
+            @PathVariable Long sessionId,
+            @RequestParam String requestId
+    ) {
+        QueueTokenResponse response = queueStatusService.getQueueToken(sessionId, requestId);
 
         return ResponseEntity
                 .ok()
@@ -73,12 +80,28 @@ public class QueueController implements QueueApiDoc {
      */
     @GetMapping("/status")
     @Override
-    public ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(@RequestParam String queueToken) {
-        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(queueToken);
+    public ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(
+            @PathVariable Long sessionId,
+            @RequestParam String queueToken
+    ) {
+        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(sessionId, queueToken);
 
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(SuccessCode.OK, response));
+    }
+
+    @PostMapping("/leave")
+    @Override
+    public ResponseEntity<BaseResponse<Void>> leave(
+            @PathVariable Long sessionId,
+            @RequestParam String queueToken
+    ) {
+        queueStatusService.leave(sessionId, queueToken);
+
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK, null));
     }
 
     /**
@@ -89,7 +112,11 @@ public class QueueController implements QueueApiDoc {
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
-    public SseEmitter stream(@RequestParam String queueToken) {
-        return queueStreamService.connect(queueToken);
+    public SseEmitter stream(
+            @PathVariable Long sessionId,
+            @RequestParam String queueToken
+    ) {
+        queueStatusService.getStatusByQueueToken(sessionId, queueToken);
+        return queueSseHandler.connect(queueToken);
     }
 }
