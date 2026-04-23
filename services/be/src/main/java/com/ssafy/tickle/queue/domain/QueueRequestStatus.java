@@ -9,5 +9,8 @@ public enum QueueRequestStatus {
     PENDING,
 
     // 대기열 등록 완료
-    WAITING
+    WAITING,
+
+    // 입장 승인
+    ADMITTED
 }
