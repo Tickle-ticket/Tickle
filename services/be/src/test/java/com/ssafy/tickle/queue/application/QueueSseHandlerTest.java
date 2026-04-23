@@ -1,6 +1,5 @@
 package com.ssafy.tickle.queue.application;
 
-import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,14 +16,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @DisplayName("QueueStreamService 단위 테스트")
-class QueueStreamServiceTest {
+class QueueSseHandlerTest {
 
     @Test
     @DisplayName("connect는 emitter를 등록하고 최초 상태를 조회한다")
     void connect_registersEmitterAndLoadsInitialStatus() {
         String queueToken = "queue-token";
         QueueStatusService queueStatusService = mock(QueueStatusService.class);
-        QueueStreamService queueStreamService = new QueueStreamService(queueStatusService);
+        QueueSseHandler queueSseHandler = new QueueSseHandler(queueStatusService);
 
         when(queueStatusService.getStatusByQueueToken(queueToken))
                 .thenReturn(QueueStatusResponse.waiting(
@@ -35,10 +34,10 @@ class QueueStreamServiceTest {
                         Instant.now()
                 ));
 
-        SseEmitter emitter = queueStreamService.connect(queueToken);
+        SseEmitter emitter = queueSseHandler.connect(queueToken);
 
         assertThat(emitter).isNotNull();
-        assertThat(emitters(queueStreamService)).containsKey(queueToken);
+        assertThat(emitters(queueSseHandler)).containsKey(queueToken);
         verify(queueStatusService, times(1)).getStatusByQueueToken(queueToken);
     }
 
@@ -47,7 +46,7 @@ class QueueStreamServiceTest {
     void pushStatus_refreshesEmitterState() {
         String queueToken = "queue-token";
         QueueStatusService queueStatusService = mock(QueueStatusService.class);
-        QueueStreamService queueStreamService = new QueueStreamService(queueStatusService);
+        QueueSseHandler queueSseHandler = new QueueSseHandler(queueStatusService);
 
         when(queueStatusService.getStatusByQueueToken(queueToken))
                 .thenReturn(QueueStatusResponse.waiting(
@@ -58,11 +57,11 @@ class QueueStreamServiceTest {
                         Instant.now()
                 ));
 
-        queueStreamService.connect(queueToken);
-        queueStreamService.pushStatus();
+        queueSseHandler.connect(queueToken);
+        queueSseHandler.pushStatus();
 
         verify(queueStatusService, times(2)).getStatusByQueueToken(queueToken);
-        assertThat(emitters(queueStreamService)).containsKey(queueToken);
+        assertThat(emitters(queueSseHandler)).containsKey(queueToken);
     }
 
     @Test
@@ -70,20 +69,43 @@ class QueueStreamServiceTest {
     void pushStatus_removesEmitterOnFailure() {
         String queueToken = "queue-token";
         QueueStatusService queueStatusService = mock(QueueStatusService.class);
-        QueueStreamService queueStreamService = new QueueStreamService(queueStatusService);
+        QueueSseHandler queueSseHandler = new QueueSseHandler(queueStatusService);
 
         when(queueStatusService.getStatusByQueueToken(queueToken))
                 .thenReturn(QueueStatusResponse.admitted(queueToken, "admit-token"))
                 .thenThrow(new RuntimeException("status lookup failed"));
 
-        queueStreamService.connect(queueToken);
-        queueStreamService.pushStatus();
+        queueSseHandler.connect(queueToken);
+        queueSseHandler.pushStatus();
 
-        assertThat(emitters(queueStreamService)).doesNotContainKey(queueToken);
+        assertThat(emitters(queueSseHandler)).doesNotContainKey(queueToken);
+    }
+
+    @Test
+    @DisplayName("내부 종료 정리 로직은 사용자를 leave 처리한다")
+    void leaveAndRemove_callsLeave() {
+        String queueToken = "queue-token";
+        QueueStatusService queueStatusService = mock(QueueStatusService.class);
+        QueueSseHandler queueSseHandler = new QueueSseHandler(queueStatusService);
+
+        when(queueStatusService.getStatusByQueueToken(queueToken))
+                .thenReturn(QueueStatusResponse.waiting(
+                        queueToken,
+                        1L,
+                        1L,
+                        0L,
+                        Instant.now()
+                ));
+
+        SseEmitter emitter = queueSseHandler.connect(queueToken);
+        ReflectionTestUtils.invokeMethod(queueSseHandler, "leaveAndRemove", queueToken, emitter);
+
+        verify(queueStatusService, times(1)).leave(queueToken);
+        assertThat(emitters(queueSseHandler)).doesNotContainKey(queueToken);
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, SseEmitter> emitters(QueueStreamService queueStreamService) {
-        return (Map<String, SseEmitter>) ReflectionTestUtils.getField(queueStreamService, "emitters");
+    private Map<String, SseEmitter> emitters(QueueSseHandler queueSseHandler) {
+        return (Map<String, SseEmitter>) ReflectionTestUtils.getField(queueSseHandler, "emitters");
     }
 }
