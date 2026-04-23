@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -21,6 +22,8 @@ public class QueueStatusStore {
     private static final String WAITING_KEY_PREFIX = "queue:waiting:";
     private static final String ADMITTED_KEY_PREFIX = "queue:admitted:";
     private static final String ADMISSION_HISTORY_KEY_PREFIX = "queue:admission:history:";
+    private static final String ADMIT_TOKEN_KEY_PREFIX = "queue:token:admit:";
+    private static final Duration ADMIT_TOKEN_TTL = Duration.ofMinutes(10);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final QueueStatusHashMapper queueStatusHashMapper;
@@ -134,6 +137,8 @@ public class QueueStatusStore {
                     statusKey(queueToken),
                     queueStatusHashMapper.toAdmittedFields(admitToken, admittedAt)
             );
+            // admitToken은 좌석/결제 단계에서 유효성 확인에 쓸 수 있도록 별도 TTL 키로도 보관한다.
+            stringRedisTemplate.opsForValue().set(admitTokenKey(admitToken), queueToken, ADMIT_TOKEN_TTL);
             stringRedisTemplate.opsForZSet().remove(waitingKey(sessionId), queueToken);
             stringRedisTemplate.opsForZSet().add(admittedKey(sessionId), queueToken, admittedAt.toEpochMilli());
             stringRedisTemplate.opsForZSet().add(admissionHistoryKey(sessionId), queueToken, admittedAt.toEpochMilli());
@@ -190,5 +195,9 @@ public class QueueStatusStore {
 
     private String admissionHistoryKey(Long sessionId) {
         return ADMISSION_HISTORY_KEY_PREFIX + sessionId;
+    }
+
+    private String admitTokenKey(String admitToken) {
+        return ADMIT_TOKEN_KEY_PREFIX + admitToken;
     }
 }
