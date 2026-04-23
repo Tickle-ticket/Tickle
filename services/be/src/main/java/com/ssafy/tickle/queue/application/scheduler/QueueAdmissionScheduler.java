@@ -2,6 +2,7 @@ package com.ssafy.tickle.queue.application.scheduler;
 
 import com.ssafy.tickle.common.util.RedisLockManager;
 import com.ssafy.tickle.queue.application.QueueStatusService;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,8 +16,6 @@ import java.time.Instant;
 @Component
 @RequiredArgsConstructor
 public class QueueAdmissionScheduler {
-
-    private static final String ADMISSION_LOCK_KEY_PREFIX = "lock:queue:admission:";
 
     private final QueueStatusStore queueStatusStore;
     private final QueueStatusService queueStatusService;
@@ -51,6 +50,6 @@ public class QueueAdmissionScheduler {
     }
 
     private String admissionLockKey(Long sessionId) {
-        return ADMISSION_LOCK_KEY_PREFIX + sessionId;
+        return QueueConstants.ADMISSION_LOCK_KEY_PREFIX + sessionId;
     }
 }

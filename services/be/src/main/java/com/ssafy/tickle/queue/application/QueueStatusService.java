@@ -2,6 +2,7 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
@@ -13,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -23,13 +23,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class QueueStatusService {
-
-    private static final Duration QUEUE_TOKEN_TTL = Duration.ofHours(3);
-    private static final Duration ADMIT_TOKEN_TTL = Duration.ofMinutes(10);
-    private static final String QUEUE_TOKEN_REQUEST_KEY_PREFIX = "queue:token:request:";
-
-    private static final Duration ETA_WINDOW = Duration.ofMinutes(3);
-    private static final long DEFAULT_ADMISSION_RATE_PER_MINUTE = 30L;
 
     private final QueueEnterRequestStore queueEnterRequestStore;
     private final QueueStatusStore queueStatusStore;
@@ -110,15 +103,15 @@ public class QueueStatusService {
     }
 
     public Long slotLimit() {
-        return 100L;
+        return QueueConstants.SLOT_LIMIT;
     }
 
-    public Duration queueTokenTtl() {
-        return QUEUE_TOKEN_TTL;
+    public java.time.Duration queueTokenTtl() {
+        return QueueConstants.QUEUE_TOKEN_TTL;
     }
 
-    public Duration admitTokenTtl() {
-        return ADMIT_TOKEN_TTL;
+    public java.time.Duration admitTokenTtl() {
+        return QueueConstants.ADMIT_TOKEN_TTL;
     }
 
     /**
@@ -158,7 +151,7 @@ public class QueueStatusService {
     }
 
     private String issueQueueToken(String requestId) {
-        String requestKey = QUEUE_TOKEN_REQUEST_KEY_PREFIX + requestId;
+        String requestKey = QueueConstants.QUEUE_TOKEN_REQUEST_KEY_PREFIX + requestId;
 
         // 같은 requestId에 대해 최초 1회만 queueToken을 발급하고, 이후에는 기존 토큰을 재사용한다.
         String existingQueueToken = stringRedisTemplate.opsForValue().get(requestKey);
@@ -169,7 +162,11 @@ public class QueueStatusService {
         String queueToken = UUID.randomUUID().toString();
 
         // 같은 requestId에 대해 queueToken을 한 번만 고정 저장한다.
-        Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(requestKey, queueToken, QUEUE_TOKEN_TTL);
+        Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(
+                requestKey,
+                queueToken,
+                QueueConstants.QUEUE_TOKEN_TTL
+        );
         if (Boolean.TRUE.equals(saved)) {
             return queueToken;
         }
@@ -179,7 +176,7 @@ public class QueueStatusService {
     }
 
     private void deleteRelatedTokens(QueueStatusSnapshot snapshot) {
-        stringRedisTemplate.delete(QUEUE_TOKEN_REQUEST_KEY_PREFIX + snapshot.requestId());
+        stringRedisTemplate.delete(QueueConstants.QUEUE_TOKEN_REQUEST_KEY_PREFIX + snapshot.requestId());
         queueEnterRequestStore.delete(snapshot.userId(), snapshot.sessionId(), snapshot.requestId());
     }
 
@@ -189,11 +186,15 @@ public class QueueStatusService {
         }
 
         Instant now = Instant.now();
-        long recentAdmissionCount = queueStatusStore.countRecentAdmissions(sessionId, now.minus(ETA_WINDOW), now);
+        long recentAdmissionCount = queueStatusStore.countRecentAdmissions(
+                sessionId,
+                now.minus(QueueConstants.ETA_WINDOW),
+                now
+        );
         // 아직 admission 기록이 없으면 fallback 처리량으로만 ETA를 추정한다.
         long admissionRatePerMinute = recentAdmissionCount == 0L
-                ? DEFAULT_ADMISSION_RATE_PER_MINUTE
-                : Math.max(1L, recentAdmissionCount / ETA_WINDOW.toMinutes());
+                ? QueueConstants.DEFAULT_ADMISSION_RATE_PER_MINUTE
+                : Math.max(1L, recentAdmissionCount / QueueConstants.ETA_WINDOW.toMinutes());
 
         long aheadCount = rank - 1L;
         return Math.max(0L, (aheadCount * 60L) / admissionRatePerMinute);

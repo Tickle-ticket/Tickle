@@ -2,6 +2,7 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.queue.application.scheduler.QueueAdmissionScheduler;
 import com.ssafy.tickle.queue.application.scheduler.QueueStatusCleanupScheduler;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
@@ -23,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = "queue.enter-request")
+@EmbeddedKafka(partitions = 1, topics = QueueConstants.ENTER_REQUEST_TOPIC)
 @ActiveProfiles("test")
 @DisplayName("QueueStatusCleanupScheduler 통합 테스트")
 class QueueStatusCleanupSchedulerTest {
@@ -72,7 +73,7 @@ class QueueStatusCleanupSchedulerTest {
         QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(sessionId, enterResponse.requestId());
 
         stringRedisTemplate.opsForHash().put(
-                "queue:status:" + tokenResponse.queueToken(),
+                QueueConstants.STATUS_KEY_PREFIX + tokenResponse.queueToken(),
                 "registeredAt",
                 String.valueOf(Instant.now().minus(queueStatusService.queueTokenTtl()).minusSeconds(1).toEpochMilli())
         );
@@ -100,7 +101,7 @@ class QueueStatusCleanupSchedulerTest {
         queueAdmissionScheduler.admitWaitingUsers();
 
         stringRedisTemplate.opsForHash().put(
-                "queue:status:" + tokenResponse.queueToken(),
+                QueueConstants.STATUS_KEY_PREFIX + tokenResponse.queueToken(),
                 "admittedAt",
                 String.valueOf(Instant.now().minus(queueStatusService.admitTokenTtl()).minusSeconds(1).toEpochMilli())
         );

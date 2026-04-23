@@ -1,5 +1,6 @@
 package com.ssafy.tickle.queue.application;
 
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,8 +18,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class QueueSseHandler {
 
-    private static final long SSE_TIMEOUT_MILLIS = 30L * 60L * 1000L;
-
     private final QueueStatusService queueStatusService;
 
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
@@ -32,7 +31,7 @@ public class QueueSseHandler {
     public SseEmitter connect(String queueToken) {
         QueueStatusResponse initialStatus = queueStatusService.getStatusByQueueToken(queueToken);
 
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
+        SseEmitter emitter = new SseEmitter(QueueConstants.SSE_TIMEOUT_MILLIS);
 
         // queueToken 기준으로 emitter를 보관해두고, 이후 scheduler가 같은 사용자에게 상태를 push.
         emitters.put(queueToken, emitter);

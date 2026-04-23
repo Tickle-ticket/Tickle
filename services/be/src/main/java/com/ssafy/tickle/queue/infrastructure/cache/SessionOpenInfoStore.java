@@ -1,5 +1,6 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.SessionOpenInfoHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,6 @@ public class SessionOpenInfoStore {
     }
 
     private String key(Long sessionId) {
-        return "queue:session:" + sessionId;
+        return QueueConstants.SESSION_KEY_PREFIX + sessionId;
     }
 }

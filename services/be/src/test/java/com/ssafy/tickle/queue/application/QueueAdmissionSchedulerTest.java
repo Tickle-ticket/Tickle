@@ -1,6 +1,7 @@
 package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.queue.application.scheduler.QueueAdmissionScheduler;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 대기열 admission scheduler 통합 테스트입니다.
  */
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = "queue.enter-request")
+@EmbeddedKafka(partitions = 1, topics = QueueConstants.ENTER_REQUEST_TOPIC)
 @ActiveProfiles("test")
 @DisplayName("QueueAdmissionScheduler 통합 테스트")
 class QueueAdmissionSchedulerTest {
@@ -60,7 +61,7 @@ class QueueAdmissionSchedulerTest {
     }
 
     @Test
-    @DisplayName("slotLimit 100 기준으로 waiting 상위 100명만 ADMITTED 처리한다")
+        @DisplayName("slotLimit 기준으로 waiting 상위 사용자만 ADMITTED 처리한다")
     void admitWaitingUsers_admitsTopHundredUsersOnly() throws InterruptedException {
         long sessionId = 40L;
         sessionOpenInfoStore.save(new SessionOpenInfo(
@@ -90,12 +91,12 @@ class QueueAdmissionSchedulerTest {
                 .filter(response -> response.status() == QueueRequestStatus.WAITING)
                 .count();
 
-        assertThat(admittedCount).isEqualTo(100L);
+        assertThat(admittedCount).isEqualTo(QueueConstants.SLOT_LIMIT);
         assertThat(waitingCount).isEqualTo(1L);
-        assertThat(queueStatusStore.countAdmitted(sessionId)).isEqualTo(100L);
+        assertThat(queueStatusStore.countAdmitted(sessionId)).isEqualTo(QueueConstants.SLOT_LIMIT);
         assertThat(queueStatusStore.countWaiting(sessionId)).isEqualTo(1L);
         assertThat(queueStatusStore.countRecentAdmissions(sessionId, Instant.now().minusSeconds(60), Instant.now()))
-                .isEqualTo(100L);
+                .isEqualTo(QueueConstants.SLOT_LIMIT);
 
         queueTokens.stream()
                 .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
