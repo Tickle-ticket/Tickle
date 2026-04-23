@@ -13,6 +13,8 @@ import java.time.Instant;
  * @param sessionId 회차 식별자
  * @param status 현재 상태
  * @param registeredAt waiting 등록 시각
+ * @param admitToken 입장 허용 토큰
+ * @param admittedAt 입장 허용 시각
  */
 public record QueueStatusSnapshot(
         String queueToken,
@@ -20,6 +22,8 @@ public record QueueStatusSnapshot(
         Long userId,
         Long sessionId,
         QueueRequestStatus status,
-        Instant registeredAt
+        Instant registeredAt,
+        String admitToken,
+        Instant admittedAt
 ) {
 }

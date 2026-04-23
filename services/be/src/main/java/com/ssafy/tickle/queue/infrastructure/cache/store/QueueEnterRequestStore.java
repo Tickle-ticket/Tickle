@@ -1,12 +1,12 @@
-package com.ssafy.tickle.queue.infrastructure.cache;
+package com.ssafy.tickle.queue.infrastructure.cache.store;
 
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueEnterRequestReferenceHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -15,8 +15,6 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class QueueEnterRequestStore {
-
-    private static final Duration REQUEST_TTL = Duration.ofMinutes(5);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final QueueEnterRequestReferenceHashMapper queueEnterRequestReferenceHashMapper;
@@ -44,7 +42,7 @@ public class QueueEnterRequestStore {
         Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(
                 enterKey(userId, sessionId),
                 requestId,
-                REQUEST_TTL
+                QueueConstants.REQUEST_TTL
         );
 
         if (Boolean.TRUE.equals(saved)) {
@@ -54,7 +52,7 @@ public class QueueEnterRequestStore {
                     referenceKey,
                     queueEnterRequestReferenceHashMapper.toHash(sessionId, userId)
             );
-            stringRedisTemplate.expire(referenceKey, REQUEST_TTL);
+            stringRedisTemplate.expire(referenceKey, QueueConstants.REQUEST_TTL);
         }
 
         return Boolean.TRUE.equals(saved);
@@ -84,10 +82,10 @@ public class QueueEnterRequestStore {
     }
 
     private String enterKey(Long userId, Long sessionId) {
-        return "queue:enter:" + sessionId + ":" + userId;
+        return QueueConstants.ENTER_KEY_PREFIX + sessionId + ":" + userId;
     }
 
     private String referenceKey(String requestId) {
-        return "queue:enter:reference:" + requestId;
+        return QueueConstants.ENTER_REFERENCE_KEY_PREFIX + requestId;
     }
 }

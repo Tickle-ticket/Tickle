@@ -1,5 +1,6 @@
-package com.ssafy.tickle.queue.application;
+package com.ssafy.tickle.queue.application.service;
 
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,9 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 @RequiredArgsConstructor
-public class QueueStreamService {
-
-    private static final long SSE_TIMEOUT_MILLIS = 30L * 60L * 1000L;
+public class QueueSseHandler {
 
     private final QueueStatusService queueStatusService;
 
@@ -32,12 +31,13 @@ public class QueueStreamService {
     public SseEmitter connect(String queueToken) {
         QueueStatusResponse initialStatus = queueStatusService.getStatusByQueueToken(queueToken);
 
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
+        SseEmitter emitter = new SseEmitter(QueueConstants.SSE_TIMEOUT_MILLIS);
+
         // queueToken 기준으로 emitter를 보관해두고, 이후 scheduler가 같은 사용자에게 상태를 push.
         emitters.put(queueToken, emitter);
-        emitter.onCompletion(() -> emitters.remove(queueToken));
-        emitter.onTimeout(() -> emitters.remove(queueToken));
-        emitter.onError(exception -> emitters.remove(queueToken));
+        emitter.onCompletion(() -> leaveAndRemove(queueToken, emitter));
+        emitter.onTimeout(() -> leaveAndRemove(queueToken, emitter));
+        emitter.onError(exception -> leaveAndRemove(queueToken, emitter));
 
         send(queueToken, emitter, initialStatus);
         return emitter;
@@ -53,6 +53,11 @@ public class QueueStreamService {
             SseEmitter emitter = entry.getValue();
             try {
                 QueueStatusResponse response = queueStatusService.getStatusByQueueToken(queueToken);
+                if (response.status() == com.ssafy.tickle.queue.domain.QueueRequestStatus.LEFT) {
+                    emitters.remove(queueToken);
+                    emitter.complete();
+                    continue;
+                }
                 send(queueToken, emitter, response);
             } catch (RuntimeException exception) {
                 // 상태 조회나 전송이 실패한 emitter는 즉시 제거.
@@ -69,9 +74,17 @@ public class QueueStreamService {
                     .id(queueToken)
                     .data(response));
         } catch (IOException | IllegalStateException exception) {
-            emitters.remove(queueToken);
-            emitter.complete();
+            leaveAndRemove(queueToken, emitter);
         }
     }
 
+    private void leaveAndRemove(String queueToken, SseEmitter emitter) {
+        if (emitters.remove(queueToken) == null) {
+            return;
+        }
+
+        // SSE 연결 종료를 사용자의 이탈 신호로 보고 대기열 상태도 함께 정리한다.
+        queueStatusService.leave(queueToken);
+        emitter.complete();
+    }
 }

@@ -13,6 +13,7 @@ import java.time.Instant;
  * @param waitingCount 현재 대기 인원 수
  * @param estimatedWaitSeconds 예상 대기 시간(초)
  * @param estimatedEntryAt 예상 입장 시각
+ * @param admitToken 입장 허용 토큰
  */
 public record QueueStatusResponse(
         String queueToken,
@@ -20,7 +21,8 @@ public record QueueStatusResponse(
         Long rank,
         Long waitingCount,
         Long estimatedWaitSeconds,
-        Instant estimatedEntryAt
+        Instant estimatedEntryAt,
+        String admitToken
 ) {
 
     /**
@@ -46,7 +48,27 @@ public record QueueStatusResponse(
                 rank,
                 waitingCount,
                 estimatedWaitSeconds,
-                estimatedEntryAt
+                estimatedEntryAt,
+                null
+        );
+    }
+
+    /**
+     * ADMITTED 상태 응답을 생성합니다.
+     *
+     * @param queueToken 대기열 토큰
+     * @param admitToken 입장 허용 토큰
+     * @return 상태 조회 응답
+     */
+    public static QueueStatusResponse admitted(String queueToken, String admitToken) {
+        return new QueueStatusResponse(
+                queueToken,
+                QueueRequestStatus.ADMITTED,
+                null,
+                null,
+                null,
+                null,
+                admitToken
         );
     }
 }

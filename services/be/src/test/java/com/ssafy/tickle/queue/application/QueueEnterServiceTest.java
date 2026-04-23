@@ -2,9 +2,11 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.queue.application.service.QueueEnterService;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -35,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 대기열 진입 서비스 통합 테스트입니다.
  */
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = "queue.enter-request")
+@EmbeddedKafka(partitions = 1, topics = QueueConstants.ENTER_REQUEST_TOPIC)
 @ActiveProfiles("test")
 @DisplayName("QueueEnterService 통합 테스트")
 class QueueEnterServiceTest {
@@ -75,7 +77,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(response.status()).isEqualTo(QueueRequestStatus.PENDING);
@@ -92,10 +94,10 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
-            assertThat(stringRedisTemplate.opsForValue().get("queue:enter:" + sessionId + ":" + userId))
+            assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + sessionId + ":" + userId))
                     .isEqualTo(response.requestId());
         }
 
@@ -111,10 +113,10 @@ class QueueEnterServiceTest {
             ));
 
             Consumer<String, String> consumer = createConsumer();
-            embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, "queue.enter-request");
+            embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
-            QueueEnterResponse response = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
-            ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, "queue.enter-request");
+            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(record.key()).isEqualTo(String.valueOf(sessionId));
@@ -136,8 +138,8 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse first = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
-            QueueEnterResponse second = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse first = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse second = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(first.requestId()).isNotBlank();
             assertThat(second.requestId()).isEqualTo(first.requestId());
@@ -154,7 +156,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(new QueueEnterRequest(1L, sessionId)))
+            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
@@ -170,7 +172,7 @@ class QueueEnterServiceTest {
                     Instant.now().minusSeconds(60)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(new QueueEnterRequest(1L, sessionId)))
+            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
@@ -181,7 +183,7 @@ class QueueEnterServiceTest {
         void enter_missingSessionOpenInfo_failsFastWithoutFallback() {
             long sessionId = 13L;
 
-            assertThatThrownBy(() -> queueEnterService.enter(new QueueEnterRequest(1L, sessionId)))
+            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);

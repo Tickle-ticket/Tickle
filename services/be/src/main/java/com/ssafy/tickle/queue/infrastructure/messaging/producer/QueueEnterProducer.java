@@ -1,5 +1,6 @@
-package com.ssafy.tickle.queue.infrastructure.messaging;
+package com.ssafy.tickle.queue.infrastructure.messaging.producer;
 
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.messaging.mapper.QueueEnterMessageMapper;
 import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterMessage;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +16,6 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class QueueEnterProducer {
 
-    private static final String TOPIC = "queue.enter-request";
-
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final QueueEnterMessageMapper queueEnterMessageMapper;
 
@@ -24,7 +23,7 @@ public class QueueEnterProducer {
         try {
             // send().get()으로 브로커 ack까지 확인해야 enter API가 적재 실패를 감지할 수 있다.
             kafkaTemplate.send(
-                    TOPIC,
+                    QueueConstants.ENTER_REQUEST_TOPIC,
                     message.sessionId().toString(),
                     queueEnterMessageMapper.toPayload(message)
             ).get();
