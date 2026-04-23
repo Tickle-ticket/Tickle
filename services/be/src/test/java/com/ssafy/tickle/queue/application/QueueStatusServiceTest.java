@@ -3,6 +3,7 @@ package com.ssafy.tickle.queue.application;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.application.scheduler.QueueAdmissionScheduler;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
@@ -30,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 대기열 상태 조회 서비스 통합 테스트입니다.
  */
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = "queue.enter-request")
+@EmbeddedKafka(partitions = 1, topics = QueueConstants.ENTER_REQUEST_TOPIC)
 @ActiveProfiles("test")
 @DisplayName("QueueStatusService 통합 테스트")
 class QueueStatusServiceTest {

@@ -1,5 +1,6 @@
 package com.ssafy.tickle.queue.infrastructure.cache;
 
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueStatusHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
@@ -7,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
@@ -18,14 +18,6 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class QueueStatusStore {
-
-    private static final String STATUS_KEY_PREFIX = "queue:status:";
-    private static final String WAITING_KEY_PREFIX = "queue:waiting:";
-    private static final String ADMITTED_KEY_PREFIX = "queue:admitted:";
-    private static final String ADMISSION_HISTORY_KEY_PREFIX = "queue:admission:history:";
-    private static final String ADMIT_TOKEN_KEY_PREFIX = "queue:token:admit:";
-    private static final Duration ADMIT_TOKEN_TTL = Duration.ofMinutes(10);
-    private static final Duration TERMINAL_STATUS_TTL = Duration.ofMinutes(10);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final QueueStatusHashMapper queueStatusHashMapper;
@@ -56,7 +48,7 @@ public class QueueStatusStore {
                 statusKey,
                 queueStatusHashMapper.toHash(requestId, userId, sessionId, QueueRequestStatus.WAITING, registeredAt)
         );
-        stringRedisTemplate.expire(statusKey, Duration.ofHours(3));
+        stringRedisTemplate.expire(statusKey, QueueConstants.QUEUE_TOKEN_TTL);
 
         // 해당 회차에서 현재 순번을 계산할 때 사용
         stringRedisTemplate.opsForZSet().add(waitingKey(sessionId), queueToken, registeredAt.toEpochMilli());
@@ -114,14 +106,14 @@ public class QueueStatusStore {
      * 현재 ADMITTED 사용자가 존재하는 회차 목록을 조회합니다.
      */
     public Set<Long> findAdmittedSessionIds() {
-        Set<String> keys = stringRedisTemplate.keys(ADMITTED_KEY_PREFIX + "*");
+        Set<String> keys = stringRedisTemplate.keys(QueueConstants.ADMITTED_KEY_PREFIX + "*");
         if (keys == null || keys.isEmpty()) {
             return Set.of();
         }
 
         Set<Long> sessionIds = new java.util.HashSet<>();
         for (String key : keys) {
-            sessionIds.add(Long.parseLong(key.substring(ADMITTED_KEY_PREFIX.length())));
+            sessionIds.add(Long.parseLong(key.substring(QueueConstants.ADMITTED_KEY_PREFIX.length())));
         }
         return sessionIds;
     }
@@ -175,7 +167,7 @@ public class QueueStatusStore {
                     queueStatusHashMapper.toAdmittedFields(admitToken, admittedAt)
             );
             // admitToken은 좌석/결제 단계에서 유효성 확인에 쓸 수 있도록 별도 TTL 키로도 보관한다.
-            stringRedisTemplate.opsForValue().set(admitTokenKey(admitToken), queueToken, ADMIT_TOKEN_TTL);
+            stringRedisTemplate.opsForValue().set(admitTokenKey(admitToken), queueToken, QueueConstants.ADMIT_TOKEN_TTL);
             stringRedisTemplate.opsForZSet().remove(waitingKey(sessionId), queueToken);
             stringRedisTemplate.opsForZSet().add(admittedKey(sessionId), queueToken, admittedAt.toEpochMilli());
             stringRedisTemplate.opsForZSet().add(admissionHistoryKey(sessionId), queueToken, admittedAt.toEpochMilli());
@@ -188,14 +180,14 @@ public class QueueStatusStore {
      * @return waiting zset이 존재하는 회차 식별자 목록
      */
     public Set<Long> findWaitingSessionIds() {
-        Set<String> keys = stringRedisTemplate.keys(WAITING_KEY_PREFIX + "*");
+        Set<String> keys = stringRedisTemplate.keys(QueueConstants.WAITING_KEY_PREFIX + "*");
         if (keys == null || keys.isEmpty()) {
             return Set.of();
         }
 
         Set<Long> sessionIds = new java.util.HashSet<>();
         for (String key : keys) {
-            sessionIds.add(Long.parseLong(key.substring(WAITING_KEY_PREFIX.length())));
+            sessionIds.add(Long.parseLong(key.substring(QueueConstants.WAITING_KEY_PREFIX.length())));
         }
         return sessionIds;
     }
@@ -228,7 +220,7 @@ public class QueueStatusStore {
                 statusKey(snapshot.queueToken()),
                 queueStatusHashMapper.toTerminalStatusFields(QueueRequestStatus.LEFT)
         );
-        stringRedisTemplate.expire(statusKey(snapshot.queueToken()), TERMINAL_STATUS_TTL);
+        stringRedisTemplate.expire(statusKey(snapshot.queueToken()), QueueConstants.TERMINAL_STATUS_TTL);
     }
 
     /**
@@ -241,27 +233,27 @@ public class QueueStatusStore {
                 statusKey(snapshot.queueToken()),
                 queueStatusHashMapper.toTerminalStatusFields(QueueRequestStatus.EXPIRED)
         );
-        stringRedisTemplate.expire(statusKey(snapshot.queueToken()), TERMINAL_STATUS_TTL);
+        stringRedisTemplate.expire(statusKey(snapshot.queueToken()), QueueConstants.TERMINAL_STATUS_TTL);
     }
 
     private String statusKey(String queueToken) {
-        return STATUS_KEY_PREFIX + queueToken;
+        return QueueConstants.STATUS_KEY_PREFIX + queueToken;
     }
 
     private String waitingKey(Long sessionId) {
-        return WAITING_KEY_PREFIX + sessionId;
+        return QueueConstants.WAITING_KEY_PREFIX + sessionId;
     }
 
     private String admittedKey(Long sessionId) {
-        return ADMITTED_KEY_PREFIX + sessionId;
+        return QueueConstants.ADMITTED_KEY_PREFIX + sessionId;
     }
 
     private String admissionHistoryKey(Long sessionId) {
-        return ADMISSION_HISTORY_KEY_PREFIX + sessionId;
+        return QueueConstants.ADMISSION_HISTORY_KEY_PREFIX + sessionId;
     }
 
     private String admitTokenKey(String admitToken) {
-        return ADMIT_TOKEN_KEY_PREFIX + admitToken;
+        return QueueConstants.ADMIT_TOKEN_KEY_PREFIX + admitToken;
     }
 
     private void removeFromActiveSet(QueueStatusSnapshot snapshot) {

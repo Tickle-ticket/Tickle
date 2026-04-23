@@ -2,6 +2,7 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
@@ -35,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 대기열 진입 서비스 통합 테스트입니다.
  */
 @SpringBootTest
-@EmbeddedKafka(partitions = 1, topics = "queue.enter-request")
+@EmbeddedKafka(partitions = 1, topics = QueueConstants.ENTER_REQUEST_TOPIC)
 @ActiveProfiles("test")
 @DisplayName("QueueEnterService 통합 테스트")
 class QueueEnterServiceTest {
@@ -95,7 +96,7 @@ class QueueEnterServiceTest {
             QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
-            assertThat(stringRedisTemplate.opsForValue().get("queue:enter:" + sessionId + ":" + userId))
+            assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + sessionId + ":" + userId))
                     .isEqualTo(response.requestId());
         }
 
@@ -111,10 +112,10 @@ class QueueEnterServiceTest {
             ));
 
             Consumer<String, String> consumer = createConsumer();
-            embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, "queue.enter-request");
+            embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
             QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
-            ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, "queue.enter-request");
+            ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(record.key()).isEqualTo(String.valueOf(sessionId));
