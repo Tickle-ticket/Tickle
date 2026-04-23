@@ -72,7 +72,7 @@ services:
     restart: always
     mem_limit: 50m
     ports:
-      - "9090:9100"
+      - "9100:9100"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
