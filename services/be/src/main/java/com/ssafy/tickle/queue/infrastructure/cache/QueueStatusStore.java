@@ -19,6 +19,7 @@ public class QueueStatusStore {
 
     private static final String STATUS_KEY_PREFIX = "queue:status:";
     private static final String WAITING_KEY_PREFIX = "queue:waiting:";
+    private static final String ADMITTED_KEY_PREFIX = "queue:admitted:";
     private static final String ADMISSION_HISTORY_KEY_PREFIX = "queue:admission:history:";
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -93,6 +94,71 @@ public class QueueStatusStore {
     }
 
     /**
+     * 현재 입장 허용된 인원 수를 조회합니다.
+     *
+     * @param sessionId 회차 식별자
+     * @return 입장 허용 인원 수
+     */
+    public long countAdmitted(Long sessionId) {
+        Long admittedCount = stringRedisTemplate.opsForZSet().zCard(admittedKey(sessionId));
+        return admittedCount == null ? 0L : admittedCount;
+    }
+
+    /**
+     * waiting 상태 사용자 중 상위 N명을 ADMITTED 상태로 전이합니다.
+     *
+     * @param sessionId 회차 식별자
+     * @param limit 입장시킬 최대 인원 수
+     * @param admittedAt 입장 처리 시각
+     */
+    public void admitWaitingUsers(Long sessionId, long limit, Instant admittedAt) {
+        if (limit <= 0) {
+            return;
+        }
+
+        java.util.Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(sessionId), 0, limit - 1);
+        if (queueTokens == null || queueTokens.isEmpty()) {
+            return;
+        }
+
+        for (String queueToken : queueTokens) {
+            QueueStatusSnapshot snapshot = findSnapshot(queueToken).orElse(null);
+            if (snapshot == null || snapshot.status() != QueueRequestStatus.WAITING) {
+                continue;
+            }
+
+            String admitToken = java.util.UUID.randomUUID().toString();
+
+            // WAITING -> ADMITTED 전이 시점에만 admitToken과 admission history를 함께 기록한다.
+            stringRedisTemplate.opsForHash().putAll(
+                    statusKey(queueToken),
+                    queueStatusHashMapper.toAdmittedFields(admitToken, admittedAt)
+            );
+            stringRedisTemplate.opsForZSet().remove(waitingKey(sessionId), queueToken);
+            stringRedisTemplate.opsForZSet().add(admittedKey(sessionId), queueToken, admittedAt.toEpochMilli());
+            stringRedisTemplate.opsForZSet().add(admissionHistoryKey(sessionId), queueToken, admittedAt.toEpochMilli());
+        }
+    }
+
+    /**
+     * waiting 사용자가 존재하는 회차 목록을 조회합니다.
+     *
+     * @return waiting zset이 존재하는 회차 식별자 목록
+     */
+    public java.util.Set<Long> findWaitingSessionIds() {
+        java.util.Set<String> keys = stringRedisTemplate.keys(WAITING_KEY_PREFIX + "*");
+        if (keys == null || keys.isEmpty()) {
+            return java.util.Set.of();
+        }
+
+        java.util.Set<Long> sessionIds = new java.util.HashSet<>();
+        for (String key : keys) {
+            sessionIds.add(Long.parseLong(key.substring(WAITING_KEY_PREFIX.length())));
+        }
+        return sessionIds;
+    }
+
+    /**
      * 최근 admission 처리량 계산용 기록 수를 조회합니다.
      *
      * @param sessionId 회차 식별자
@@ -116,6 +182,10 @@ public class QueueStatusStore {
 
     private String waitingKey(Long sessionId) {
         return WAITING_KEY_PREFIX + sessionId;
+    }
+
+    private String admittedKey(Long sessionId) {
+        return ADMITTED_KEY_PREFIX + sessionId;
     }
 
     private String admissionHistoryKey(Long sessionId) {

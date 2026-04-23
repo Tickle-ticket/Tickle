@@ -2,6 +2,7 @@ package com.ssafy.tickle.queue.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import com.ssafy.tickle.queue.infrastructure.cache.QueueEnterRequestStore;
@@ -66,6 +67,10 @@ public class QueueStatusService {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
 
+        if (snapshot.status() == QueueRequestStatus.ADMITTED) {
+            return QueueStatusResponse.admitted(queueToken, snapshot.admitToken());
+        }
+
         // 순번과 ETA는 조회 시점의 redis 상태를 읽어 계산.
         Long rank = queueStatusStore.findRank(snapshot.sessionId(), queueToken);
         long waitingCount = queueStatusStore.countWaiting(snapshot.sessionId());
@@ -81,6 +86,10 @@ public class QueueStatusService {
         );
     }
 
+    public Long slotLimit() {
+        return 100L;
+    }
+
     private String issueQueueToken(String requestId) {
         String requestKey = QUEUE_TOKEN_REQUEST_KEY_PREFIX + requestId;
 
@@ -92,7 +101,7 @@ public class QueueStatusService {
 
         String queueToken = UUID.randomUUID().toString();
 
-        // requestId와 queueToken을 양방향으로 저장.
+        // 같은 requestId에 대해 queueToken을 한 번만 고정 저장한다.
         Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(requestKey, queueToken, QUEUE_TOKEN_TTL);
         if (Boolean.TRUE.equals(saved)) {
             return queueToken;
