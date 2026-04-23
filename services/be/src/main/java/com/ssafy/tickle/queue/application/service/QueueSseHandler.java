@@ -1,4 +1,4 @@
-package com.ssafy.tickle.queue.application;
+package com.ssafy.tickle.queue.application.service;
 
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;

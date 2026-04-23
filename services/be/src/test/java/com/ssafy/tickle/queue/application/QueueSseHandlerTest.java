@@ -1,5 +1,7 @@
 package com.ssafy.tickle.queue.application;
 
+import com.ssafy.tickle.queue.application.service.QueueSseHandler;
+import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

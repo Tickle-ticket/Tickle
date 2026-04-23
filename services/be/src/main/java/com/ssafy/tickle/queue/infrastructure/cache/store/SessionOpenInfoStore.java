@@ -1,4 +1,4 @@
-package com.ssafy.tickle.queue.infrastructure.cache;
+package com.ssafy.tickle.queue.infrastructure.cache.store;
 
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.SessionOpenInfoHashMapper;

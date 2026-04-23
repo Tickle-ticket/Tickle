@@ -2,7 +2,7 @@ package com.ssafy.tickle.queue.application.scheduler;
 
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
+import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
