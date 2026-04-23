@@ -37,6 +37,9 @@ dependencies {
 	// kafka
 	implementation 'org.springframework.boot:spring-boot-starter-kafka'
 
+    // Prometheus 메트릭 수집
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
 	// MySQL Driver
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
