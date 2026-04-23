@@ -1,18 +1,15 @@
 // Jenkinsfile
-// 목적: develop-be 브랜치에 코드가 머지되면
-//       자동으로 빌드 → 이미지 push → 서버 배포까지 진행한다.
-
 pipeline {
     agent any
 
     environment {
         BUILD_BE   = 'false'
         BUILD_AUTH = 'false'
+        MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
     }
 
     stages {
 
-        // ── 1단계: 코드 체크아웃 ───────────────────────────────
         stage('Checkout') {
             steps {
                 echo '===== [1/4] 코드 체크아웃 시작 ====='
@@ -22,15 +19,11 @@ pipeline {
             }
         }
 
-        // ── 2단계: 변경된 서비스 감지 ─────────────────────────
-        // git diff로 변경된 파일을 확인해서
-        // 변경된 서비스만 빌드/배포해 불필요한 작업을 줄인다.
         stage('Detect Changes') {
             steps {
                 echo '===== [2/4] 변경된 서비스 감지 시작 ====='
                 script {
                     def changes = sh(
-                        // HEAD~1이 없는 첫 커밋 상황 fallback 처리
                         script: "git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD",
                         returnStdout: true
                     ).trim()
@@ -46,16 +39,9 @@ pipeline {
             }
         }
 
-        // ── 3단계: 병렬 빌드 & 배포 ───────────────────────────
-        // BE와 Auth가 동시에 변경된 경우 병렬로 실행해 배포 시간을 단축한다.
-        // 변경되지 않은 서비스는 자동으로 스킵된다.
         stage('Build & Deploy') {
             parallel {
 
-                // ── BE: 빌드 → push → 배포 ────────────────────
-                // Jenkins 서버(arm64)에서 amd64 빌드 시 QEMU 에뮬레이션으로
-                // 10~20배 느려지므로 서버 1(c6i.large, amd64)에서 네이티브 빌드한다.
-                // SSH 세션을 하나로 통합해 연결 오버헤드를 줄인다.
                 stage('BE') {
                     when { environment name: 'BUILD_BE', value: 'true' }
                     steps {
@@ -69,26 +55,20 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER1_IP} '
                                         set -e
-
                                         echo "[BE] GitLab Registry 로그인"
                                         docker login registry.lab.ssafy.com -u ${GITLAB_USER} -p ${GITLAB_PASS}
-
                                         echo "[BE] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
                                         git checkout develop-be
                                         git pull origin develop-be
-
                                         echo "[BE] Docker 이미지 빌드"
                                         docker build -t ${REGISTRY}/be:latest ./services/be
-
                                         echo "[BE] GitLab Registry push"
                                         docker push ${REGISTRY}/be:latest
-
                                         echo "[BE] 컨테이너 재시작"
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml pull be
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d be
-
                                         echo "[BE] 배포 완료"
                                     '
                                 """
@@ -98,8 +78,6 @@ pipeline {
                     }
                 }
 
-                // ── Auth: 빌드 → push → 배포 ──────────────────
-                // 서버 4(arm64)에서 네이티브 빌드한다.
                 stage('Auth') {
                     when { environment name: 'BUILD_AUTH', value: 'true' }
                     steps {
@@ -113,24 +91,19 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER4_IP} '
                                         set -e
-
                                         echo "[Auth] GitLab Registry 로그인"
                                         docker login registry.lab.ssafy.com -u ${GITLAB_USER} -p ${GITLAB_PASS}
-
                                         echo "[Auth] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
                                         git checkout develop-be
                                         git pull origin develop-be
-
                                         echo "[Auth] Docker 이미지 빌드 및 push"
                                         docker build -t ${REGISTRY}/auth:latest ./services/auth
                                         docker push ${REGISTRY}/auth:latest
-
                                         echo "[Auth] 컨테이너 재시작"
                                         docker compose --env-file .env -f infra/docker-compose/server4-auth.yml pull auth
                                         docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d auth
-
                                         echo "[Auth] 배포 완료"
                                     '
                                 """
@@ -147,23 +120,25 @@ pipeline {
 
     post {
         success {
-            echo """
-            ========================================
-            ✅ CD 배포 성공!
-            브랜치: ${env.GIT_BRANCH}
-            커밋: ${env.GIT_COMMIT}
-            ========================================
-            """
+            script {
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 CD 배포 성공!", "fields": [{"short": true, "title": "👤 작업자", "value": "${author}"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "📋 커밋", "value": "${shortCommit}"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}, {"short": false, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
         }
         failure {
-            echo """
-            ========================================
-            ❌ CD 배포 실패!
-            브랜치: ${env.GIT_BRANCH}
-            커밋: ${env.GIT_COMMIT}
-            빌드 로그를 확인해서 문제를 수정해주세요.
-            ========================================
-            """
+            script {
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def failMsg = ["아 ${author}야 배포 터졌어 빨리 봐 🚨", "${author} CD 나갔는데 ㅋㅋ 확인해", "${author} 서버 죽었다 살려줘 😭", "${author}!! 배포 빨간불 ㅠ 고쳐줘"][new Random().nextInt(4)]
+                def msg = """{"text": "> ${failMsg}", "attachments": [{"color": "#ff4444", "title": "💥 CD 배포 실패!", "fields": [{"short": true, "title": "👤 담당자", "value": "**${author}**"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "📋 커밋", "value": "${shortCommit}"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}, {"short": false, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
         }
         always {
             echo '===== CD 파이프라인 종료 ====='
