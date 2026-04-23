@@ -24,7 +24,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class QueueStatusService {
 
-    private static final Duration QUEUE_TOKEN_TTL = Duration.ofMinutes(30);
+    private static final Duration QUEUE_TOKEN_TTL = Duration.ofHours(3);
     private static final String QUEUE_TOKEN_REQUEST_KEY_PREFIX = "queue:token:request:";
 
     private static final Duration ETA_WINDOW = Duration.ofMinutes(3);
