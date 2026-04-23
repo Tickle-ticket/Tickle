@@ -3,6 +3,7 @@ package com.ssafy.tickle.queue.application;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.application.scheduler.QueueAdmissionScheduler;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
@@ -38,6 +39,9 @@ class QueueStatusServiceTest {
 
     @Autowired
     private QueueStatusService queueStatusService;
+
+    @Autowired
+    private QueueAdmissionScheduler queueAdmissionScheduler;
 
     @Autowired
     private SessionOpenInfoStore sessionOpenInfoStore;
@@ -133,6 +137,34 @@ class QueueStatusServiceTest {
             assertThat(statusResponse.waitingCount()).isEqualTo(1L);
             assertThat(statusResponse.estimatedWaitSeconds()).isEqualTo(0L);
             assertThat(statusResponse.estimatedEntryAt()).isNotNull();
+            assertThat(statusResponse.admitToken()).isNull();
+        }
+
+        @Test
+        @DisplayName("admission 이후에는 ADMITTED 상태와 admitToken을 반환한다")
+        void getStatusByQueueToken_returnsAdmittedStatus() {
+            long sessionId = 31L;
+            long userId = 1L;
+            sessionOpenInfoStore.save(new SessionOpenInfo(
+                    sessionId,
+                    Instant.now().minusSeconds(60),
+                    Instant.now().plusSeconds(600)
+            ));
+
+            QueueEnterResponse enterResponse = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(enterResponse.requestId());
+
+            queueAdmissionScheduler.admitWaitingUsers();
+
+            QueueStatusResponse statusResponse = queueStatusService.getStatusByQueueToken(tokenResponse.queueToken());
+
+            assertThat(statusResponse.queueToken()).isEqualTo(tokenResponse.queueToken());
+            assertThat(statusResponse.status()).isEqualTo(QueueRequestStatus.ADMITTED);
+            assertThat(statusResponse.rank()).isNull();
+            assertThat(statusResponse.waitingCount()).isNull();
+            assertThat(statusResponse.estimatedWaitSeconds()).isNull();
+            assertThat(statusResponse.estimatedEntryAt()).isNull();
+            assertThat(statusResponse.admitToken()).isNotBlank();
         }
     }
 }

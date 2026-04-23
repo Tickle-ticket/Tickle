@@ -19,6 +19,8 @@ public class QueueStatusHashMapper {
     private static final String SESSION_ID = "sessionId";
     private static final String STATUS = "status";
     private static final String REGISTERED_AT = "registeredAt";
+    private static final String ADMIT_TOKEN = "admitToken";
+    private static final String ADMITTED_AT = "admittedAt";
 
     public Map<String, String> toHash(
             String requestId,
@@ -36,6 +38,14 @@ public class QueueStatusHashMapper {
         );
     }
 
+    public Map<String, String> toAdmittedFields(String admitToken, Instant admittedAt) {
+        return Map.of(
+                STATUS, QueueRequestStatus.ADMITTED.name(),
+                ADMIT_TOKEN, admitToken,
+                ADMITTED_AT, String.valueOf(admittedAt.toEpochMilli())
+        );
+    }
+
     public Optional<QueueStatusSnapshot> fromHash(String queueToken, Map<Object, Object> entries) {
         Object requestId = entries.get(REQUEST_ID);
         Object userId = entries.get(USER_ID);
@@ -46,13 +56,18 @@ public class QueueStatusHashMapper {
             return Optional.empty();
         }
 
+        Object admitToken = entries.get(ADMIT_TOKEN);
+        Object admittedAt = entries.get(ADMITTED_AT);
+
         return Optional.of(new QueueStatusSnapshot(
                 queueToken,
                 requestId.toString(),
                 Long.parseLong(userId.toString()),
                 Long.parseLong(sessionId.toString()),
                 QueueRequestStatus.valueOf(status.toString()),
-                Instant.ofEpochMilli(Long.parseLong(registeredAt.toString()))
+                Instant.ofEpochMilli(Long.parseLong(registeredAt.toString())),
+                admitToken == null ? null : admitToken.toString(),
+                admittedAt == null ? null : Instant.ofEpochMilli(Long.parseLong(admittedAt.toString()))
         ));
     }
 }
