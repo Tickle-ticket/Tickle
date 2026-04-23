@@ -9,7 +9,7 @@ export const Header = () => {
   const [searchValue, setSearchValue] = useState('');
 
   return (
-    <header className="sticky top-0 z-50 bg-[#f8f8f8] dark:bg-zinc-950 w-full flex items-center justify-between border-b border-black/10 dark:border-white/10 pt-3 pb-3 mb-6">
+    <header className="sticky top-0 z-50 bg-[#f8f8f8] w-full flex items-center justify-between border-b border-black/10 pt-3 pb-3 mb-6">
 
       {/* Left: Logo */}
       <div className="flex items-center gap-12">

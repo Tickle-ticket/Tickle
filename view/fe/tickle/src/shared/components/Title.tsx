@@ -54,7 +54,7 @@ export const Title = ({
   };
 
   return (
-    <header className={`w-full bg-transparent flex flex-col ${bottomBorder ? 'border-b border-black/10 dark:border-white/10' : ''} ${className}`}>
+    <header className={`w-full bg-transparent flex flex-col ${bottomBorder ? 'border-b border-black/10' : ''} ${className}`}>
       {/* 1. 상단 액션바 영역 (뒤로가기, 닫기 등 아이콘이 있을 때만 표출) */}
       {(leftIcon || rightElement) && (
         <div className="flex items-center justify-between h-[48px] px-2">

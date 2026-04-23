@@ -28,13 +28,3 @@ export const LargeBlack: Story = {
     size: 'large',
   },
 };
-
-export const WhiteOnDark: Story = {
-  parameters: {
-    backgrounds: { default: 'dark' },
-  },
-  args: {
-    variant: 'white',
-    size: 'large',
-  },
-};

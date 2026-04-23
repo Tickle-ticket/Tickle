@@ -77,7 +77,7 @@ export const DetailView = () => {
   };
 
   return (
-    <div className="flex w-full h-screen bg-[#f8f8f8] dark:bg-zinc-950 font-sans overflow-hidden relative">
+    <div className="flex w-full h-screen bg-[#f8f8f8] font-sans overflow-hidden relative">
 
       {/* Left Column: Shared BannerPoster Component */}
       <aside
@@ -129,14 +129,14 @@ export const DetailView = () => {
             <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setIsBooking(true)}>
               예매하기
             </Button>
-            <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10 dark:border-white/10">
+            <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10">
               취소표 대기하기
             </Button>
           </div>
         </section>
 
         {/* Content Section with Sticky Timeline */}
-        <section className="mt-24 pt-16 grid grid-cols-1 lg:grid-cols-[100px_1fr] gap-8 border-t border-black/10 dark:border-white/10 relative items-start">
+        <section className="mt-24 pt-16 grid grid-cols-1 lg:grid-cols-[100px_1fr] gap-8 border-t border-black/10 relative items-start">
 
           {/* Left: Sticky Timeline Navigation */}
           <div className="sticky top-32 self-start">
@@ -152,13 +152,13 @@ export const DetailView = () => {
 
             {/* 1. 공연 정보 */}
             <div id="info" className="scroll-mt-32 w-full">
-              <Box variant="flat" padding="medium" className="w-full border border-black/5 dark:border-white/5">
+              <Box variant="flat" padding="medium" className="w-full border border-black/5">
                 <div className="flex flex-col items-start gap-4">
                   <Title title="공연 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
                   <div className="flex flex-col gap-6 w-full">
                     {data?.sections?.info.content.map((item, idx) => (
                       <div key={idx} className="flex flex-col gap-1.5">
-                        <Text typography="t6" fontWeight="bold" color="black">{item.title}</Text>
+                        <Text typography="t6" fontWeight="bold" color="primary">{item.title}</Text>
                         <div className="flex flex-col gap-0.5">
                           {item.descriptions.map((desc, dIdx) => (
                             <Text key={dIdx} typography="t6" color="secondary">{desc}</Text>
@@ -177,10 +177,10 @@ export const DetailView = () => {
                 id="price"
                 className={`scroll-mt-32 transition-all duration-500 ease-in-out ${isBannerFolded ? 'w-[calc(50%-1rem)]' : 'w-full'}`}
               >
-                <Box variant="flat" padding="medium" className="w-full border border-black/5 dark:border-white/5">
+                <Box variant="flat" padding="medium" className="w-full border border-black/5">
                   <div className="flex flex-col items-start gap-4 w-full">
                     <Title title="가격 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
-                    <div className="w-full border border-gray-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+                    <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
                       <Table
                         columns={data?.sections?.price.columns || []}
                         data={data?.sections?.price.data || []}
@@ -196,7 +196,7 @@ export const DetailView = () => {
                 id="schedule"
                 className={`scroll-mt-32 transition-all duration-500 ease-in-out ${isBannerFolded ? 'w-[calc(50%-1rem)]' : 'w-full'}`}
               >
-                <Box variant="flat" padding="medium" className="w-full border border-black/5 dark:border-white/5">
+                <Box variant="flat" padding="medium" className="w-full border border-black/5">
                   <div className="flex flex-col items-start gap-4 w-full">
                     <Title title="공연 일정" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
                     <div className="flex flex-col gap-8 w-full mt-2">
@@ -217,7 +217,7 @@ export const DetailView = () => {
                               {selectedSchedule.time.split(', ').map((timeStr: string, idx: number) => (
                                 <div
                                   key={idx}
-                                  className="inline-flex items-center justify-center px-6 py-3 border border-gray-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900"
+                                  className="inline-flex items-center justify-center px-6 py-3 border border-gray-200 rounded-xl bg-white"
                                 >
                                   <Text typography="t6" fontWeight="bold" color="primary">{timeStr}</Text>
                                 </div>
@@ -225,7 +225,7 @@ export const DetailView = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center h-full min-h-[200px] border border-dashed border-gray-300 dark:border-zinc-800 rounded-xl bg-gray-50/50 dark:bg-zinc-900/50">
+                          <div className="flex items-center justify-center h-full min-h-[200px] border border-dashed border-gray-300 rounded-xl bg-gray-50/50">
                             <Text typography="t6" color="tertiary">관람하실 날짜를 캘린더에서 선택해주세요.</Text>
                           </div>
                         )}
@@ -238,7 +238,7 @@ export const DetailView = () => {
 
             {/* 4. 공연 상세 정보 */}
             <div id="details" className="scroll-mt-32 w-full">
-              <Box variant="flat" padding="medium" className="w-full border border-black/5 dark:border-white/5">
+              <Box variant="flat" padding="medium" className="w-full border border-black/5">
                 <div className="flex flex-col items-start gap-4">
                   <Title title="상세 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
                   {data?.sections?.details.imageUrl && (
@@ -246,7 +246,7 @@ export const DetailView = () => {
                       <img
                         src={data.sections.details.imageUrl}
                         alt="공연 상세 안내"
-                        className="w-full h-auto object-contain rounded-lg border border-black/5 dark:border-white/5"
+                        className="w-full h-auto object-contain rounded-lg border border-black/5"
                       />
                     </div>
                   )}
@@ -265,7 +265,7 @@ export const DetailView = () => {
 
       {/* Booking Overlay */}
       {isBooking && (
-        <div className="fixed inset-0 z-50 bg-white dark:bg-zinc-950 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <BookView onClose={() => setIsBooking(false)} />
         </div>
       )}

@@ -29,12 +29,12 @@ type Story = StoryObj<typeof meta>;
 const InteractiveToggle = (args: any) => {
   const [isFolded, setIsFolded] = useState(false);
   return (
-    <div className="relative w-[300px] h-[300px] border border-dashed border-gray-300 rounded-lg bg-gray-50 dark:bg-zinc-900 flex flex-col items-center justify-center gap-4 overflow-hidden">
+    <div className="relative w-[300px] h-[300px] border border-dashed border-gray-300 rounded-lg bg-gray-50 flex flex-col items-center justify-center gap-4 overflow-hidden">
       <p className="text-sm text-gray-500">클릭하여 상태 전환 테스트</p>
       
       {/* 가상 사이드바 배경 (시각적 피드백용) */}
       <div 
-        className={`absolute top-0 bottom-0 bg-white dark:bg-zinc-800 shadow-md transition-all duration-500 ${
+        className={`absolute top-0 bottom-0 bg-white shadow-md transition-all duration-500 ${
           args.side === 'right' 
             ? `right-0 ${isFolded ? 'w-0' : 'w-20'}`
             : `left-0 ${isFolded ? 'w-0' : 'w-20'}`

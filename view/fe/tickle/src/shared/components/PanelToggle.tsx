@@ -11,7 +11,7 @@ export const PanelToggle = ({
 }: PanelToggleProps) => {
   if (isLoading) {
     return (
-      <div className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-50 w-12 h-12 bg-gray-200 dark:bg-zinc-800 rounded-full animate-pulse ${className}`} />
+      <div className={`hidden lg:block absolute top-1/2 -translate-y-1/2 z-50 w-12 h-12 bg-gray-200 rounded-full animate-pulse ${className}`} />
     );
   }
 
@@ -38,7 +38,7 @@ export const PanelToggle = ({
   return (
     <button
       onClick={onToggle}
-      className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 z-50 items-center justify-center w-8 h-16 bg-white dark:bg-zinc-900 border border-black/10 dark:border-white/10 shadow-lg text-zinc-500 hover:text-black dark:hover:text-white transition-all duration-500 ease-in-out ${variantStyles} ${!className.includes('left-') && !className.includes('right-') ? defaultPosition : ''} ${className}`}
+      className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 z-50 items-center justify-center w-8 h-16 bg-white border border-black/10 shadow-lg text-zinc-500 hover:text-black transition-all duration-500 ease-in-out ${variantStyles} ${!className.includes('left-') && !className.includes('right-') ? defaultPosition : ''} ${className}`}
       aria-label={isFolded ? "포스터 열기" : "포스터 닫기"}
     >
       <svg
