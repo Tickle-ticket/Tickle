@@ -12,5 +12,11 @@ public enum QueueRequestStatus {
     WAITING,
 
     // 입장 승인
-    ADMITTED
+    ADMITTED,
+
+    // 사용자의 명시적 이탈
+    LEFT,
+
+    // heartbeat 미수신 또는 TTL 만료
+    EXPIRED
 }

@@ -29,29 +29,30 @@ public class QueueEnterService {
     /**
      * 사용자의 대기열 진입 등록 요청을 접수합니다.
      *
+     * @param sessionId 예매 대상 회차 식별자
      * @param request 대기열 진입 요청
      * @return 접수된 요청 식별자
      */
-    public QueueEnterResponse enter(QueueEnterRequest request) {
+    public QueueEnterResponse enter(Long sessionId, QueueEnterRequest request) {
         // queue enter는 DB를 직접 보지 않고 미리 적재된 회차 오픈 정보를 기준으로만 검증한다.
-        SessionOpenInfo sessionOpenInfo = sessionOpenInfoStore.findBySessionId(request.sessionId())
+        SessionOpenInfo sessionOpenInfo = sessionOpenInfoStore.findBySessionId(sessionId)
                 .orElseThrow(() -> new BaseException(
                         GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 회차이거나, 예매 예정인 회차가 아닙니다."
                 ));
 
         validateQueueEntry(sessionOpenInfo, Instant.now());
 
-        String existingRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
+        String existingRequestId = queueEnterRequestStore.findRequestId(request.userId(), sessionId)
                 .orElse(null);
         if (existingRequestId != null) {
             return QueueEnterResponse.pending(existingRequestId);
         }
 
         String requestId = UUID.randomUUID().toString();
-        boolean saved = queueEnterRequestStore.saveIfAbsent(request.userId(), request.sessionId(), requestId);
+        boolean saved = queueEnterRequestStore.saveIfAbsent(request.userId(), sessionId, requestId);
         if (!saved) {
             // setIfAbsent 경합에서 졌다면, 먼저 저장된 requestId를 그대로 재사용한다.
-            String duplicatedRequestId = queueEnterRequestStore.findRequestId(request.userId(), request.sessionId())
+            String duplicatedRequestId = queueEnterRequestStore.findRequestId(request.userId(), sessionId)
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
         }
@@ -61,12 +62,12 @@ public class QueueEnterService {
             queueEnterProducer.publish(new QueueEnterMessage(
                     requestId,
                     request.userId(),
-                    request.sessionId(),
+                    sessionId,
                     Instant.now()
             ));
         } catch (RuntimeException exception) {
             // Kafka 적재에 실패하면 중복 진입 방지 키도 함께 제거해 재시도를 허용한다.
-            queueEnterRequestStore.delete(request.userId(), request.sessionId(), requestId);
+            queueEnterRequestStore.delete(request.userId(), sessionId, requestId);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "대기열 진입 요청 적재에 실패했습니다.");
         }
 

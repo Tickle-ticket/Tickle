@@ -25,6 +25,7 @@ import java.util.UUID;
 public class QueueStatusService {
 
     private static final Duration QUEUE_TOKEN_TTL = Duration.ofHours(3);
+    private static final Duration ADMIT_TOKEN_TTL = Duration.ofMinutes(10);
     private static final String QUEUE_TOKEN_REQUEST_KEY_PREFIX = "queue:token:request:";
 
     private static final Duration ETA_WINDOW = Duration.ofMinutes(3);
@@ -57,6 +58,15 @@ public class QueueStatusService {
         return QueueTokenResponse.waiting(queueToken);
     }
 
+    public QueueTokenResponse getQueueToken(Long sessionId, String requestId) {
+        QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
+        if (!reference.sessionId().equals(sessionId)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 회차와 대기열 진입 요청의 회차가 일치하지 않습니다.");
+        }
+        return getQueueToken(requestId);
+    }
+
     /**
      * queueToken 기준 현재 대기 상태를 조회합니다.
      *
@@ -69,6 +79,10 @@ public class QueueStatusService {
 
         if (snapshot.status() == QueueRequestStatus.ADMITTED) {
             return QueueStatusResponse.admitted(queueToken, snapshot.admitToken());
+        }
+
+        if (snapshot.status() != QueueRequestStatus.WAITING) {
+            return new QueueStatusResponse(queueToken, snapshot.status(), null, null, null, null, null);
         }
 
         // 순번과 ETA는 조회 시점의 redis 상태를 읽어 계산.
@@ -86,8 +100,61 @@ public class QueueStatusService {
         );
     }
 
+    public QueueStatusResponse getStatusByQueueToken(Long sessionId, String queueToken) {
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
+        if (!snapshot.sessionId().equals(sessionId)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 회차와 대기열 토큰의 회차가 일치하지 않습니다.");
+        }
+        return getStatusByQueueToken(queueToken);
+    }
+
     public Long slotLimit() {
         return 100L;
+    }
+
+    public Duration queueTokenTtl() {
+        return QUEUE_TOKEN_TTL;
+    }
+
+    public Duration admitTokenTtl() {
+        return ADMIT_TOKEN_TTL;
+    }
+
+    /**
+     * 대기열 사용자의 명시적 이탈을 처리합니다.
+     */
+    public void leave(String queueToken) {
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
+
+        if (snapshot.status() != QueueRequestStatus.WAITING && snapshot.status() != QueueRequestStatus.ADMITTED) {
+            return;
+        }
+
+        queueStatusStore.leave(snapshot);
+        deleteRelatedTokens(snapshot);
+    }
+
+    public void leave(Long sessionId, String queueToken) {
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
+        if (!snapshot.sessionId().equals(sessionId)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 회차와 대기열 토큰의 회차가 일치하지 않습니다.");
+        }
+        leave(queueToken);
+    }
+
+    public void expire(String queueToken) {
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
+
+        if (snapshot.status() != QueueRequestStatus.WAITING && snapshot.status() != QueueRequestStatus.ADMITTED) {
+            return;
+        }
+
+        queueStatusStore.expire(snapshot);
+        deleteRelatedTokens(snapshot);
     }
 
     private String issueQueueToken(String requestId) {
@@ -109,6 +176,11 @@ public class QueueStatusService {
 
         // 동시에 여러 요청이 들어오면 이미 다른 스레드가 저장한 queueToken을 다시 읽어 반환.
         return stringRedisTemplate.opsForValue().get(requestKey);
+    }
+
+    private void deleteRelatedTokens(QueueStatusSnapshot snapshot) {
+        stringRedisTemplate.delete(QUEUE_TOKEN_REQUEST_KEY_PREFIX + snapshot.requestId());
+        queueEnterRequestStore.delete(snapshot.userId(), snapshot.sessionId(), snapshot.requestId());
     }
 
     private long estimateWaitSeconds(Long sessionId, Long rank) {

@@ -46,6 +46,12 @@ public class QueueStatusHashMapper {
         );
     }
 
+    public Map<String, String> toTerminalStatusFields(QueueRequestStatus status) {
+        return Map.of(
+                STATUS, status.name()
+        );
+    }
+
     public Optional<QueueStatusSnapshot> fromHash(String queueToken, Map<Object, Object> entries) {
         Object requestId = entries.get(REQUEST_ID);
         Object userId = entries.get(USER_ID);

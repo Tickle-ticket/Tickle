@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 대기열 상태 조회에 필요한 queueToken 메타데이터와 waiting 순서를 Redis에 저장합니다.
@@ -24,6 +25,7 @@ public class QueueStatusStore {
     private static final String ADMISSION_HISTORY_KEY_PREFIX = "queue:admission:history:";
     private static final String ADMIT_TOKEN_KEY_PREFIX = "queue:token:admit:";
     private static final Duration ADMIT_TOKEN_TTL = Duration.ofMinutes(10);
+    private static final Duration TERMINAL_STATUS_TTL = Duration.ofMinutes(10);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final QueueStatusHashMapper queueStatusHashMapper;
@@ -54,6 +56,7 @@ public class QueueStatusStore {
                 statusKey,
                 queueStatusHashMapper.toHash(requestId, userId, sessionId, QueueRequestStatus.WAITING, registeredAt)
         );
+        stringRedisTemplate.expire(statusKey, Duration.ofHours(3));
 
         // 해당 회차에서 현재 순번을 계산할 때 사용
         stringRedisTemplate.opsForZSet().add(waitingKey(sessionId), queueToken, registeredAt.toEpochMilli());
@@ -108,6 +111,40 @@ public class QueueStatusStore {
     }
 
     /**
+     * 현재 ADMITTED 사용자가 존재하는 회차 목록을 조회합니다.
+     */
+    public Set<Long> findAdmittedSessionIds() {
+        Set<String> keys = stringRedisTemplate.keys(ADMITTED_KEY_PREFIX + "*");
+        if (keys == null || keys.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Long> sessionIds = new java.util.HashSet<>();
+        for (String key : keys) {
+            sessionIds.add(Long.parseLong(key.substring(ADMITTED_KEY_PREFIX.length())));
+        }
+        return sessionIds;
+    }
+
+    public Set<String> findWaitingQueueTokens(Long sessionId) {
+        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(sessionId), 0, -1);
+        return queueTokens == null ? Set.of() : queueTokens;
+    }
+
+    public Set<String> findAdmittedQueueTokens(Long sessionId) {
+        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(admittedKey(sessionId), 0, -1);
+        return queueTokens == null ? Set.of() : queueTokens;
+    }
+
+    public void removeWaitingQueueToken(Long sessionId, String queueToken) {
+        stringRedisTemplate.opsForZSet().remove(waitingKey(sessionId), queueToken);
+    }
+
+    public void removeAdmittedQueueToken(Long sessionId, String queueToken) {
+        stringRedisTemplate.opsForZSet().remove(admittedKey(sessionId), queueToken);
+    }
+
+    /**
      * waiting 상태 사용자 중 상위 N명을 ADMITTED 상태로 전이합니다.
      *
      * @param sessionId 회차 식별자
@@ -119,7 +156,7 @@ public class QueueStatusStore {
             return;
         }
 
-        java.util.Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(sessionId), 0, limit - 1);
+        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(sessionId), 0, limit - 1);
         if (queueTokens == null || queueTokens.isEmpty()) {
             return;
         }
@@ -150,13 +187,13 @@ public class QueueStatusStore {
      *
      * @return waiting zset이 존재하는 회차 식별자 목록
      */
-    public java.util.Set<Long> findWaitingSessionIds() {
-        java.util.Set<String> keys = stringRedisTemplate.keys(WAITING_KEY_PREFIX + "*");
+    public Set<Long> findWaitingSessionIds() {
+        Set<String> keys = stringRedisTemplate.keys(WAITING_KEY_PREFIX + "*");
         if (keys == null || keys.isEmpty()) {
-            return java.util.Set.of();
+            return Set.of();
         }
 
-        java.util.Set<Long> sessionIds = new java.util.HashSet<>();
+        Set<Long> sessionIds = new java.util.HashSet<>();
         for (String key : keys) {
             sessionIds.add(Long.parseLong(key.substring(WAITING_KEY_PREFIX.length())));
         }
@@ -181,6 +218,32 @@ public class QueueStatusStore {
         return admittedCount == null ? 0L : admittedCount;
     }
 
+    /**
+     * 사용자의 명시적 이탈을 반영합니다.
+     */
+    public void leave(QueueStatusSnapshot snapshot) {
+        removeFromActiveSet(snapshot);
+        deleteAdmitToken(snapshot.admitToken());
+        stringRedisTemplate.opsForHash().putAll(
+                statusKey(snapshot.queueToken()),
+                queueStatusHashMapper.toTerminalStatusFields(QueueRequestStatus.LEFT)
+        );
+        stringRedisTemplate.expire(statusKey(snapshot.queueToken()), TERMINAL_STATUS_TTL);
+    }
+
+    /**
+     * 상태별 TTL이 지난 사용자를 자동 정리합니다.
+     */
+    public void expire(QueueStatusSnapshot snapshot) {
+        removeFromActiveSet(snapshot);
+        deleteAdmitToken(snapshot.admitToken());
+        stringRedisTemplate.opsForHash().putAll(
+                statusKey(snapshot.queueToken()),
+                queueStatusHashMapper.toTerminalStatusFields(QueueRequestStatus.EXPIRED)
+        );
+        stringRedisTemplate.expire(statusKey(snapshot.queueToken()), TERMINAL_STATUS_TTL);
+    }
+
     private String statusKey(String queueToken) {
         return STATUS_KEY_PREFIX + queueToken;
     }
@@ -199,5 +262,22 @@ public class QueueStatusStore {
 
     private String admitTokenKey(String admitToken) {
         return ADMIT_TOKEN_KEY_PREFIX + admitToken;
+    }
+
+    private void removeFromActiveSet(QueueStatusSnapshot snapshot) {
+        if (snapshot.status() == QueueRequestStatus.WAITING) {
+            stringRedisTemplate.opsForZSet().remove(waitingKey(snapshot.sessionId()), snapshot.queueToken());
+            return;
+        }
+
+        if (snapshot.status() == QueueRequestStatus.ADMITTED) {
+            stringRedisTemplate.opsForZSet().remove(admittedKey(snapshot.sessionId()), snapshot.queueToken());
+        }
+    }
+
+    private void deleteAdmitToken(String admitToken) {
+        if (admitToken != null && !admitToken.isBlank()) {
+            stringRedisTemplate.delete(admitTokenKey(admitToken));
+        }
     }
 }
