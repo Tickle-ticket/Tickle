@@ -71,8 +71,8 @@ class QueueAdmissionSchedulerTest {
 
         List<String> queueTokens = new ArrayList<>();
         for (long userId = 1L; userId <= 101L; userId++) {
-            QueueEnterResponse enterResponse = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(enterResponse.requestId());
+            QueueEnterResponse enterResponse = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(sessionId, enterResponse.requestId());
             queueTokens.add(tokenResponse.queueToken());
 
             // waiting zset score를 등록 순서대로 분리해 admission 순서를 안정적으로 만든다.
@@ -82,11 +82,11 @@ class QueueAdmissionSchedulerTest {
         queueAdmissionScheduler.admitWaitingUsers();
 
         long admittedCount = queueTokens.stream()
-                .map(queueStatusService::getStatusByQueueToken)
+                .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.ADMITTED)
                 .count();
         long waitingCount = queueTokens.stream()
-                .map(queueStatusService::getStatusByQueueToken)
+                .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.WAITING)
                 .count();
 
@@ -98,7 +98,7 @@ class QueueAdmissionSchedulerTest {
                 .isEqualTo(100L);
 
         queueTokens.stream()
-                .map(queueStatusService::getStatusByQueueToken)
+                .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.ADMITTED)
                 .forEach(response -> assertThat(response.admitToken()).isNotBlank());
     }

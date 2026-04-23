@@ -75,7 +75,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(response.status()).isEqualTo(QueueRequestStatus.PENDING);
@@ -92,7 +92,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(stringRedisTemplate.opsForValue().get("queue:enter:" + sessionId + ":" + userId))
@@ -113,7 +113,7 @@ class QueueEnterServiceTest {
             Consumer<String, String> consumer = createConsumer();
             embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, "queue.enter-request");
 
-            QueueEnterResponse response = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
             ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, "queue.enter-request");
 
             assertThat(response.requestId()).isNotBlank();
@@ -136,8 +136,8 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse first = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
-            QueueEnterResponse second = queueEnterService.enter(new QueueEnterRequest(userId, sessionId));
+            QueueEnterResponse first = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse second = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(first.requestId()).isNotBlank();
             assertThat(second.requestId()).isEqualTo(first.requestId());
@@ -154,7 +154,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(new QueueEnterRequest(1L, sessionId)))
+            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
@@ -170,7 +170,7 @@ class QueueEnterServiceTest {
                     Instant.now().minusSeconds(60)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(new QueueEnterRequest(1L, sessionId)))
+            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
@@ -181,7 +181,7 @@ class QueueEnterServiceTest {
         void enter_missingSessionOpenInfo_failsFastWithoutFallback() {
             long sessionId = 13L;
 
-            assertThatThrownBy(() -> queueEnterService.enter(new QueueEnterRequest(1L, sessionId)))
+            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
