@@ -7,11 +7,11 @@ __pycache__/
 venv/
 env/
 
-# --- Data (로컬에만 유지, git 제외) ---
+# --- Data (로컬?�만 ?��?, git ?�외) ---
 data/
 *.jsonl
 
-# --- Models (학습 완료 파일 git 제외) ---
+# --- Models (?�습 ?�료 ?�일 git ?�외) ---
 models/**/*.pkl
 models/**/*.pt
 models/**/*.joblib
@@ -30,7 +30,7 @@ logs/
 artifacts/
 outputs/
 
-# --- Node (front-demo 등 node 모듈 제외) ---
+# --- Node (front-demo ??node 모듈 ?�외) ---
 node_modules/
 
 # --- IDE ---
@@ -50,7 +50,7 @@ Thumbs.db
 # --- Temp ---
 tmp/
 temp/
-*.tmpgit add services/ai/.gitignore
+*.tmp
 
-# --- automouse 사용자 로컬 설정 ---
+# --- automouse ?�용??로컬 ?�정 ---
 automouse_data.json
