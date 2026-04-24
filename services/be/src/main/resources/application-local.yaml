@@ -68,6 +68,9 @@ management:
   otlp:
     tracing:
       endpoint: http://${SERVER3_PRIVATE_IP}:4317
+    metrics:
+      export:
+        enabled: false
 
 springdoc:
   # Swagger UI와 OpenAPI 문서 경로 설정
