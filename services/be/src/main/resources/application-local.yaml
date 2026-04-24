@@ -52,25 +52,19 @@ server:
   port: ${SERVER_PORT}
 
 management:
-  # Actuator로 외부에 노출할 엔드포인트 목록
   endpoints:
     web:
       exposure:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      # health 상세 정보를 항상 노출
       show-details: always
-  # 트레이싱 설정
   tracing:
     sampling:
       probability: 1.0
   otlp:
     tracing:
-      endpoint: http://${SERVER3_PRIVATE_IP}:4317
-    metrics:
-      export:
-        enabled: false
+      endpoint: http://${SERVER3_PRIVATE_IP}:4317/v1/traces
 
 springdoc:
   # Swagger UI와 OpenAPI 문서 경로 설정
