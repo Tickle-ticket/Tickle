@@ -44,7 +44,7 @@ export interface AvatarProps {
   className?: string;
 }
 
-export interface SearchBarProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+export interface SearchBarProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'size'> {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClear?: () => void;

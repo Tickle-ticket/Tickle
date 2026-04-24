@@ -21,9 +21,9 @@ export interface MetricLogListProps {
 }
 
 function getSortedLogs(logs: MetricLogItem[], selectedMetricId?: string) {
-  return logs
-    .filter((log) => !selectedMetricId || log.metricId === selectedMetricId)
-    .toSorted((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return [...logs.filter((log) => !selectedMetricId || log.metricId === selectedMetricId)].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
 }
 
 function getMetricSummary(logs: MetricLogItem[]) {
