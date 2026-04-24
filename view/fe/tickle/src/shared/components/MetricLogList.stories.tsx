@@ -1,7 +1,21 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { LoadMetricGaugePanel } from './LoadMetricGaugePanel';
 import { MetricLogList } from './MetricLogList';
-import type { MetricLogItem } from './MetricLogList';
+import type { ReactNode } from 'react';
+import type { MetricLogItem, MetricLogListProps } from './MetricLogList';
+
+type MetricLogListStoryMeta = {
+  title: string;
+  component: typeof MetricLogList;
+  tags: string[];
+  parameters: Record<string, unknown>;
+  decorators: Array<(Story: () => ReactNode) => ReactNode>;
+  argTypes: Record<string, unknown>;
+};
+
+type Story = {
+  args?: Partial<MetricLogListProps>;
+  render?: () => ReactNode;
+};
 
 const logs: MetricLogItem[] = [
   {
@@ -140,10 +154,9 @@ const meta = {
     mutedTextColor: { control: 'color' },
     maxHeight: { control: { type: 'number', min: 180, max: 720, step: 20 } },
   },
-} satisfies Meta<typeof MetricLogList>;
+} satisfies MetricLogListStoryMeta;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
