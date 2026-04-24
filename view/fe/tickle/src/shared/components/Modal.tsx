@@ -69,18 +69,18 @@ export const Modal = ({
         variant="shadow" 
         className={`relative w-full max-w-[320px] bg-white rounded-[20px] p-6 flex flex-col z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${className}`}
       >
-        <div className="flex flex-col mb-6 gap-2 text-center md:text-left">
+        <div className="flex flex-col items-center mb-6 gap-2 text-center">
           {title && (
              // Title 컴포넌트 활용 지시사항 반영
             <Title 
               title={title} 
               transparent 
               bottomBorder={false} 
-              className="!px-0 !pb-0" 
+              className="!px-0 !pb-0 [&_h1]:text-center [&>div]:!px-0" 
             />
           )}
           {description && (
-            <Text typography="t5" color="secondary" className="whitespace-pre-wrap leading-relaxed mt-1 text-left">
+            <Text typography="t5" color="secondary" className="whitespace-pre-wrap leading-relaxed mt-2 text-center">
               {description}
             </Text>
           )}

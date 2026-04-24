@@ -8,7 +8,7 @@ export const userHandlers = [
       status: 200,
       message: 'success',
       data: {
-        avatarUrl: '/images/avatar_placeholder.png',
+        avatarUrl: 'https://ui-avatars.com/api/?name=Guest+User&background=EBF4FF&color=3B82F6',
         name: 'Guest User',
       },
     });
