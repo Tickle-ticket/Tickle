@@ -17,9 +17,9 @@ import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from utils.logging.session import Session
-from utils.logging.event_logger import EventLogger
-from macro._config import load_config, load_target, get_base_resolution
+from macro.mouse_automation.session import Session
+from macro.mouse_automation.event_logger import EventLogger
+from macro.mouse_automation._config import load_config, load_target, get_base_resolution
 
 
 class BaseMacro(ABC):

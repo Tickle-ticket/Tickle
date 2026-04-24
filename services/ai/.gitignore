@@ -1,13 +1,17 @@
+# --- Python ---
 __pycache__/
-data/
-node_modules/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
 
-=======
-# --- Data (로컬에만 유지, git 제외) ---
+# --- Data (로컬?�만 ?��?, git ?�외) ---
 data/
 *.jsonl
 
-# --- Models (학습 완료 전까지 git 제외) ---
+# --- Models (?�습 ?�료 ?�일 git ?�외) ---
 models/**/*.pkl
 models/**/*.pt
 models/**/*.joblib
@@ -26,16 +30,7 @@ logs/
 artifacts/
 outputs/
 
-# --- Python ---
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-.venv/
-venv/
-env/
-
-# --- Node (front-demo 에 node 생기면 대비) ---
+# --- Node (front-demo ??node 모듈 ?�외) ---
 node_modules/
 
 # --- IDE ---
@@ -57,18 +52,5 @@ tmp/
 temp/
 *.tmp
 
-# --- 개인 research / 로컬 전용 docs (팀 리뷰 부담 감축) ---
-docs/macro_kinematics.md
-docs/poc/mouse/REPORT.md
-docs/feature_research_mouse_macro.md
-docs/feature_definitions_v0.md
-
-# --- automouse 사용자 로컬 설정 ---
+# --- automouse ?�용??로컬 ?�정 ---
 automouse_data.json
-<<<<<<< HEAD
->>>>>>> services/ai/.gitignore
-=======
-__pycache__/
-data/
-node_modules/
->>>>>>> 9e59941 ([AI] 156 chore: ai gitignore 정리)

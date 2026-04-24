@@ -24,7 +24,7 @@ from macro.mouse_automation._dpi import ensure_dpi_aware, scale_coords
 ensure_dpi_aware()
 import pyautogui
 
-from macro.base import BaseMacro
+from macro.mouse_automation.base import BaseMacro
 
 
 class PyAutoGUILv1(BaseMacro):
