@@ -7,7 +7,9 @@ import { PriceLegend } from '@/src/shared/components/PriceLegend';
 import { InteractiveMapViewer } from '@/src/shared/components/InteractiveMapViewer';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { useEventDetail } from '@/src/features/book/api/useEventDetail';
+import { CustomCAPTCHA } from '@/src/shared/components/CustomCAPTCHA';
 import type { SeatColor, SeatStatus } from '@/src/shared/components/types';
+import { Modal } from '@/src/shared/components/Modal';
 
 interface BookViewProps {
   onClose: () => void;
@@ -22,6 +24,23 @@ export const BookView = ({ onClose }: BookViewProps) => {
   const [isModifyingSchedule, setIsModifyingSchedule] = useState(false);
   const [confirmedSchedule, setConfirmedSchedule] = useState<{date: string, time: string} | null>(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  
+  // Clawptcha State
+  const [isBotVerified, setIsBotVerified] = useState(false);
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+
+  const handleCloseClick = () => {
+    setIsExitModalOpen(true);
+  };
+
+  const handleConfirmExit = () => {
+    setIsExitModalOpen(false);
+    onClose();
+  };
+
+  const handleCancelExit = () => {
+    setIsExitModalOpen(false);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,13 +102,43 @@ export const BookView = ({ onClose }: BookViewProps) => {
 
   const SEAT_PRICES = eventDetail.zonePrices || [];
 
+  if (!isBotVerified) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 p-6 relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="z-10 animate-fade-in">
+          <CustomCAPTCHA 
+            onSuccess={(token) => {
+              console.log('Bot verified!', token);
+              setIsBotVerified(true);
+            }} 
+            onClose={handleCloseClick}
+          />
+        </div>
+
+        <Modal
+          isOpen={isExitModalOpen}
+          onClose={handleCancelExit}
+          title="대기열 퇴장"
+          description="대기열에서 퇴장하시겠습니까? 다시 진입 시 대기 순서가 초기화됩니다."
+          confirmText="퇴장하기"
+          cancelText="계속 대기"
+          onConfirm={handleConfirmExit}
+          onCancel={handleCancelExit}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen w-full flex-col bg-white dark:bg-zinc-950 overflow-hidden">
+    <div className="flex h-screen w-full flex-col bg-white dark:bg-zinc-950 overflow-hidden animate-fade-in">
       {/* Header */}
       <header className="w-full shrink-0 bg-white dark:bg-zinc-950 p-6 shadow-sm flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 z-10">
         <div className="flex items-center gap-4">
           <button
-            onClick={onClose}
+            onClick={handleCloseClick}
             className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
             aria-label="닫기"
           >
@@ -373,6 +422,17 @@ export const BookView = ({ onClose }: BookViewProps) => {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isExitModalOpen}
+        onClose={handleCancelExit}
+        title="대기열 퇴장"
+        description="대기열에서 퇴장하시겠습니까? 다시 진입 시 대기 순서가 초기화됩니다."
+        confirmText="퇴장하기"
+        cancelText="계속 대기"
+        onConfirm={handleConfirmExit}
+        onCancel={handleCancelExit}
+      />
     </div>
   );
 };

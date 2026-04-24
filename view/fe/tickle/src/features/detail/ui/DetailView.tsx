@@ -18,6 +18,7 @@ import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { TimelineNav } from '@/src/shared/components/TimelineNav';
 import { useRouter } from 'next/navigation';
 import { BookView } from '@/src/features/book/ui/BookView';
+import { QueueView } from '@/src/features/queue/ui/QueueView';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -39,7 +40,8 @@ export const DetailView = () => {
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [isBooking, setIsBooking] = useState(false);
+  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK'>('NONE');
+  const [admitToken, setAdmitToken] = useState<string | null>(null);
 
   const scheduleData = data?.schedules || [];
   const enabledDates = scheduleData.map((item: any) => item.date.split(' ')[0].replace(/\./g, '-'));
@@ -126,7 +128,7 @@ export const DetailView = () => {
           </div>
 
           <div className="flex items-center gap-3 mt-6">
-            <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setIsBooking(true)}>
+            <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setFlowState('QUEUE')}>
               예매하기
             </Button>
             <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10">
@@ -188,8 +190,33 @@ export const DetailView = () => {
                     <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
                       <Table
                         columns={[
-                          { key: 'seat', header: '좌석 등급', align: 'left' },
-                          { key: 'price', header: '가격', align: 'right' }
+                          { 
+                            key: 'seat', 
+                            header: '좌석 등급', 
+                            align: 'left',
+                            render: (row: any) => {
+                              const gradeColors: Record<string, string> = {
+                                'VIP': 'bg-pink-400',
+                                'R': 'bg-yellow-400',
+                                'S': 'bg-orange-400',
+                                'A': 'bg-blue-400',
+                              };
+                              return (
+                                <div className="flex items-center gap-3">
+                                  <span className={`w-4 h-4 rounded-full ${gradeColors[row.seat] || 'bg-gray-200'}`} />
+                                  <Text typography="t4" fontWeight="bold" color="primary">{row.seat}</Text>
+                                </div>
+                              );
+                            }
+                          },
+                          { 
+                            key: 'price', 
+                            header: '가격', 
+                            align: 'right',
+                            render: (row: any) => (
+                              <Text typography="t4" fontWeight="bold" color="primary">{row.price}</Text>
+                            )
+                          }
                         ]}
                         data={data?.zonePrices?.map(p => ({ seat: p.grade, price: `${p.price.toLocaleString()}원` })) || []}
                         isLoading={isLoading}
@@ -227,28 +254,7 @@ export const DetailView = () => {
                                   key={idx}
                                   className="inline-flex flex-col items-center justify-center px-6 py-3 border border-gray-200 rounded-xl bg-white"
                                 >
-                                  <Text typography="t6" fontWeight="bold" color="primary">{timeObj.time}</Text>
-                                  <div className="flex gap-2 mt-1">
-                                    {timeObj.remainingSeats.map(seat => {
-                                      const gradeColors: Record<string, string> = {
-                                        'VIP': 'bg-pink-50 text-pink-600 border-pink-200',
-                                        'R': 'bg-yellow-50 text-yellow-600 border-yellow-200',
-                                        'S': 'bg-orange-50 text-orange-600 border-orange-200',
-                                        'A': 'bg-blue-50 text-blue-600 border-blue-200',
-                                      };
-                                      const defaultColor = 'bg-gray-50 text-gray-600 border-gray-200';
-                                      
-                                      return (
-                                        <span 
-                                          key={seat.grade} 
-                                          className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] border ${gradeColors[seat.grade] || defaultColor}`}
-                                        >
-                                          <span className="font-extrabold">{seat.grade}</span>
-                                          <span>{seat.count}</span>
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
+                                  <Text typography="t5" fontWeight="bold" color="primary">{timeObj.time}</Text>
                                 </div>
                               ))}
                             </div>
@@ -289,10 +295,22 @@ export const DetailView = () => {
 
       </main>
 
-      {/* Booking Overlay */}
-      {isBooking && (
+      {/* Booking Pipeline Overlays */}
+      {flowState === 'QUEUE' && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView onClose={() => setIsBooking(false)} />
+          <QueueView 
+            sessionId={data?.id || '1'} 
+            onAdmitted={(token) => {
+              setAdmitToken(token);
+              setFlowState('BOOK');
+            }}
+            onClose={() => setFlowState('NONE')}
+          />
+        </div>
+      )}
+      {flowState === 'BOOK' && (
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+          <BookView onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>
