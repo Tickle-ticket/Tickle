@@ -5,6 +5,7 @@ import com.ssafy.tickle.event.application.EventService;
 import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,6 +60,19 @@ public class EventController implements EventApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(eventService.getRanking(categoryId)));
+    }
+
+    /**
+     * 오픈 임박 공연 목록을 조회합니다.
+     *
+     * @return 오픈 임박 공연 목록 응답
+     */
+    @Override
+    @GetMapping("/opening-soon")
+    public ResponseEntity<BaseResponse<OpeningSoonEventsResponse>> getOpeningSoonEvents() {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(eventService.getOpeningSoonEvents()));
     }
 
     /**
