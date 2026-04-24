@@ -61,6 +61,13 @@ management:
     health:
       # health 상세 정보를 항상 노출
       show-details: always
+  # 트레이싱 설정
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://${SERVER3_PRIVATE_IP}:4317
 
 springdoc:
   # Swagger UI와 OpenAPI 문서 경로 설정
