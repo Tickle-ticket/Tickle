@@ -40,6 +40,10 @@ dependencies {
     // Prometheus 메트릭 수집
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
+    // Tracing
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.opentelemetry.exporter:opentelemetry-exporter-otlp'
+
 	// MySQL Driver
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
