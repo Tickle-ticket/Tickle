@@ -60,6 +60,8 @@ services:
       JPA_DDL_AUTO: update
       JPA_SHOW_SQL: "false"
       SERVER3_PRIVATE_IP: ${SERVER3_PRIVATE_IP}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://172.31.57.10:4317
+      OTEL_SERVICE_NAME: tickle-be
     ports:
       - "8080:8080"
     depends_on:
