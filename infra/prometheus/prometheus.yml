@@ -4,12 +4,34 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
+  # ── 서버별 시스템 메트릭 (node-exporter) ──
+  - job_name: 'server1-node'
+    static_configs:
+      - targets: ['172.31.63.75:9100']
+
+  - job_name: 'server2-node'
+    static_configs:
+      - targets: ['172.31.52.183:9100']
+
+  - job_name: 'server3-node'
+    static_configs:
+      - targets: ['172.31.57.10:9100']
+
+  - job_name: 'server4-node'
+    static_configs:
+      - targets: ['172.31.62.10:9100']
+
+  - job_name: 'server5-node'
+    static_configs:
+      - targets: ['172.31.56.122:9100']
+
+  # ── Spring Boot 애플리케이션 메트릭 ──
   - job_name: 'server1-be'
+    metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['172.31.63.75:9090']
-  - job_name: 'server2-kafka'
-    static_configs:
-      - targets: ['172.31.52.183:9090']
+      - targets: ['172.31.63.75:8080']
+
   - job_name: 'server4-auth'
+    metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['172.31.57.10:9090']
+      - targets: ['172.31.62.10:8080']
