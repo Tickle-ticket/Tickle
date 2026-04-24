@@ -107,7 +107,11 @@ public class EventService {
         List<Event> rankingEvents = eventRepository.findRankingEvents(
                 Event.Status.OPENED,
                 categoryId,
-                PageRequest.of(0, CATEGORY_RANKING_LIMIT)
+                PageRequest.of(
+                        0,
+                        CATEGORY_RANKING_LIMIT,
+                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+                )
         );
 
         List<Long> eventIds = rankingEvents.stream()
