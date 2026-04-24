@@ -53,6 +53,15 @@ class LabelEnqueueResponse(BaseModel):
     ok: bool
 
 
+class LabelEnqueueItem(BaseModel):
+    label: LabelValue = "macro"
+    run_params: dict[str, Any] | None = None
+
+
+class LabelEnqueueContextRequest(BaseModel):
+    items: list[LabelEnqueueItem]
+
+
 class MacroRunResponse(BaseModel):
     ok: bool
     job_id: str

@@ -85,6 +85,7 @@ class MacroRunnerApp(tk.Tk):
         self.resizable(True, True)
 
         self.worker: threading.Thread | None = None
+        self.stop_event = threading.Event()
 
         # Collector API가 켜져 있으면 매크로 실행 전 label=macro 신호를 보내서
         # 저장되는 trial이 human으로 잘못 라벨링되는 것을 방지한다.
@@ -116,6 +117,7 @@ class MacroRunnerApp(tk.Tk):
         self.scrollable_body: tk.Frame | None = None
         self.log_widget: tk.Text | None = None
         self.run_button: tk.Button | None = None
+        self.stop_button: tk.Button | None = None
         self.status_var = tk.StringVar(value="대기 중")
 
         self._build()
@@ -382,6 +384,20 @@ class MacroRunnerApp(tk.Tk):
         )
         self.run_button.pack(side="left", padx=(0, 10))
 
+        self.stop_button = tk.Button(
+            button_row,
+            text="중단",
+            command=self.stop_run,
+            bg="#dc2626",
+            fg="#ffffff",
+            relief="flat",
+            padx=18,
+            pady=14,
+            font=("Malgun Gothic", 11, "bold"),
+            state="disabled",
+        )
+        self.stop_button.pack(side="left", padx=(0, 10))
+
         tk.Button(
             button_row,
             text="로그 지우기",
@@ -505,10 +521,42 @@ class MacroRunnerApp(tk.Tk):
         except (urllib.error.URLError, TimeoutError, ValueError) as error:
             self.append_log(f"[warn] label 신호 전송 실패(collector_api 미기동?): {error}")
 
+    def _enqueue_macro_context(self, configs: list[MacroConfig]) -> bool:
+        """Enqueue per-run params so collector_api can save them into each trial payload."""
+        base_url = self.collector_api_var.get().strip()
+        if not base_url:
+            return False
+        url = f"{base_url.rstrip('/')}/api/labels/enqueue_context"
+
+        items = []
+        for config in configs:
+            items.append(
+                {
+                    "label": "macro",
+                    "run_params": {
+                        "slow_mo_ms": int(config.slow_mo_ms),
+                        "action_delay_ms": int(config.action_delay_ms),
+                        "hover_ms": int(config.hover_ms),
+                        "typing_delay_ms": int(config.typing_delay_ms),
+                        "mouse_steps": int(config.mouse_steps),
+                    },
+                }
+            )
+
+        try:
+            _post_json(url, {"items": items})
+            self.append_log(f"[label] collector_api에 context(label+run_params) x{len(items)} 등록")
+            return True
+        except (urllib.error.URLError, TimeoutError, ValueError) as error:
+            self.append_log(f"[warn] context 신호 전송 실패(collector_api 미기동/구버전?): {error}")
+            return False
+
     def start_run(self) -> None:
         if self.worker and self.worker.is_alive():
             messagebox.showinfo("실행 중", "이미 실행 중입니다.")
             return
+
+        self.stop_event.clear()
 
         try:
             configs = self.build_run_configs()
@@ -518,11 +566,15 @@ class MacroRunnerApp(tk.Tk):
 
         if self.run_button is not None:
             self.run_button.configure(state="disabled")
+        if self.stop_button is not None:
+            self.stop_button.configure(state="normal")
         self.status_var.set("실행 중")
         self.append_log("=== Macro run start ===")
         self.append_log(f"[mode] {self.mode_var.get()}")
 
-        self._enqueue_macro_labels(len(configs))
+        # Prefer context enqueue (label + per-run params). Fall back to label-only.
+        if not self._enqueue_macro_context(configs):
+            self._enqueue_macro_labels(len(configs))
 
         for index, config in enumerate(configs, start=1):
             self.append_log(
@@ -531,7 +583,7 @@ class MacroRunnerApp(tk.Tk):
             )
 
         def worker() -> None:
-            exit_code = run_macro_sequence(configs, progress=self._queue_log)
+            exit_code = run_macro_sequence(configs, progress=self._queue_log, should_stop=self.stop_event.is_set)
             self.after(0, self._finish_run, exit_code)
 
         self.worker = threading.Thread(target=worker, daemon=True)
@@ -543,8 +595,22 @@ class MacroRunnerApp(tk.Tk):
     def _finish_run(self, exit_code: int) -> None:
         if self.run_button is not None:
             self.run_button.configure(state="normal")
-        self.status_var.set("완료" if exit_code == 0 else "실패")
+        if self.stop_button is not None:
+            self.stop_button.configure(state="disabled")
+        if exit_code == 0:
+            self.status_var.set("완료")
+        elif exit_code == 130:
+            self.status_var.set("중단")
+        else:
+            self.status_var.set("실패")
         self.append_log(f"=== Macro run end: exit_code={exit_code} ===")
+
+    def stop_run(self) -> None:
+        # Cooperative cancel: request stop, then macro_runner will stop between steps / runs.
+        if self.worker and self.worker.is_alive():
+            self.stop_event.set()
+            self.status_var.set("중단 요청")
+            self.append_log("=== Stop requested ===")
 
 
 def main() -> None:
