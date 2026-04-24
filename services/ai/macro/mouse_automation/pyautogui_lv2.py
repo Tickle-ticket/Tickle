@@ -31,7 +31,7 @@ from macro.mouse_automation._dpi import ensure_dpi_aware, scale_coords
 ensure_dpi_aware()
 import pyautogui
 
-from macro.base import BaseMacro
+from macro.mouse_automation.base import BaseMacro
 from macro.mouse_automation.mouse_utils import bezier_curve, add_noise, random_delay, human_like_duration
 
 

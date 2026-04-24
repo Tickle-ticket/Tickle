@@ -3,8 +3,8 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
-# macro/_config.py -> 프로젝트 루트 -> configs/
-_CONFIGS_DIR = Path(__file__).resolve().parent.parent / "configs"
+# macro/mouse_automation/_config.py -> 프로젝트 루트 -> configs/
+_CONFIGS_DIR = Path(__file__).resolve().parent.parent.parent / "configs"
 _DEFAULT_CONFIG = _CONFIGS_DIR / "macro.yaml"
 _DEFAULT_TARGETS_DIR = _CONFIGS_DIR / "macro_targets"
 
