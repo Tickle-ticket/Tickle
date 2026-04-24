@@ -60,7 +60,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             from Event e
             where e.status = :status
               and (:categoryId is null or e.category.id = :categoryId)
-            order by e.createdAt desc, e.id desc
             """)
     List<Event> findRankingEvents(
             @Param("status") Event.Status status,
