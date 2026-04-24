@@ -43,7 +43,13 @@ public record EventSummaryResponse(
                 event.getEventEndAt(),
                 event.getCategory().getCategoryName(),
                 thumbnailUrl,
-                event.getMetadata()
+                metadataOrEmpty(event)
         );
+    }
+
+    private static Event.EventMetadata metadataOrEmpty(Event event) {
+        return event.getMetadata() == null
+                ? new Event.EventMetadata(java.util.List.of())
+                : event.getMetadata();
     }
 }

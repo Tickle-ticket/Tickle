@@ -79,7 +79,7 @@ public record EventDetailResponse(
                 event.getSalesEndAt(),
                 event.getEventStartAt(),
                 event.getEventEndAt(),
-                event.getMetadata(),
+                metadataOrEmpty(event),
                 event.getNotice(),
                 event.getStatus(),
                 images.stream()
@@ -92,5 +92,11 @@ public record EventDetailResponse(
                         .map(EventPricePolicyResponse::from)
                         .toList()
         );
+    }
+
+    private static Event.EventMetadata metadataOrEmpty(Event event) {
+        return event.getMetadata() == null
+                ? new Event.EventMetadata(java.util.List.of())
+                : event.getMetadata();
     }
 }

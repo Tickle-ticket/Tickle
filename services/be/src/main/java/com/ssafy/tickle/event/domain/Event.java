@@ -106,7 +106,11 @@ public class Event {
 
     public record EventMetadata(
             List<String> tags
-    ) {}
+    ) {
+        public EventMetadata {
+            tags = tags == null ? List.of() : List.copyOf(tags);
+        }
+    }
 
     /**
      * 이벤트 엔티티를 생성합니다.
