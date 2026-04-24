@@ -26,20 +26,24 @@ export const QueueView = ({ sessionId, onAdmitted, onClose }: QueueViewProps) =>
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
+    let isCancelled = false;
 
-    const startQueue = async () => {
+    const startQueue = async (attempt = 1): Promise<void> => {
+      if (isCancelled) return;
+
       try {
         // 1. Enter Queue
         const enterRes = await enterQueue(sessionId);
+        if (isCancelled) return;
         const { requestId } = enterRes.data;
 
         // 2. Get Queue Token
         const tokenRes = await getQueueToken(sessionId, requestId);
+        if (isCancelled) return;
         const { queueToken } = tokenRes.data;
         queueTokenRef.current = queueToken;
 
         if (tokenRes.data.status === 'ADMITTED') {
-          // Immediately admitted (rare but possible)
           onAdmitted('at-immediate');
           return;
         }
@@ -76,11 +80,15 @@ export const QueueView = ({ sessionId, onAdmitted, onClose }: QueueViewProps) =>
         });
 
         eventSource.onerror = () => {
-          // EventSource attempts to reconnect automatically
           console.warn('EventSource connection error');
         };
 
       } catch (err) {
+        // MSW가 아직 준비되지 않았을 수 있으므로 최대 3회 재시도
+        if (attempt < 3 && !isCancelled) {
+          await new Promise(r => setTimeout(r, 500 * attempt));
+          return startQueue(attempt + 1);
+        }
         console.error('Queue connection failed', err);
         setStatus('ERROR');
       }
@@ -89,13 +97,12 @@ export const QueueView = ({ sessionId, onAdmitted, onClose }: QueueViewProps) =>
     startQueue();
 
     return () => {
+      isCancelled = true;
       if (eventSource) {
         eventSource.close();
       }
-      // 명시적 이탈 처리 (창을 닫거나 뒤로 갈 때)
       if (queueTokenRef.current && !isLeavingRef.current) {
-        // 백그라운드에서 이탈 호출을 위해 fire-and-forget
-        leaveQueue(sessionId, queueTokenRef.current).catch(console.error);
+        leaveQueue(sessionId, queueTokenRef.current).catch(() => {});
       }
     };
   }, [sessionId, onAdmitted]);

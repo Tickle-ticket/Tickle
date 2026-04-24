@@ -41,11 +41,11 @@ export const Accordion = ({
       {/* 아코디언 헤더(토글 버튼) */}
       <button
         type="button"
-        className="w-full flex justify-between items-center py-4 md:py-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80 active:opacity-60"
+        className="w-full flex justify-between items-center px-4 py-4 md:py-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80 active:opacity-60"
         onClick={handleToggle}
         aria-expanded={isOpen}
       >
-        <div className="text-[17px] md:text-[19px] font-semibold text-gray-900 pr-4">
+        <div className="flex-1 min-w-0 text-[17px] md:text-[19px] font-semibold text-gray-900 pr-4">
           {title}
         </div>
         {/* 우측 쉐브론 화살표 애니메이션 */}
