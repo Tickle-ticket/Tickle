@@ -14,7 +14,7 @@ import java.time.Instant;
  * @param eventEndAt 공연 종료 시각
  * @param categoryName 카테고리명
  * @param thumbnailUrl 대표 이미지 URL
- * @param metadata 메타데이터 원문
+ * @param metadata 메타데이터
  */
 public record EventSummaryResponse(
         Long eventId,
@@ -24,7 +24,7 @@ public record EventSummaryResponse(
         Instant eventEndAt,
         String categoryName,
         String thumbnailUrl,
-        String metadata
+        Event.EventMetadata metadata
 ) {
 
     /**

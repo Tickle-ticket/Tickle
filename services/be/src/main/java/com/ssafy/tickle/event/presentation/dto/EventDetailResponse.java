@@ -23,7 +23,7 @@ import java.util.List;
  * @param salesEndAt 판매 종료 시각
  * @param eventStartAt 이벤트 시작 시각
  * @param eventEndAt 이벤트 종료 시각
- * @param metadata 메타데이터 원문
+ * @param metadata 메타데이터
  * @param notice 공지사항
  * @param status 이벤트 상태
  * @param images 이미지 목록
@@ -43,7 +43,7 @@ public record EventDetailResponse(
         Instant salesEndAt,
         Instant eventStartAt,
         Instant eventEndAt,
-        String metadata,
+        Event.EventMetadata metadata,
         String notice,
         Event.Status status,
         List<EventImageResponse> images,
