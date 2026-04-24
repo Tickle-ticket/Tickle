@@ -18,6 +18,8 @@ import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
+import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
+import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -105,6 +107,8 @@ class EventServiceTest {
         if (keys != null && !keys.isEmpty()) {
             stringRedisTemplate.delete(keys);
         }
+
+        stringRedisTemplate.delete("event:opening-soon");
     }
 
     @Nested
@@ -311,6 +315,129 @@ class EventServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("오픈 임박 공연 조회")
+    class GetOpeningSoonEventsTest {
+
+        @Test
+        @DisplayName("기본 5개를 판매 시작 시각 오름차순으로 반환한다")
+        void getOpeningSoonEvents_defaultSize_success() {
+            Event first = saveOpeningSoonEvent(
+                    "Opening Soon 1",
+                    concertCategory,
+                    Instant.parse("2026-04-24T01:00:00Z"),
+                    Instant.parse("2026-05-01T10:00:00Z"),
+                    List.of("A")
+            );
+            Event second = saveOpeningSoonEvent(
+                    "Opening Soon 2",
+                    concertCategory,
+                    Instant.parse("2026-04-24T02:00:00Z"),
+                    Instant.parse("2026-05-02T10:00:00Z"),
+                    List.of("B")
+            );
+            Event third = saveOpeningSoonEvent(
+                    "Opening Soon 3",
+                    concertCategory,
+                    Instant.parse("2026-04-24T03:00:00Z"),
+                    Instant.parse("2026-05-03T10:00:00Z"),
+                    List.of("C")
+            );
+            Event fourth = saveOpeningSoonEvent(
+                    "Opening Soon 4",
+                    concertCategory,
+                    Instant.parse("2026-04-24T04:00:00Z"),
+                    Instant.parse("2026-05-04T10:00:00Z"),
+                    List.of("D")
+            );
+            Event fifth = saveOpeningSoonEvent(
+                    "Opening Soon 5",
+                    concertCategory,
+                    Instant.parse("2026-04-24T05:00:00Z"),
+                    Instant.parse("2026-05-05T10:00:00Z"),
+                    List.of("E")
+            );
+            saveOpeningSoonEvent(
+                    "Opening Soon 6",
+                    concertCategory,
+                    Instant.parse("2026-04-24T06:00:00Z"),
+                    Instant.parse("2026-05-06T10:00:00Z"),
+                    List.of("F")
+            );
+            saveOpeningSoonEvent(
+                    "Past Pending",
+                    concertCategory,
+                    Instant.parse("2026-04-23T23:00:00Z"),
+                    Instant.parse("2026-04-29T10:00:00Z"),
+                    List.of("PAST")
+            );
+
+            eventImageRepository.saveAll(List.of(
+                    createImage(first, EventImage.ImageType.THUMBNAIL, "https://cdn.test/os1.jpg", 0),
+                    createImage(second, EventImage.ImageType.THUMBNAIL, "https://cdn.test/os2.jpg", 0),
+                    createImage(third, EventImage.ImageType.THUMBNAIL, "https://cdn.test/os3.jpg", 0),
+                    createImage(fourth, EventImage.ImageType.THUMBNAIL, "https://cdn.test/os4.jpg", 0),
+                    createImage(fifth, EventImage.ImageType.THUMBNAIL, "https://cdn.test/os5.jpg", 0)
+            ));
+
+            OpeningSoonEventsResponse response = eventService.getOpeningSoonEvents();
+
+            assertThat(response.events()).hasSize(5);
+            assertThat(response.events())
+                    .extracting(OpeningSoonEventResponse::eventName)
+                    .containsExactly(
+                            "Opening Soon 1",
+                            "Opening Soon 2",
+                            "Opening Soon 3",
+                            "Opening Soon 4",
+                            "Opening Soon 5"
+                    );
+            assertThat(response.events())
+                    .extracting(OpeningSoonEventResponse::thumbnailUrl)
+                    .containsExactly(
+                            "https://cdn.test/os1.jpg",
+                            "https://cdn.test/os2.jpg",
+                            "https://cdn.test/os3.jpg",
+                            "https://cdn.test/os4.jpg",
+                            "https://cdn.test/os5.jpg"
+                    );
+            assertThat(response.events().get(0).tags()).containsExactly("A");
+        }
+
+        @Test
+        @DisplayName("오픈 임박 공연은 캐시된 응답을 재사용한다")
+        void getOpeningSoonEvents_usesCache() {
+            Event first = saveOpeningSoonEvent(
+                    "Opening Soon Cache 1",
+                    concertCategory,
+                    Instant.parse("2099-04-24T01:00:00Z"),
+                    Instant.parse("2099-05-01T10:00:00Z"),
+                    List.of("A")
+            );
+
+            eventImageRepository.save(createImage(first, EventImage.ImageType.THUMBNAIL, "https://cdn.test/cache-1.jpg", 0));
+
+            OpeningSoonEventsResponse firstResponse = eventService.getOpeningSoonEvents();
+
+            saveOpeningSoonEvent(
+                    "Opening Soon Cache 2",
+                    concertCategory,
+                    Instant.parse("2099-04-24T02:00:00Z"),
+                    Instant.parse("2099-05-02T10:00:00Z"),
+                    List.of("B")
+            );
+
+            OpeningSoonEventsResponse secondResponse = eventService.getOpeningSoonEvents();
+
+            assertThat(firstResponse.events())
+                    .extracting(OpeningSoonEventResponse::eventName)
+                    .containsExactly("Opening Soon Cache 1");
+            assertThat(secondResponse.events())
+                    .extracting(OpeningSoonEventResponse::eventName)
+                    .containsExactly("Opening Soon Cache 1");
+        }
+    }
+
     private Organizer createOrganizer(String organizerName) {
         Organizer organizer = Organizer.builder()
                 .organizerName(organizerName)
@@ -420,19 +547,60 @@ class EventServiceTest {
         return eventRepository.save(saved);
     }
 
+    private Event saveOpeningSoonEvent(
+            String title,
+            Category category,
+            Instant salesStartAt,
+            Instant eventStartAt,
+            List<String> tags
+    ) {
+        return saveOpeningSoonEvent(title, category, salesStartAt, eventStartAt, tags, Event.Status.PENDING);
+    }
+
+    private Event saveOpeningSoonEvent(
+            String title,
+            Category category,
+            Instant salesStartAt,
+            Instant eventStartAt,
+            List<String> tags,
+            Event.Status status
+    ) {
+        Event saved = eventRepository.save(createEventWithStatus(title, category, salesStartAt, eventStartAt, tags, status));
+        ReflectionTestUtils.setField(saved, "updatedAt", salesStartAt.minusSeconds(60));
+        return eventRepository.save(saved);
+    }
+
     private Event createEventWithTags(String title, Category category, Instant eventStartAt, List<String> tags) {
+        return createEventWithStatus(
+                title,
+                category,
+                eventStartAt.minusSeconds(86_400),
+                eventStartAt,
+                tags,
+                Event.Status.OPENED
+        );
+    }
+
+    private Event createEventWithStatus(
+            String title,
+            Category category,
+            Instant salesStartAt,
+            Instant eventStartAt,
+            List<String> tags,
+            Event.Status status
+    ) {
         Event event = Event.builder()
                 .organizer(organizer)
                 .venue(venue)
                 .title(title)
                 .category(category)
-                .salesStartAt(eventStartAt.minusSeconds(86_400))
+                .salesStartAt(salesStartAt)
                 .salesEndAt(eventStartAt.plusSeconds(172_800))
                 .eventStartAt(eventStartAt)
                 .eventEndAt(eventStartAt.plusSeconds(7_200))
                 .metadata(new Event.EventMetadata(tags))
                 .notice("관람 전 신분증을 지참해주세요.")
-                .status(Event.Status.OPENED)
+                .status(status)
                 .build();
 
         setAuditFields(event);
