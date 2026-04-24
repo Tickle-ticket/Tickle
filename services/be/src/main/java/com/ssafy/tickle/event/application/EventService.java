@@ -8,6 +8,7 @@ import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
+import com.ssafy.tickle.event.infrastructure.cache.store.OpeningSoonEventCacheStore;
 import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
@@ -18,6 +19,8 @@ import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
+import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
+import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.time.Instant;
 
 /**
  * 이벤트 조회 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
@@ -36,6 +40,7 @@ import java.util.*;
 public class EventService {
 
     private static final int CATEGORY_RANKING_LIMIT = 5;
+    private static final int DEFAULT_OPENING_SOON_LIMIT = 5;
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
@@ -43,6 +48,7 @@ public class EventService {
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
     private final EventRankingCacheStore eventRankingCacheStore;
+    private final OpeningSoonEventCacheStore openingSoonEventCacheStore;
 
     /**
      * 이벤트 상세 정보를 조회합니다.
@@ -138,6 +144,43 @@ public class EventService {
         );
 
         eventRankingCacheStore.save(categoryId, response);
+        return response;
+    }
+
+    /**
+     * 오픈 임박 공연 목록을 조회합니다.
+     *
+     * @return 오픈 임박 공연 목록
+     */
+    public OpeningSoonEventsResponse getOpeningSoonEvents() {
+        Optional<OpeningSoonEventsResponse> cachedResponse = openingSoonEventCacheStore.find();
+
+        if (cachedResponse.isPresent()) {
+            return cachedResponse.get();
+        }
+
+        List<Event> events = eventRepository.findBySalesStartAtAfter(
+                Instant.now(),
+                PageRequest.of(
+                        0,
+                        DEFAULT_OPENING_SOON_LIMIT,
+                        Sort.by(Sort.Order.asc("salesStartAt"), Sort.Order.asc("id"))
+                )
+        );
+
+        List<Long> eventIds = events.stream()
+                .map(Event::getId)
+                .distinct()
+                .toList();
+
+        Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
+
+        List<OpeningSoonEventResponse> items = events.stream()
+                .map(event -> OpeningSoonEventResponse.from(event, thumbnailUrlByEventId.get(event.getId())))
+                .toList();
+
+        OpeningSoonEventsResponse response = OpeningSoonEventsResponse.from(items);
+        openingSoonEventCacheStore.save(response);
         return response;
     }
 
