@@ -34,8 +34,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.redisson:redisson:3.49.0'
 
-	// kafka
-	implementation 'org.springframework.boot:spring-boot-starter-kafka'
+    // kafka
+    implementation 'org.springframework.kafka:spring-kafka'
 
     // Prometheus 메트릭 수집
     implementation 'io.micrometer:micrometer-registry-prometheus'
