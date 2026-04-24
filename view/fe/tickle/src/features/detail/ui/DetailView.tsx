@@ -48,6 +48,18 @@ export const DetailView = () => {
   const selectedDateStr = selectedDate ? formatDateToDot(selectedDate) : '';
   const selectedSchedule = scheduleData.find((item: any) => item.date.startsWith(selectedDateStr));
 
+  // 예매 플로우 진행 중 새로고침/탭 닫기 방지
+  useEffect(() => {
+    if (flowState === 'NONE') return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [flowState]);
+
   // 스크롤 스파이 (Scroll Spy) 기능
   useEffect(() => {
     const observer = new IntersectionObserver(
