@@ -122,7 +122,7 @@ const logs: MetricLogItem[] = [
 ];
 
 const meta = {
-  title: 'Monitoring/MetricLogList',
+  title: 'Admin/MetricLogList',
   component: MetricLogList,
   tags: ['autodocs'],
   parameters: {

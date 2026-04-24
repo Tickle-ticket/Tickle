@@ -1,5 +1,5 @@
-import { BotDetectionChart } from '@/src/features/admin/ui/BotDetectionChart';
-import type { BotDetectionPoint } from '@/src/features/admin/ui/BotDetectionChart';
+import { BotDetectionChart } from '@/src/shared/components/BotDetectionChart';
+import type { BotDetectionPoint } from '@/src/shared/components/BotDetectionChart';
 
 const botDetectionData: BotDetectionPoint[] = [
   { time: '00시', macroAttempts: 8, queueBypassAttempts: 3, abnormalRequests: 12, blockedBots: 21 },

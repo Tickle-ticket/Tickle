@@ -58,7 +58,7 @@ const prometheusVisitorResponse: PrometheusQueryRangeResponse = {
 const prometheusVisitorData = mapPrometheusVisitorsToTrendPoints(prometheusVisitorResponse);
 
 const meta = {
-  title: 'Monitoring/VisitorTrendChart',
+  title: 'Admin/VisitorTrendChart',
   component: VisitorTrendChart,
   tags: ['autodocs'],
   parameters: {
