@@ -42,6 +42,10 @@ public class EventPricePolicy {
     @Column(name = "price_grade", nullable = false, length = 30)
     private String priceGrade;
 
+    // 관람 대상 유형
+    @Column(name = "audience_type", nullable = false, length = 30)
+    private String audienceType;
+
     // 판매가
     @Column(name = "sale_price_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal salePriceAmount;
@@ -67,6 +71,7 @@ public class EventPricePolicy {
      *
      * @param event 대상 이벤트
      * @param priceGrade 가격 등급
+     * @param audienceType 관람 대상 유형
      * @param salePriceAmount 판매 금액
      * @param currencyCode 통화 코드
      * @param displayOrder 노출 순서
@@ -75,12 +80,14 @@ public class EventPricePolicy {
     public EventPricePolicy(
             Event event,
             String priceGrade,
+            String audienceType,
             BigDecimal salePriceAmount,
             String currencyCode,
             Integer displayOrder
     ) {
         this.event = event;
         this.priceGrade = priceGrade;
+        this.audienceType = audienceType;
         this.salePriceAmount = salePriceAmount;
         this.currencyCode = currencyCode;
         this.displayOrder = displayOrder;
