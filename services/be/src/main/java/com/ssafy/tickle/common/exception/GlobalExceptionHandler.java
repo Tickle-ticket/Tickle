@@ -9,6 +9,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 애플리케이션 전역 예외를 공통 응답 형식으로 변환하는 핸들러입니다.
@@ -86,4 +87,19 @@ public class GlobalExceptionHandler {
                         GlobalErrorCode.INTERNAL_SERVER_ERROR.getMessage()
                 ));
     }
+
+	/**
+	 * Actuator 등 정적 리소스를 찾지 못할 때 404로 처리합니다.
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	protected ResponseEntity<BaseResponse<Void>> handleNoResourceFoundException(
+		NoResourceFoundException exception
+	) {
+		return ResponseEntity
+			.status(GlobalErrorCode.RESOURCE_NOT_FOUND.getStatus())
+			.body(BaseResponse.error(
+				GlobalErrorCode.RESOURCE_NOT_FOUND.getStatus(),
+				exception.getMessage()
+			));
+	}
 }
