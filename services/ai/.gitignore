@@ -6,12 +6,15 @@ __pycache__/
 .venv/
 venv/
 env/
+data/
+node_modules/
+model_joblib/
 
-# --- Data (로컬?�만 ?��?, git ?�외) ---
+# --- Data ---
 data/
 *.jsonl
 
-# --- Models (?�습 ?�료 ?�일 git ?�외) ---
+# --- Models ---
 models/**/*.pkl
 models/**/*.pt
 models/**/*.joblib
@@ -30,7 +33,7 @@ logs/
 artifacts/
 outputs/
 
-# --- Node (front-demo ??node 모듈 ?�외) ---
+# --- Node  ---
 node_modules/
 
 # --- IDE ---
@@ -52,5 +55,5 @@ tmp/
 temp/
 *.tmp
 
-# --- automouse ?�용??로컬 ?�정 ---
+# --- automouse---
 automouse_data.json
