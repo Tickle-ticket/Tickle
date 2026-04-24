@@ -2,24 +2,30 @@ package com.ssafy.tickle.event.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.event.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
+import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +38,10 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class EventService {
 
+    private static final int CATEGORY_RANKING_LIMIT = 5;
+
     private final EventRepository eventRepository;
+    private final CategoryRepository categoryRepository;
     private final EventImageRepository eventImageRepository;
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
@@ -84,6 +93,45 @@ public class EventService {
     }
 
     /**
+     * 랭킹 이벤트 TOP5를 조회합니다.
+     *
+     * @param categoryId 카테고리 식별자(없으면 전체)
+     * @return 랭킹 응답 목록
+     */
+    public CategoryRankingResponse getRanking(Long categoryId) {
+
+
+        List<Event> rankingEvents = eventRepository.findRankingEvents(
+                Event.Status.OPENED,
+                categoryId,
+                Pageable.ofSize(CATEGORY_RANKING_LIMIT)
+        );
+
+        List<Long> eventIds = rankingEvents.stream()
+                .map(Event::getId)
+                .distinct()
+                .toList();
+
+        Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
+
+        List<EventRankingResponse> items = new ArrayList<>();
+
+        for (Event event : rankingEvents) {
+            items.add(EventRankingResponse.from(
+                    items.size() + 1,
+                    event,
+                    thumbnailUrlByEventId.get(event.getId())
+            ));
+        }
+
+        return CategoryRankingResponse.from(
+                categoryId,
+                resolveCategoryName(categoryId),
+                List.copyOf(items)
+        );
+    }
+
+    /**
      * 이벤트 검색어를 정규화합니다.
      *
      * @param keyword 원본 검색어
@@ -121,5 +169,15 @@ public class EventService {
         }
 
         return thumbnailUrlByEventId;
+    }
+
+    private String resolveCategoryName(Long categoryId) {
+        if (categoryId == null) {
+            return "ALL";
+        }
+
+        return categoryRepository.findById(categoryId)
+                .map(Category::getCategoryName)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "카테고리를 찾을 수 없습니다."));
     }
 }
