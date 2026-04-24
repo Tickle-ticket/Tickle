@@ -21,8 +21,8 @@ dependencies {
 	// Actuator
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-	// Spring web mvc
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    // Spring web mvc
+    implementation 'org.springframework.boot:spring-boot-starter-web'
 
     // OpenAPI
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
