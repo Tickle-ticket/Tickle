@@ -41,8 +41,8 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
     // Tracing
-    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
-    implementation 'io.opentelemetry.exporter:opentelemetry-exporter-otlp'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel:1.5.0'
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp:1.48.0'
 
 	// MySQL Driver
 	runtimeOnly 'com.mysql:mysql-connector-j'
