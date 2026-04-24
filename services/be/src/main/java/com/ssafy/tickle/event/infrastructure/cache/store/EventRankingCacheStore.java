@@ -1,9 +1,12 @@
 package com.ssafy.tickle.event.infrastructure.cache.store;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.tickle.event.config.EventConstants;
 import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +16,7 @@ import java.util.Optional;
  * 이벤트 랭킹 캐시를 Redis에 저장하고 조회합니다.
  */
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class EventRankingCacheStore {
 
@@ -29,26 +33,42 @@ public class EventRankingCacheStore {
             }
 
             return Optional.of(objectMapper.readValue(cachedValue, CategoryRankingResponse.class));
-        } catch (Exception exception) {
-            stringRedisTemplate.delete(cacheKey);
+        } catch (JsonProcessingException exception) {
+            log.warn("이벤트 랭킹 캐시 역직렬화에 실패했습니다. cacheKey={}", cacheKey, exception);
+            deleteQuietly(cacheKey);
+            return Optional.empty();
+        } catch (DataAccessException exception) {
+            log.warn("이벤트 랭킹 캐시 조회에 실패했습니다. cacheKey={}", cacheKey, exception);
             return Optional.empty();
         }
     }
 
     public void save(Long categoryId, CategoryRankingResponse response) {
+        String cacheKey = key(categoryId);
+
         try {
             String serializedValue = objectMapper.writeValueAsString(response);
             stringRedisTemplate.opsForValue().set(
-                    key(categoryId),
+                    cacheKey,
                     serializedValue,
                     EventConstants.EVENT_RANKING_CACHE_TTL
             );
-        } catch (Exception exception) {
-            // 캐시 저장 실패 시 조회 결과는 그대로 반환합니다.
+        } catch (JsonProcessingException exception) {
+            log.warn("이벤트 랭킹 캐시 직렬화에 실패했습니다. cacheKey={}", cacheKey, exception);
+        } catch (DataAccessException exception) {
+            log.warn("이벤트 랭킹 캐시 저장에 실패했습니다. cacheKey={}", cacheKey, exception);
         }
     }
 
     private String key(Long categoryId) {
         return EventConstants.EVENT_RANKING_CACHE_KEY_PREFIX + (categoryId == null ? "ALL" : categoryId);
+    }
+
+    private void deleteQuietly(String cacheKey) {
+        try {
+            stringRedisTemplate.delete(cacheKey);
+        } catch (DataAccessException exception) {
+            log.warn("이벤트 랭킹 캐시 삭제에 실패했습니다. cacheKey={}", cacheKey, exception);
+        }
     }
 }
