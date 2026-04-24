@@ -7,6 +7,7 @@ import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
 import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
@@ -20,15 +21,11 @@ import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 이벤트 조회 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
@@ -45,6 +42,7 @@ public class EventService {
     private final EventImageRepository eventImageRepository;
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
+    private final EventRankingCacheStore eventRankingCacheStore;
 
     /**
      * 이벤트 상세 정보를 조회합니다.
@@ -99,12 +97,17 @@ public class EventService {
      * @return 랭킹 응답 목록
      */
     public CategoryRankingResponse getRanking(Long categoryId) {
+        Optional<CategoryRankingResponse> cachedResponse =
+                eventRankingCacheStore.findByCategoryId(categoryId);
 
+        if (cachedResponse.isPresent()) {
+            return cachedResponse.get();
+        }
 
         List<Event> rankingEvents = eventRepository.findRankingEvents(
                 Event.Status.OPENED,
                 categoryId,
-                Pageable.ofSize(CATEGORY_RANKING_LIMIT)
+                PageRequest.of(0, CATEGORY_RANKING_LIMIT)
         );
 
         List<Long> eventIds = rankingEvents.stream()
@@ -124,11 +127,14 @@ public class EventService {
             ));
         }
 
-        return CategoryRankingResponse.from(
+        CategoryRankingResponse response = CategoryRankingResponse.from(
                 categoryId,
                 resolveCategoryName(categoryId),
-                List.copyOf(items)
+                new ArrayList<>(items)
         );
+
+        eventRankingCacheStore.save(categoryId, response);
+        return response;
     }
 
     /**
