@@ -9,6 +9,7 @@ import java.math.BigDecimal;
  *
  * @param eventPricePolicyId 가격 정책 식별자
  * @param priceGrade 가격 등급
+ * @param audienceType 관람 대상 유형
  * @param salePriceAmount 판매가
  * @param currencyCode 통화 코드
  * @param displayOrder 노출 순서
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 public record EventPricePolicyResponse(
         Long eventPricePolicyId,
         String priceGrade,
+        String audienceType,
         BigDecimal salePriceAmount,
         String currencyCode,
         Integer displayOrder
@@ -31,6 +33,7 @@ public record EventPricePolicyResponse(
         return new EventPricePolicyResponse(
                 eventPricePolicy.getId(),
                 eventPricePolicy.getPriceGrade(),
+                eventPricePolicy.getAudienceType(),
                 eventPricePolicy.getSalePriceAmount(),
                 eventPricePolicy.getCurrencyCode(),
                 eventPricePolicy.getDisplayOrder()
