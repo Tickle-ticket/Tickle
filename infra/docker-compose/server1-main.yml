@@ -83,6 +83,17 @@ services:
       - '--path.rootfs=/rootfs'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
 
+  # ─── Promtail ─────────────────────────────────────
+  promtail:
+    image: grafana/promtail:latest
+    container_name: tickle-promtail
+    restart: always
+    mem_limit: 60m
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+    volumes:
+      - ../../infra/promtail/promtail-server1.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
 volumes:
   mysql-data:
   redis-data:
