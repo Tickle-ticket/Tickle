@@ -217,8 +217,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-dir",
-        default=None,
-        help="Directory containing model.joblib and meta.json (e.g., artifacts/<run>/).",
+        default="train/model_joblib/logistic_regression",
+        help="Directory containing model.joblib and meta.json (default: train/model_joblib/logistic_regression).",
     )
     parser.add_argument(
         "--trials-glob",
