@@ -64,7 +64,7 @@ management:
       probability: 1.0
   otlp:
     tracing:
-      endpoint: http://${SERVER3_PRIVATE_IP}:4317/v1/traces
+      endpoint: http://${SERVER3_PRIVATE_IP}:4318/v1/traces
 
 springdoc:
   # Swagger UI와 OpenAPI 문서 경로 설정
