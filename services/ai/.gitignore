@@ -53,10 +53,7 @@ temp/
 *.tmp
 
 # --- 개인 research / 로컬 전용 docs ---
-docs/macro_kinematics.md
-docs/poc/mouse/REPORT.md
-docs/feature_research_mouse_macro.md
-docs/feature_definitions_v0.md
+poc/mouse/REPORT.md
 
 # --- automouse 사용자 로컬 설정 ---
 automouse_data.json
