@@ -6,7 +6,11 @@ import type { SeatColor, SeatStatus } from './types';
 export interface SSAFY_18_Props {
   seatsData?: Record<string, { color?: SeatColor; status?: SeatStatus; isSelected?: boolean }>;
   onSeatClick?: (seatId: string) => void;
+  onSeatPointerDown?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onSeatPointerEnter?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onSeatPointerUp?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
   className?: string;
+  seatClassName?: string;
 }
 
 const upperLeft = [
@@ -47,16 +51,30 @@ const lowerRight = [
   ['P9', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16'],
 ];
 
+const seatSections = [upperLeft, upperRight, lowerLeft, lowerRight];
+
+export const SSAFY_18_SEAT_IDS = seatSections.flatMap((section) =>
+  section.flatMap((row) => row.filter((seatId): seatId is string => seatId !== null)),
+);
+
 const SeatWrapper = ({
   id,
   data,
   isDefaultMode,
-  onClick
+  onClick,
+  onPointerDown,
+  onPointerEnter,
+  onPointerUp,
+  seatClassName,
 }: {
   id: string | null;
   data?: { color?: SeatColor; status?: SeatStatus; isSelected?: boolean };
   isDefaultMode: boolean;
   onClick?: (id: string) => void;
+  onPointerDown?: (id: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerEnter?: (id: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerUp?: (id: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
+  seatClassName?: string;
 }) => {
   if (!id) return <div className="w-[36px] h-[42px] shrink-0" />;
 
@@ -73,12 +91,24 @@ const SeatWrapper = ({
         status={finalStatus}
         isSelected={data?.isSelected || false}
         onClick={() => onClick?.(id)}
+        onPointerDown={(event) => onPointerDown?.(id, event)}
+        onPointerEnter={(event) => onPointerEnter?.(id, event)}
+        onPointerUp={(event) => onPointerUp?.(id, event)}
+        className={seatClassName}
       />
     </div>
   );
 };
 
-export const SSAFY_18 = ({ seatsData = {}, onSeatClick, className = '' }: SSAFY_18_Props) => {
+export const SSAFY_18 = ({
+  seatsData = {},
+  onSeatClick,
+  onSeatPointerDown,
+  onSeatPointerEnter,
+  onSeatPointerUp,
+  className = '',
+  seatClassName = '',
+}: SSAFY_18_Props) => {
   const isDefaultMode = Object.keys(seatsData).length === 0;
 
   const renderGrid = (grid: (string | null)[][]) => {
@@ -130,6 +160,10 @@ export const SSAFY_18 = ({ seatsData = {}, onSeatClick, className = '' }: SSAFY_
                   data={cellId ? seatsData[cellId] : undefined}
                   isDefaultMode={isDefaultMode}
                   onClick={onSeatClick}
+                  onPointerDown={onSeatPointerDown}
+                  onPointerEnter={onSeatPointerEnter}
+                  onPointerUp={onSeatPointerUp}
+                  seatClassName={seatClassName}
                 />
               ))}
             </div>

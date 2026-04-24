@@ -17,6 +17,21 @@ interface BookViewProps {
   onClose: () => void;
 }
 
+const getSeatColorFromGrade = (grade: string): SeatColor => {
+  switch (grade.toUpperCase()) {
+    case 'VIP':
+      return 'pink';
+    case 'R':
+      return 'yellow';
+    case 'S':
+      return 'orange';
+    case 'A':
+      return 'blue';
+    default:
+      return 'gray';
+  }
+};
+
 export const BookView = ({ onClose }: BookViewProps) => {
   const { data: eventDetail, isLoading: isEventLoading } = useEventDetail('1'); // 이벤트 ID 1로 하드코딩
 
@@ -30,7 +45,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
   // Clawptcha State
   const [isBotVerified, setIsBotVerified] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
-  
+
   // Ticket type selection
   const [bookingStep, setBookingStep] = useState<'SEAT' | 'TICKET_TYPE' | 'PAYMENT' | 'PAY_METHOD'>('SEAT');
   const [ticketTypes, setTicketTypes] = useState<{id: string, label: string, discount: number}[]>([]);
@@ -98,7 +113,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
     );
   }
 
-  const seatsData: Record<string, { color?: string; status: SeatStatus; isSelected: boolean }> = {};
+  const seatsData: Record<string, { color?: SeatColor; status: SeatStatus; isSelected: boolean }> = {};
 
   if (seatAvailability) {
     Object.entries(seatAvailability).forEach(([seatId, info]) => {
@@ -108,7 +123,11 @@ export const BookView = ({ onClose }: BookViewProps) => {
       if (bookingStep === 'TICKET_TYPE' && !isSelected) {
         seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor };
       } else {
-        seatsData[seatId] = { status, isSelected, color: info.grade.toLowerCase() };
+        seatsData[seatId] = {
+        status,
+        isSelected,
+        color: getSeatColorFromGrade(info.grade),
+      };
       }
     });
   }
@@ -453,7 +472,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
                   {Array.from(selectedSeats).reduce((sum, seatId) => sum + getSeatInfo(seatId).price, 0).toLocaleString()}원
                 </span>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   // 등급별로 좌석 수 집계
                   const gradeCounts: Record<string, number> = {};
@@ -544,7 +563,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
                   </button>
                   <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">인원 선택</h2>
                 </div>
-                
+
                 {/* Grade list with Accordions */}
                 <div className="flex-1 overflow-y-auto px-3 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <p className="text-sm text-gray-500 mb-5 px-3">좌석 등급별로 관람 인원 유형을 선택해주세요.</p>
@@ -664,7 +683,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
                       </span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     disabled={Object.keys(gradeSeats).some(g => getGradeTotal(g) !== gradeSeats[g].length)}
                     onClick={() => setBookingStep('PAYMENT')}
                     className={`px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-md ${
@@ -719,52 +738,52 @@ export const BookView = ({ onClose }: BookViewProps) => {
         const canPay = buyerName.trim() && buyerEmail.trim() && buyerPhone.trim() && agreeTerm1 && agreeTerm2;
 
         const payMethods = [
-          { 
-            id: 'kakaopay', 
-            label: '카카오페이', 
-            selectedColor: 'border-[#FEE500] bg-[#FEE500] text-[#381E1F]', 
+          {
+            id: 'kakaopay',
+            label: '카카오페이',
+            selectedColor: 'border-[#FEE500] bg-[#FEE500] text-[#381E1F]',
             icon: <img src="/images/payment_icon_yellow_small.png" alt="카카오페이" className="h-5 w-auto mr-2" />
           },
-          { 
-            id: 'naverpay', 
-            label: '네이버페이', 
-            selectedColor: 'border-[#03C75A] bg-[#03C75A] text-white', 
+          {
+            id: 'naverpay',
+            label: '네이버페이',
+            selectedColor: 'border-[#03C75A] bg-[#03C75A] text-white',
             icon: <img src="/images/logo_npaybk_large.svg" alt="네이버페이" className="h-5 w-auto mr-2" />
           },
-          { 
-            id: 'tosspay', 
-            label: '토스페이', 
-            selectedColor: 'border-[#3182F6] bg-[#3182F6] text-white', 
+          {
+            id: 'tosspay',
+            label: '토스페이',
+            selectedColor: 'border-[#3182F6] bg-[#3182F6] text-white',
             icon: <img src="/images/Toss_Symbol_Primary.png" alt="토스페이" className="h-5 w-auto mr-2" />
           },
-          { 
-            id: 'payco', 
-            label: 'PAYCO', 
-            selectedColor: 'border-[#E31C18] bg-[#E31C18] text-white', 
+          {
+            id: 'payco',
+            label: 'PAYCO',
+            selectedColor: 'border-[#E31C18] bg-[#E31C18] text-white',
             icon: <span className="w-5 h-5 flex items-center justify-center bg-white text-[#E31C18] border border-[#E31C18] rounded-[4px] text-[13px] font-black mr-2 leading-none italic">P</span>
           },
         ];
         const otherMethods = [
-          { 
-            id: 'credit', 
+          {
+            id: 'credit',
             label: '신용카드',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
             icon: null
           },
-          { 
-            id: 'bank', 
+          {
+            id: 'bank',
             label: '계좌이체',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
             icon: null
           },
-          { 
-            id: 'phone', 
+          {
+            id: 'phone',
             label: '휴대폰 결제',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
             icon: null
           },
-          { 
-            id: 'vbank', 
+          {
+            id: 'vbank',
             label: '무통장입금',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
             icon: null
@@ -775,7 +794,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
           <div className="absolute inset-0 top-[73px] flex bg-white dark:bg-zinc-950 z-40 animate-fade-in border-t border-gray-200 dark:border-zinc-800">
             {/* Left: 예매자 정보 + 약관 동의 */}
             <div className="w-[60%] h-full overflow-y-auto p-8 flex flex-col gap-6 border-r border-gray-200 dark:border-zinc-800 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              
+
               <button
                 onClick={() => setBookingStep(bookingStep === 'PAYMENT' ? 'TICKET_TYPE' : 'PAYMENT')}
                 className="self-start px-4 py-2 text-gray-600 dark:text-gray-300 font-bold text-sm border border-gray-300 dark:border-zinc-600 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2"

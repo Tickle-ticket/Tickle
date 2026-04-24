@@ -1,5 +1,5 @@
-import React, { ElementType, ButtonHTMLAttributes, AnchorHTMLAttributes } from 'react';
-import type { BaseButtonProps, ButtonProps } from './types';
+import React, { ElementType } from 'react';
+import type { ButtonProps } from './types';
 
 const sizeStyles: Record<string, React.CSSProperties> = {
   small: { padding: '0 12px', height: '32px', fontSize: '14px', borderRadius: '6px' },
@@ -68,6 +68,8 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
       border: 'none',
       cursor: isInteractionDisabled ? 'not-allowed' : 'pointer',
       fontWeight: 600,
+      whiteSpace: 'nowrap',
+      flexShrink: 0,
       textDecoration: 'none',
       position: 'relative',
       overflow: 'hidden',
