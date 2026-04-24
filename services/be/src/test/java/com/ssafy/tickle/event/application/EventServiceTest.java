@@ -14,8 +14,10 @@ import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyReposit
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -233,6 +235,68 @@ class EventServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("랭킹 조회")
+    class GetRankingTest {
+
+        @Test
+        @DisplayName("categoryId가 있으면 해당 카테고리의 상위 5개를 반환한다")
+        void getRanking_withCategory_success() {
+            Event first = saveEventWithCreatedAt("Concert 1", concertCategory, Instant.parse("2026-07-01T10:00:00Z"), List.of("A"), Instant.parse("2026-07-01T00:00:00Z"));
+            Event second = saveEventWithCreatedAt("Concert 2", concertCategory, Instant.parse("2026-07-02T10:00:00Z"), List.of("B"), Instant.parse("2026-07-02T00:00:00Z"));
+            Event third = saveEventWithCreatedAt("Concert 3", concertCategory, Instant.parse("2026-07-03T10:00:00Z"), List.of("C"), Instant.parse("2026-07-03T00:00:00Z"));
+            Event fourth = saveEventWithCreatedAt("Concert 4", concertCategory, Instant.parse("2026-07-04T10:00:00Z"), List.of("D"), Instant.parse("2026-07-04T00:00:00Z"));
+            Event fifth = saveEventWithCreatedAt("Concert 5", concertCategory, Instant.parse("2026-07-05T10:00:00Z"), List.of("E"), Instant.parse("2026-07-05T00:00:00Z"));
+            saveEventWithCreatedAt("Concert 6", concertCategory, Instant.parse("2026-07-06T10:00:00Z"), List.of("F"), Instant.parse("2026-07-06T00:00:00Z"));
+
+            eventImageRepository.saveAll(List.of(
+                    createImage(first, EventImage.ImageType.THUMBNAIL, "https://cdn.test/c1.jpg", 0),
+                    createImage(second, EventImage.ImageType.THUMBNAIL, "https://cdn.test/c2.jpg", 0),
+                    createImage(third, EventImage.ImageType.THUMBNAIL, "https://cdn.test/c3.jpg", 0),
+                    createImage(fourth, EventImage.ImageType.THUMBNAIL, "https://cdn.test/c4.jpg", 0),
+                    createImage(fifth, EventImage.ImageType.THUMBNAIL, "https://cdn.test/c5.jpg", 0)
+            ));
+
+            CategoryRankingResponse response = eventService.getRanking(concertCategory.getId());
+
+            assertThat(response.categoryId()).isEqualTo(concertCategory.getId());
+            assertThat(response.categoryName()).isEqualTo("콘서트");
+            assertThat(response.rankings()).hasSize(5);
+            assertThat(response.rankings())
+                    .extracting(EventRankingResponse::eventName)
+                    .containsExactly("Concert 6", "Concert 5", "Concert 4", "Concert 3", "Concert 2");
+            assertThat(response.rankings().get(0).tags()).containsExactly("F");
+        }
+
+        @Test
+        @DisplayName("categoryId가 없으면 ALL 래퍼로 전체 상위 5개를 반환한다")
+        void getRanking_all_success() {
+            Event first = saveEventWithCreatedAt("Concert A", concertCategory, Instant.parse("2026-07-01T10:00:00Z"), List.of("A"), Instant.parse("2026-07-01T00:00:00Z"));
+            Event second = saveEventWithCreatedAt("Musical B", musicalCategory, Instant.parse("2026-07-02T10:00:00Z"), List.of("B"), Instant.parse("2026-07-02T00:00:00Z"));
+            Event third = saveEventWithCreatedAt("Concert C", concertCategory, Instant.parse("2026-07-03T10:00:00Z"), List.of("C"), Instant.parse("2026-07-03T00:00:00Z"));
+            Event fourth = saveEventWithCreatedAt("Musical D", musicalCategory, Instant.parse("2026-07-04T10:00:00Z"), List.of("D"), Instant.parse("2026-07-04T00:00:00Z"));
+            Event fifth = saveEventWithCreatedAt("Concert E", concertCategory, Instant.parse("2026-07-05T10:00:00Z"), List.of("E"), Instant.parse("2026-07-05T00:00:00Z"));
+            saveEventWithCreatedAt("Musical F", musicalCategory, Instant.parse("2026-07-06T10:00:00Z"), List.of("F"), Instant.parse("2026-07-06T00:00:00Z"));
+
+            eventImageRepository.saveAll(List.of(
+                    createImage(first, EventImage.ImageType.THUMBNAIL, "https://cdn.test/a.jpg", 0),
+                    createImage(second, EventImage.ImageType.THUMBNAIL, "https://cdn.test/b.jpg", 0),
+                    createImage(third, EventImage.ImageType.THUMBNAIL, "https://cdn.test/c.jpg", 0),
+                    createImage(fourth, EventImage.ImageType.THUMBNAIL, "https://cdn.test/d.jpg", 0),
+                    createImage(fifth, EventImage.ImageType.THUMBNAIL, "https://cdn.test/e.jpg", 0)
+            ));
+
+            CategoryRankingResponse response = eventService.getRanking(null);
+
+            assertThat(response.categoryId()).isNull();
+            assertThat(response.categoryName()).isEqualTo("ALL");
+            assertThat(response.rankings()).hasSize(5);
+            assertThat(response.rankings())
+                    .extracting(EventRankingResponse::eventName)
+                    .containsExactly("Musical F", "Concert E", "Musical D", "Concert C", "Musical B");
+        }
+    }
+
     private Organizer createOrganizer(String organizerName) {
         Organizer organizer = Organizer.builder()
                 .organizerName(organizerName)
@@ -280,7 +344,7 @@ class EventServiceTest {
                 .salesEndAt(eventStartAt.plusSeconds(172_800))
                 .eventStartAt(eventStartAt)
                 .eventEndAt(eventStartAt.plusSeconds(7_200))
-                .metadata("{\"genre\":\"test\"}")
+                .metadata(new Event.EventMetadata(List.of("new", "mysterious")))
                 .notice("관람 전 신분증을 지참해주세요.")
                 .status(Event.Status.OPENED)
                 .build();
@@ -327,6 +391,38 @@ class EventServiceTest {
 
         setAuditFields(pricePolicy);
         return pricePolicy;
+    }
+
+    private Event saveEventWithCreatedAt(
+            String title,
+            Category category,
+            Instant eventStartAt,
+            List<String> tags,
+            Instant createdAt
+    ) {
+        Event saved = eventRepository.save(createEventWithTags(title, category, eventStartAt, tags));
+        ReflectionTestUtils.setField(saved, "createdAt", createdAt);
+        ReflectionTestUtils.setField(saved, "updatedAt", createdAt);
+        return eventRepository.save(saved);
+    }
+
+    private Event createEventWithTags(String title, Category category, Instant eventStartAt, List<String> tags) {
+        Event event = Event.builder()
+                .organizer(organizer)
+                .venue(venue)
+                .title(title)
+                .category(category)
+                .salesStartAt(eventStartAt.minusSeconds(86_400))
+                .salesEndAt(eventStartAt.plusSeconds(172_800))
+                .eventStartAt(eventStartAt)
+                .eventEndAt(eventStartAt.plusSeconds(7_200))
+                .metadata(new Event.EventMetadata(tags))
+                .notice("관람 전 신분증을 지참해주세요.")
+                .status(Event.Status.OPENED)
+                .build();
+
+        setAuditFields(event);
+        return event;
     }
 
     private void setAuditFields(Object target) {
