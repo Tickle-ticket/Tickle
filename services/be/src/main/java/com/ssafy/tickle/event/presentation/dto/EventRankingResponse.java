@@ -3,6 +3,7 @@ package com.ssafy.tickle.event.presentation.dto;
 import com.ssafy.tickle.event.domain.Event;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -47,7 +48,9 @@ public record EventRankingResponse(
                 event.getSalesStartAt(),
                 event.getSalesEndAt(),
                 thumbnailUrl,
-                event.getMetadata().tags()
+                event.getMetadata() == null
+                        ? new ArrayList<>()
+                        : new ArrayList<>(event.getMetadata().tags())
         );
     }
 }
