@@ -27,12 +27,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,6 +71,9 @@ class EventServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     private Organizer organizer;
     private Venue venue;
     private Category concertCategory;
@@ -76,6 +81,7 @@ class EventServiceTest {
 
     @BeforeEach
     void setUp() {
+        clearRankingCache();
         organizer = organizerRepository.save(createOrganizer("테스트 주최자"));
         venue = venueRepository.save(createVenue("테스트 공연장"));
         concertCategory = categoryRepository.save(createCategory("콘서트"));
@@ -84,6 +90,7 @@ class EventServiceTest {
 
     @AfterEach
     void tearDown() {
+        clearRankingCache();
         eventImageRepository.deleteAllInBatch();
         eventSessionRepository.deleteAllInBatch();
         eventPricePolicyRepository.deleteAllInBatch();
@@ -91,6 +98,13 @@ class EventServiceTest {
         categoryRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
         organizerRepository.deleteAllInBatch();
+    }
+
+    private void clearRankingCache() {
+        Set<String> keys = stringRedisTemplate.keys("event:ranking:*");
+        if (keys != null && !keys.isEmpty()) {
+            stringRedisTemplate.delete(keys);
+        }
     }
 
     @Nested
