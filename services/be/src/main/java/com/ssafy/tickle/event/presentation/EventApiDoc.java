@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -57,6 +58,21 @@ public interface EventApiDoc {
     ResponseEntity<BaseResponse<CategoryRankingResponse>> getRanking(
             @Parameter(description = "카테고리 식별자") Long categoryId
     );
+
+    /**
+     * 오픈 임박 공연 조회 API 문서 정의입니다.
+     *
+     * @return 오픈 임박 공연 목록
+     */
+    @Operation(
+            summary = "오픈 임박 공연 조회",
+            description = "예매 시작 시각이 가장 가까운 공연 5개를 조회합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "오픈 임박 공연 조회 성공"
+    )
+    ResponseEntity<BaseResponse<OpeningSoonEventsResponse>> getOpeningSoonEvents();
 
     /**
      * 공연 상세 조회 API 문서 정의입니다.
