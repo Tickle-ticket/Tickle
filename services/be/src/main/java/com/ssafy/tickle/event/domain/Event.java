@@ -1,6 +1,5 @@
 package com.ssafy.tickle.event.domain;
 
-import com.ssafy.tickle.venue.domain.Venue;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,8 +14,13 @@ import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.ssafy.tickle.venue.domain.Venue;
 
 import java.time.Instant;
+import java.util.List;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -71,8 +75,9 @@ public class Event {
     private Instant eventEndAt;
 
     // 메타데이터
-    @Column(name = "metadata", columnDefinition = "TEXT")
-    private String metadata;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "json")
+    private EventMetadata metadata;
 
     // 공지사항
     @Column(name = "notice", columnDefinition = "TEXT")
@@ -97,6 +102,14 @@ public class Event {
         CLOSED,
         FINISHED,
         CANCELLED
+    }
+
+    public record EventMetadata(
+            List<String> tags
+    ) {
+        public EventMetadata {
+            tags = tags == null ? List.of() : List.copyOf(tags);
+        }
     }
 
     /**
@@ -124,7 +137,7 @@ public class Event {
             Instant salesEndAt,
             Instant eventStartAt,
             Instant eventEndAt,
-            String metadata,
+            EventMetadata metadata,
             String notice,
             Status status
     ) {

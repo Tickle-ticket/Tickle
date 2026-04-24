@@ -2,16 +2,21 @@ package com.ssafy.tickle.event.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.event.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
+import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
+import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,9 +25,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 이벤트 조회 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
@@ -32,10 +35,14 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class EventService {
 
+    private static final int CATEGORY_RANKING_LIMIT = 5;
+
     private final EventRepository eventRepository;
+    private final CategoryRepository categoryRepository;
     private final EventImageRepository eventImageRepository;
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
+    private final EventRankingCacheStore eventRankingCacheStore;
 
     /**
      * 이벤트 상세 정보를 조회합니다.
@@ -84,6 +91,57 @@ public class EventService {
     }
 
     /**
+     * 랭킹 이벤트 TOP5를 조회합니다.
+     *
+     * @param categoryId 카테고리 식별자(없으면 전체)
+     * @return 랭킹 응답 목록
+     */
+    public CategoryRankingResponse getRanking(Long categoryId) {
+        Optional<CategoryRankingResponse> cachedResponse =
+                eventRankingCacheStore.findByCategoryId(categoryId);
+
+        if (cachedResponse.isPresent()) {
+            return cachedResponse.get();
+        }
+
+        List<Event> rankingEvents = eventRepository.findRankingEvents(
+                Event.Status.OPENED,
+                categoryId,
+                PageRequest.of(
+                        0,
+                        CATEGORY_RANKING_LIMIT,
+                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+                )
+        );
+
+        List<Long> eventIds = rankingEvents.stream()
+                .map(Event::getId)
+                .distinct()
+                .toList();
+
+        Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
+
+        List<EventRankingResponse> items = new ArrayList<>();
+
+        for (Event event : rankingEvents) {
+            items.add(EventRankingResponse.from(
+                    items.size() + 1,
+                    event,
+                    thumbnailUrlByEventId.get(event.getId())
+            ));
+        }
+
+        CategoryRankingResponse response = CategoryRankingResponse.from(
+                categoryId,
+                resolveCategoryName(categoryId),
+                new ArrayList<>(items)
+        );
+
+        eventRankingCacheStore.save(categoryId, response);
+        return response;
+    }
+
+    /**
      * 이벤트 검색어를 정규화합니다.
      *
      * @param keyword 원본 검색어
@@ -121,5 +179,15 @@ public class EventService {
         }
 
         return thumbnailUrlByEventId;
+    }
+
+    private String resolveCategoryName(Long categoryId) {
+        if (categoryId == null) {
+            return "ALL";
+        }
+
+        return categoryRepository.findById(categoryId)
+                .map(Category::getCategoryName)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "카테고리를 찾을 수 없습니다."));
     }
 }

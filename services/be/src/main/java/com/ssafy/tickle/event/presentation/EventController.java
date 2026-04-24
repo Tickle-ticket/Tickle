@@ -1,8 +1,8 @@
 package com.ssafy.tickle.event.presentation;
 
-import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.event.application.EventService;
+import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +43,22 @@ public class EventController implements EventApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(eventService.getEvents(keyword, categoryId, page, size)));
+    }
+
+    /**
+     * 랭킹 TOP5를 조회합니다.
+     *
+     * @param categoryId 카테고리 식별자(없으면 전체)
+     * @return 랭킹 응답
+     */
+    @Override
+    @GetMapping("/ranking")
+    public ResponseEntity<BaseResponse<CategoryRankingResponse>> getRanking(
+            @RequestParam(required = false) Long categoryId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(eventService.getRanking(categoryId)));
     }
 
     /**

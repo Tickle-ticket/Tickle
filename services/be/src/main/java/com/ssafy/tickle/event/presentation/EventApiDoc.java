@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.presentation;
 
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,6 +38,24 @@ public interface EventApiDoc {
             @Parameter(description = "카테고리 식별자") Long categoryId,
             @Parameter(description = "페이지 번호", example = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") int size
+    );
+
+    /**
+     * 랭킹 조회 API 문서 정의입니다.
+     *
+     * @param categoryId 카테고리 식별자(없으면 전체)
+     * @return 랭킹 응답
+     */
+    @Operation(
+            summary = "랭킹 TOP5 조회",
+            description = "categoryId 기준(없으면 전체) 생성일 상위 5개 공연 랭킹을 조회합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "랭킹 조회 성공"
+    )
+    ResponseEntity<BaseResponse<CategoryRankingResponse>> getRanking(
+            @Parameter(description = "카테고리 식별자") Long categoryId
     );
 
     /**

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -43,5 +44,27 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             @Param("keyword") String keyword,
             @Param("categoryId") Long categoryId,
             Pageable pageable
+    );
+
+    /**
+     * 랭킹 계산용 이벤트 목록을 자체 기준으로 조회합니다.
+     * 현재는 생성일 기준으로 정렬되어 있습니다.
+     *
+     * @param status 이벤트 상태
+     * @param categoryId 카테고리 식별자(없으면 전체)
+     * @return 생성일 정렬 이벤트 목록
+     */
+    @EntityGraph(attributePaths = {"venue", "category"})
+    @Query("""
+            select e
+            from Event e
+            where e.status = :status
+              and (:categoryId is null or e.category.id = :categoryId)
+            """)
+    List<Event> findRankingEvents(
+            @Param("status") Event.Status status,
+            @Param("categoryId") Long categoryId,
+            Pageable pageable
+
     );
 }
