@@ -50,10 +50,7 @@ Thumbs.db
 # --- Temp ---
 tmp/
 temp/
-*.tmp
-
-# --- 개인 research / 로컬 전용 docs ---
-poc/mouse/REPORT.md
+*.tmpgit add services/ai/.gitignore
 
 # --- automouse 사용자 로컬 설정 ---
 automouse_data.json
