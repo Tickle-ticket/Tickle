@@ -1,7 +1,7 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '4.0.5'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '3.4.5'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.ssafy'
@@ -24,8 +24,8 @@ dependencies {
 	// Spring web mvc
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 
-	// OpenAPI
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
+    // OpenAPI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
 
 	// jpa
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -41,8 +41,8 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
     // Tracing
-    implementation 'io.micrometer:micrometer-tracing-bridge-otel:1.5.0'
-    implementation 'io.opentelemetry:opentelemetry-exporter-otlp:1.48.0'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
 
 	// MySQL Driver
 	runtimeOnly 'com.mysql:mysql-connector-j'
@@ -52,16 +52,12 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 
 	// Test
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
-
-	testCompileOnly 'org.projectlombok:lombok'
-	testAnnotationProcessor 'org.projectlombok:lombok'
-	testRuntimeOnly 'com.h2database:h2'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly 'com.h2database:h2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
