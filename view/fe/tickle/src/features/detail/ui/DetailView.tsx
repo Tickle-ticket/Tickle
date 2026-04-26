@@ -19,6 +19,7 @@ import { TimelineNav } from '@/src/shared/components/TimelineNav';
 import { useRouter } from 'next/navigation';
 import { BookView } from '@/src/features/book/ui/BookView';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
+import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -40,8 +41,18 @@ export const DetailView = () => {
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK'>('NONE');
+  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
+  const [isUpcoming, setIsUpcoming] = useState(false);
+
+  useEffect(() => {
+    if (data?.openDate) {
+      const openTime = new Date(data.openDate).getTime();
+      if (openTime > Date.now()) {
+        setIsUpcoming(true);
+      }
+    }
+  }, [data?.openDate]);
 
   const scheduleData = data?.schedules || [];
   const enabledDates = scheduleData.map((item: any) => item.date.split(' ')[0].replace(/\./g, '-'));
@@ -120,7 +131,7 @@ export const DetailView = () => {
       />
 
       {/* Right Column: Main Content */}
-      <main className="flex-1 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative">
+      <main className="flex-1 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
         <Header />
 
@@ -139,13 +150,35 @@ export const DetailView = () => {
             <BannerTime time={data?.startDate ? `${data.startDate} ~ ${data.endDate}` : ''} color="black" className="!text-base md:!text-[17px]" />
           </div>
 
-          <div className="flex items-center gap-3 mt-6">
-            <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setFlowState('QUEUE')}>
-              예매하기
-            </Button>
-            <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10">
-              취소표 대기하기
-            </Button>
+          <div className="flex flex-col items-start gap-3 mt-6">
+            {isUpcoming && data?.openDate ? (
+              <div className="flex flex-col items-start gap-4">
+                <Text typography="t5" fontWeight="bold" className="text-[#ef4444] animate-pulse">
+                  예매 오픈까지 남은 시간
+                </Text>
+                <CountdownTimer 
+                  targetDate={data.openDate} 
+                  onExpire={() => setIsUpcoming(false)} 
+                />
+                <div className="flex items-center gap-3 mt-2 opacity-50 grayscale pointer-events-none">
+                  <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold">
+                    예매하기
+                  </Button>
+                  <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10">
+                    취소표 대기하기
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setFlowState('QUEUE')}>
+                  예매하기
+                </Button>
+                <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10" onClick={() => setFlowState('WAITLIST_QUEUE')}>
+                  취소표 대기하기
+                </Button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -308,21 +341,21 @@ export const DetailView = () => {
       </main>
 
       {/* Booking Pipeline Overlays */}
-      {flowState === 'QUEUE' && (
+      {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView 
             sessionId={data?.id || '1'} 
             onAdmitted={(token) => {
               setAdmitToken(token);
-              setFlowState('BOOK');
+              setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
             }}
             onClose={() => setFlowState('NONE')}
           />
         </div>
       )}
-      {flowState === 'BOOK' && (
+      {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView onClose={() => setFlowState('NONE')} />
+          <BookView isWaitlistMode={flowState === 'WAITLIST_BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>

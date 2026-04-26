@@ -15,21 +15,34 @@ import { Modal } from '@/src/shared/components/Modal';
 
 interface BookViewProps {
   onClose: () => void;
+  mode?: 'BOOK' | 'CANCEL' | 'WAITLIST';
+  initialSchedule?: { date: string, time: string };
+  initialSeats?: string[];
+  initialModifyModeActive?: boolean;
+  initialModifyingSchedule?: boolean;
 }
 
-export const BookView = ({ onClose }: BookViewProps) => {
+export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false }: BookViewProps) => {
+  const isWaitlistMode = mode === 'WAITLIST';
+  const isCancelMode = mode === 'CANCEL';
+
   const { data: eventDetail, isLoading: isEventLoading } = useEventDetail('1'); // 이벤트 ID 1로 하드코딩
 
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(initialSchedule?.date || null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(initialSchedule?.time || null);
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
-  const [isModifyingSchedule, setIsModifyingSchedule] = useState(false);
-  const [confirmedSchedule, setConfirmedSchedule] = useState<{date: string, time: string} | null>(null);
+  const [selectedSeatsToCancel, setSelectedSeatsToCancel] = useState<Set<string>>(new Set());
+  const [isModifyingSchedule, setIsModifyingSchedule] = useState(initialModifyingSchedule || !initialSchedule);
+  const [confirmedSchedule, setConfirmedSchedule] = useState<{date: string, time: string} | null>(initialSchedule || null);
+  const [isModifyModeActive, setIsModifyModeActive] = useState(initialModifyModeActive);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  
+  const enableWs = !isCancelMode || isModifyModeActive;
   
   // Clawptcha State
   const [isBotVerified, setIsBotVerified] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
   
   // Ticket type selection
   const [bookingStep, setBookingStep] = useState<'SEAT' | 'TICKET_TYPE' | 'PAYMENT' | 'PAY_METHOD'>('SEAT');
@@ -51,6 +64,12 @@ export const BookView = ({ onClose }: BookViewProps) => {
   // Pay method selection
   const [payCategory, setPayCategory] = useState<'pay' | 'other' | null>(null);
   const [selectedPayMethod, setSelectedPayMethod] = useState<string | null>(null);
+
+  const isScheduleChanged = confirmedSchedule && initialSchedule && (confirmedSchedule.date !== initialSchedule.date || confirmedSchedule.time !== initialSchedule.time);
+  const effectiveSeatsToCancel = isScheduleChanged ? new Set(initialSeats) : selectedSeatsToCancel;
+  const cartSeats = isModifyModeActive 
+    ? new Set([...initialSeats.filter(s => !effectiveSeatsToCancel.has(s)), ...selectedSeats])
+    : (isCancelMode ? selectedSeatsToCancel : selectedSeats);
 
   // Fetch ticket types from MSW
   useEffect(() => {
@@ -87,7 +106,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
   };
 
   const scheduleId = confirmedSchedule ? `${confirmedSchedule.date}-${confirmedSchedule.time}` : null;
-  const { data: seatAvailability, isLoading: isSeatsLoading } = useSeatData(scheduleId);
+  const { data: seatAvailability, isLoading: isSeatsLoading } = useSeatData(scheduleId, enableWs);
 
   if (isEventLoading || !eventDetail) {
     return (
@@ -98,42 +117,93 @@ export const BookView = ({ onClose }: BookViewProps) => {
     );
   }
 
-  const seatsData: Record<string, { color?: string; status: SeatStatus; isSelected: boolean }> = {};
+  const seatsData: Record<string, { color?: string; status: SeatStatus; isSelected: boolean; congestion?: string }> = {};
 
-  if (seatAvailability) {
+  if (isCancelMode && !isModifyModeActive) {
+    // 취소 모드: 초기 좌석만 렌더링하고 나머지는 비활성화
+    initialSeats.forEach(seatId => {
+      const isSelected = selectedSeatsToCancel.has(seatId);
+      seatsData[seatId] = {
+        status: 'selectable',
+        isSelected: isSelected,
+        color: 'vip', // mock grade color
+      };
+    });
+  } else if (seatAvailability) {
     Object.entries(seatAvailability).forEach(([seatId, info]) => {
-      const status: SeatStatus = info.isAvailable ? 'selectable' : 'disabled';
-      const isSelected = selectedSeats.has(seatId);
-      // 인원 선택 단계에서는 선택된 좌석만 활성, 나머지는 비활성화
+      // 내 기존 좌석인 경우 (예약 변경 모드)
+      const isMyInitialSeat = initialSeats.includes(seatId);
+      
+      const isSelectable = isWaitlistMode ? !info.isAvailable : (info.isAvailable || isMyInitialSeat);
+      const status: SeatStatus = isSelectable ? 'selectable' : 'disabled';
+      const isSelected = isMyInitialSeat ? selectedSeatsToCancel.has(seatId) : selectedSeats.has(seatId);
+
+      let congestion: 'red' | 'yellow' | 'green' | 'blue' | 'none' = 'none';
+      if (isWaitlistMode && !info.isAvailable) {
+        const hash = seatId.charCodeAt(0) + (parseInt(seatId.slice(1)) || 0);
+        if (hash % 5 === 0) congestion = 'red';
+        else if (hash % 5 === 1) congestion = 'yellow';
+        else if (hash % 5 === 2) congestion = 'green';
+        else congestion = 'blue';
+      }
+
       if (bookingStep === 'TICKET_TYPE' && !isSelected) {
-        seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor };
+        seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor, congestion };
       } else {
-        seatsData[seatId] = { status, isSelected, color: info.grade.toLowerCase() };
+        const color = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode) ? 'disabled' : info.grade.toLowerCase());
+        seatsData[seatId] = { status, isSelected, color: color as SeatColor, congestion };
       }
     });
   }
 
   const getSeatInfo = (seatId: string) => {
+    if (initialSeats.includes(seatId)) {
+      const match = seatId.match(/^[a-zA-Z]+/);
+      let grade = match ? match[0].toUpperCase() : 'VIP';
+      if (grade === 'V') grade = 'VIP';
+      const price = eventDetail?.zonePrices.find(p => p.grade === grade)?.price || 0;
+      return { grade, price };
+    }
     const grade = seatAvailability?.[seatId]?.grade || '일반';
     const price = eventDetail?.zonePrices.find(p => p.grade === grade)?.price || 0;
     return { grade, price };
   };
 
+  const getDetailedSeatInfo = (seatId: string) => {
+    const match = seatId.match(/([a-zA-Z]+)(\d+)/);
+    if (!match) return seatId;
+    const num = parseInt(match[2], 10) || 1;
+    
+    const floor = num > 50 ? 2 : 1;
+    const zones = ['A', 'B', 'C', 'D', 'E'];
+    const zone = zones[(num - 1) % 5];
+    const row = Math.ceil(num / 15) + (floor === 1 ? 5 : 1);
+    const seatNum = num;
+    
+    return `${floor}층 ${zone}구역 ${row}열 ${seatNum}번`;
+  };
+
   const handleSeatClick = (id: string) => {
-    // 인원 선택 단계에서는 좌석 클릭 비활성화
     if (bookingStep === 'TICKET_TYPE') return;
-    const seatData = seatsData[id];
-    if (!scheduleId || !seatData || seatData.status !== 'selectable') {
+    
+    // 취소 모드이거나 (예약 변경 모드 내의 초기 좌석)
+    if ((isCancelMode && !isModifyModeActive) || initialSeats.includes(id)) {
+      setSelectedSeatsToCancel(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
       return;
     }
 
+    const seatData = seatsData[id];
+    if (!scheduleId || !seatData || seatData.status !== 'selectable') return;
+
     setSelectedSeats(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -356,27 +426,46 @@ export const BookView = ({ onClose }: BookViewProps) => {
                     {selectedDate} <span className="text-gray-300">|</span> {selectedTime}
                   </span>
                 </div>
-                <button 
-                  onClick={() => setIsModifyingSchedule(true)}
-                  className="text-sm font-bold text-gray-600 bg-gray-100 dark:bg-zinc-700 dark:text-gray-200 px-4 py-2.5 rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors flex items-center gap-2"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 2v6h-6"></path>
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                    <path d="M3 3v5h5"></path>
-                  </svg>
-                  일시 변경
-                </button>
+                {(!isCancelMode || isModifyModeActive) && (
+                  <button 
+                    onClick={() => setIsModifyingSchedule(true)}
+                    className="text-sm font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-gray-600 bg-gray-100 dark:bg-zinc-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-zinc-600"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 2v6h-6"></path>
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                    </svg>
+                    일시 변경
+                  </button>
+                )}
+                {isCancelMode && !isModifyModeActive && (
+                  <button 
+                    onClick={() => setIsModifyModeActive(true)}
+                    className="text-sm font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 px-4 py-2.5 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-2"
+                  >
+                    예약 변경 모드로 전환
+                  </button>
+                )}
               </div>
               
               <div className="flex justify-between items-center border-b border-gray-100 dark:border-zinc-800 pb-4 shrink-0">
                 <div className="text-[22px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  선택 좌석 <span className="text-blue-500 font-extrabold">{selectedSeats.size}</span>
-                  <span className="text-gray-300 dark:text-gray-600 font-medium text-lg">/ 4</span>
+                  {isCancelMode && !isModifyModeActive ? '취소할 좌석' : '선택 좌석'} <span className="text-blue-500 font-extrabold">{cartSeats.size}</span>
+                  {!isCancelMode && <span className="text-gray-300 dark:text-gray-600 font-medium text-lg">/ 4</span>}
                 </div>
-                {selectedSeats.size > 0 && (
+                {cartSeats.size > 0 && (
                   <button 
-                    onClick={() => setSelectedSeats(new Set())}
+                    onClick={() => {
+                      if (isCancelMode && !isModifyModeActive) {
+                        setSelectedSeatsToCancel(new Set());
+                      } else if (isModifyModeActive) {
+                        setSelectedSeatsToCancel(new Set(initialSeats));
+                        setSelectedSeats(new Set());
+                      } else {
+                        setSelectedSeats(new Set());
+                      }
+                    }}
                     className="text-[16px] font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
                     전체삭제
@@ -384,7 +473,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
                 )}
               </div>
 
-              {selectedSeats.size === 0 ? (
+              {cartSeats.size === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4 py-20">
                   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -394,7 +483,7 @@ export const BookView = ({ onClose }: BookViewProps) => {
                 </div>
               ) : (
                 <div className="flex flex-col animate-fade-in pb-4">
-                  {Array.from(selectedSeats).map(seatId => {
+                  {Array.from(cartSeats).map(seatId => {
                     const { grade, price } = getSeatInfo(seatId);
                     
                     const gradeDotColors: Record<string, string> = {
@@ -406,26 +495,68 @@ export const BookView = ({ onClose }: BookViewProps) => {
                     const dotClass = gradeDotColors[grade] || 'bg-gray-400';
 
                     return (
-                      <div key={seatId} className="flex justify-between items-center py-3.5 border-b border-gray-100 dark:border-zinc-800">
+                      <div 
+                        key={seatId} 
+                        className="flex justify-between items-center p-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 group hover:border-gray-200 dark:hover:border-zinc-700 transition-colors"
+                      >
                         <div className="flex flex-col gap-1">
+                          {isModifyModeActive && (
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                              {initialSeats.includes(seatId) 
+                                ? `${initialSchedule?.date} ${initialSchedule?.time}`
+                                : `${confirmedSchedule?.date} ${confirmedSchedule?.time}`}
+                            </span>
+                          )}
                           <div className="flex items-center gap-2">
                             <span className={`w-3 h-3 rounded-full ${dotClass}`}></span>
                             <span className="font-black text-gray-900 dark:text-white text-base">{grade}석</span>
+                            {isModifyModeActive && initialSeats.includes(seatId) && (
+                              <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold">
+                                기존
+                              </span>
+                            )}
                           </div>
-                          {/* We don't have exact row/col info like 1층 C구역, so we use seatId */}
-                          <span className="text-gray-500 dark:text-gray-400 text-[13px] font-medium ml-5">{seatId}</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-[13px] font-medium ml-5">{getDetailedSeatInfo(seatId)}</span>
                         </div>
                         
                         <div className="flex items-center gap-4">
-                          <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight">{price.toLocaleString()}원</span>
+                          <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight">
+                            {isWaitlistMode ? (
+                              <span className="text-blue-600">대기 {(seatId.charCodeAt(0) + (parseInt(seatId.slice(1)) || 0)) * 2 % 45 + 1}명</span>
+                            ) : (
+                              `${price.toLocaleString()}원`
+                            )}
+                          </span>
                           
                           <button 
                             onClick={() => {
-                              setSelectedSeats(prev => {
-                                const next = new Set(prev);
-                                next.delete(seatId);
-                                return next;
-                              });
+                              if (isCancelMode && !isModifyModeActive) {
+                                setSelectedSeatsToCancel(prev => {
+                                  const next = new Set(prev);
+                                  next.delete(seatId);
+                                  return next;
+                                });
+                              } else if (isModifyModeActive) {
+                                if (initialSeats.includes(seatId)) {
+                                  setSelectedSeatsToCancel(prev => {
+                                    const next = new Set(prev);
+                                    next.add(seatId);
+                                    return next;
+                                  });
+                                } else {
+                                  setSelectedSeats(prev => {
+                                    const next = new Set(prev);
+                                    next.delete(seatId);
+                                    return next;
+                                  });
+                                }
+                              } else {
+                                setSelectedSeats(prev => {
+                                  const next = new Set(prev);
+                                  next.delete(seatId);
+                                  return next;
+                                });
+                              }
                             }}
                             className="text-gray-300 hover:text-gray-500 dark:hover:text-gray-400 transition-colors p-1"
                             aria-label="삭제"
@@ -445,34 +576,102 @@ export const BookView = ({ onClose }: BookViewProps) => {
           )}
 
           {/* Checkout Bar at bottom of right panel */}
-          {scheduleId && selectedSeats.size > 0 && !isModifyingSchedule && bookingStep === 'SEAT' && (
+          {scheduleId && ((isCancelMode && !isModifyModeActive ? selectedSeatsToCancel.size > 0 : selectedSeats.size > 0) || isModifyModeActive) && !isModifyingSchedule && bookingStep === 'SEAT' && (
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] flex justify-between items-center z-20 animate-slide-up">
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-500 font-medium">총 결제 금액</span>
-                <span className="text-2xl font-extrabold text-blue-600">
-                  {Array.from(selectedSeats).reduce((sum, seatId) => sum + getSeatInfo(seatId).price, 0).toLocaleString()}원
-                </span>
-              </div>
-              <button 
-                onClick={() => {
-                  // 등급별로 좌석 수 집계
-                  const gradeCounts: Record<string, number> = {};
-                  Array.from(selectedSeats).forEach(seatId => {
-                    const { grade } = getSeatInfo(seatId);
-                    gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
-                  });
-                  // 초기화: 각 등급의 인원을 비워둠
-                  const initial: Record<string, Record<string, number>> = {};
-                  Object.entries(gradeCounts).forEach(([grade]) => {
-                    initial[grade] = {};
-                  });
-                  setGradeTicketCounts(initial);
-                  setBookingStep('TICKET_TYPE');
-                }}
-                className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
-              >
-                인원 선택
-              </button>
+              {isCancelMode && !isModifyModeActive ? (
+                <>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-500 font-medium">취소할 좌석</span>
+                    <span className="text-2xl font-extrabold text-red-600">
+                      {effectiveSeatsToCancel.size}개
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      alert('취소가 완료되었습니다. (임시 동작)');
+                      onClose();
+                    }}
+                    className="px-10 py-4 bg-red-600 text-white rounded-xl font-bold text-lg hover:bg-red-700 active:scale-95 transition-all shadow-md shadow-red-600/20"
+                  >
+                    선택한 좌석 취소
+                  </button>
+                </>
+              ) : isModifyModeActive ? (
+                <>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-500 font-medium">취소 {effectiveSeatsToCancel.size}개 / 추가 {selectedSeats.size}개</span>
+                    <span className="text-2xl font-extrabold text-blue-600">
+                      변경 사항 저장
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (selectedSeats.size > 0) {
+                        if (isWaitlistMode) {
+                          setIsWaitlistCompleteModalOpen(true);
+                        } else {
+                          // 등급별로 좌석 수 집계
+                          const gradeCounts: Record<string, number> = {};
+                          Array.from(selectedSeats).forEach(seatId => {
+                            const { grade } = getSeatInfo(seatId);
+                            gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
+                          });
+                          // 초기화: 각 등급의 인원을 비워둠
+                          const initial: Record<string, Record<string, number>> = {};
+                          Object.entries(gradeCounts).forEach(([grade]) => {
+                            initial[grade] = {};
+                          });
+                          setGradeTicketCounts(initial);
+                          setBookingStep('TICKET_TYPE');
+                        }
+                      } else {
+                        alert('예약 변경이 완료되었습니다. (임시 동작)');
+                        onClose();
+                      }
+                    }}
+                    className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
+                  >
+                    {selectedSeats.size > 0 ? (isWaitlistMode ? '대기하기' : '인원 선택') : '변경 사항 저장'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-500 font-medium">
+                      {isWaitlistMode ? '선택된 좌석 수' : '총 결제 금액'}
+                    </span>
+                    <span className="text-2xl font-extrabold text-blue-600">
+                      {isWaitlistMode 
+                        ? `${selectedSeats.size}개` 
+                        : `${Array.from(selectedSeats).reduce((sum, seatId) => sum + getSeatInfo(seatId).price, 0).toLocaleString()}원`}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (isWaitlistMode) {
+                        setIsWaitlistCompleteModalOpen(true);
+                      } else {
+                        // 등급별로 좌석 수 집계
+                        const gradeCounts: Record<string, number> = {};
+                        Array.from(selectedSeats).forEach(seatId => {
+                          const { grade } = getSeatInfo(seatId);
+                          gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
+                        });
+                        // 초기화: 각 등급의 인원을 비워둠
+                        const initial: Record<string, Record<string, number>> = {};
+                        Object.entries(gradeCounts).forEach(([grade]) => {
+                          initial[grade] = {};
+                        });
+                        setGradeTicketCounts(initial);
+                        setBookingStep('TICKET_TYPE');
+                      }
+                    }}
+                    className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
+                  >
+                    {isWaitlistMode ? '예약하기' : '인원 선택'}
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -1114,6 +1313,19 @@ export const BookView = ({ onClose }: BookViewProps) => {
         cancelText="계속 대기"
         onConfirm={handleConfirmExit}
         onCancel={handleCancelExit}
+      />
+
+      <Modal
+        isOpen={isWaitlistCompleteModalOpen}
+        onClose={() => {}}
+        title="취소표 대기 신청 완료"
+        description="해당 좌석에 대한 취소표 대기 신청이 성공적으로 완료되었습니다. 취소표 발생 시 알림을 보내드립니다."
+        confirmText="확인"
+        onConfirm={() => {
+          setIsWaitlistCompleteModalOpen(false);
+          onClose(); // DetailView로 복귀
+        }}
+        showCancelButton={false}
       />
     </div>
   );

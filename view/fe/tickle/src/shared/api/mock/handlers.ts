@@ -3,6 +3,8 @@ import { userHandlers } from './userHandlers';
 import { seatHandlers } from './seatHandlers';
 import { queueHandlers } from './queueHandlers';
 import { ticketTypeHandlers } from './ticketTypeHandlers';
+import { homeHandlers } from './homeHandlers';
+import { searchHandlers } from './searchHandlers';
 
 export const handlers = [
   ...eventHandlers,
@@ -10,4 +12,6 @@ export const handlers = [
   ...seatHandlers,
   ...queueHandlers,
   ...ticketTypeHandlers,
+  ...homeHandlers,
+  ...searchHandlers,
 ];

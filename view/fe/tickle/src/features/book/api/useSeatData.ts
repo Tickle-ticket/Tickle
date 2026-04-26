@@ -8,13 +8,21 @@ export interface SeatStatusData {
 
 export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
 
-export const useSeatData = (scheduleId: string | null) => {
+export const useSeatData = (scheduleId: string | null, enableWs: boolean = true) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!scheduleId) {
       setSeatAvailability(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!enableWs) {
+      // WS 연결을 하지 않을 경우 빈 상태로 시작. 
+      // (BookView 쪽에서 initialSeats 에 따라 UI상 직접 제어)
+      setSeatAvailability({});
       setIsLoading(false);
       return;
     }
@@ -62,7 +70,7 @@ export const useSeatData = (scheduleId: string | null) => {
     return () => {
       socket.close();
     };
-  }, [scheduleId]);
+  }, [scheduleId, enableWs]);
 
   return { data: seatAvailability, isLoading };
 };

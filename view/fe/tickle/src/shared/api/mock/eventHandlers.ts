@@ -27,6 +27,7 @@ export const eventHandlers = [
         title: '오페라의 유령',
         subTitle: 'The Phantom of the Opera',
         imageUrl: 'https://i.namu.wiki/i/u4Jy5i1HH21xCnVvPY0FXyC_jYRlt9rorKH95IMVNFdO5ZiFsd6J8JPuPK-JgRUb2Ngu6M-r6vudsw27aZ8yJJeJRz3SDXYHuM326_zq3LevCttDTg8dujFCCFUE4TMUzD2Waez43-6e2j-DZrf-NA.webp',
+        openDate: Number(params.eventId) > 10 ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 13 + 1000 * 60 * 60 * 17 + 1000 * 60 * 13 + 1000 * 11).toISOString() : null,
         startDate: '2024.07.26',
         endDate: '2024.11.16',
         venue: '샤롯데씨어터',

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Seat } from './Seat';
 import { Stage } from './Stage';
-import type { SeatColor, SeatStatus } from './types';
+import type { SeatColor, SeatStatus, CongestionLevel } from './types';
 
 export interface SSAFY_18_Props {
   seatsData?: Record<string, { color?: SeatColor; status?: SeatStatus; isSelected?: boolean }>;
@@ -54,7 +54,7 @@ const SeatWrapper = ({
   onClick
 }: {
   id: string | null;
-  data?: { color?: SeatColor; status?: SeatStatus; isSelected?: boolean };
+  data?: { color?: SeatColor; status?: SeatStatus; congestion?: CongestionLevel; isSelected?: boolean };
   isDefaultMode: boolean;
   onClick?: (id: string) => void;
 }) => {
@@ -65,12 +65,14 @@ const SeatWrapper = ({
 
   const finalColor = isMissingSeat ? 'gray' : (data?.color || 'gray');
   const finalStatus = isMissingSeat ? 'disabled' : (data?.status || 'selectable');
+  const finalCongestion = isMissingSeat ? 'none' : (data?.congestion || 'none');
 
   return (
     <div className="w-[36px] h-[42px] shrink-0">
       <Seat
         color={finalColor}
         status={finalStatus}
+        congestion={finalCongestion}
         isSelected={data?.isSelected || false}
         onClick={() => onClick?.(id)}
       />
