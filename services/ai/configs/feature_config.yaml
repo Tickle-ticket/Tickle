@@ -1,0 +1,109 @@
+groups:
+  click:
+    - time_to_first_click_ms
+    - time_from_element_visible_to_click_ms
+    - time_from_element_clickable_to_click_ms
+    - inter_click_interval_ms
+    - click_sequence_consistency_score
+    - click_position_repeat_rate
+    - click_offset_from_element_center_px
+    - click_offset_variance_px
+    - double_click_rate
+    - misclick_rate
+    - reclick_rate
+    - pre_click_mousemove_count
+    - pre_click_hover_time_ms
+    - pre_click_scroll_flag
+    - immediate_post_render_click_rate
+
+  mouse:
+    - mouse_total_travel_distance_px
+    - mouse_avg_speed_px_per_ms
+    - mouse_max_speed_px_per_ms
+    - mouse_speed_change_mean
+    - mouse_acceleration_mean
+    - mouse_jerk_mean
+    - mouse_path_straightness_score
+    - mouse_path_curvature_mean
+    - mouse_direction_change_count
+    - mouse_overshoot_flag
+    - mouse_hover_dwell_time_ms
+    - mouse_stop_segment_count
+    - mousemove_event_rate
+    - inter_element_move_interval_std_ms
+    - edge_or_fixed_point_visit_rate
+    - pre_click_path_300ms_total_distance_px
+    - pre_click_path_300ms_straightness
+    - pre_click_path_500ms_total_distance_px
+    - pre_click_path_500ms_straightness
+
+  keyboard:
+    - time_to_first_keydown_ms
+    - inter_key_interval_ms_mean
+    - inter_key_interval_ms_std
+    - keydown_to_keyup_ms_mean
+    - typing_total_duration_ms
+    - typing_speed_cps
+    - backspace_rate
+    - correction_count
+    - paste_flag
+    - focus_to_submit_ms
+
+names_ko:
+  time_to_first_click_ms: 첫 클릭 시간
+  time_from_element_visible_to_click_ms: 노출 후 클릭
+  time_from_element_clickable_to_click_ms: 활성 후 클릭
+  inter_click_interval_ms: 클릭 간격
+  click_sequence_consistency_score: 순서 일관성
+  click_position_repeat_rate: 좌표 반복률
+  click_offset_from_element_center_px: 중심 오차
+  click_offset_variance_px: 오차 분산
+  double_click_rate: 더블클릭 비율
+  misclick_rate: 오클릭 비율
+  reclick_rate: 재클릭 비율
+  pre_click_mousemove_count: 클릭 전 이동 수
+  pre_click_hover_time_ms: 클릭 전 hover
+  pre_click_scroll_flag: 클릭 전 스크롤
+  immediate_post_render_click_rate: 즉시 클릭 비율
+
+  mouse_total_travel_distance_px: 총 이동 거리
+  mouse_avg_speed_px_per_ms: 평균 속도
+  mouse_max_speed_px_per_ms: 최대 속도
+  mouse_speed_change_mean: 속도 변화
+  mouse_acceleration_mean: 가속도 변화
+  mouse_jerk_mean: 저크 평균
+  mouse_path_straightness_score: 경로 직선성
+  mouse_path_curvature_mean: 경로 곡률
+  mouse_direction_change_count: 방향 전환 수
+  mouse_overshoot_flag: 오버슈트 여부
+  mouse_hover_dwell_time_ms: 평균 dwell
+  mouse_stop_segment_count: 정지 구간 수
+  mousemove_event_rate: mousemove 빈도
+  inter_element_move_interval_std_ms: 이동 간격 표준편차
+  edge_or_fixed_point_visit_rate: 고정점 방문률
+  pre_click_path_300ms_total_distance_px: 300ms 경로 총거리
+  pre_click_path_300ms_straightness: 300ms 경로 직선성
+  pre_click_path_500ms_total_distance_px: 500ms 경로 총거리
+  pre_click_path_500ms_straightness: 500ms 경로 직선성
+
+  time_to_first_keydown_ms: 첫 키 입력 시간
+  inter_key_interval_ms_mean: 키 간격 평균
+  inter_key_interval_ms_std: 키 간격 표준편차
+  keydown_to_keyup_ms_mean: 키 누름 시간
+  typing_total_duration_ms: 총 입력 시간
+  typing_speed_cps: 초당 입력 수
+  backspace_rate: 백스페이스 비율
+  correction_count: 수정 횟수
+  paste_flag: 붙여넣기 여부
+  focus_to_submit_ms: 포커스 후 확인
+
+  durationMs: 페이지 체류 시간
+  clickCount: 클릭 수
+  eventCount: 전체 이벤트 수
+  windowCount: 이벤트 집계 구간 수
+
+exclude:
+  - trial_id
+  - label
+  - stage
+  - selectedSeats
