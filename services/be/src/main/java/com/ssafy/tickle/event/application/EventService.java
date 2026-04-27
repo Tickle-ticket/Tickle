@@ -7,6 +7,10 @@ import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedCategoryRankingResponse;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventRankingItem;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEvent;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEventsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
 import com.ssafy.tickle.event.infrastructure.cache.store.OpeningSoonEventCacheStore;
 import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
@@ -21,6 +25,7 @@ import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
+import com.ssafy.tickle.favorite.infrastructure.persistence.FavoriteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -47,6 +52,7 @@ public class EventService {
     private final EventImageRepository eventImageRepository;
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
+    private final FavoriteRepository favoriteRepository;
     private final EventRankingCacheStore eventRankingCacheStore;
     private final OpeningSoonEventCacheStore openingSoonEventCacheStore;
 
@@ -57,6 +63,17 @@ public class EventService {
      * @return 이벤트 상세 응답
      */
     public EventDetailResponse getEventDetail(Long eventId) {
+        return getEventDetail(eventId, null);
+    }
+
+    /**
+     * 이벤트 상세 정보를 조회합니다.
+     *
+     * @param eventId 이벤트 식별자
+     * @param userId 사용자 식별자
+     * @return 이벤트 상세 응답
+     */
+    public EventDetailResponse getEventDetail(Long eventId, Long userId) {
         Event event = eventRepository.findWithDetailsById(eventId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
 
@@ -64,7 +81,7 @@ public class EventService {
         List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
         List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
 
-        return EventDetailResponse.from(event, images, sessions, pricePolicies);
+        return EventDetailResponse.from(event, images, sessions, pricePolicies, isFavorite(userId, eventId));
     }
 
     /**
@@ -77,6 +94,20 @@ public class EventService {
      * @return 이벤트 목록 응답
      */
     public EventListResponse getEvents(String keyword, Long categoryId, int page, int size) {
+        return getEvents(keyword, categoryId, page, size, null);
+    }
+
+    /**
+     * 이벤트 목록을 조회합니다.
+     *
+     * @param keyword 제목 검색어
+     * @param categoryId 카테고리 식별자
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param userId 사용자 식별자
+     * @return 이벤트 목록 응답
+     */
+    public EventListResponse getEvents(String keyword, Long categoryId, int page, int size, Long userId) {
         PageRequest pageRequest = PageRequest.of(
                 page,
                 size,
@@ -89,8 +120,13 @@ public class EventService {
                 .toList();
 
         Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
+        Set<Long> favoriteEventIds = getFavoriteEventIds(userId, eventIds);
         List<EventSummaryResponse> items = eventPage.getContent().stream()
-                .map(event -> EventSummaryResponse.from(event, thumbnailUrlByEventId.get(event.getId())))
+                .map(event -> EventSummaryResponse.from(
+                        event,
+                        thumbnailUrlByEventId.get(event.getId()),
+                        favoriteEventIds.contains(event.getId())
+                ))
                 .toList();
 
         return EventListResponse.from(eventPage, items);
@@ -103,11 +139,27 @@ public class EventService {
      * @return 랭킹 응답 목록
      */
     public CategoryRankingResponse getRanking(Long categoryId) {
-        Optional<CategoryRankingResponse> cachedResponse =
+        return getRanking(categoryId, null);
+    }
+
+    /**
+     * 랭킹 이벤트 TOP5를 조회합니다.
+     *
+     * @param categoryId 카테고리 식별자(없으면 전체)
+     * @param userId 사용자 식별자
+     * @return 랭킹 응답 목록
+     */
+    public CategoryRankingResponse getRanking(Long categoryId, Long userId) {
+        Optional<CachedCategoryRankingResponse> cachedResponse =
                 eventRankingCacheStore.findByCategoryId(categoryId);
 
         if (cachedResponse.isPresent()) {
-            return cachedResponse.get();
+            // 개인화 여부는 캐시에 저장하지 않고, 조회 시 eventId 목록 기준으로만 붙입니다.
+            List<Long> eventIds = cachedResponse.get().rankings().stream()
+                    .map(CachedEventRankingItem::eventId)
+                    .toList();
+            Set<Long> favoriteEventIds = getFavoriteEventIds(userId, eventIds);
+            return CategoryRankingResponse.from(cachedResponse.get(), favoriteEventIds);
         }
 
         List<Event> rankingEvents = eventRepository.findRankingEvents(
@@ -126,25 +178,26 @@ public class EventService {
                 .toList();
 
         Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
-
-        List<EventRankingResponse> items = new ArrayList<>();
+        List<CachedEventRankingItem> items = new ArrayList<>();
 
         for (Event event : rankingEvents) {
-            items.add(EventRankingResponse.from(
+            items.add(CachedEventRankingItem.from(
                     items.size() + 1,
                     event,
                     thumbnailUrlByEventId.get(event.getId())
             ));
         }
 
-        CategoryRankingResponse response = CategoryRankingResponse.from(
+        CachedCategoryRankingResponse response = new CachedCategoryRankingResponse(
                 categoryId,
                 resolveCategoryName(categoryId),
                 new ArrayList<>(items)
         );
 
+        // 랭킹 캐시는 공용 데이터만 저장하고, 사용자별 favorite 여부는 응답 단계에서 조합합니다.
         eventRankingCacheStore.save(categoryId, response);
-        return response;
+        Set<Long> favoriteEventIds = getFavoriteEventIds(userId, eventIds);
+        return CategoryRankingResponse.from(response, favoriteEventIds);
     }
 
     /**
@@ -153,10 +206,25 @@ public class EventService {
      * @return 오픈 임박 공연 목록
      */
     public OpeningSoonEventsResponse getOpeningSoonEvents() {
-        Optional<OpeningSoonEventsResponse> cachedResponse = openingSoonEventCacheStore.find();
+        return getOpeningSoonEvents(null);
+    }
+
+    /**
+     * 오픈 임박 공연 목록을 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @return 오픈 임박 공연 목록
+     */
+    public OpeningSoonEventsResponse getOpeningSoonEvents(Long userId) {
+        Optional<CachedOpeningSoonEventsResponse> cachedResponse = openingSoonEventCacheStore.find();
 
         if (cachedResponse.isPresent()) {
-            return cachedResponse.get();
+            // 오픈 임박 캐시도 공용 응답만 보관하고, favorite 여부는 요청 사용자 기준으로 계산합니다.
+            List<Long> eventIds = cachedResponse.get().events().stream()
+                    .map(CachedOpeningSoonEvent::eventId)
+                    .toList();
+            Set<Long> favoriteEventIds = getFavoriteEventIds(userId, eventIds);
+            return OpeningSoonEventsResponse.from(cachedResponse.get(), favoriteEventIds);
         }
 
         List<Event> events = eventRepository.findBySalesStartAtAfter(
@@ -174,14 +242,19 @@ public class EventService {
                 .toList();
 
         Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
-
-        List<OpeningSoonEventResponse> items = events.stream()
-                .map(event -> OpeningSoonEventResponse.from(event, thumbnailUrlByEventId.get(event.getId())))
+        List<CachedOpeningSoonEvent> items = events.stream()
+                .map(event -> CachedOpeningSoonEvent.from(
+                        event,
+                        thumbnailUrlByEventId.get(event.getId())
+                ))
                 .toList();
 
-        OpeningSoonEventsResponse response = OpeningSoonEventsResponse.from(items);
+        CachedOpeningSoonEventsResponse response = new CachedOpeningSoonEventsResponse(items);
+
+        // 캐시 적중률을 유지하기 위해 사용자별 필드는 Redis에 넣지 않습니다.
         openingSoonEventCacheStore.save(response);
-        return response;
+        Set<Long> favoriteEventIds = getFavoriteEventIds(userId, eventIds);
+        return OpeningSoonEventsResponse.from(response, favoriteEventIds);
     }
 
     /**
@@ -222,6 +295,22 @@ public class EventService {
         }
 
         return thumbnailUrlByEventId;
+    }
+
+    private Set<Long> getFavoriteEventIds(Long userId, List<Long> eventIds) {
+        if (userId == null || eventIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return new HashSet<>(favoriteRepository.findFavoriteEventIdsByUserIdAndEventIds(userId, eventIds));
+    }
+
+    private boolean isFavorite(Long userId, Long eventId) {
+        if (userId == null) {
+            return false;
+        }
+
+        return favoriteRepository.existsByUser_IdAndEvent_Id(userId, eventId);
     }
 
     private String resolveCategoryName(Long categoryId) {
