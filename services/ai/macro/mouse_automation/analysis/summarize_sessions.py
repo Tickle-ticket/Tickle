@@ -123,7 +123,7 @@ def main():
                         help="data/raw/{label}/ 폴더 대상")
     args = parser.parse_args()
 
-    ai_root = Path(__file__).resolve().parents[2]       
+    ai_root = Path(__file__).resolve().parents[3]
     data_dir = ai_root / "data" / "raw" / args.label
     if not data_dir.exists():
         print(f"폴더 없음: {data_dir}")

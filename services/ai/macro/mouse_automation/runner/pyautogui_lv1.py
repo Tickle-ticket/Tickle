@@ -18,13 +18,13 @@
 # isort: skip_file  # ensure_dpi_aware()는 pyautogui import 전에 실행되어야 함
 import time
 
-from macro.mouse_automation._dpi import ensure_dpi_aware, scale_coords
+from macro.mouse_automation.core._dpi import ensure_dpi_aware, scale_coords
 
 # DPI 인식을 PyAutoGUI import 전에 설정
 ensure_dpi_aware()
 import pyautogui
 
-from macro.mouse_automation.base import BaseMacro
+from macro.mouse_automation.core.base import BaseMacro
 
 
 class PyAutoGUILv1(BaseMacro):

@@ -44,10 +44,13 @@ ai/
 │   │   │   └── gui.py                # 랜덤/프리셋 기반 실행 GUI(collector_api 연동 포함)
 │   │   └── analysis/                 # 수집 데이터 분석 노트북/문서
 │   │
-│   └── mouse_automation/             # PyAutoGUI 기반 마우스 매크로(좌표 클릭/이동)
-│       ├── pyautogui_lv1.py          # 고정좌표/직선 이동 위주(단순)
-│       ├── pyautogui_lv2.py          # 사람 유사 이동(베지어/노이즈/딜레이 등)
-│       └── mouse_utils.py            # 마우스 이동/좌표/딜레이 유틸
+│   └── mouse_automation/             # 마우스/키보드 매크로 + 수집/녹화/분석 패키지
+│       ├── core/                     # 공통 인프라(설정/베이스/로깅/세션/마우스 유틸/DPI)
+│       ├── runner/                   # 매크로 실행기(lv1/lv2 + 통합 CLI)
+│       ├── collector/                # 매크로 데이터 수집기(lv2_collector — yaml-free)
+│       ├── recorder/                 # 사람 행동 녹화기(human_recorder — pynput)
+│       ├── analysis/                 # 분석 도구(summarize_sessions)
+│       └── README.md                 # 실행/사용 가이드
 │
 ├── models/                          # 모델 폴더(placeholder)
 │   ├── anomaly/
