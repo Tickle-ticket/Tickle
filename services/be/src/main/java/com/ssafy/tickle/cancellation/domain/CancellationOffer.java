@@ -14,6 +14,8 @@ import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 
@@ -36,6 +38,7 @@ public class CancellationOffer {
 
     // 취소표 대기 ID FK
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "cancellation_candidate_id", nullable = false)
     private CancellationCandidate cancellationCandidate;
 
