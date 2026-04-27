@@ -10,7 +10,7 @@ import { useEventDetail } from '@/src/features/book/api/useEventDetail';
 import { CustomCAPTCHA } from '@/src/shared/components/CustomCAPTCHA';
 import { Accordion } from '@/src/shared/components/Accordion';
 import { Toggle } from '@/src/shared/components/Toggle';
-import type { SeatColor, SeatStatus } from '@/src/shared/components/types';
+import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
 import { Modal } from '@/src/shared/components/Modal';
 
 interface BookViewProps {
@@ -117,7 +117,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
     );
   }
 
-  const seatsData: Record<string, { color?: string; status: SeatStatus; isSelected: boolean; congestion?: string }> = {};
+  const seatsData: Record<string, { color?: SeatColor; status: SeatStatus; isSelected: boolean; congestion?: CongestionLevel }> = {};
 
   if (isCancelMode && !isModifyModeActive) {
     // 취소 모드: 초기 좌석만 렌더링하고 나머지는 비활성화
@@ -126,7 +126,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
       seatsData[seatId] = {
         status: 'selectable',
         isSelected: isSelected,
-        color: 'vip', // mock grade color
+        color: 'vip' as SeatColor, // mock grade color
       };
     });
   } else if (seatAvailability) {
@@ -715,7 +715,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
 
             const handleCount = (grade: string, typeId: string, delta: number) => {
               setGradeTicketCounts(prev => {
-                const gradeCounts = { ...prev[grade] } || {};
+                const gradeCounts = { ...(prev[grade] || {}) };
                 const current = gradeCounts[typeId] || 0;
                 const newVal = Math.max(0, current + delta);
                 const maxForGrade = gradeSeats[grade].length;
@@ -777,7 +777,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                                   </span>
                                 </div>
                               </div>
-                            } as any
+                            }
                           >
                             <div className="flex flex-col gap-2 px-1">
                               {ticketTypes.map(type => {

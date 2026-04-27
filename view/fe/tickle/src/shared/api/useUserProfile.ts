@@ -5,6 +5,7 @@ import { ApiResponse } from '@/src/shared/api/types';
 export interface UserProfileData {
   avatarUrl: string;
   name: string;
+  email?: string;
 }
 
 export const useUserProfile = () => {

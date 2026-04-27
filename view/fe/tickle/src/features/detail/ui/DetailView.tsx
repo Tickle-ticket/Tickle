@@ -355,7 +355,7 @@ export const DetailView = () => {
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView isWaitlistMode={flowState === 'WAITLIST_BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>
