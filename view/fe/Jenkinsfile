@@ -1,7 +1,7 @@
 pipeline {
     agent any
 
-    // [필수] 젠킨스 Tools에 등록한 node20 설정을 불러옵니다.
+    // 젠킨스 Tools에 등록한 node20 설정을 불러옵니다.
     tools {
         nodejs 'node20' 
     }
@@ -11,8 +11,10 @@ pipeline {
         MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
         // 프론트엔드 EC2 서버 정보
         FE_SERVER = 'ubuntu@k14a203.p.ssafy.io'
-        // 서버 내 프로젝트 배포 경로
+        // 서버 내 메인 앱 배포 경로
         PROJECT_PATH = '~/S14P31A203/view/fe/tickle'
+        // 서버 내 스토리북 배포 경로
+        STORYBOOK_PATH = '~/S14P31A203/view/fe/storybook'
         // 젠킨스에 등록한 SSH Credentials ID
         SSH_CREDENTIAL_ID = 'fe-ec2-key'
     }
@@ -20,43 +22,61 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '===== [1/3] 프론트엔드 코드 체크아웃 (Withy) ====='
+                echo '===== [1/4] tickle 프론트엔드 코드 체크아웃 ====='
                 checkout scm
             }
         }
 
         stage('FE Build') {
             steps {
-                echo '===== [2/3] pnpm 빌드 시작 ====='
-                // 프로젝트 폴더로 이동하여 빌드 수행
+                echo '===== [2/4] 메인 앱 및 스토리북 빌드 시작 ====='
                 dir('view/fe/tickle') {
                     sh 'npm install -g pnpm'
                     sh 'pnpm install'
+                    // 메인 Next.js 앱 빌드
                     sh 'pnpm build'
+                    // 스토리북 정적 파일 빌드 (기본값으로 storybook-static 폴더 생성)
+                    sh 'pnpm build-storybook'
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                echo '===== [3/3] EC2 원격 배포 시작 ====='
-                // 등록한 SSH 키를 사용하여 서버 접속
+                echo '===== [3/4] EC2 원격 배포 시작 (App & Storybook) ====='
                 sshagent([env.SSH_CREDENTIAL_ID]) {
-                    // 빌드 결과물(.next, public 등) 압축 및 전송
+                    // 1. 메인 앱 압축 및 전송
                     sh "tar -czf build.tar.gz -C view/fe/tickle .next public package.json pnpm-lock.yaml"
                     sh "scp -o StrictHostKeyChecking=no build.tar.gz ${env.FE_SERVER}:${env.PROJECT_PATH}"
                     
-                    // 서버에서 압축 해제, 의존성 설치(Production), PM2 재시작
+                    // 2. 스토리북 결과물 압축 및 전송
+                    sh "tar -czf storybook.tar.gz -C view/fe/tickle/storybook-static ."
+                    sh "scp -o StrictHostKeyChecking=no storybook.tar.gz ${env.FE_SERVER}:${env.STORYBOOK_PATH}"
+                    
+                    // 3. 서버에서 각각 압축 해제 및 서비스 재시작
                     sh """
                         ssh -o StrictHostKeyChecking=no ${env.FE_SERVER} "
+                            # 메인 앱 반영
                             cd ${env.PROJECT_PATH} &&
                             tar -xzf build.tar.gz &&
                             rm build.tar.gz &&
                             pnpm install --prod &&
                             pm2 restart frontend
+
+                            # 스토리북 반영
+                            cd ${env.STORYBOOK_PATH} &&
+                            tar -xzf storybook.tar.gz &&
+                            rm storybook.tar.gz
                         "
                     """
                 }
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                echo '===== [4/4] 배포 상태 확인 ====='
+                sh "curl -I https://k14a203.p.ssafy.io"
             }
         }
     }
@@ -64,15 +84,13 @@ pipeline {
     post {
         success {
             script {
-                // 배포 성공 시 Mattermost 알림 전송
-                def msg = """{"text": "✅ **프론트엔드 배포 완료!**\\n주소: https://k14a203.p.ssafy.io"}"""
+                def msg = """{"text": "✅ **tickle 프론트엔드 배포 완료!**\\n메인: https://k14a203.p.ssafy.io\\n스토리북: https://k14a203.p.ssafy.io/storybook"}"""
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
         failure {
             script {
-                // 배포 실패 시 Mattermost 알림 전송
-                def msg = """{"text": "🚨 **프론트 배포 터졌어!** 빨리 확인해줘!"}"""
+                def msg = """{"text": "🚨 **tickle 프론트 배포 터졌어!** 로그를 확인해줘!"}"""
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
