@@ -26,12 +26,24 @@ public class AgencyEventController implements AgencyEventApiDoc {
 
     private final AgencyEventService agencyEventService;
 
+    /**
+     * 공연 등록에 사용할 공연장 구역/좌석 템플릿을 조회합니다.
+     *
+     * @param venueId 공연장 식별자
+     * @return 공연장 템플릿 응답
+     */
     @Override
     @GetMapping("/venues/{venueId}/template")
     public ResponseEntity<BaseResponse<AgencyVenueTemplateResponse>> getVenueTemplate(@PathVariable Long venueId) {
         return ResponseEntity.ok(BaseResponse.success(agencyEventService.getVenueTemplate(venueId)));
     }
 
+    /**
+     * 기획사 공연을 등록합니다.
+     *
+     * @param request 기획사 공연 생성 요청 DTO
+     * @return 생성된 공연 응답
+     */
     @Override
     @PostMapping("/events")
     public ResponseEntity<BaseResponse<AgencyCreateEventResponse>> createEvent(
