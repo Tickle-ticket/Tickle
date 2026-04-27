@@ -60,18 +60,12 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER1_IP} '
                                         set -e
-                                        echo "[BE] GitLab Registry 로그인"
-                                        docker login registry.lab.ssafy.com -u ${GITLAB_USER} -p ${GITLAB_PASS}
                                         echo "[BE] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
                                         git checkout develop-be
                                         git pull origin develop-be
-                                        echo "[BE] Docker 이미지 빌드"
-                                        docker build -t ${REGISTRY}/be:latest ./services/be
-                                        echo "[BE] GitLab Registry push"
-                                        docker push ${REGISTRY}/be:latest
-                                        echo "[BE] 컨테이너 재시작"
+                                        echo "[BE] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d --build be
                                         echo "[BE] 배포 완료"
                                     '
@@ -95,17 +89,12 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER4_IP} '
                                         set -e
-                                        echo "[Auth] GitLab Registry 로그인"
-                                        docker login registry.lab.ssafy.com -u ${GITLAB_USER} -p ${GITLAB_PASS}
                                         echo "[Auth] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
                                         git checkout develop-be
                                         git pull origin develop-be
-                                        echo "[Auth] Docker 이미지 빌드 및 push"
-                                        docker build -t ${REGISTRY}/auth:latest ./services/auth
-                                        docker push ${REGISTRY}/auth:latest
-                                        echo "[Auth] 컨테이너 재시작"
+                                        echo "[Auth] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d --build auth
                                         echo "[Auth] 배포 완료"
                                     '
