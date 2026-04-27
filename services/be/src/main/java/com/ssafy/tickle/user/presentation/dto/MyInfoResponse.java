@@ -16,9 +16,6 @@ import java.time.LocalDate;
  * @param nickname 닉네임
  * @param profileImageUrl 프로필 이미지 URL
  * @param birthDate 생년월일
- * @param status 사용자 상태
- * @param lastLoginAt 마지막 로그인 시각
- * @param createdAt 생성 시각
  */
 public record MyInfoResponse(
         Long userId,
@@ -28,10 +25,7 @@ public record MyInfoResponse(
         String name,
         String nickname,
         String profileImageUrl,
-        LocalDate birthDate,
-        User.Status status,
-        Instant lastLoginAt,
-        Instant createdAt
+        LocalDate birthDate
 ) {
 
     /**
@@ -49,10 +43,7 @@ public record MyInfoResponse(
                 user.getName(),
                 user.getNickname(),
                 user.getProfileImageUrl(),
-                user.getBirthDate(),
-                user.getStatus(),
-                user.getLastLoginAt(),
-                user.getCreatedAt()
+                user.getBirthDate()
         );
     }
 }
