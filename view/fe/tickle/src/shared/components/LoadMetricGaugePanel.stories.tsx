@@ -87,7 +87,7 @@ const metrics = mapPrometheusInstantToLoadMetrics(prometheusInstantResponse, [
 ]);
 
 const meta = {
-  title: 'Monitoring/GaugePanel',
+  title: 'Admin/GaugePanel',
   component: LoadMetricGaugePanel,
   tags: ['autodocs'],
   parameters: {

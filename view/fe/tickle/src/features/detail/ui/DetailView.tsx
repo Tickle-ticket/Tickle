@@ -344,7 +344,7 @@ export const DetailView = () => {
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView 
-            sessionId={data?.id || '1'} 
+            sessionId={data?.eventId || '1'} 
             onAdmitted={(token) => {
               setAdmitToken(token);
               setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');

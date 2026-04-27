@@ -1,6 +1,6 @@
-import { ServerMonitoringChart } from '@/src/features/admin/ui/ServerMonitoringChart';
+import { ServerMonitoringChart } from '@/src/shared/components/ServerMonitoringChart';
 import { LoadMetricGaugePanel } from '@/src/shared/components/LoadMetricGaugePanel';
-import type { ServerMonitoringPoint } from '@/src/features/admin/ui/ServerMonitoringChart';
+import type { ServerMonitoringPoint } from '@/src/shared/components/ServerMonitoringChart';
 import type { LoadMetricGauge } from '@/src/shared/components/LoadMetricGaugePanel';
 
 const serverMonitoringData: ServerMonitoringPoint[] = [
