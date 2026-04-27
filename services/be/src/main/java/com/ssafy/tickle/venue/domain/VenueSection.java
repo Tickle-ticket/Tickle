@@ -65,5 +65,7 @@ public class VenueSection {
         this.venue = venue;
         this.sectionName = sectionName;
         this.displayOrder = displayOrder;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

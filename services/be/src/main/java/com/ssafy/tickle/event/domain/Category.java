@@ -49,5 +49,7 @@ public class Category {
     @Builder
     public Category(String categoryName) {
         this.categoryName = categoryName;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

@@ -87,5 +87,7 @@ public class Organizer {
         this.contactEmail = contactEmail;
         this.contactPhone = contactPhone;
         this.status = status;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }
