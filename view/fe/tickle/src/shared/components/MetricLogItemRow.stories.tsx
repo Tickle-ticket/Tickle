@@ -21,7 +21,7 @@ const baseLog: MetricLogItem = {
 };
 
 const meta = {
-  title: 'Monitoring/MetricLogItemRow',
+  title: 'Admin/MetricLogItemRow',
   component: MetricLogItemRow,
   tags: ['autodocs'],
   parameters: {

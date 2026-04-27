@@ -1,5 +1,5 @@
-import { QueueStatusChart } from '@/src/features/admin/ui/QueueStatusChart';
-import type { QueueStatusPoint } from '@/src/features/admin/ui/QueueStatusChart';
+import { QueueStatusChart } from '@/src/shared/components/QueueStatusChart';
+import type { QueueStatusPoint } from '@/src/shared/components/QueueStatusChart';
 
 const queueStatusData: QueueStatusPoint[] = [
   { time: '13:00', waitingUsers: 860, incomingUsers: 132, admittedUsers: 96, estimatedWaitMinutes: 8 },

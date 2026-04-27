@@ -67,7 +67,7 @@ export const SegmentedControl = ({
             aria-checked={isSelected}
             onClick={() => onChange(option.value)}
             className={`
-              relative flex items-center justify-center w-full h-full rounded-[8px] font-semibold transition-all duration-200 ease-in-out outline-none select-none
+              relative flex items-center justify-center w-full h-full rounded-[8px] font-semibold transition-all duration-200 ease-in-out outline-none select-none whitespace-nowrap
               ${itemSizeClasses[size]}
               ${isSelected 
                   ? 'bg-white text-[#3182f6] shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] z-10' 
