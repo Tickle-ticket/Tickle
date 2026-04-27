@@ -3,8 +3,6 @@ pipeline {
     agent any
 
     environment {
-        BUILD_BE   = 'false'
-        BUILD_AUTH = 'false'
         MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
     }
 
