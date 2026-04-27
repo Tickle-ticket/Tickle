@@ -31,11 +31,14 @@ pipeline {
 
                     env.BUILD_BE   = changes.contains('services/be/') ? 'true' : 'false'
                     env.BUILD_AUTH = changes.contains('services/auth/') ? 'true' : 'false'
-
-                    if (env.BUILD_BE == 'false' && currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause) != null) {
-                        echo "수동 트리거 감지 → 강제 BE 배포"
+        
+                    if (changes.contains('Jenkinsfile') || changes.isEmpty()) {
+                        echo "Jenkinsfile 변경 또는 변경사항 없음 → 강제 BE 배포"
                         env.BUILD_BE = 'true'
                     }
+
+                    echo "BE 배포 필요: ${env.BUILD_BE}"
+                    echo "Auth 배포 필요: ${env.BUILD_AUTH}"
                 }
             }
         }
