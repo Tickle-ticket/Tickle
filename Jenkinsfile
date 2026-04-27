@@ -29,13 +29,16 @@ pipeline {
 
                     echo "변경된 파일 목록:\n${changes}"
 
-                    env.BUILD_BE   = changes.contains('services/be/') ? 'true' : 'false'
-                    env.BUILD_AUTH = changes.contains('services/auth/') ? 'true' : 'false'
+                    def isBe = changes.contains('services/be/')
+                    def isAuth = changes.contains('services/auth/')
         
                     if (changes.contains('Jenkinsfile') || changes.isEmpty()) {
                         echo "Jenkinsfile 변경 또는 변경사항 없음 → 강제 BE 배포"
-                        env.BUILD_BE = 'true'
+                        isBe = true
                     }
+
+                    env.BUILD_BE = isBe ? 'true' : 'false'
+                    env.BUILD_AUTH = isAuth ? 'true' : 'false'
 
                     echo "BE 배포 필요: ${env.BUILD_BE}"
                     echo "Auth 배포 필요: ${env.BUILD_AUTH}"
