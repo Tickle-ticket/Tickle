@@ -14,7 +14,7 @@ const config: StorybookConfig = {
   ],
   "framework": "@storybook/nextjs-vite",
   "staticDirs": [
-    "..\\public"
+    "../public"  // 👈 여기를 역슬래시(\)에서 슬래시(/)로 수정!
   ]
 };
 export default config;
