@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * 공연 찜 API를 제공하는 컨트롤러입니다.
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@Tag(name = "Favorite", description = "공연 찜 API")
 public class FavoriteController implements FavoriteApiDoc {
 
     private final FavoriteService favoriteService;
@@ -28,8 +30,8 @@ public class FavoriteController implements FavoriteApiDoc {
     @Override
     @PostMapping("/events/{eventId}/favorite")
     public ResponseEntity<BaseResponse<FavoriteCreateResponse>> createFavorite(
-            @PathVariable Long eventId,
-            @RequestParam(required = false) Long userId
+            @PathVariable("eventId") Long eventId,
+            @RequestParam(value = "userId", required = false) Long userId
     ) {
         FavoriteCreateResponse response = favoriteService.createFavorite(userId, eventId);
 
@@ -41,8 +43,8 @@ public class FavoriteController implements FavoriteApiDoc {
     @Override
     @DeleteMapping("/events/{eventId}/favorite")
     public ResponseEntity<BaseResponse<Void>> deleteFavorite(
-            @PathVariable Long eventId,
-            @RequestParam(required = false) Long userId
+            @PathVariable("eventId") Long eventId,
+            @RequestParam(value = "userId", required = false) Long userId
     ) {
         favoriteService.deleteFavorite(userId, eventId);
 
@@ -54,9 +56,9 @@ public class FavoriteController implements FavoriteApiDoc {
     @Override
     @GetMapping("/users/me/favorites")
     public ResponseEntity<BaseResponse<FavoriteEventsResponse>> getFavoriteEvents(
-            @RequestParam(required = false) Long userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(value = "userId", required = false) Long userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size
     ) {
         return ResponseEntity
                 .ok()
