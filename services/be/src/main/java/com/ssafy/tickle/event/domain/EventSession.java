@@ -108,5 +108,7 @@ public class EventSession {
         this.salesOpenAt = salesOpenAt;
         this.salesCloseAt = salesCloseAt;
         this.status = status;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

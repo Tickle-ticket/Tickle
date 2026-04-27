@@ -152,5 +152,7 @@ public class Event {
         this.metadata = metadata;
         this.notice = notice;
         this.status = status;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

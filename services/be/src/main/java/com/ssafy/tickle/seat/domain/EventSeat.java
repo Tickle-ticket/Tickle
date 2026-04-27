@@ -111,5 +111,7 @@ public class EventSeat {
         this.seatNumber = seatNumber;
         this.seatLabel = seatLabel;
         this.seatType = seatType;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

@@ -91,5 +91,7 @@ public class EventPricePolicy {
         this.salePriceAmount = salePriceAmount;
         this.currencyCode = currencyCode;
         this.displayOrder = displayOrder;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }
