@@ -68,8 +68,7 @@ public class AgencyEventService {
      * @return 공연 등록 화면에서 사용할 공연장 골격 응답 DTO
      */
     public AgencyVenueTemplateResponse getVenueTemplate(Long venueId) {
-        Venue venue = venueRepository.findById(venueId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연장을 찾을 수 없습니다."));
+        Venue venue = getVenueOrThrow(venueId);
 
         List<VenueSection> sections = venueSectionRepository.findByVenue_IdOrderByDisplayOrderAsc(venueId);
 
@@ -90,14 +89,9 @@ public class AgencyEventService {
     public AgencyCreateEventResponse createEvent(AgencyCreateEventRequest request) {
         validateEventTimeline(request);
 
-        Organizer organizer = organizerRepository.findById(request.organizerId())
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "기획사를 찾을 수 없습니다."));
-
-        Venue venue = venueRepository.findById(request.venueId())
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연장을 찾을 수 없습니다."));
-
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "카테고리를 찾을 수 없습니다."));
+        Organizer organizer = getOrganizerOrThrow(request.organizerId());
+        Venue venue = getVenueOrThrow(request.venueId());
+        Category category = getCategoryOrThrow(request.categoryId());
 
         Event event = eventRepository.save(Event.builder()
                 .organizer(organizer)
@@ -114,7 +108,7 @@ public class AgencyEventService {
                 .build());
 
         // 가격 정책과 회차를 먼저 만든 뒤, 공연장 좌석을 이벤트 좌석/회차 좌석으로 복제합니다.
-        Map<String, EventPricePolicy> pricePolicyByKey = createPricePolicies(event, request.pricePolicies());
+        Map<PricePolicyKey, EventPricePolicy> pricePolicyByKey = createPricePolicies(event, request.pricePolicies());
 
         List<EventSession> sessions = createSessions(event, request.sessions());
 
@@ -122,12 +116,7 @@ public class AgencyEventService {
 
         createSessionSeats(sessions, eventSeats);
 
-        return AgencyCreateEventResponse.from(
-                event,
-                sessions,
-                eventSeats.size(),
-                sessions.size() * eventSeats.size()
-        );
+        return AgencyCreateEventResponse.from(event);
     }
 
     /**
@@ -151,15 +140,15 @@ public class AgencyEventService {
      * @param requests 가격 정책 요청 목록
      * @return 가격 정책 조합 키 기준 맵
      */
-    private Map<String, EventPricePolicy> createPricePolicies(
+    private Map<PricePolicyKey, EventPricePolicy> createPricePolicies(
             Event event,
             List<AgencyCreateEventPricePolicyRequest> requests
     ) {
-        Set<String> keys = new LinkedHashSet<>();
+        Set<PricePolicyKey> keys = new LinkedHashSet<>();
         List<EventPricePolicy> policies = new ArrayList<>();
 
         for (AgencyCreateEventPricePolicyRequest request : requests) {
-            String key = policyKey(request.priceGrade(), request.audienceType());
+            PricePolicyKey key = new PricePolicyKey(request.priceGrade(), request.audienceType());
             if (!keys.add(key)) {
                 throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "가격 정책 조합이 중복되었습니다: " + key);
             }
@@ -175,9 +164,9 @@ public class AgencyEventService {
         }
 
         List<EventPricePolicy> savedPolicies = eventPricePolicyRepository.saveAll(policies);
-        Map<String, EventPricePolicy> pricePolicyByKey = new LinkedHashMap<>();
+        Map<PricePolicyKey, EventPricePolicy> pricePolicyByKey = new LinkedHashMap<>();
         for (EventPricePolicy savedPolicy : savedPolicies) {
-            pricePolicyByKey.put(policyKey(savedPolicy.getPriceGrade(), savedPolicy.getAudienceType()), savedPolicy);
+            pricePolicyByKey.put(new PricePolicyKey(savedPolicy.getPriceGrade(), savedPolicy.getAudienceType()), savedPolicy);
         }
         return pricePolicyByKey;
     }
@@ -189,7 +178,10 @@ public class AgencyEventService {
      * @param requests 회차 생성 요청 목록
      * @return 생성된 회차 엔티티 목록
      */
-    private List<EventSession> createSessions(Event event, List<AgencyCreateEventSessionRequest> requests) {
+    private List<EventSession> createSessions(
+            Event event,
+            List<AgencyCreateEventSessionRequest> requests
+    ) {
         Set<Integer> sessionNos = new LinkedHashSet<>();
         List<EventSession> sessions = new ArrayList<>();
 
@@ -226,28 +218,18 @@ public class AgencyEventService {
             Event event,
             Long venueId,
             List<AgencyCreateEventSeatRequest> requests,
-            Map<String, EventPricePolicy> pricePolicyByKey
+            Map<PricePolicyKey, EventPricePolicy> pricePolicyByKey
     ) {
         Set<Long> venueSeatIds = new LinkedHashSet<>();
         for (AgencyCreateEventSeatRequest request : requests) {
-            if (request.venueSeatId() == null) {
-                throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "venueSeatId는 필수입니다.");
-            }
-            if (!venueSeatIds.add(request.venueSeatId())) {
-                throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "좌석이 중복되었습니다: " + request.venueSeatId());
-            }
+            validateDuplicateVenueSeat(venueSeatIds, request.venueSeatId());
         }
 
-        List<VenueSeat> venueSeats = venueSeatRepository.findByIdIn(venueSeatIds);
-        if (venueSeats.size() != venueSeatIds.size()) {
-            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "일부 공연장 좌석을 찾을 수 없습니다.");
-        }
+        List<VenueSeat> venueSeats = getVenueSeatsOrThrow(venueSeatIds);
 
         Map<Long, VenueSeat> venueSeatById = new LinkedHashMap<>();
         for (VenueSeat venueSeat : venueSeats) {
-            if (!venueId.equals(venueSeat.getVenueId())) {
-                throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "다른 공연장의 좌석이 포함되어 있습니다.");
-            }
+            validateVenueSeatBelongsToVenue(venueId, venueSeat);
             venueSeatById.put(venueSeat.getId(), venueSeat);
         }
 
@@ -257,10 +239,7 @@ public class AgencyEventService {
 
         for (AgencyCreateEventSeatRequest request : requests) {
             VenueSeat venueSeat = venueSeatById.get(request.venueSeatId());
-            EventPricePolicy pricePolicy = pricePolicyByKey.get(policyKey(request.priceGrade(), request.audienceType()));
-            if (pricePolicy == null) {
-                throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "좌석에 연결할 가격 정책을 찾을 수 없습니다.");
-            }
+            EventPricePolicy pricePolicy = getPricePolicy(pricePolicyByKey, request.priceGrade(), request.audienceType());
 
             eventSeats.add(EventSeat.builder()
                     .eventSection(eventSectionByVenueSectionId.get(venueSeat.getSection().getId()))
@@ -284,7 +263,11 @@ public class AgencyEventService {
      * @param venueSeats 선택된 공연장 좌석 목록
      * @return 공연장 구역 ID 기준 공연 구역 맵
      */
-    private Map<Long, EventSection> createEventSections(Event event, Long venueId, List<VenueSeat> venueSeats) {
+    private Map<Long, EventSection> createEventSections(
+            Event event,
+            Long venueId,
+            List<VenueSeat> venueSeats
+    ) {
         Map<Long, VenueSection> venueSectionById = new LinkedHashMap<>();
         for (VenueSeat venueSeat : venueSeats) {
             venueSectionById.putIfAbsent(venueSeat.getSection().getId(), venueSeat.getSection());
@@ -348,13 +331,112 @@ public class AgencyEventService {
     }
 
     /**
-     * 가격 정책 조합 키를 생성합니다.
+     * 기획사를 조회합니다.
      *
+     * @param organizerId 기획사 식별자
+     * @return 조회된 기획사 엔티티
+     */
+    private Organizer getOrganizerOrThrow(Long organizerId) {
+        return organizerRepository.findById(organizerId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "기획사를 찾을 수 없습니다."));
+    }
+
+    /**
+     * 공연장을 조회합니다.
+     *
+     * @param venueId 공연장 식별자
+     * @return 조회된 공연장 엔티티
+     */
+    private Venue getVenueOrThrow(Long venueId) {
+        return venueRepository.findById(venueId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연장을 찾을 수 없습니다."));
+    }
+
+    /**
+     * 카테고리를 조회합니다.
+     *
+     * @param categoryId 카테고리 식별자
+     * @return 조회된 카테고리 엔티티
+     */
+    private Category getCategoryOrThrow(Long categoryId) {
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "카테고리를 찾을 수 없습니다."));
+    }
+
+    /**
+     * 공연장 좌석 목록을 조회합니다.
+     *
+     * @param venueSeatIds 공연장 좌석 식별자 목록
+     * @return 조회된 공연장 좌석 목록
+     */
+    private List<VenueSeat> getVenueSeatsOrThrow(Set<Long> venueSeatIds) {
+        List<VenueSeat> venueSeats = venueSeatRepository.findByIdIn(venueSeatIds);
+        validateVenueSeatCount(venueSeatIds, venueSeats);
+        return venueSeats;
+    }
+
+    /**
+     * 공연장 좌석 중복 여부를 검증합니다.
+     *
+     * @param venueSeatIds 이미 확인한 공연장 좌석 식별자 목록
+     * @param venueSeatId 이번에 확인할 공연장 좌석 식별자
+     */
+    private void validateDuplicateVenueSeat(Set<Long> venueSeatIds, Long venueSeatId) {
+        if (!venueSeatIds.add(venueSeatId)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "좌석이 중복되었습니다: " + venueSeatId);
+        }
+    }
+
+    /**
+     * 요청한 좌석 수와 조회된 좌석 수가 일치하는지 검증합니다.
+     *
+     * @param venueSeatIds 요청한 공연장 좌석 식별자 목록
+     * @param venueSeats 조회된 공연장 좌석 목록
+     */
+    private void validateVenueSeatCount(Set<Long> venueSeatIds, List<VenueSeat> venueSeats) {
+        if (venueSeats.size() != venueSeatIds.size()) {
+            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "일부 공연장 좌석을 찾을 수 없습니다.");
+        }
+    }
+
+    /**
+     * 공연장 좌석이 현재 공연장에 속하는지 검증합니다.
+     *
+     * @param venueId 공연장 식별자
+     * @param venueSeat 공연장 좌석 엔티티
+     */
+    private void validateVenueSeatBelongsToVenue(Long venueId, VenueSeat venueSeat) {
+        if (!venueId.equals(venueSeat.getVenueId())) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "다른 공연장의 좌석이 포함되어 있습니다.");
+        }
+    }
+
+    /**
+     * 가격 정책 조합 키로 가격 정책을 조회합니다.
+     *
+     * @param pricePolicyByKey 가격 정책 조합 키 기준 맵
      * @param priceGrade 가격 등급
      * @param audienceType 관람 대상 유형
-     * @return 가격 정책 식별용 조합 키
+     * @return 조회된 가격 정책 엔티티
      */
-    private String policyKey(String priceGrade, String audienceType) {
-        return priceGrade + "::" + audienceType;
+    private EventPricePolicy getPricePolicy(
+            Map<PricePolicyKey, EventPricePolicy> pricePolicyByKey,
+            String priceGrade,
+            String audienceType
+    ) {
+        EventPricePolicy pricePolicy = pricePolicyByKey.get(new PricePolicyKey(priceGrade, audienceType));
+        if (pricePolicy == null) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "좌석에 연결할 가격 정책을 찾을 수 없습니다.");
+        }
+        return pricePolicy;
+    }
+
+    /**
+     * 가격 정책 조합을 식별하는 내부 키 객체입니다.
+     */
+    private record PricePolicyKey(
+            String priceGrade,
+            String audienceType
+    ) {
     }
 }
