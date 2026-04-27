@@ -1,6 +1,9 @@
 package com.ssafy.tickle.event.presentation.dto;
 
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedCategoryRankingResponse;
+
 import java.util.List;
+import java.util.Set;
 
 /**
  * 랭킹 조회 응답의 바깥 래퍼 DTO입니다.
@@ -23,6 +26,25 @@ public record CategoryRankingResponse(
                 categoryId,
                 categoryName,
                 eventRankingResponse
+        );
+    }
+
+    public static CategoryRankingResponse from(
+            CachedCategoryRankingResponse cachedResponse,
+            Set<Long> favoriteEventIds
+    ) {
+        // 캐시 응답은 공용 데이터만 가지므로, 최종 응답 생성 시 사용자별 favorite 여부를 합칩니다.
+        List<EventRankingResponse> rankings = cachedResponse.rankings().stream()
+                .map(item -> EventRankingResponse.from(
+                        item,
+                        favoriteEventIds.contains(item.eventId())
+                ))
+                .toList();
+
+        return new CategoryRankingResponse(
+                cachedResponse.categoryId(),
+                cachedResponse.categoryName(),
+                rankings
         );
     }
 }

@@ -1,7 +1,7 @@
 package com.ssafy.tickle.event.infrastructure.cache.store;
 
 import com.ssafy.tickle.event.config.EventConstants;
-import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEventsResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -19,9 +19,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OpeningSoonEventCacheStore {
 
-    private final RedisTemplate<String, OpeningSoonEventsResponse> openingSoonEventsRedisTemplate;
+    private final RedisTemplate<String, CachedOpeningSoonEventsResponse> openingSoonEventsRedisTemplate;
 
-    public Optional<OpeningSoonEventsResponse> find() {
+    public Optional<CachedOpeningSoonEventsResponse> find() {
         String cacheKey = EventConstants.EVENT_OPENING_SOON_CACHE_KEY;
 
         try {
@@ -36,7 +36,7 @@ public class OpeningSoonEventCacheStore {
         }
     }
 
-    public void save(OpeningSoonEventsResponse response) {
+    public void save(CachedOpeningSoonEventsResponse response) {
         String cacheKey = EventConstants.EVENT_OPENING_SOON_CACHE_KEY;
 
         try {

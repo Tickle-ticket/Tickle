@@ -1,7 +1,7 @@
 package com.ssafy.tickle.event.infrastructure.cache.store;
 
 import com.ssafy.tickle.event.config.EventConstants;
-import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedCategoryRankingResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -19,9 +19,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EventRankingCacheStore {
 
-    private final RedisTemplate<String, CategoryRankingResponse> eventRankingRedisTemplate;
+    private final RedisTemplate<String, CachedCategoryRankingResponse> eventRankingRedisTemplate;
 
-    public Optional<CategoryRankingResponse> findByCategoryId(Long categoryId) {
+    public Optional<CachedCategoryRankingResponse> findByCategoryId(Long categoryId) {
         String cacheKey = key(categoryId);
 
         try {
@@ -36,7 +36,7 @@ public class EventRankingCacheStore {
         }
     }
 
-    public void save(Long categoryId, CategoryRankingResponse response) {
+    public void save(Long categoryId, CachedCategoryRankingResponse response) {
         String cacheKey = key(categoryId);
 
         try {

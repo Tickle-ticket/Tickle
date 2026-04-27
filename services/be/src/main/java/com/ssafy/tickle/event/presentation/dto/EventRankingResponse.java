@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.presentation.dto;
 
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventRankingItem;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.List;
  * @param salesEndAt 예매 종료 시각
  * @param thumbnailUrl 썸네일 이미지 URL
  * @param tags 메타데이터 내 태그 목록
+ * @param isFavorite 현재 사용자의 찜 여부
  */
 public record EventRankingResponse(
         int rank,
@@ -30,13 +32,15 @@ public record EventRankingResponse(
         Instant salesStartAt,
         Instant salesEndAt,
         String thumbnailUrl,
-        List<String> tags
+        List<String> tags,
+        boolean isFavorite
 ) {
 
     public static EventRankingResponse from(
             int rank,
             Event event,
-            String thumbnailUrl
+            String thumbnailUrl,
+            boolean isFavorite
     ) {
         return new EventRankingResponse(
                 rank,
@@ -50,7 +54,24 @@ public record EventRankingResponse(
                 thumbnailUrl,
                 event.getMetadata() == null
                         ? new ArrayList<>()
-                        : new ArrayList<>(event.getMetadata().tags())
+                        : new ArrayList<>(event.getMetadata().tags()),
+                isFavorite
+        );
+    }
+
+    public static EventRankingResponse from(CachedEventRankingItem item, boolean isFavorite) {
+        return new EventRankingResponse(
+                item.rank(),
+                item.eventId(),
+                item.eventName(),
+                item.venueName(),
+                item.eventStartAt(),
+                item.eventEndAt(),
+                item.salesStartAt(),
+                item.salesEndAt(),
+                item.thumbnailUrl(),
+                item.tags(),
+                isFavorite
         );
     }
 }

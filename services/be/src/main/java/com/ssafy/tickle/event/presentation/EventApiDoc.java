@@ -22,6 +22,7 @@ public interface EventApiDoc {
      *
      * @param keyword 제목 검색어
      * @param categoryId 카테고리 식별자
+     * @param userId 사용자 식별자
      * @param page 페이지 번호
      * @param size 페이지 크기
      * @return 공연 목록 응답
@@ -37,6 +38,7 @@ public interface EventApiDoc {
     ResponseEntity<BaseResponse<EventListResponse>> getEvents(
             @Parameter(description = "공연 제목 검색어") String keyword,
             @Parameter(description = "카테고리 식별자") Long categoryId,
+            @Parameter(description = "사용자 식별자") Long userId,
             @Parameter(description = "페이지 번호", example = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") int size
     );
@@ -45,6 +47,7 @@ public interface EventApiDoc {
      * 랭킹 조회 API 문서 정의입니다.
      *
      * @param categoryId 카테고리 식별자(없으면 전체)
+     * @param userId 사용자 식별자
      * @return 랭킹 응답
      */
     @Operation(
@@ -56,7 +59,8 @@ public interface EventApiDoc {
             description = "랭킹 조회 성공"
     )
     ResponseEntity<BaseResponse<CategoryRankingResponse>> getRanking(
-            @Parameter(description = "카테고리 식별자") Long categoryId
+            @Parameter(description = "카테고리 식별자") Long categoryId,
+            @Parameter(description = "사용자 식별자") Long userId
     );
 
     /**
@@ -72,12 +76,15 @@ public interface EventApiDoc {
             responseCode = "200",
             description = "오픈 임박 공연 조회 성공"
     )
-    ResponseEntity<BaseResponse<OpeningSoonEventsResponse>> getOpeningSoonEvents();
+    ResponseEntity<BaseResponse<OpeningSoonEventsResponse>> getOpeningSoonEvents(
+            @Parameter(description = "사용자 식별자") Long userId
+    );
 
     /**
      * 공연 상세 조회 API 문서 정의입니다.
      *
      * @param eventId 공연 식별자
+     * @param userId 사용자 식별자
      * @return 공연 상세 응답
      */
     @Operation(
@@ -91,6 +98,8 @@ public interface EventApiDoc {
     @ApiResponse(responseCode = "404", description = "공연을 찾을 수 없음")
     ResponseEntity<BaseResponse<EventDetailResponse>> getEventDetail(
             @Parameter(description = "공연 식별자", required = true)
-            Long eventId
+            Long eventId,
+            @Parameter(description = "사용자 식별자")
+            Long userId
     );
 }
