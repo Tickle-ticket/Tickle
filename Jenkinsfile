@@ -21,7 +21,6 @@ pipeline {
 
         stage('Detect Changes') {
             steps {
-                echo '===== [2/4] 변경된 서비스 감지 시작 ====='
                 script {
                     def changes = sh(
                         script: "git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD",
@@ -30,11 +29,13 @@ pipeline {
 
                     echo "변경된 파일 목록:\n${changes}"
 
-                    env.BUILD_BE   = changes.contains('services/be/')   ? 'true' : 'false'
+                    env.BUILD_BE   = changes.contains('services/be/') ? 'true' : 'false'
                     env.BUILD_AUTH = changes.contains('services/auth/') ? 'true' : 'false'
 
-                    echo "BE 배포 필요: ${env.BUILD_BE}"
-                    echo "Auth 배포 필요: ${env.BUILD_AUTH}"
+                    if (env.BUILD_BE == 'false' && currentBuild.rawBuild.getCause(hudson.model.Cause$UserIdCause) != null) {
+                        echo "수동 트리거 감지 → 강제 BE 배포"
+                        env.BUILD_BE = 'true'
+                    }
                 }
             }
         }
