@@ -65,6 +65,11 @@ pipeline {
                                         git fetch origin
                                         git checkout develop-be
                                         git reset --hard origin/develop-be
+                                        echo "[BE] Gradle 애플리케이션 빌드"
+                                        cd services/be
+                                        chmod +x gradlew
+                                        ./gradlew clean build -x test
+                                        cd ../..
                                         echo "[BE] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d --build be
                                         echo "[BE] 배포 완료"
@@ -94,6 +99,11 @@ pipeline {
                                         git fetch origin
                                         git checkout develop-be
                                         git reset --hard origin/develop-be
+                                        echo "[Auth] Gradle 애플리케이션 빌드"
+                                        cd services/auth
+                                        chmod +x gradlew
+                                        ./gradlew clean build -x test
+                                        cd ../..
                                         echo "[Auth] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d --build auth
                                         echo "[Auth] 배포 완료"
