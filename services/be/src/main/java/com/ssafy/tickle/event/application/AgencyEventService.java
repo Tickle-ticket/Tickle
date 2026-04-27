@@ -61,6 +61,12 @@ public class AgencyEventService {
     private final EventSeatRepository eventSeatRepository;
     private final SessionSeatRepository sessionSeatRepository;
 
+    /**
+     * 공연장 구역과 좌석 골격을 조회합니다.
+     *
+     * @param venueId 공연장 식별자
+     * @return 공연 등록 화면에서 사용할 공연장 골격 응답 DTO
+     */
     public AgencyVenueTemplateResponse getVenueTemplate(Long venueId) {
         Venue venue = venueRepository.findById(venueId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연장을 찾을 수 없습니다."));
@@ -72,6 +78,14 @@ public class AgencyEventService {
         return AgencyVenueTemplateResponse.from(venue, sections, seats);
     }
 
+    /**
+     * 공연, 가격 정책, 회차, 좌석 정보를 한 번에 등록합니다.
+     *
+     * <p>입력된 공연장 좌석을 기준으로 이벤트 좌석과 회차 좌석까지 함께 생성합니다.</p>
+     *
+     * @param request 기획사 공연 생성 요청 DTO
+     * @return 생성된 공연 응답 DTO
+     */
     @Transactional
     public AgencyCreateEventResponse createEvent(AgencyCreateEventRequest request) {
         validateEventTimeline(request);
@@ -116,6 +130,11 @@ public class AgencyEventService {
         );
     }
 
+    /**
+     * 공연 판매 기간과 공연 진행 기간의 선후관계를 검증합니다.
+     *
+     * @param request 기획사 공연 생성 요청 DTO
+     */
     private void validateEventTimeline(AgencyCreateEventRequest request) {
         if (!request.salesStartAt().isBefore(request.salesEndAt())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "공연 판매 시작 시각은 종료 시각보다 빨라야 합니다.");
@@ -125,6 +144,13 @@ public class AgencyEventService {
         }
     }
 
+    /**
+     * 공연 가격 정책을 생성하고 등급/관람대상 조합 기준으로 맵을 구성합니다.
+     *
+     * @param event 공연 엔티티
+     * @param requests 가격 정책 요청 목록
+     * @return 가격 정책 조합 키 기준 맵
+     */
     private Map<String, EventPricePolicy> createPricePolicies(
             Event event,
             List<AgencyCreateEventPricePolicyRequest> requests
@@ -156,6 +182,13 @@ public class AgencyEventService {
         return pricePolicyByKey;
     }
 
+    /**
+     * 공연 회차를 생성합니다.
+     *
+     * @param event 공연 엔티티
+     * @param requests 회차 생성 요청 목록
+     * @return 생성된 회차 엔티티 목록
+     */
     private List<EventSession> createSessions(Event event, List<AgencyCreateEventSessionRequest> requests) {
         Set<Integer> sessionNos = new LinkedHashSet<>();
         List<EventSession> sessions = new ArrayList<>();
@@ -180,6 +213,15 @@ public class AgencyEventService {
         return eventSessionRepository.saveAll(sessions);
     }
 
+    /**
+     * 공연장 좌석을 기준으로 공연 좌석을 생성합니다.
+     *
+     * @param event 공연 엔티티
+     * @param venueId 공연장 식별자
+     * @param requests 좌석 매핑 요청 목록
+     * @param pricePolicyByKey 가격 정책 조합 키 기준 맵
+     * @return 생성된 공연 좌석 목록
+     */
     private List<EventSeat> createEventSeats(
             Event event,
             Long venueId,
@@ -234,6 +276,14 @@ public class AgencyEventService {
         return eventSeatRepository.saveAll(eventSeats);
     }
 
+    /**
+     * 실제 사용된 공연장 구역만 복제하여 공연 구역을 생성합니다.
+     *
+     * @param event 공연 엔티티
+     * @param venueId 공연장 식별자
+     * @param venueSeats 선택된 공연장 좌석 목록
+     * @return 공연장 구역 ID 기준 공연 구역 맵
+     */
     private Map<Long, EventSection> createEventSections(Event event, Long venueId, List<VenueSeat> venueSeats) {
         Map<Long, VenueSection> venueSectionById = new LinkedHashMap<>();
         for (VenueSeat venueSeat : venueSeats) {
@@ -258,6 +308,12 @@ public class AgencyEventService {
         return eventSectionByVenueSectionId;
     }
 
+    /**
+     * 회차별 좌석을 생성합니다.
+     *
+     * @param sessions 생성된 회차 목록
+     * @param eventSeats 생성된 공연 좌석 목록
+     */
     private void createSessionSeats(List<EventSession> sessions, List<EventSeat> eventSeats) {
         List<SessionSeat> sessionSeats = new ArrayList<>();
 
@@ -277,6 +333,11 @@ public class AgencyEventService {
         sessionSeatRepository.saveAll(sessionSeats);
     }
 
+    /**
+     * 회차 시작/종료 시각과 예매 시작/종료 시각의 선후관계를 검증합니다.
+     *
+     * @param request 회차 생성 요청 DTO
+     */
     private void validateSessionTimeline(AgencyCreateEventSessionRequest request) {
         if (!request.startAt().isBefore(request.endAt())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "회차 시작 시각은 종료 시각보다 빨라야 합니다.");
@@ -286,6 +347,13 @@ public class AgencyEventService {
         }
     }
 
+    /**
+     * 가격 정책 조합 키를 생성합니다.
+     *
+     * @param priceGrade 가격 등급
+     * @param audienceType 관람 대상 유형
+     * @return 가격 정책 식별용 조합 키
+     */
     private String policyKey(String priceGrade, String audienceType) {
         return priceGrade + "::" + audienceType;
     }
