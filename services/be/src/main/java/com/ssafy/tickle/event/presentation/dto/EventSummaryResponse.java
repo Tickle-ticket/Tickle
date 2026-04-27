@@ -15,6 +15,7 @@ import java.time.Instant;
  * @param categoryName 카테고리명
  * @param thumbnailUrl 대표 이미지 URL
  * @param metadata 메타데이터
+ * @param isFavorite 현재 사용자의 찜 여부
  */
 public record EventSummaryResponse(
         Long eventId,
@@ -24,7 +25,8 @@ public record EventSummaryResponse(
         Instant eventEndAt,
         String categoryName,
         String thumbnailUrl,
-        Event.EventMetadata metadata
+        Event.EventMetadata metadata,
+        boolean isFavorite
 ) {
 
     /**
@@ -32,9 +34,10 @@ public record EventSummaryResponse(
      *
      * @param event 이벤트 엔티티
      * @param thumbnailUrl 대표 이미지 URL
+     * @param isFavorite 현재 사용자의 찜 여부
      * @return 이벤트 목록 아이템 응답
      */
-    public static EventSummaryResponse from(Event event, String thumbnailUrl) {
+    public static EventSummaryResponse from(Event event, String thumbnailUrl, boolean isFavorite) {
         return new EventSummaryResponse(
                 event.getId(),
                 event.getTitle(),
@@ -43,7 +46,8 @@ public record EventSummaryResponse(
                 event.getEventEndAt(),
                 event.getCategory().getCategoryName(),
                 thumbnailUrl,
-                metadataOrEmpty(event)
+                metadataOrEmpty(event),
+                isFavorite
         );
     }
 
