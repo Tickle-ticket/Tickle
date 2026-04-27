@@ -64,7 +64,7 @@ pipeline {
                                         cd ~/S14P31A203
                                         git fetch origin
                                         git checkout develop-be
-                                        git pull origin develop-be
+                                        git reset --hard origin/develop-be
                                         echo "[BE] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d --build be
                                         echo "[BE] 배포 완료"
@@ -93,7 +93,7 @@ pipeline {
                                         cd ~/S14P31A203
                                         git fetch origin
                                         git checkout develop-be
-                                        git pull origin develop-be
+                                        git reset --hard origin/develop-be
                                         echo "[Auth] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d --build auth
                                         echo "[Auth] 배포 완료"
