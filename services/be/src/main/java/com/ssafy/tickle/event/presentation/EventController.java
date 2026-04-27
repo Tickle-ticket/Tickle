@@ -38,12 +38,13 @@ public class EventController implements EventApiDoc {
     public ResponseEntity<BaseResponse<EventListResponse>> getEvents(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(eventService.getEvents(keyword, categoryId, page, size)));
+                .body(BaseResponse.success(eventService.getEvents(keyword, categoryId, page, size, userId)));
     }
 
     /**
@@ -55,11 +56,12 @@ public class EventController implements EventApiDoc {
     @Override
     @GetMapping("/ranking")
     public ResponseEntity<BaseResponse<CategoryRankingResponse>> getRanking(
-            @RequestParam(required = false) Long categoryId
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long userId
     ) {
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(eventService.getRanking(categoryId)));
+                .body(BaseResponse.success(eventService.getRanking(categoryId, userId)));
     }
 
     /**
@@ -69,10 +71,12 @@ public class EventController implements EventApiDoc {
      */
     @Override
     @GetMapping("/opening-soon")
-    public ResponseEntity<BaseResponse<OpeningSoonEventsResponse>> getOpeningSoonEvents() {
+    public ResponseEntity<BaseResponse<OpeningSoonEventsResponse>> getOpeningSoonEvents(
+            @RequestParam(required = false) Long userId
+    ) {
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(eventService.getOpeningSoonEvents()));
+                .body(BaseResponse.success(eventService.getOpeningSoonEvents(userId)));
     }
 
     /**
@@ -83,9 +87,12 @@ public class EventController implements EventApiDoc {
      */
     @Override
     @GetMapping("/{eventId}")
-    public ResponseEntity<BaseResponse<EventDetailResponse>> getEventDetail(@PathVariable Long eventId) {
+    public ResponseEntity<BaseResponse<EventDetailResponse>> getEventDetail(
+            @PathVariable Long eventId,
+            @RequestParam(required = false) Long userId
+    ) {
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(eventService.getEventDetail(eventId)));
+                .body(BaseResponse.success(eventService.getEventDetail(eventId, userId)));
     }
 }

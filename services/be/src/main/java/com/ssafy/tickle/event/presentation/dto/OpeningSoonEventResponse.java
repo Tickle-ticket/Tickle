@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.presentation.dto;
 
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEvent;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.List;
  * @param salesEndAt 예매 종료 시각
  * @param thumbnailUrl 썸네일 이미지 URL
  * @param tags 메타데이터 내 태그 목록
+ * @param isFavorite 현재 사용자의 찜 여부
  */
 public record OpeningSoonEventResponse(
         Long eventId,
@@ -28,10 +30,11 @@ public record OpeningSoonEventResponse(
         Instant salesStartAt,
         Instant salesEndAt,
         String thumbnailUrl,
-        List<String> tags
+        List<String> tags,
+        boolean isFavorite
 ) {
 
-    public static OpeningSoonEventResponse from(Event event, String thumbnailUrl) {
+    public static OpeningSoonEventResponse from(Event event, String thumbnailUrl, boolean isFavorite) {
         return new OpeningSoonEventResponse(
                 event.getId(),
                 event.getTitle(),
@@ -43,7 +46,23 @@ public record OpeningSoonEventResponse(
                 thumbnailUrl,
                 event.getMetadata() == null
                         ? new ArrayList<>()
-                        : new ArrayList<>(event.getMetadata().tags())
+                        : new ArrayList<>(event.getMetadata().tags()),
+                isFavorite
+        );
+    }
+
+    public static OpeningSoonEventResponse from(CachedOpeningSoonEvent item, boolean isFavorite) {
+        return new OpeningSoonEventResponse(
+                item.eventId(),
+                item.eventName(),
+                item.venueName(),
+                item.eventStartAt(),
+                item.eventEndAt(),
+                item.salesStartAt(),
+                item.salesEndAt(),
+                item.thumbnailUrl(),
+                item.tags(),
+                isFavorite
         );
     }
 }

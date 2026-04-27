@@ -26,6 +26,7 @@ import java.util.List;
  * @param metadata 메타데이터
  * @param notice 공지사항
  * @param status 이벤트 상태
+ * @param isFavorite 현재 사용자의 찜 여부
  * @param images 이미지 목록
  * @param sessions 회차 목록
  * @param pricePolicies 가격 정책 목록
@@ -46,6 +47,7 @@ public record EventDetailResponse(
         Event.EventMetadata metadata,
         String notice,
         Event.Status status,
+        boolean isFavorite,
         List<EventImageResponse> images,
         List<EventSessionResponse> sessions,
         List<EventPricePolicyResponse> pricePolicies
@@ -58,13 +60,15 @@ public record EventDetailResponse(
      * @param images 이벤트 이미지 엔티티 목록
      * @param sessions 이벤트 회차 엔티티 목록
      * @param pricePolicies 이벤트 가격 정책 엔티티 목록
+     * @param isFavorite 현재 사용자의 찜 여부
      * @return 이벤트 상세 응답
      */
     public static EventDetailResponse from(
             Event event,
             List<EventImage> images,
             List<EventSession> sessions,
-            List<EventPricePolicy> pricePolicies
+            List<EventPricePolicy> pricePolicies,
+            boolean isFavorite
     ) {
         return new EventDetailResponse(
                 event.getId(),
@@ -82,6 +86,7 @@ public record EventDetailResponse(
                 metadataOrEmpty(event),
                 event.getNotice(),
                 event.getStatus(),
+                isFavorite,
                 images.stream()
                         .map(EventImageResponse::from)
                         .toList(),
