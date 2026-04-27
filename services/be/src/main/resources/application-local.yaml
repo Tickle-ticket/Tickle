@@ -78,3 +78,7 @@ springdoc:
 internal:
   # Auth 서버와 공유하는 내부 통신 시크릿 키
   secret: ${INTERNAL_SECRET}
+
+cors:
+  # 배포 FE Origin
+  fe-origin: ${CORS_FE_ORIGIN}
