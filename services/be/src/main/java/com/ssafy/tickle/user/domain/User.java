@@ -45,11 +45,11 @@ public class User {
     private String phoneNumber;
 
     // 실명
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 30)
     private String name;
 
     // 닉네임
-    @Column(name = "nickname", nullable = false, length = 100)
+    @Column(name = "nickname", nullable = false, length = 50)
     private String nickname;
 
     // 프로필 이미지 URL
