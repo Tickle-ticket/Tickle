@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { GradePrice } from '@/src/shared/components/PriceLegend';
+import { fetchEventDetail } from '@/src/shared/api/eventApi';
 
 export interface EventSchedule {
   date: string;
@@ -23,12 +24,45 @@ export const useEventDetail = (eventId: string) => {
   return useQuery({
     queryKey: ['eventDetail', eventId],
     queryFn: async () => {
-      const response = await fetch(`/api/v1/events/${eventId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch event details');
-      }
-      const data = await response.json();
-      return data.data as EventDetailResponse;
+      const response = await fetchEventDetail(eventId);
+      const data = response.data;
+
+      const scheduleMap = new Map<string, { time: string, remainingSeats: any[] }[]>();
+      data.sessions.forEach(session => {
+        const dateObj = new Date(session.startAt);
+        const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
+        const time = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        
+        if (!scheduleMap.has(date)) {
+          scheduleMap.set(date, []);
+        }
+        scheduleMap.get(date)!.push({
+          time,
+          remainingSeats: []
+        });
+      });
+
+      const schedules = Array.from(scheduleMap.entries()).map(([date, times]) => ({
+        date,
+        times
+      }));
+
+      const startDate = new Date(data.eventStartAt).toLocaleDateString().replace(/\s/g, '');
+      const endDate = new Date(data.eventEndAt).toLocaleDateString().replace(/\s/g, '');
+
+      const noticeLines = (data.notice || '').split('\n');
+      const refundLine = noticeLines.find(l => l.startsWith('취소정책'));
+      const refundPolicy = refundLine ? refundLine.replace('취소정책: ', '').replace('취소정책:', '').trim() : '';
+
+      return {
+        eventId: String(data.eventId),
+        title: data.title,
+        venue: data.venueName,
+        date: `${startDate} ~ ${endDate}`,
+        zonePrices: data.pricePolicies.map(p => ({ grade: p.priceGrade, price: p.salePriceAmount })),
+        schedules,
+        refundPolicy,
+      } as EventDetailResponse;
     },
     staleTime: 5 * 60 * 1000,
   });

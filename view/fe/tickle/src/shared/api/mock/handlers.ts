@@ -5,6 +5,7 @@ import { queueHandlers } from './queueHandlers';
 import { ticketTypeHandlers } from './ticketTypeHandlers';
 import { homeHandlers } from './homeHandlers';
 import { searchHandlers } from './searchHandlers';
+import { favoriteHandlers } from './favoriteHandlers';
 
 export const handlers = [
   ...eventHandlers,
@@ -14,4 +15,5 @@ export const handlers = [
   ...ticketTypeHandlers,
   ...homeHandlers,
   ...searchHandlers,
+  ...favoriteHandlers,
 ];

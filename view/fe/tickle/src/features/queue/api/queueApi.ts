@@ -3,6 +3,8 @@
 const API_BASE_URL = '/api/v1';
 
 export interface EnterQueueResponse {
+  status: number;
+  message: string;
   data: {
     requestId: string;
     status: 'PENDING';
@@ -10,6 +12,8 @@ export interface EnterQueueResponse {
 }
 
 export interface GetTokenResponse {
+  status: number;
+  message: string;
   data: {
     queueToken: string;
     status: 'WAITING' | 'ADMITTED';

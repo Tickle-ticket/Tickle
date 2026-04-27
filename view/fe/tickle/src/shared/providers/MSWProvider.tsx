@@ -8,10 +8,12 @@ export function MSWProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       if (typeof window !== 'undefined') {
-        const { worker } = await import('../api/mock/browser');
-        await worker.start({
-          onUnhandledRequest: 'bypass',
-        });
+        if (process.env.NEXT_PUBLIC_API_MOCKING === 'enabled') {
+          const { worker } = await import('../api/mock/browser');
+          await worker.start({
+            onUnhandledRequest: 'bypass',
+          });
+        }
         setMswReady(true);
       }
     };

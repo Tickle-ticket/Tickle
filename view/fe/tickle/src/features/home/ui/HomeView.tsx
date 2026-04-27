@@ -4,19 +4,20 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useHomeBanners, useHomeRanking, useHomeUpcoming } from '@/src/features/home/api/useHomeData';
 import { http } from '@/src/shared/api/http';
+import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { BannerTitle } from '@/src/shared/components/BannerTitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
 import { BannerTime } from '@/src/shared/components/BannerTime';
 import { BannerNavigation } from '@/src/shared/components/BannerNavigation';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
-import { Header } from '@/src/features/detail/ui/Header';
+import { Header } from '@/src/shared/components/Header';
 import Tab from '@/src/shared/components/Tab';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Title } from '@/src/shared/components/Title';
 import { Box } from '@/src/shared/components/Box';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
-import { SearchContent } from '@/src/features/search/ui/SearchContent';
+import { SearchContent } from '@/src/shared/components/SearchContent';
 
 const TAB_ITEMS = ['전체', '뮤지컬', '콘서트', '연극', '전시/행사'];
 
@@ -135,7 +136,11 @@ export const HomeView = () => {
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     try {
-      await http.post(`/api/v1/home/wishlist/${eventId}`);
+      if (wishlistedIds.has(eventId)) {
+        await deleteFavorite(eventId);
+      } else {
+        await createFavorite(eventId);
+      }
       setWishlistedIds((prev) => {
         const next = new Set(prev);
         if (next.has(eventId)) {
@@ -146,7 +151,7 @@ export const HomeView = () => {
         return next;
       });
     } catch (error) {
-      console.error('위시리스트 등록 실패:', error);
+      console.error('찜 등록/취소 실패:', error);
     }
   };
 
@@ -242,27 +247,32 @@ export const HomeView = () => {
                 </div>
               ))
             ) : (
-              ranking?.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="shrink-0 cursor-pointer hover:scale-[1.02] transition-transform duration-200"
-                  onClick={() => handleCardClick(item.id)}
-                >
-                  <InfoCard
-                    src={item.imageUrl}
-                    title={item.title}
-                    place={item.venue}
-                    day={item.date}
-                    rank={idx + 1}
-                    showRank={true}
-                    badges={item.badges.map((b) => ({
-                      text: b,
-                      color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
-                      variant: 'fill' as const,
-                    }))}
-                  />
-                </div>
-              ))
+              ranking?.map((item, idx) => {
+                const isWishlisted = wishlistedIds.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="shrink-0 cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                    onClick={() => handleCardClick(item.id)}
+                  >
+                    <InfoCard
+                      src={item.imageUrl}
+                      title={item.title}
+                      place={item.venue}
+                      day={item.date}
+                      rank={idx + 1}
+                      showRank={true}
+                      isWishlisted={isWishlisted}
+                      onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
+                      badges={item.badges.map((b) => ({
+                        text: b,
+                        color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
+                        variant: 'fill' as const,
+                      }))}
+                    />
+                  </div>
+                );
+              })
             )}
           </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Header } from '@/src/features/detail/ui/Header';
+import { Header } from '@/src/shared/components/Header';
 import { Title } from '@/src/shared/components/Title';
 import SidebarButton from '@/src/shared/components/SidebarButton';
 import { UserManagementView } from './UserManagementView';
@@ -10,13 +10,18 @@ import { MyBookingsView } from './MyBookingsView';
 import { PastBookingsView } from './PastBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
-import { SearchContent } from '@/src/features/search/ui/SearchContent';
+import { SearchContent } from '@/src/shared/components/SearchContent';
 
 type TabType = 'USER' | 'UPCOMING' | 'MY_TICKETS' | 'PAST_TICKETS' | 'WAITLIST' | 'PAYMENTS';
 
 export const MyPageView = () => {
   const [activeTab, setActiveTab] = useState<TabType>('USER');
-  const { searchValue } = useSearchStore();
+  const { searchValue, clearSearch } = useSearchStore();
+
+  // 마이페이지 진입 시 검색 상태 초기화 — 검색 중에도 마이페이지가 바로 열리도록
+  React.useEffect(() => {
+    clearSearch();
+  }, []);
 
   const tabs = [
     { id: 'USER', label: '회원 관리' },

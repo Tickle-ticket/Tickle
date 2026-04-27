@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw';
 
-// 배너 목 데이터
+// 배너 목 데이터 (BE에 전용 엔드포인트 없음 — MSW 전용)
 const banners = [
   {
     id: '1',
@@ -28,98 +28,144 @@ const banners = [
   },
 ];
 
-// 랭킹 공연 목 데이터
-export const rankingPerformances = [
-  {
-    id: '1',
-    title: '오페라의 유령',
-    imageUrl: 'https://i.namu.wiki/i/u4Jy5i1HH21xCnVvPY0FXyC_jYRlt9rorKH95IMVNFdO5ZiFsd6J8JPuPK-JgRUb2Ngu6M-r6vudsw27aZ8yJJeJRz3SDXYHuM326_zq3LevCttDTg8dujFCCFUE4TMUzD2Waez43-6e2j-DZrf-NA.webp',
-    venue: '샤롯데씨어터',
-    date: '2024.07.26 ~ 2024.11.16',
-    badges: ['뮤지컬', 'HOT'],
-  },
-  {
-    id: '2',
-    title: '레미제라블',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24013956_p.gif',
-    venue: '블루스퀘어 신한카드홀',
-    date: '2024.11.19 ~ 2025.05.18',
-    badges: ['뮤지컬'],
-  },
-  {
-    id: '3',
-    title: '위키드',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24015262_p.gif',
-    venue: '충무아트센터 대극장',
-    date: '2025.01.09 ~ 2025.06.01',
-    badges: ['뮤지컬', 'NEW'],
-  },
-  {
-    id: '4',
-    title: '시카고',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24014884_p.gif',
-    venue: 'D-CUBE 링크아트센터',
-    date: '2024.12.05 ~ 2025.03.02',
-    badges: ['뮤지컬'],
-  },
-  {
-    id: '5',
-    title: '알라딘',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24017162_p.gif',
-    venue: '예술의전당 오페라극장',
-    date: '2025.02.01 ~ 2025.06.30',
-    badges: ['뮤지컬', 'BEST'],
-  },
-];
+// BE: GET /api/v1/events/ranking → CategoryRankingResponse
+const rankingData = {
+  categoryId: null,
+  categoryName: '전체',
+  rankings: [
+    {
+      rank: 1,
+      eventId: 1,
+      eventName: '오페라의 유령',
+      venueName: '샤롯데씨어터',
+      eventStartAt: '2024-07-26T19:30:00Z',
+      eventEndAt: '2024-11-16T21:30:00Z',
+      salesStartAt: '2024-06-01T10:00:00Z',
+      salesEndAt: '2024-11-15T23:59:59Z',
+      thumbnailUrl: 'https://i.namu.wiki/i/u4Jy5i1HH21xCnVvPY0FXyC_jYRlt9rorKH95IMVNFdO5ZiFsd6J8JPuPK-JgRUb2Ngu6M-r6vudsw27aZ8yJJeJRz3SDXYHuM326_zq3LevCttDTg8dujFCCFUE4TMUzD2Waez43-6e2j-DZrf-NA.webp',
+      tags: ['뮤지컬', 'HOT'],
+      isFavorite: false
+    },
+    {
+      rank: 2,
+      eventId: 2,
+      eventName: '레미제라블',
+      venueName: '블루스퀘어 신한카드홀',
+      eventStartAt: '2024-11-19T19:30:00Z',
+      eventEndAt: '2025-05-18T21:30:00Z',
+      salesStartAt: '2024-10-01T10:00:00Z',
+      salesEndAt: '2025-05-17T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24013956_p.gif',
+      tags: ['뮤지컬'],
+      isFavorite: false
+    },
+    {
+      rank: 3,
+      eventId: 3,
+      eventName: '위키드',
+      venueName: '충무아트센터 대극장',
+      eventStartAt: '2025-01-09T19:30:00Z',
+      eventEndAt: '2025-06-01T21:30:00Z',
+      salesStartAt: '2024-12-01T10:00:00Z',
+      salesEndAt: '2025-05-31T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24015262_p.gif',
+      tags: ['뮤지컬', 'NEW'],
+      isFavorite: false
+    },
+    {
+      rank: 4,
+      eventId: 4,
+      eventName: '시카고',
+      venueName: 'D-CUBE 링크아트센터',
+      eventStartAt: '2024-12-05T19:30:00Z',
+      eventEndAt: '2025-03-02T21:30:00Z',
+      salesStartAt: '2024-11-01T10:00:00Z',
+      salesEndAt: '2025-03-01T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24014884_p.gif',
+      tags: ['뮤지컬'],
+      isFavorite: false
+    },
+    {
+      rank: 5,
+      eventId: 5,
+      eventName: '알라딘',
+      venueName: '예술의전당 오페라극장',
+      eventStartAt: '2025-02-01T19:30:00Z',
+      eventEndAt: '2025-06-30T21:30:00Z',
+      salesStartAt: '2025-01-01T10:00:00Z',
+      salesEndAt: '2025-06-29T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24017162_p.gif',
+      tags: ['뮤지컬', 'BEST'],
+      isFavorite: false
+    },
+  ]
+};
 
-// 오픈 예정 공연 목 데이터
-export const upcomingPerformances = [
-  {
-    id: '10',
-    title: '캣츠',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24018023_p.gif',
-    venue: '세종문화회관 대극장',
-    date: '2025.08.01 ~ 2025.10.31',
-    openDate: '2026-05-10T12:00:00',
-    badges: ['뮤지컬'],
-  },
-  {
-    id: '11',
-    title: '맘마미아',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24016571_p.gif',
-    venue: 'LG아트센터 서울',
-    date: '2025.09.15 ~ 2025.12.28',
-    openDate: '2026-05-15T10:00:00',
-    badges: ['뮤지컬', 'NEW'],
-  },
-  {
-    id: '12',
-    title: '지킬 앤 하이드',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24014090_p.gif',
-    venue: '충무아트센터 대극장',
-    date: '2025.07.20 ~ 2025.10.19',
-    openDate: '2026-05-20T14:00:00',
-    badges: ['뮤지컬', 'HOT'],
-  },
-  {
-    id: '13',
-    title: '킹키부츠',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24014884_p.gif',
-    venue: 'D-CUBE 링크아트센터',
-    date: '2025.10.01 ~ 2025.12.31',
-    openDate: '2026-06-01T10:00:00',
-    badges: ['뮤지컬'],
-  },
-  {
-    id: '14',
-    title: '헤드윅',
-    imageUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24017162_p.gif',
-    venue: '대학로 유니플렉스',
-    date: '2025.11.15 ~ 2026.02.28',
-    openDate: '2026-06-10T12:00:00',
-    badges: ['뮤지컬', 'NEW'],
-  },
-];
+// BE: GET /api/v1/events/opening-soon → OpeningSoonEventsResponse
+const openingSoonData = {
+  events: [
+    {
+      eventId: 10,
+      eventName: '캣츠',
+      venueName: '세종문화회관 대극장',
+      eventStartAt: '2025-08-01T19:30:00Z',
+      eventEndAt: '2025-10-31T21:30:00Z',
+      salesStartAt: '2026-05-10T12:00:00Z',
+      salesEndAt: '2025-10-30T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24018023_p.gif',
+      tags: ['뮤지컬'],
+      isFavorite: false
+    },
+    {
+      eventId: 11,
+      eventName: '맘마미아',
+      venueName: 'LG아트센터 서울',
+      eventStartAt: '2025-09-15T19:30:00Z',
+      eventEndAt: '2025-12-28T21:30:00Z',
+      salesStartAt: '2026-05-15T10:00:00Z',
+      salesEndAt: '2025-12-27T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24016571_p.gif',
+      tags: ['뮤지컬', 'NEW'],
+      isFavorite: false
+    },
+    {
+      eventId: 12,
+      eventName: '지킬 앤 하이드',
+      venueName: '충무아트센터 대극장',
+      eventStartAt: '2025-07-20T19:30:00Z',
+      eventEndAt: '2025-10-19T21:30:00Z',
+      salesStartAt: '2026-05-20T14:00:00Z',
+      salesEndAt: '2025-10-18T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24014090_p.gif',
+      tags: ['뮤지컬', 'HOT'],
+      isFavorite: false
+    },
+    {
+      eventId: 13,
+      eventName: '킹키부츠',
+      venueName: 'D-CUBE 링크아트센터',
+      eventStartAt: '2025-10-01T19:30:00Z',
+      eventEndAt: '2025-12-31T21:30:00Z',
+      salesStartAt: '2026-06-01T10:00:00Z',
+      salesEndAt: '2025-12-30T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24014884_p.gif',
+      tags: ['뮤지컬'],
+      isFavorite: false
+    },
+    {
+      eventId: 14,
+      eventName: '헤드윅',
+      venueName: '대학로 유니플렉스',
+      eventStartAt: '2025-11-15T19:30:00Z',
+      eventEndAt: '2026-02-28T21:30:00Z',
+      salesStartAt: '2026-06-10T12:00:00Z',
+      salesEndAt: '2026-02-27T23:59:59Z',
+      thumbnailUrl: 'https://ticketimage.interpark.com/Play/image/large/24/24017162_p.gif',
+      tags: ['뮤지컬', 'NEW'],
+      isFavorite: false
+    },
+  ]
+};
 
 // 마이페이지: 취소표 대기 내역 상태 관리 (모의 데이터)
 const mockWaitlistBookings = [
@@ -201,8 +247,8 @@ let mockBookings = [
   }
 ];
 export const homeHandlers = [
-  // 홈 배너 목록 API
-  http.get('/api/v1/home/banners', async () => {
+  // 홈 배너 목록 API (BE에 전용 엔드포인트 없음)
+  http.get('*/api/v1/home/banners', async () => {
     await delay(800);
     return HttpResponse.json({
       status: 200,
@@ -211,51 +257,28 @@ export const homeHandlers = [
     });
   }),
 
-  // 랭킹 공연 목록 API
-  http.get('/api/v1/home/ranking', async () => {
+  // BE: GET /api/v1/events/ranking → CategoryRankingResponse
+  http.get('*/api/v1/events/ranking', async () => {
     await delay(600);
     return HttpResponse.json({
       status: 200,
       message: 'success',
-      data: rankingPerformances,
+      data: rankingData,
     });
   }),
 
-  // 오픈 예정 공연 목록 API
-  http.get('/api/v1/home/upcoming', async () => {
+  // BE: GET /api/v1/events/opening-soon → OpeningSoonEventsResponse
+  http.get('*/api/v1/events/opening-soon', async () => {
     await delay(700);
     return HttpResponse.json({
       status: 200,
       message: 'success',
-      data: upcomingPerformances,
+      data: openingSoonData,
     });
   }),
 
-  // 위시리스트(찜) 토글 API
-  http.post('/api/v1/home/wishlist/:eventId', async ({ params }) => {
-    await delay(300);
-    return HttpResponse.json({
-      status: 200,
-      message: 'success',
-      data: {
-        eventId: params.eventId,
-        wishlisted: true,
-      },
-    });
-  }),
-
-  // 마이페이지: 관심 있는 개봉 예정 공연 API
-  http.get('/api/v1/mypage/wishlist/upcoming', async () => {
-    await delay(500);
-    return HttpResponse.json({
-      status: 200,
-      message: 'success',
-      data: upcomingPerformances.slice(0, 3), // 전체 오픈 예정 공연 중 앞의 3개만 관심 공연으로 노출
-    });
-  }),
-
-  // 마이페이지: 내 예매 내역 조회 API
-  http.get('/api/v1/mypage/bookings', () => {
+  // 마이페이지: 내 예매 내역 조회 API (BE 미구현 — MSW 전용)
+  http.get('*/api/v1/mypage/bookings', () => {
     return HttpResponse.json({
       status: 200,
       message: 'success',
@@ -263,8 +286,8 @@ export const homeHandlers = [
     });
   }),
 
-  // 마이페이지: 과거 예매 내역 조회 API
-  http.get('/api/v1/mypage/bookings/past', () => {
+  // 마이페이지: 과거 예매 내역 조회 API (BE 미구현 — MSW 전용)
+  http.get('*/api/v1/mypage/bookings/past', () => {
     return HttpResponse.json({
       status: 200,
       message: 'success',
@@ -272,8 +295,8 @@ export const homeHandlers = [
     });
   }),
 
-  // 마이페이지: 취소표 대기 내역 조회 API
-  http.get('/api/v1/mypage/waitlist', () => {
+  // 마이페이지: 취소표 대기 내역 조회 API (BE 미구현 — MSW 전용)
+  http.get('*/api/v1/mypage/waitlist', () => {
     return HttpResponse.json({
       status: 200,
       message: 'success',
@@ -281,8 +304,8 @@ export const homeHandlers = [
     });
   }),
 
-  // 마이페이지: 내 예매 내역 취소 API
-  http.delete('/api/v1/mypage/bookings/:id', ({ params }) => {
+  // 마이페이지: 내 예매 내역 취소 API (BE 미구현 — MSW 전용)
+  http.delete('*/api/v1/mypage/bookings/:id', ({ params }) => {
     const { id } = params;
     mockBookings = mockBookings.filter((b) => b.id !== id);
     return HttpResponse.json({

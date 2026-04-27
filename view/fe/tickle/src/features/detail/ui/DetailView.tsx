@@ -8,7 +8,7 @@ import { BannerSubtitle } from '@/src/shared/components/BannerSubtitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
 import { BannerTime } from '@/src/shared/components/BannerTime';
 import Button from '@/src/shared/components/Button';
-import { Header } from '@/src/features/detail/ui/Header';
+import { Header } from '@/src/shared/components/Header';
 import { Text } from '@/src/shared/components/Text';
 import { Table } from '@/src/shared/components/Table';
 import { Box } from '@/src/shared/components/Box';
