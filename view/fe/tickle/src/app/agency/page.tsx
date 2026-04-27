@@ -1,0 +1,1794 @@
+'use client';
+
+import Image from 'next/image';
+import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import {
+  AgencySeatPolicyModal,
+  createDefaultAgencySeatPolicy,
+  getAgencySeatPolicySummary,
+} from '@/src/shared/components/AgencySeatPolicyModal';
+import { Badge } from '@/src/shared/components/Badge';
+import { Box } from '@/src/shared/components/Box';
+import { Button } from '@/src/shared/components/Button';
+import { Calendar } from '@/src/shared/components/Calendar';
+import { Input } from '@/src/shared/components/Input';
+import { Modal } from '@/src/shared/components/Modal';
+import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
+
+const performanceTypeOptions = [
+  { label: '뮤지컬', value: 'musical' },
+  { label: '콘서트', value: 'concert' },
+  { label: '연극', value: 'play' },
+  { label: '클래식', value: 'classic' },
+  { label: '스포츠', value: 'sports' },
+  { label: '팬미팅', value: 'fanmeeting' },
+];
+
+const venueOptions = [
+  {
+    value: 'blue-square',
+    label: '블루스퀘어 마스터카드홀',
+    region: '서울 용산구',
+    capacity: '1,766석',
+  },
+  {
+    value: 'kspo-dome',
+    label: 'KSPO DOME',
+    region: '서울 송파구',
+    capacity: '15,000석',
+  },
+  {
+    value: 'coex-auditorium',
+    label: '코엑스 오디토리움',
+    region: '서울 강남구',
+    capacity: '1,046석',
+  },
+  {
+    value: 'sejong-center',
+    label: '세종문화회관 대극장',
+    region: '서울 종로구',
+    capacity: '3,022석',
+  },
+];
+
+type SeatGradeKey = 'vip' | 'r' | 's' | 'a';
+
+const seatGradeFields: Array<{
+  key: SeatGradeKey;
+  label: string;
+  badgeColor: 'red' | 'blue' | 'green' | 'grey';
+  description: string;
+}> = [
+  { key: 'vip', label: 'VIP석', badgeColor: 'red', description: '가장 높은 등급의 프리미엄 좌석' },
+  { key: 'r', label: 'R석', badgeColor: 'blue', description: '무대 중심 시야 구간' },
+  { key: 's', label: 'S석', badgeColor: 'green', description: '일반 판매 핵심 구간' },
+  { key: 'a', label: 'A석', badgeColor: 'grey', description: '입문형 가격대 좌석' },
+];
+
+const registrationChecklist = [
+  '공연 유형과 공연장 선택',
+  '티켓 오픈일, 티켓 종료일, 공연 오픈일, 공연 종료일 입력',
+  'VIP, R, S, A 등급별 좌석 금액과 좌석도 배치 설정',
+  '포스터, 공연 소개, 공지사항 입력',
+];
+
+const reviewMilestones = [
+  { title: '초안 작성', detail: '공연 기본 정보, 공연장, 티켓 일정 정리' },
+  { title: '운영 검수', detail: '좌석 금액, 판매 일정, 노출 정보 확인' },
+  { title: '최종 승인', detail: '승인 완료 후 판매 채널과 운영 대시보드에 반영' },
+];
+
+const formatDateKey = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateKey = (value: string) => {
+  const matched = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!matched) {
+    return null;
+  }
+
+  const [, yearText, monthText, dayText] = matched;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const parsed = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const formatDateTimeLabel = (value: Date) => {
+  const dateLabel = formatDateKey(value);
+  const hours = String(value.getHours()).padStart(2, '0');
+  const minutes = String(value.getMinutes()).padStart(2, '0');
+  return `${dateLabel} ${hours}:${minutes}`;
+};
+
+const parseDateTimeLabel = (value: string) => {
+  const matched = value.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
+
+  if (!matched) {
+    return null;
+  }
+
+  const [, yearText, monthText, dayText, hoursText, minutesText] = matched;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText);
+
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+
+  const parsed = new Date(year, month - 1, day, hours, minutes);
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const formatTimeValue = (value: Date) => {
+  const hours = String(value.getHours()).padStart(2, '0');
+  const minutes = String(value.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const buildEnabledDateRange = (startDate: Date, totalDays: number) => {
+  const dates: string[] = [];
+  const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+  for (let index = 0; index < totalDays; index += 1) {
+    const nextDate = new Date(cursor);
+    nextDate.setDate(cursor.getDate() + index);
+    dates.push(formatDateKey(nextDate));
+  }
+
+  return dates;
+};
+
+const withSelectedDate = (selectedDate: Date, sourceDate: Date) => {
+  const nextDate = new Date(sourceDate);
+  nextDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+  return nextDate;
+};
+
+const withSelectedTime = (sourceDate: Date, timeValue: string) => {
+  const [hours, minutes] = timeValue.split(':').map(Number);
+  const nextDate = new Date(sourceDate);
+
+  if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+    nextDate.setHours(hours, minutes, 0, 0);
+  }
+
+  return nextDate;
+};
+
+const ensureDateRangeOrder = (startAt: Date, endAt: Date) =>
+  endAt.getTime() < startAt.getTime() ? new Date(startAt) : endAt;
+
+type IntroImageItem = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
+type PerformanceScheduleMap = Record<string, string[]>;
+
+const createIntroImageKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024 * 1024) {
+    return `${new Intl.NumberFormat('ko-KR').format(Math.max(1, Math.round(bytes / 1024)))} KB`;
+  }
+
+  const megaBytes = bytes / (1024 * 1024);
+  return `${megaBytes >= 10 ? megaBytes.toFixed(0) : megaBytes.toFixed(1)} MB`;
+};
+
+const buildDateKeysBetween = (startAt: Date, endAt: Date) => {
+  const dates: string[] = [];
+  const startDate = new Date(startAt.getFullYear(), startAt.getMonth(), startAt.getDate());
+  const endDate = new Date(endAt.getFullYear(), endAt.getMonth(), endAt.getDate());
+
+  for (
+    let cursor = new Date(startDate);
+    cursor.getTime() <= endDate.getTime();
+    cursor.setDate(cursor.getDate() + 1)
+  ) {
+    dates.push(formatDateKey(cursor));
+  }
+
+  return dates;
+};
+
+const formatScheduleDateShortLabel = (value: Date) =>
+  new Intl.DateTimeFormat('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(value);
+
+const isValidScheduleTime = (value: string) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+
+const createImagePreviewItem = (file: File): IntroImageItem => ({
+  id: createIntroImageKey(file),
+  file,
+  previewUrl: URL.createObjectURL(file),
+});
+
+function DateTimeTriggerField({
+  label,
+  value,
+  onChange,
+  onBlur,
+  onOpen,
+}: {
+  label: string;
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onBlur: () => void;
+  onOpen: () => void;
+}) {
+  const inputId = useId();
+
+  return (
+    <div className="relative flex w-full flex-col gap-1">
+      <label htmlFor={inputId} className="mb-1 text-[13px] font-medium text-gray-500">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          id={inputId}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          placeholder="YYYY-MM-DD HH:mm"
+          className={`
+            w-full border-b-[2px] bg-transparent py-1 pr-11 text-[20px] text-gray-900 outline-none
+            transition-colors tracking-[0.08em] placeholder:text-gray-300 border-gray-300 sm:text-[22px]
+            hover:border-slate-400 focus:border-blue-500
+          `}
+        />
+        <button
+          type="button"
+          className="absolute bottom-1 right-0 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition hover:bg-slate-100 hover:text-slate-600"
+          aria-label={`${label} 달력 열기`}
+          onClick={onOpen}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DateRangeModal({
+  isOpen,
+  title,
+  description,
+  startLabel,
+  endLabel,
+  initialStartAt,
+  initialEndAt,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  title: string;
+  description: string;
+  startLabel: string;
+  endLabel: string;
+  initialStartAt: Date;
+  initialEndAt: Date;
+  onClose: () => void;
+  onConfirm: (nextStartAt: Date, nextEndAt: Date) => void;
+}) {
+  const [draftStartAt, setDraftStartAt] = useState(() => new Date(initialStartAt));
+  const [draftEndAt, setDraftEndAt] = useState(() => new Date(initialEndAt));
+  const [startDateText, setStartDateText] = useState(() => formatDateKey(initialStartAt));
+  const [endDateText, setEndDateText] = useState(() => formatDateKey(initialEndAt));
+
+  const startEnabledDates = useMemo(
+    () => buildEnabledDateRange(new Date(draftStartAt.getFullYear(), draftStartAt.getMonth(), 1), 540),
+    [draftStartAt],
+  );
+
+  const endEnabledDates = useMemo(
+    () => buildEnabledDateRange(
+      new Date(draftStartAt.getFullYear(), draftStartAt.getMonth(), draftStartAt.getDate()),
+      540,
+    ),
+    [draftStartAt],
+  );
+
+  const handleStartDateSelect = (date: Date) => {
+    const nextStartAt = withSelectedDate(date, draftStartAt);
+    const nextEndAt = ensureDateRangeOrder(nextStartAt, draftEndAt);
+
+    setDraftStartAt(nextStartAt);
+    setStartDateText(formatDateKey(nextStartAt));
+    setDraftEndAt(nextEndAt);
+    setEndDateText(formatDateKey(nextEndAt));
+  };
+
+  const handleEndDateSelect = (date: Date) => {
+    const nextEndAt = withSelectedDate(date, draftEndAt);
+    setEndDateText(formatDateKey(nextEndAt));
+    setDraftEndAt(ensureDateRangeOrder(draftStartAt, nextEndAt));
+  };
+
+  const handleStartTimeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextStartAt = withSelectedTime(draftStartAt, event.target.value);
+
+    setDraftStartAt(nextStartAt);
+    setDraftEndAt((current) => ensureDateRangeOrder(nextStartAt, current));
+  };
+
+  const handleEndTimeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextEndAt = withSelectedTime(draftEndAt, event.target.value);
+    setDraftEndAt(ensureDateRangeOrder(draftStartAt, nextEndAt));
+  };
+
+  const handleStartDateTextChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+
+    setStartDateText(nextValue);
+
+    const parsedDate = parseDateKey(nextValue);
+    if (!parsedDate) {
+      return;
+    }
+
+    const nextStartAt = withSelectedDate(parsedDate, draftStartAt);
+    const nextEndAt = ensureDateRangeOrder(nextStartAt, draftEndAt);
+
+    setDraftStartAt(nextStartAt);
+    setDraftEndAt(nextEndAt);
+    setEndDateText(formatDateKey(nextEndAt));
+  };
+
+  const handleEndDateTextChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+
+    setEndDateText(nextValue);
+
+    const parsedDate = parseDateKey(nextValue);
+    if (!parsedDate) {
+      return;
+    }
+
+    const nextEndAt = ensureDateRangeOrder(
+      draftStartAt,
+      withSelectedDate(parsedDate, draftEndAt),
+    );
+
+    setDraftEndAt(nextEndAt);
+    setEndDateText(formatDateKey(nextEndAt));
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      description={description}
+      cancelText="닫기"
+      confirmText="적용하기"
+      onCancel={onClose}
+      onConfirm={() => onConfirm(draftStartAt, draftEndAt)}
+      className="!max-w-[960px] !rounded-[32px] !p-6"
+    >
+      <div className="w-full text-left">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <Badge color="blue" variant="outline">좌측</Badge>
+              <span className="text-sm font-bold text-slate-500">{startLabel}</span>
+            </div>
+            <p className="mt-3 text-lg font-black text-slate-950">{formatDateTimeLabel(draftStartAt)}</p>
+
+            <div className="mt-4">
+              <Calendar
+                enabledDates={startEnabledDates}
+                selectedDate={draftStartAt}
+                onSelect={handleStartDateSelect}
+                className="!max-w-none border border-slate-200 shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
+              />
+            </div>
+
+            <label className="mt-4 flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-500">시작 날짜</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="YYYY-MM-DD"
+                value={startDateText}
+                onChange={handleStartDateTextChange}
+                onBlur={() => setStartDateText(formatDateKey(draftStartAt))}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold tracking-[0.18em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <label className="mt-4 flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-500">시작 시간</span>
+              <input
+                type="time"
+                step={600}
+                value={formatTimeValue(draftStartAt)}
+                onChange={handleStartTimeChange}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <Badge color="grey" variant="outline">우측</Badge>
+              <span className="text-sm font-bold text-slate-500">{endLabel}</span>
+            </div>
+            <p className="mt-3 text-lg font-black text-slate-950">{formatDateTimeLabel(draftEndAt)}</p>
+
+            <div className="mt-4">
+              <Calendar
+                enabledDates={endEnabledDates}
+                selectedDate={draftEndAt}
+                onSelect={handleEndDateSelect}
+                className="!max-w-none border border-slate-200 shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
+              />
+            </div>
+
+            <label className="mt-4 flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-500">종료 날짜</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="YYYY-MM-DD"
+                value={endDateText}
+                onChange={handleEndDateTextChange}
+                onBlur={() => setEndDateText(formatDateKey(draftEndAt))}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold tracking-[0.18em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <label className="mt-4 flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-500">종료 시간</span>
+              <input
+                type="time"
+                step={600}
+                value={formatTimeValue(draftEndAt)}
+                onChange={handleEndTimeChange}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export default function AgencyRegistrationPage() {
+  const [performanceType, setPerformanceType] = useState('musical');
+  const [selectedVenue, setSelectedVenue] = useState(venueOptions[0]?.value ?? '');
+  const [isVenueOpen, setIsVenueOpen] = useState(false);
+  const [ticketOpenAt, setTicketOpenAt] = useState(() => new Date('2026-05-01T14:00:00'));
+  const [ticketCloseAt, setTicketCloseAt] = useState(() => new Date('2026-06-21T17:00:00'));
+  const [ticketOpenInputValue, setTicketOpenInputValue] = useState(() => formatDateTimeLabel(new Date('2026-05-01T14:00:00')));
+  const [ticketCloseInputValue, setTicketCloseInputValue] = useState(() => formatDateTimeLabel(new Date('2026-06-21T17:00:00')));
+  const [performanceOpenAt, setPerformanceOpenAt] = useState(() => new Date('2026-05-08T19:30:00'));
+  const [performanceCloseAt, setPerformanceCloseAt] = useState(() => new Date('2026-06-21T18:00:00'));
+  const [performanceOpenInputValue, setPerformanceOpenInputValue] = useState(() => formatDateTimeLabel(new Date('2026-05-08T19:30:00')));
+  const [performanceCloseInputValue, setPerformanceCloseInputValue] = useState(() => formatDateTimeLabel(new Date('2026-06-21T18:00:00')));
+  const [posterImage, setPosterImage] = useState<IntroImageItem | null>(null);
+  const [isPosterImageDragActive, setIsPosterImageDragActive] = useState(false);
+  const [introImages, setIntroImages] = useState<IntroImageItem[]>([]);
+  const [isIntroImageDragActive, setIsIntroImageDragActive] = useState(false);
+  const [noticeText, setNoticeText] = useState(
+    '예매 오픈 전 최종 검수 후 노출되는 운영 공지사항을 입력합니다.',
+  );
+  const [seatPrices, setSeatPrices] = useState<Record<SeatGradeKey, string>>({
+    vip: '180000',
+    r: '140000',
+    s: '110000',
+    a: '80000',
+  });
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null);
+  const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
+  const [performanceSchedules, setPerformanceSchedules] = useState<PerformanceScheduleMap>({});
+  const [scheduleTimeInputValue, setScheduleTimeInputValue] = useState('19:30');
+  const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
+  const [isTicketDateModalOpen, setIsTicketDateModalOpen] = useState(false);
+  const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
+  const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
+  const venueDropdownRef = useRef<HTMLDivElement | null>(null);
+  const posterImageInputRef = useRef<HTMLInputElement | null>(null);
+  const posterImageRegistryRef = useRef<IntroImageItem | null>(null);
+  const posterImageDragDepthRef = useRef(0);
+  const introImageInputRef = useRef<HTMLInputElement | null>(null);
+  const introImageRegistryRef = useRef<IntroImageItem[]>([]);
+  const introImageDragDepthRef = useRef(0);
+
+  const selectedDateLabel = useMemo(() => {
+    if (!selectedScheduleDate) {
+      return '미선택';
+    }
+
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short',
+    }).format(selectedScheduleDate);
+  }, [selectedScheduleDate]);
+
+  const performanceScheduleDateKeys = useMemo(
+    () => buildDateKeysBetween(performanceOpenAt, performanceCloseAt),
+    [performanceOpenAt, performanceCloseAt],
+  );
+
+  const selectedScheduleDateKey = selectedScheduleDate ? formatDateKey(selectedScheduleDate) : null;
+  const selectedScheduleDateLabels = useMemo(
+    () =>
+      selectedScheduleDateKeys
+        .map((dateKey) => parseDateKey(dateKey))
+        .filter((value): value is Date => value !== null)
+        .map((value) => formatScheduleDateShortLabel(value)),
+    [selectedScheduleDateKeys],
+  );
+
+  const selectedScheduleTimes = useMemo(() => {
+    if (!selectedScheduleDateKey) {
+      return [];
+    }
+
+    return performanceSchedules[selectedScheduleDateKey] ?? [];
+  }, [performanceSchedules, selectedScheduleDateKey]);
+
+  const registeredPerformanceCount = useMemo(
+    () => Object.values(performanceSchedules).reduce((total, times) => total + times.length, 0),
+    [performanceSchedules],
+  );
+  const selectedScheduleDateCount = selectedScheduleDateKeys.length;
+
+  const selectedVenueInfo = useMemo(
+    () => venueOptions.find((venue) => venue.value === selectedVenue) ?? venueOptions[0],
+    [selectedVenue],
+  );
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!venueDropdownRef.current?.contains(event.target as Node)) {
+        setIsVenueOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousImages = introImageRegistryRef.current;
+
+    previousImages
+      .filter((image) => !introImages.some((currentImage) => currentImage.id === image.id))
+      .forEach((image) => {
+        URL.revokeObjectURL(image.previewUrl);
+      });
+
+    introImageRegistryRef.current = introImages;
+  }, [introImages]);
+
+  useEffect(() => {
+    const previousImage = posterImageRegistryRef.current;
+
+    if (previousImage && previousImage.id !== posterImage?.id) {
+      URL.revokeObjectURL(previousImage.previewUrl);
+    }
+
+    posterImageRegistryRef.current = posterImage;
+  }, [posterImage]);
+
+  useEffect(
+    () => () => {
+      if (posterImageRegistryRef.current) {
+        URL.revokeObjectURL(posterImageRegistryRef.current.previewUrl);
+      }
+
+      introImageRegistryRef.current.forEach((image) => {
+        URL.revokeObjectURL(image.previewUrl);
+      });
+    },
+    [],
+  );
+
+  const seatPriceSummary = useMemo(
+    () =>
+      seatGradeFields.map((field) => ({
+        ...field,
+        formattedValue:
+          seatPrices[field.key].length > 0
+            ? new Intl.NumberFormat('ko-KR').format(Number(seatPrices[field.key]))
+            : '0',
+      })),
+    [seatPrices],
+  );
+
+  const seatPolicySummary = useMemo(() => getAgencySeatPolicySummary(seatPolicy), [seatPolicy]);
+  const introImageCountLabel =
+    introImages.length > 0 ? `등록된 이미지 ${introImages.length}장` : '아직 등록된 이미지가 없습니다.';
+  const posterImageLabel = posterImage ? '포스터 이미지가 등록되었습니다.' : '아직 등록된 포스터가 없습니다.';
+
+  const formatSeatPriceInput = (value: string) => {
+    if (value.length === 0) {
+      return '';
+    }
+
+    return new Intl.NumberFormat('ko-KR').format(Number(value));
+  };
+
+  const openIntroImagePicker = () => {
+    introImageInputRef.current?.click();
+  };
+
+  const openPosterImagePicker = () => {
+    posterImageInputRef.current?.click();
+  };
+
+  const replacePosterImage = (files: File[]) => {
+    const nextPosterFile = files.find((file) => file.type.startsWith('image/'));
+
+    if (!nextPosterFile) {
+      return;
+    }
+
+    setPosterImage(createImagePreviewItem(nextPosterFile));
+  };
+
+  const appendIntroImages = (files: File[]) => {
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      return;
+    }
+
+    setIntroImages((current) => {
+      const existingKeys = new Set(current.map((image) => image.id));
+      const nextImages = imageFiles
+        .filter((file) => !existingKeys.has(createIntroImageKey(file)))
+        .map((file) => createImagePreviewItem(file));
+
+      return [...current, ...nextImages];
+    });
+  };
+
+  const handlePosterImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    replacePosterImage(Array.from(event.target.files ?? []));
+    event.target.value = '';
+  };
+
+  const handlePosterImageRemove = () => {
+    setPosterImage(null);
+  };
+
+  const handlePosterImageDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    posterImageDragDepthRef.current += 1;
+    setIsPosterImageDragActive(true);
+  };
+
+  const handlePosterImageDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+
+    if (!isPosterImageDragActive) {
+      setIsPosterImageDragActive(true);
+    }
+  };
+
+  const handlePosterImageDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    posterImageDragDepthRef.current = Math.max(0, posterImageDragDepthRef.current - 1);
+
+    if (posterImageDragDepthRef.current === 0) {
+      setIsPosterImageDragActive(false);
+    }
+  };
+
+  const handlePosterImageDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    posterImageDragDepthRef.current = 0;
+    setIsPosterImageDragActive(false);
+    replacePosterImage(Array.from(event.dataTransfer.files));
+  };
+
+  const handleIntroImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    appendIntroImages(Array.from(event.target.files ?? []));
+    event.target.value = '';
+  };
+
+  const handleIntroImageRemove = (imageId: string) => {
+    setIntroImages((current) => current.filter((image) => image.id !== imageId));
+  };
+
+  const handleIntroImageDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    introImageDragDepthRef.current += 1;
+    setIsIntroImageDragActive(true);
+  };
+
+  const handleIntroImageDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+
+    if (!isIntroImageDragActive) {
+      setIsIntroImageDragActive(true);
+    }
+  };
+
+  const handleIntroImageDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    introImageDragDepthRef.current = Math.max(0, introImageDragDepthRef.current - 1);
+
+    if (introImageDragDepthRef.current === 0) {
+      setIsIntroImageDragActive(false);
+    }
+  };
+
+  const handleIntroImageDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    introImageDragDepthRef.current = 0;
+    setIsIntroImageDragActive(false);
+    appendIntroImages(Array.from(event.dataTransfer.files));
+  };
+
+  const handleSeatPriceChange =
+    (grade: SeatGradeKey) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const digitsOnly = event.target.value.replace(/\D/g, '');
+
+      setSeatPrices((current) => ({
+        ...current,
+        [grade]: digitsOnly,
+      }));
+    };
+
+  const syncSchedulesToPerformanceRange = (nextOpenAt: Date, nextCloseAt: Date) => {
+    const nextDateKeys = buildDateKeysBetween(nextOpenAt, nextCloseAt);
+    const nextSelectedDateKeys = selectedScheduleDateKeys.filter((dateKey) => nextDateKeys.includes(dateKey));
+    const nextActiveDateKey =
+      selectedScheduleDateKey && nextSelectedDateKeys.includes(selectedScheduleDateKey)
+        ? selectedScheduleDateKey
+        : nextSelectedDateKeys[0] ?? null;
+
+    setSelectedScheduleDateKeys(nextSelectedDateKeys);
+    setSelectedScheduleDate(nextActiveDateKey ? parseDateKey(nextActiveDateKey) : null);
+
+    setPerformanceSchedules((current) => {
+      const availableDateKeys = new Set(nextDateKeys);
+      return Object.fromEntries(
+        Object.entries(current)
+          .filter(([dateKey]) => availableDateKeys.has(dateKey))
+          .map(([dateKey, times]) => [dateKey, [...new Set(times)].sort()]),
+      );
+    });
+  };
+
+  const handleScheduleDateToggle = (dateKey: string) => {
+    const scheduleDate = parseDateKey(dateKey);
+
+    if (!scheduleDate) {
+      return;
+    }
+
+    const isSelected = selectedScheduleDateKeys.includes(dateKey);
+
+    const nextSelectedDateKeys = isSelected
+      ? selectedScheduleDateKeys.filter((entryDateKey) => entryDateKey !== dateKey)
+      : [...selectedScheduleDateKeys, dateKey].sort();
+
+    setSelectedScheduleDateKeys(nextSelectedDateKeys);
+
+    if (!isSelected) {
+      setSelectedScheduleDate(scheduleDate);
+      return;
+    }
+
+    if (selectedScheduleDateKey === dateKey) {
+      const fallbackDateKey = nextSelectedDateKeys[0] ?? null;
+      setSelectedScheduleDate(fallbackDateKey ? parseDateKey(fallbackDateKey) : null);
+    }
+  };
+
+  const handleTicketOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+    const parsed = parseDateTimeLabel(nextValue);
+
+    setTicketOpenInputValue(nextValue);
+
+    if (!parsed) {
+      return;
+    }
+
+    setTicketOpenAt(parsed);
+
+    if (ticketCloseAt.getTime() < parsed.getTime()) {
+      setTicketCloseAt(parsed);
+      setTicketCloseInputValue(formatDateTimeLabel(parsed));
+    }
+  };
+
+  const handleTicketCloseInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+    const parsed = parseDateTimeLabel(nextValue);
+
+    setTicketCloseInputValue(nextValue);
+
+    if (!parsed || parsed.getTime() < ticketOpenAt.getTime()) {
+      return;
+    }
+
+    setTicketCloseAt(parsed);
+  };
+
+  const handlePerformanceOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+    const parsed = parseDateTimeLabel(nextValue);
+
+    setPerformanceOpenInputValue(nextValue);
+
+    if (!parsed) {
+      return;
+    }
+
+    setPerformanceOpenAt(parsed);
+    const nextPerformanceCloseAt =
+      performanceCloseAt.getTime() < parsed.getTime() ? parsed : performanceCloseAt;
+
+    if (performanceCloseAt.getTime() < parsed.getTime()) {
+      setPerformanceCloseAt(parsed);
+      setPerformanceCloseInputValue(formatDateTimeLabel(parsed));
+    }
+
+    syncSchedulesToPerformanceRange(parsed, nextPerformanceCloseAt);
+  };
+
+  const handlePerformanceCloseInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value;
+    const parsed = parseDateTimeLabel(nextValue);
+
+    setPerformanceCloseInputValue(nextValue);
+
+    if (!parsed || parsed.getTime() < performanceOpenAt.getTime()) {
+      return;
+    }
+
+    setPerformanceCloseAt(parsed);
+    syncSchedulesToPerformanceRange(performanceOpenAt, parsed);
+  };
+
+  const handleScheduleTimeAdd = (timeValue = scheduleTimeInputValue) => {
+    if (!isValidScheduleTime(timeValue)) {
+      return;
+    }
+
+    const targetDateKeys = selectedScheduleDateKeys.length > 0
+      ? selectedScheduleDateKeys
+      : selectedScheduleDateKey
+        ? [selectedScheduleDateKey]
+        : [];
+
+    if (targetDateKeys.length === 0) {
+      return;
+    }
+
+    setPerformanceSchedules((current) => {
+      const nextSchedules = { ...current };
+
+      targetDateKeys.forEach((dateKey) => {
+        const currentTimes = nextSchedules[dateKey] ?? [];
+
+        if (currentTimes.includes(timeValue)) {
+          return;
+        }
+
+        nextSchedules[dateKey] = [...currentTimes, timeValue].sort();
+      });
+
+      return nextSchedules;
+    });
+  };
+
+  const handleScheduleTimeRemove = (dateKey: string, timeValue: string) => {
+    setPerformanceSchedules((current) => {
+      const nextTimes = (current[dateKey] ?? []).filter((entry) => entry !== timeValue);
+
+      if (nextTimes.length === 0) {
+        return Object.fromEntries(
+          Object.entries(current).filter(([entryDateKey]) => entryDateKey !== dateKey),
+        );
+      }
+
+      return {
+        ...current,
+        [dateKey]: nextTimes,
+      };
+    });
+  };
+
+  const handleSelectedScheduleClear = () => {
+    if (!selectedScheduleDateKey) {
+      return;
+    }
+
+    setPerformanceSchedules((current) => {
+      return Object.fromEntries(
+        Object.entries(current).filter(([dateKey]) => dateKey !== selectedScheduleDateKey),
+      );
+    });
+  };
+
+  return (
+    <div className="space-y-5 p-4 sm:p-6">
+      <header className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-600">Agency workspace</p>
+          <h1 className="mt-1 text-[28px] font-black tracking-normal text-slate-950 sm:text-[30px]">
+            공연 등록
+          </h1>
+          <p className="mt-2 text-sm font-medium text-slate-500">
+            등록 가능한 공연장만 목록에서 선택하고, 판매 일정과 좌석 금액을 한 화면에서 구성하는 초안입니다.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge color="green" variant="fill">임시 저장 2건</Badge>
+          <Button color="dark" variant="weak" size="small">
+            미리보기 공유
+          </Button>
+          <Button color="primary" size="small">
+            검수 요청
+          </Button>
+        </div>
+      </header>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_340px]">
+        <div className="space-y-5">
+          <Box variant="shadow" className="space-y-5">
+            <div>
+              <h2 className="text-[18px] font-black text-slate-950">노출 콘텐츠</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                공연 포스터, 공연 소개 이미지, 공지사항을 등록해서 상세 노출 콘텐츠를 먼저 구성합니다.
+              </p>
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-bold text-slate-500">공연 포스터</span>
+                <input
+                  ref={posterImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePosterImageInputChange}
+                />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={openPosterImagePicker}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openPosterImagePicker();
+                    }
+                  }}
+                  onDragEnter={handlePosterImageDragEnter}
+                  onDragOver={handlePosterImageDragOver}
+                  onDragLeave={handlePosterImageDragLeave}
+                  onDrop={handlePosterImageDrop}
+                  className={`rounded-3xl border border-dashed p-4 transition ${
+                    isPosterImageDragActive
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white'
+                  }`}
+                >
+                  {posterImage ? (
+                    <div className="space-y-4">
+                      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-slate-100">
+                        <Image
+                          src={posterImage.previewUrl}
+                          alt="공연 포스터 미리보기"
+                          fill
+                          unoptimized
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-700">{posterImage.file.name}</p>
+                          <p className="mt-1 text-xs font-medium text-slate-400">
+                            {formatFileSize(posterImage.file.size)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handlePosterImageRemove();
+                          }}
+                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex min-h-[420px] flex-col justify-between gap-4">
+                      <div>
+                        <p className="text-base font-black text-slate-950">포스터 이미지 업로드</p>
+                        <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                          포스터 이미지를 드래그 앤 드랍하거나 클릭해서 파일 탐색기에서 선택합니다.
+                          세로형 비율 이미지를 권장합니다.
+                        </p>
+                      </div>
+                      <div className="inline-flex w-fit items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">
+                        포스터 선택
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs font-medium text-slate-400">{posterImageLabel}</span>
+              </div>
+
+              <div className="space-y-5">
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-bold text-slate-500">공연 소개</span>
+                  <input
+                    ref={introImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleIntroImageInputChange}
+                  />
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={openIntroImagePicker}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openIntroImagePicker();
+                      }
+                    }}
+                    onDragEnter={handleIntroImageDragEnter}
+                    onDragOver={handleIntroImageDragOver}
+                    onDragLeave={handleIntroImageDragLeave}
+                    onDrop={handleIntroImageDrop}
+                    className={`min-h-[220px] rounded-3xl border border-dashed p-4 transition sm:p-5 ${
+                      isIntroImageDragActive
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex h-full flex-col justify-between gap-6">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                          <p className="text-base font-black text-slate-950">소개 이미지 업로드</p>
+                          <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                            공연 소개 이미지를 여러 장 등록할 수 있습니다. 상세 페이지에 들어갈 소개용 이미지를 올립니다.
+                          </p>
+                        </div>
+                        <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white sm:px-4 sm:py-2 sm:text-sm">
+                          이미지 선택
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-400">
+                          <span>{introImageCountLabel}</span>
+                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <span>공연 소개 이미지는 여러 장 등록할 수 있습니다.</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {introImages.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {introImages.map((image, index) => (
+                        <div
+                          key={image.id}
+                          className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+                        >
+                          <div className="relative aspect-[4/3] bg-slate-100">
+                            <Image
+                              src={image.previewUrl}
+                              alt={`공연 소개 이미지 ${index + 1}`}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-4 py-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-slate-700">{image.file.name}</p>
+                              <p className="mt-1 text-xs font-medium text-slate-400">{formatFileSize(image.file.size)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleIntroImageRemove(image.id);
+                              }}
+                              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-bold text-slate-500">공지사항</span>
+                  <textarea
+                    value={noticeText}
+                    onChange={(event) => setNoticeText(event.target.value)}
+                    placeholder="예매 전 유의사항, 운영 공지, 입장 관련 안내를 입력합니다."
+                    className="min-h-[180px] rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  />
+                </label>
+              </div>
+            </div>
+          </Box>
+
+          <Box variant="shadow" className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  공연 기본 정보와 판매 일정을 먼저 채웁니다.
+                </p>
+              </div>
+              <Badge color="blue" variant="outline">필수 입력</Badge>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <Input
+                label="공연명"
+                defaultValue="뮤지컬 Tikkle Original"
+                fullWidth
+                className="[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px]"
+              />
+
+              <div className="flex flex-col gap-1">
+                <span className="mb-1 text-[13px] font-medium text-gray-500">공연장</span>
+                <div className="relative" ref={venueDropdownRef}>
+                  <button
+                    type="button"
+                    className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-gray-900 outline-none transition-colors sm:text-[22px] ${
+                      isVenueOpen ? 'border-blue-500' : 'border-gray-300'
+                    }`}
+                    aria-expanded={isVenueOpen}
+                    aria-haspopup="listbox"
+                    onClick={() => setIsVenueOpen((current) => !current)}
+                  >
+                    <span className="truncate text-left">{selectedVenueInfo?.label}</span>
+                    <svg
+                      className={`ml-3 h-5 w-5 shrink-0 transition-transform ${
+                        isVenueOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'
+                      }`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.512a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+
+                  {isVenueOpen ? (
+                    <div
+                      className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
+                      role="listbox"
+                    >
+                      <div className="max-h-72 overflow-y-auto p-2">
+                        {venueOptions.map((venue) => {
+                          const isSelected = venue.value === selectedVenue;
+
+                          return (
+                            <button
+                              key={venue.value}
+                              type="button"
+                              className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${
+                                isSelected
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'text-slate-700 hover:bg-slate-50'
+                              }`}
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => {
+                                setSelectedVenue(venue.value);
+                                setIsVenueOpen(false);
+                              }}
+                            >
+                              <p className="text-sm font-black">{venue.label}</p>
+                              <p className="mt-1 text-xs font-medium text-slate-500">
+                                {venue.region} / {venue.capacity}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <span className="text-xs font-medium text-slate-400">
+                  DB에 등록된 공연장만 선택할 수 있습니다.
+                </span>
+              </div>
+
+              <DateTimeTriggerField
+                label="티켓 오픈일"
+                value={ticketOpenInputValue}
+                onChange={handleTicketOpenInputChange}
+                onBlur={() => setTicketOpenInputValue(formatDateTimeLabel(ticketOpenAt))}
+                onOpen={() => setIsTicketDateModalOpen(true)}
+              />
+              <DateTimeTriggerField
+                label="티켓 종료일"
+                value={ticketCloseInputValue}
+                onChange={handleTicketCloseInputChange}
+                onBlur={() => setTicketCloseInputValue(formatDateTimeLabel(ticketCloseAt))}
+                onOpen={() => setIsTicketDateModalOpen(true)}
+              />
+              <DateTimeTriggerField
+                label="공연 오픈일"
+                value={performanceOpenInputValue}
+                onChange={handlePerformanceOpenInputChange}
+                onBlur={() => setPerformanceOpenInputValue(formatDateTimeLabel(performanceOpenAt))}
+                onOpen={() => setIsPerformanceDateModalOpen(true)}
+              />
+              <DateTimeTriggerField
+                label="공연 종료일"
+                value={performanceCloseInputValue}
+                onChange={handlePerformanceCloseInputChange}
+                onBlur={() => setPerformanceCloseInputValue(formatDateTimeLabel(performanceCloseAt))}
+                onOpen={() => setIsPerformanceDateModalOpen(true)}
+              />
+            </div>
+          </Box>
+
+          <Box variant="shadow" className="space-y-5">
+            <div>
+              <h2 className="text-[18px] font-black text-slate-950">판매 정책</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                공연 유형을 선택하고 VIP / R / S / A 좌석별 금액을 직접 입력합니다.
+              </p>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-bold text-slate-500">공연 유형</p>
+                  <SegmentedControl
+                    options={performanceTypeOptions}
+                    value={performanceType}
+                    onChange={setPerformanceType}
+                    columns={3}
+                    rows={2}
+                    size="large"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-slate-500">좌석 금액 설정</p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {seatGradeFields.map((field) => (
+                      <Input
+                        key={field.key}
+                        label={field.label}
+                        fullWidth
+                        inputMode="numeric"
+                        value={formatSeatPriceInput(seatPrices[field.key])}
+                        onChange={handleSeatPriceChange(field.key)}
+                        placeholder="금액 입력"
+                        className="[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px]"
+                      />
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-bold tracking-[0.08em] text-slate-400">가격 가이드</p>
+                    <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
+                      상위 등급과 하위 등급 간 간격이 너무 크면 운영 검수에서 조정 요청이 들어올 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-bold text-slate-500">선택 요약</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge color="blue">
+                    {performanceTypeOptions.find((option) => option.value === performanceType)?.label}
+                  </Badge>
+                </div>
+
+                <div className="mt-4 space-y-2.5">
+                  {seatPriceSummary.map((field) => (
+                    <div
+                      key={field.key}
+                      className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <Badge color={field.badgeColor} size="small">
+                          {field.label}
+                        </Badge>
+                        <span className="text-sm font-black text-slate-950">
+                          ₩{field.formattedValue}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs font-medium leading-5 text-slate-500">
+                        {field.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Box>
+
+          <Box variant="shadow" className="space-y-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-[18px] font-black text-slate-950">좌석 등급/비활성 설정</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  좌석도에서 어떤 좌석을 VIP, R, S, A로 운영할지와 판매 제외 좌석을 직접 지정합니다.
+                </p>
+              </div>
+              <Button
+                color="primary"
+                variant="weak"
+                size="medium"
+                onClick={() => setIsSeatPolicyModalOpen(true)}
+              >
+                좌석 등급 설정 열기
+              </Button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <div className="rounded-3xl border border-red-100 bg-red-50/70 p-5">
+                <div className="flex items-center">
+                  <Badge color="red" size="small">VIP</Badge>
+                </div>
+                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
+                  {seatPolicySummary.vip}
+                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-500">프리미엄 운영 좌석</p>
+              </div>
+
+              <div className="rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+                <div className="flex items-center">
+                  <Badge color="blue" size="small">R석</Badge>
+                </div>
+                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
+                  {seatPolicySummary.r}
+                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-500">무대 중심 시야 좌석</p>
+              </div>
+
+              <div className="rounded-3xl border border-green-100 bg-green-50/70 p-5">
+                <div className="flex items-center">
+                  <Badge color="green" size="small">S석</Badge>
+                </div>
+                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
+                  {seatPolicySummary.s}
+                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-500">일반 판매 핵심 좌석</p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex items-center">
+                  <Badge color="grey" size="small">A석</Badge>
+                </div>
+                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
+                  {seatPolicySummary.a}
+                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-500">입문형 가격대 좌석</p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-300 bg-white p-5">
+                <div className="flex items-center">
+                  <Badge color="grey" variant="outline" size="small">비활성</Badge>
+                </div>
+                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
+                  {seatPolicySummary.disabled}
+                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-500">예매에서 제외되는 좌석</p>
+              </div>
+            </div>
+          </Box>
+
+          <Box variant="shadow" className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[18px] font-black text-slate-950">공연 일정 등록</h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  공연 오픈일과 종료일을 기준으로 날짜가 자동 생성됩니다. 날짜를 고른 뒤 회차 시간을 빠르게 추가하세요.
+                </p>
+              </div>
+              <Badge color="blue" variant="outline">
+                총 {registeredPerformanceCount}회차 등록
+              </Badge>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <p className="text-sm font-bold text-slate-500">운영 날짜</p>
+                    <p className="mt-2 text-sm font-medium text-slate-600">
+                      {formatDateKey(performanceOpenAt)} ~ {formatDateKey(performanceCloseAt)}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    날짜 카드를 눌러 여러 날짜를 선택한 뒤 같은 회차를 한 번에 추가할 수 있습니다.
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-slate-400">
+                    총 {performanceScheduleDateKeys.length}일 범위에서 회차를 등록합니다.
+                  </p>
+
+                  <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                    {performanceScheduleDateKeys.map((dateKey) => {
+                      const scheduleDate = parseDateKey(dateKey);
+
+                      if (!scheduleDate) {
+                        return null;
+                      }
+
+                      const isSelected = selectedScheduleDateKeys.includes(dateKey);
+                      const scheduleCount = performanceSchedules[dateKey]?.length ?? 0;
+
+                      return (
+                        <button
+                          key={dateKey}
+                          type="button"
+                          onClick={() => handleScheduleDateToggle(dateKey)}
+                          className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                            isSelected
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={`h-2.5 w-2.5 rounded-full ${
+                                  isSelected ? 'bg-blue-500' : 'bg-slate-200'
+                                }`}
+                              />
+                              <p className="text-sm font-black text-slate-950">
+                                {formatScheduleDateShortLabel(scheduleDate)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">
+                                {scheduleCount}회
+                              </span>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-xs font-medium text-slate-400">{dateKey}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                  <div>
+                    <p className="text-sm font-bold text-slate-500">선택 날짜</p>
+                    <p className="mt-2 text-2xl font-black text-slate-950">
+                      {selectedScheduleDateCount > 1
+                        ? `${selectedScheduleDateCount}일 선택`
+                        : selectedDateLabel}
+                    </p>
+                  </div>
+
+                  <p className="mt-4 text-sm font-medium leading-6 text-slate-600">
+                    {selectedScheduleDateCount > 0
+                      ? `입력한 시간은 현재 선택한 ${selectedScheduleDateCount}일에 한 번에 추가됩니다.`
+                      : '운영 날짜에서 날짜를 선택하면 입력한 시간을 여러 날짜에 한 번에 추가할 수 있습니다.'}
+                  </p>
+
+                  {selectedScheduleDateLabels.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {selectedScheduleDateLabels.map((label) => (
+                        <span
+                          key={label}
+                          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 ring-1 ring-black/5"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-400">
+                      아직 선택된 날짜가 없습니다.
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <label className="flex min-w-0 flex-1 flex-col gap-2">
+                      <span className="text-sm font-bold text-slate-500">시간 입력</span>
+                      <input
+                        type="time"
+                        step={600}
+                        value={scheduleTimeInputValue}
+                        onChange={(event) => setScheduleTimeInputValue(event.target.value)}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                      />
+                    </label>
+                    <Button
+                      color="primary"
+                      size="medium"
+                      disabled={selectedScheduleDateCount === 0}
+                      onClick={() => handleScheduleTimeAdd()}
+                    >
+                      선택 날짜에 회차 추가
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <p className="text-sm font-bold text-slate-500">등록 상태</p>
+                <p className="mt-3 text-[28px] font-black tracking-tight text-slate-950">
+                  {selectedScheduleTimes.length}
+                  <span className="ml-1 text-lg font-bold text-slate-500">회차</span>
+                </p>
+                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                  {selectedScheduleDateCount > 0
+                    ? `${selectedVenueInfo?.label}에서 ${selectedDateLabel} 기준 회차를 확인하고, 선택된 ${selectedScheduleDateCount}일에 일괄 추가합니다.`
+                    : `${selectedVenueInfo?.label}에서 날짜를 선택하면 해당 날짜 기준 회차를 확인할 수 있습니다.`}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-500">등록된 공연 시간</p>
+                    <p className="mt-1 text-sm font-medium text-slate-400">
+                      같은 날짜에 등록된 회차를 바로 확인하고 삭제할 수 있습니다.
+                    </p>
+                  </div>
+                  {selectedScheduleTimes.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={handleSelectedScheduleClear}
+                      className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                    >
+                      선택 날짜 초기화
+                    </button>
+                  ) : null}
+                </div>
+
+                {selectedScheduleTimes.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {selectedScheduleTimes.map((timeValue) => (
+                      <div
+                        key={timeValue}
+                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                      >
+                        <span className="text-base font-black text-slate-950">{timeValue}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedScheduleDateKey) {
+                              handleScheduleTimeRemove(selectedScheduleDateKey, timeValue);
+                            }
+                          }}
+                          className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-500 ring-1 ring-black/5 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm font-medium text-slate-500">
+                    아직 등록된 회차가 없습니다. 시간을 입력해서 추가하세요.
+                  </div>
+                )}
+              </div>
+            </div>
+          </Box>
+        </div>
+
+        <div className="space-y-5">
+          <Box variant="outline" className="space-y-4">
+            <div>
+              <h2 className="text-[18px] font-black text-slate-950">등록 체크리스트</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                운영팀 전달 전에 확인할 핵심 항목입니다.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {registrationChecklist.map((item, index) => (
+                <div key={item} className="flex gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-700">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm font-semibold text-slate-700">{item}</p>
+                </div>
+              ))}
+            </div>
+          </Box>
+
+          <Box variant="gray" className="space-y-4">
+            <div>
+              <h2 className="text-[18px] font-black text-slate-950">승인 일정</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                공연 등록 후 운영 플로우가 어떻게 이어지는지 바로 보이도록 정리했습니다.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {reviewMilestones.map((milestone) => (
+                <div key={milestone.title} className="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-black/5">
+                  <p className="text-sm font-black text-slate-900">{milestone.title}</p>
+                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600">{milestone.detail}</p>
+                </div>
+              ))}
+            </div>
+          </Box>
+
+          <Box variant="shadow" className="space-y-4">
+            <div>
+              <h2 className="text-[18px] font-black text-slate-950">다음 액션</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                등록 신청 전 초안 저장과 내부 공유 링크를 함께 둘 수 있게 구성했습니다.
+              </p>
+            </div>
+
+            <Button color="primary" display="block" size="medium">
+              공연 등록 신청
+            </Button>
+            <Button color="dark" variant="weak" display="block" size="small">
+              임시 저장
+            </Button>
+          </Box>
+        </div>
+      </section>
+
+      {isSeatPolicyModalOpen ? (
+        <AgencySeatPolicyModal
+          isOpen={isSeatPolicyModalOpen}
+          onClose={() => setIsSeatPolicyModalOpen(false)}
+          seatPolicy={seatPolicy}
+          onConfirm={setSeatPolicy}
+        />
+      ) : null}
+
+      {isTicketDateModalOpen ? (
+        <DateRangeModal
+          isOpen={isTicketDateModalOpen}
+          title="티켓 일정 설정"
+          description="티켓 시작일과 종료일을 한 번에 확인하면서 날짜와 시간을 함께 설정합니다."
+          startLabel="티켓 시작일"
+          endLabel="티켓 종료일"
+          initialStartAt={ticketOpenAt}
+          initialEndAt={ticketCloseAt}
+          onClose={() => setIsTicketDateModalOpen(false)}
+          onConfirm={(nextStartAt, nextEndAt) => {
+            setTicketOpenAt(nextStartAt);
+            setTicketCloseAt(nextEndAt);
+            setTicketOpenInputValue(formatDateTimeLabel(nextStartAt));
+            setTicketCloseInputValue(formatDateTimeLabel(nextEndAt));
+            setIsTicketDateModalOpen(false);
+          }}
+        />
+      ) : null}
+
+      {isPerformanceDateModalOpen ? (
+        <DateRangeModal
+          isOpen={isPerformanceDateModalOpen}
+          title="공연 일정 설정"
+          description="공연 시작일과 종료일을 한 번에 확인하면서 날짜와 시간을 함께 설정합니다."
+          startLabel="공연 시작일"
+          endLabel="공연 종료일"
+          initialStartAt={performanceOpenAt}
+          initialEndAt={performanceCloseAt}
+          onClose={() => setIsPerformanceDateModalOpen(false)}
+          onConfirm={(nextStartAt, nextEndAt) => {
+            setPerformanceOpenAt(nextStartAt);
+            setPerformanceCloseAt(nextEndAt);
+            setPerformanceOpenInputValue(formatDateTimeLabel(nextStartAt));
+            setPerformanceCloseInputValue(formatDateTimeLabel(nextEndAt));
+            syncSchedulesToPerformanceRange(nextStartAt, nextEndAt);
+            setIsPerformanceDateModalOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
