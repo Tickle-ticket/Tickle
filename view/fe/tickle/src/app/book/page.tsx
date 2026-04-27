@@ -33,7 +33,7 @@ const getSeatColor = (id: string): SeatColor => {
 };
 
 export default function BookPage() {
-  const { data: seatAvailability, isLoading } = useSeatData('demo-schedule');
+  const { data: seatAvailability, isLoading } = useSeatData('dummy', false) as any;
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
 
   // 데이터 로딩 중

@@ -45,13 +45,13 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
     if (isLoading) {
       return (
         <div
-          className={`flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[2px] border-blue-500 bg-white ${fullWidth ? 'w-full' : 'w-[320px]'} ${className}`}
+          className={`flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[1.5px] border-gray-200 bg-white ${fullWidth ? 'w-full' : 'w-[320px]'} ${className}`}
           aria-hidden="true"
         >
           {/* 돋보기 자리 스켈레톤 */}
-          <div className="w-[20px] h-[20px] rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+          <div className="w-[20px] h-[20px] rounded-full bg-gray-100 animate-pulse flex-shrink-0" />
           {/* 텍스트 힌트 자리 스켈레톤 */}
-          <div className="h-[14px] w-[120px] bg-gray-200 animate-pulse rounded-md" />
+          <div className="h-[14px] w-[120px] bg-gray-100 animate-pulse rounded-md" />
         </div>
       );
     }
@@ -59,9 +59,9 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
     return (
       <div
         className={`
-          flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[2px] transition-all bg-white
-          border-blue-500 shadow-sm
-          focus-within:ring-4 focus-within:ring-blue-100
+          flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[1.5px] transition-all bg-white
+          border-gray-200 shadow-sm
+          focus-within:border-gray-800 focus-within:shadow-md
           ${fullWidth ? 'w-full' : 'w-[320px]'}
           ${className}
         `}

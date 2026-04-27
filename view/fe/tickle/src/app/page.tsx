@@ -1,5 +1,5 @@
-import { DetailView } from '@/src/features/detail/ui/DetailView';
+import { HomeView } from '@/src/features/home/ui/HomeView';
 
-export default function DetailPage() {
-  return <DetailView />;
+export default function HomePage() {
+  return <HomeView />;
 }

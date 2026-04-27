@@ -5,6 +5,7 @@ import type { SeatProps } from './types';
 export const Seat = ({
   status = 'selectable',
   color = 'blue',
+  congestion = 'none',
   isSelected = false,
   isLoading = false,
   className = '',
@@ -53,7 +54,7 @@ export const Seat = ({
     const maxOffset = 6;
     const offset = effectiveIsSelected ? 2 : maxOffset;
     const radius = 8; // "끝은 동그랗게" 처리하기 위한 둥근 모서리 반경
-    const padding = 2; // 패딩 공간
+    const padding = 4; // 바깥쪽 혼잡도 테두리를 위한 여백 확보 (기존 2 -> 4)
 
     const drawRoundRect = (x: number, y: number, w: number, h: number, r: number) => {
       ctx.beginPath();
@@ -81,9 +82,6 @@ export const Seat = ({
     ctx.fill();
 
     // 상판
-    // 누르지 않은 상태면 위로 떠있고, 선택된(눌린) 상태면 아래로 내려옴
-    // Top-down 시점에서 기둥을 입체적으로 표현하기 위해, 
-    // 하단 본체를 꽉 차게 그리고 그 위에 상판을 덮어씌워서 기둥을 표현합니다.
     const topY = padding + (maxOffset - offset);
 
     // 기둥 옆면을 부드럽게 이어주기 위해 상판을 그리기 전에 기둥 몸체를 채움
@@ -96,6 +94,30 @@ export const Seat = ({
     drawRoundRect(padding, topY, rectW, rectH, radius);
     ctx.fill();
 
+    // 혼잡도 테두리 추가 (좌석 바깥쪽으로 헤일로 형태로 감싸기)
+    if (congestion && congestion !== 'none') {
+      const congestionColors = {
+        red: '#ef4444',     // 매우 혼잡
+        yellow: '#eab308',  // 혼잡
+        green: '#22c55e',   // 보통
+        blue: '#3b82f6',    // 여유
+      };
+      
+      const gap = 2; // 좌석과 혼잡도 테두리 사이의 간격
+      ctx.strokeStyle = congestionColors[congestion];
+      ctx.lineWidth = 2; // 테두리 두께
+      
+      // 전체 3D 좌석의 Bounding Box를 감싸도록 그림
+      drawRoundRect(
+        padding - gap, 
+        topY - gap, 
+        rectW + gap * 2, 
+        rectH + (effectiveIsSelected ? offset : maxOffset) + gap * 2, 
+        radius + 1
+      );
+      ctx.stroke();
+    }
+
     // 선택된 좌석에 십자/체크/가운데 점 등 시각적 하이라이트 (가운데 큰 흰색 점)
     if (effectiveIsSelected) {
       ctx.fillStyle = '#ffffff';
@@ -104,7 +126,7 @@ export const Seat = ({
       ctx.fill();
     }
 
-  }, [status, color, isSelected, isLoading, width, height]);
+  }, [status, color, congestion, isSelected, isLoading, width, height]);
 
   if (isLoading) {
     return (

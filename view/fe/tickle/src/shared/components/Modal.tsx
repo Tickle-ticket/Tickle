@@ -11,11 +11,13 @@ export interface ModalProps {
   description?: string;
   cancelText?: string;
   confirmText?: string;
+  showCancelButton?: boolean;
   onCancel?: () => void;
   onConfirm?: () => void;
   isLoading?: boolean;
   className?: string;
   children?: React.ReactNode;
+  isConfirmDisabled?: boolean;
 }
 
 export const Modal = ({
@@ -25,10 +27,12 @@ export const Modal = ({
   description,
   cancelText = '취소',
   confirmText = '확인',
+  showCancelButton = true,
   onCancel,
   onConfirm,
   isLoading = false,
   className = '',
+  isConfirmDisabled = false,
   children
 }: ModalProps) => {
   
@@ -88,7 +92,7 @@ export const Modal = ({
         </div>
         
         <div className="flex gap-2 w-full mt-auto">
-          {cancelText && (
+          {showCancelButton && cancelText && (
             // Button 컴포넌트 활용 지시사항 반영 (weak / dark 조합이 회색 배경의 회색 글씨)
             <Button 
               variant="weak" 
@@ -109,6 +113,7 @@ export const Modal = ({
               display="block" 
               onClick={handleConfirm}
               isLoading={isLoading}
+              disabled={isConfirmDisabled}
               size="medium"
               className="flex-1 rounded-[12px] !font-semibold"
             >

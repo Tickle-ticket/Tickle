@@ -232,6 +232,9 @@ export interface InfoCardProps {
   showTime?: boolean;
   className?: string;
   isLoading?: boolean;
+  isWishlisted?: boolean;
+  onWishlistToggle?: (e: React.MouseEvent) => void;
+  wishlistVariant?: 'default' | 'greyPlus'; // default: 반투명 검정 배경, greyPlus: 불투명 회색 배경
 }
 
 export interface LogoProps {
@@ -300,10 +303,12 @@ export interface CalendarProps {
 
 export type SeatStatus = 'selectable' | 'disabled';
 export type SeatColor = 'pink' | 'yellow' | 'mint' | 'red' | 'green' | 'blue' | 'purple' | 'gray' | 'orange';
+export type CongestionLevel = 'red' | 'yellow' | 'green' | 'blue' | 'none';
 
 export interface SeatProps extends Omit<React.CanvasHTMLAttributes<HTMLCanvasElement>, 'onClick'> {
   status?: SeatStatus;
   color?: SeatColor;
+  congestion?: CongestionLevel;
   isSelected?: boolean;
   onClick?: () => void;
   isLoading?: boolean;

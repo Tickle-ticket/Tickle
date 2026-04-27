@@ -7,6 +7,7 @@ export interface DetailData {
   title: string;
   subTitle: string;
   imageUrl: string;
+  openDate?: string | null;
   startDate: string;
   endDate: string;
   venue: string;

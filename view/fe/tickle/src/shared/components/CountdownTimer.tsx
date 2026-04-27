@@ -1,0 +1,82 @@
+import React, { useState, useEffect } from 'react';
+
+interface CountdownTimerProps {
+  targetDate: string;
+  onExpire?: () => void;
+}
+
+export const CountdownTimer = ({ targetDate, onExpire }: CountdownTimerProps) => {
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const difference = new Date(targetDate).getTime() - new Date().getTime();
+      
+      if (difference <= 0) {
+        if (onExpire) onExpire();
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+      }
+
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    };
+
+    setTimeLeft(calculateTimeLeft());
+
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [targetDate, onExpire]);
+
+  const pad = (num: number) => String(num).padStart(2, '0');
+
+  const TimeUnit = ({ value, label }: { value: number; label: string }) => {
+    const padded = pad(value);
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex gap-1">
+          <div className="w-10 h-14 bg-[#1a1c23] rounded-md border border-[#2a2d36] flex items-center justify-center relative overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5)]">
+            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-black/50 z-10 -translate-y-1/2"></div>
+            <span className="text-2xl font-black text-white z-0">{padded[0]}</span>
+          </div>
+          <div className="w-10 h-14 bg-[#1a1c23] rounded-md border border-[#2a2d36] flex items-center justify-center relative overflow-hidden shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5)]">
+            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-black/50 z-10 -translate-y-1/2"></div>
+            <span className="text-2xl font-black text-white z-0">{padded[1]}</span>
+          </div>
+        </div>
+        <span className="text-[10px] font-extrabold text-[#8a8d98] tracking-wider">{label}</span>
+      </div>
+    );
+  };
+
+  const Colon = () => (
+    <div className="flex flex-col justify-center h-14 pb-5 px-1">
+      <span className="text-white/60 font-black text-xl">:</span>
+    </div>
+  );
+
+  return (
+    <div className="inline-flex bg-[#0f111a] p-4 rounded-xl border border-[#2a2d36] shadow-xl">
+      <div className="flex items-end gap-1">
+        <TimeUnit value={timeLeft.days} label="DAYS" />
+        <Colon />
+        <TimeUnit value={timeLeft.hours} label="HRS" />
+        <Colon />
+        <TimeUnit value={timeLeft.minutes} label="MIN" />
+        <Colon />
+        <TimeUnit value={timeLeft.seconds} label="SEC" />
+      </div>
+    </div>
+  );
+};
