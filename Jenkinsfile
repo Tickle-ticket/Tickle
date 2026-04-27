@@ -67,8 +67,7 @@ pipeline {
                                         echo "[BE] GitLab Registry push"
                                         docker push ${REGISTRY}/be:latest
                                         echo "[BE] 컨테이너 재시작"
-                                        docker compose --env-file .env -f infra/docker-compose/server1-main.yml pull be
-                                        docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d be
+                                        docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d --build be
                                         echo "[BE] 배포 완료"
                                     '
                                 """
@@ -102,8 +101,7 @@ pipeline {
                                         docker build -t ${REGISTRY}/auth:latest ./services/auth
                                         docker push ${REGISTRY}/auth:latest
                                         echo "[Auth] 컨테이너 재시작"
-                                        docker compose --env-file .env -f infra/docker-compose/server4-auth.yml pull auth
-                                        docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d auth
+                                        docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d --build auth
                                         echo "[Auth] 배포 완료"
                                     '
                                 """
