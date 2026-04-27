@@ -20,6 +20,13 @@ public record AgencyVenueTemplateSectionResponse(
         List<AgencyVenueTemplateSeatResponse> seats
 ) {
 
+    /**
+     * 공연장 구역과 좌석 목록을 구역 응답 DTO로 변환합니다.
+     *
+     * @param section 공연장 구역 엔티티
+     * @param seats 해당 구역의 좌석 목록
+     * @return 공연장 구역 응답 DTO
+     */
     public static AgencyVenueTemplateSectionResponse from(VenueSection section, List<VenueSeat> seats) {
         return new AgencyVenueTemplateSectionResponse(
                 section.getId(),
@@ -27,7 +34,7 @@ public record AgencyVenueTemplateSectionResponse(
                 section.getDisplayOrder(),
                 seats.stream()
                         .map(AgencyVenueTemplateSeatResponse::from)
-                        .toList()
+                .toList()
         );
     }
 }

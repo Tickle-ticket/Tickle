@@ -21,6 +21,14 @@ public record AgencyVenueTemplateResponse(
         List<AgencyVenueTemplateSectionResponse> sections
 ) {
 
+    /**
+     * 공연장과 구역/좌석 목록을 공연장 템플릿 응답 DTO로 변환합니다.
+     *
+     * @param venue 공연장 엔티티
+     * @param sections 공연장 구역 목록
+     * @param seats 공연장 좌석 목록
+     * @return 공연장 템플릿 응답 DTO
+     */
     public static AgencyVenueTemplateResponse from(
             Venue venue,
             List<VenueSection> sections,

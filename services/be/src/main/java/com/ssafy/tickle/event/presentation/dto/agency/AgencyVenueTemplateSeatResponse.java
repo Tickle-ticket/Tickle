@@ -19,6 +19,12 @@ public record AgencyVenueTemplateSeatResponse(
         VenueSeat.SeatType seatType
 ) {
 
+    /**
+     * 공연장 좌석 엔티티를 좌석 응답 DTO로 변환합니다.
+     *
+     * @param seat 공연장 좌석 엔티티
+     * @return 공연장 좌석 응답 DTO
+     */
     public static AgencyVenueTemplateSeatResponse from(VenueSeat seat) {
         return new AgencyVenueTemplateSeatResponse(
                 seat.getId(),
