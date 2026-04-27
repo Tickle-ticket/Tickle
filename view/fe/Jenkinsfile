@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    environment {
+        // 백엔드와 동일한 알림 채널 사용 [cite: 1]
+        MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
+        FE_SERVER = 'ubuntu@k14a203.p.ssafy.io'
+        PROJECT_PATH = '~/S14P31A203/view/fe/tickle'
+        SSH_CREDENTIAL_ID = 'fe-ec2-key'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '===== [1/3] 프론트엔드 코드 체크아웃 ====='
+                checkout scm // [cite: 2]
+            }
+        }
+
+        stage('FE Build') {
+            steps {
+                echo '===== [2/3] pnpm 빌드 시작 ====='
+                dir('view/fe/tickle') {
+                    sh 'npm install -g pnpm'
+                    sh 'pnpm install'
+                    sh 'pnpm build'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo '===== [3/3] EC2 원격 배포 시작 ====='
+                sshagent([env.SSH_CREDENTIAL_ID]) {
+                    // 빌드 결과물 압축 전송
+                    sh "tar -czf build.tar.gz -C view/fe/tickle .next public package.json pnpm-lock.yaml"
+                    sh "scp -o StrictHostKeyChecking=no build.tar.gz ${env.FE_SERVER}:${env.PROJECT_PATH}"
+                    
+                    // 서버에서 압축 해제 및 PM2 재시작
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${env.FE_SERVER} "
+                            cd ${env.PROJECT_PATH} &&
+                            tar -xzf build.tar.gz &&
+                            rm build.tar.gz &&
+                            pnpm install --prod &&
+                            pm2 restart frontend
+                        "
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                // 백엔드 팀의 알림 포맷을 활용한 성공 메시지 [cite: 12, 13]
+                def msg = """{"text": "✅ **프론트엔드 배포 완료!**\\n주소: https://k14a203.p.ssafy.io"}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
+        }
+        failure {
+            script {
+                // 실패 시 백엔드 팀처럼 익살스러운 알림 추가 [cite: 14, 15]
+                def msg = """{"text": "🚨 **프론트 배포 터졌어!** 빨리 확인해줘!"}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
+        }
+    }
+}
