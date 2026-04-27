@@ -26,13 +26,13 @@
 import random
 import time
 
-from macro.mouse_automation._dpi import ensure_dpi_aware, scale_coords
+from macro.mouse_automation.core._dpi import ensure_dpi_aware, scale_coords
 
 ensure_dpi_aware()
 import pyautogui
 
-from macro.mouse_automation.base import BaseMacro
-from macro.mouse_automation.mouse_utils import bezier_curve, add_noise, random_delay, human_like_duration
+from macro.mouse_automation.core.base import BaseMacro
+from macro.mouse_automation.core.mouse_utils import bezier_curve, add_noise, random_delay, human_like_duration
 
 
 class PyAutoGUILv2(BaseMacro):

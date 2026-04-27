@@ -8,27 +8,27 @@ mouse_move 가 0개라 분류기 신호가 부족하다. lv2 의 베지어 + Fit
 source 라벨: "pyautogui_lv2_collector" (기존 pyautogui_lv2 와 구분 가능)
 
 실행: cwd = services/ai/
-    python -m macro.mouse_automation.lv2_collector --sessions 1
-    python -m macro.mouse_automation.lv2_collector --sessions 30 --seed 42
+    python -m macro.mouse_automation.collector.lv2_collector --sessions 1
+    python -m macro.mouse_automation.collector.lv2_collector --sessions 30 --seed 42
 """
 # isort: skip_file  # ensure_dpi_aware()는 pyautogui import 전에 실행되어야 함
 import argparse
 import random
 import time
 
-from macro.mouse_automation._dpi import ensure_dpi_aware
+from macro.mouse_automation.core._dpi import ensure_dpi_aware
 
 ensure_dpi_aware()
 import pyautogui
 
-from macro.mouse_automation.event_logger import EventLogger
-from macro.mouse_automation.mouse_utils import (
+from macro.mouse_automation.core.event_logger import EventLogger
+from macro.mouse_automation.core.mouse_utils import (
     add_noise,
     bezier_curve,
     human_like_duration,
     random_delay,
 )
-from macro.mouse_automation.session import Session
+from macro.mouse_automation.core.session import Session
 
 
 # 안전 영역 — 화면 가운데 직사각형. pyautogui FAILSAFE(0,0)와 충분히 이격.

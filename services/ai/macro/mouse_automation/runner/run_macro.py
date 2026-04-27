@@ -8,7 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 os.chdir(_PROJECT_ROOT)
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
@@ -31,9 +31,9 @@ def main():
 
     if args.type == "pyautogui":
         if args.level == 1:
-            from macro.mouse_automation.pyautogui_lv1 import PyAutoGUILv1 as MacroClass
+            from macro.mouse_automation.runner.pyautogui_lv1 import PyAutoGUILv1 as MacroClass
         else:
-            from macro.mouse_automation.pyautogui_lv2 import PyAutoGUILv2 as MacroClass
+            from macro.mouse_automation.runner.pyautogui_lv2 import PyAutoGUILv2 as MacroClass
     elif args.type == "playwright":
         if args.level == 1:
             from macro.browser_automation.playwright_lv1 import PlaywrightLv1 as MacroClass
