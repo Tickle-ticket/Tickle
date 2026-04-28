@@ -1,16 +1,17 @@
 package com.ssafy.tickle.seat.application;
 
+import com.ssafy.tickle.category.domain.Category;
+import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
+import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.common.exception.BaseException;
-import com.ssafy.tickle.event.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
-import com.ssafy.tickle.event.domain.Organizer;
-import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
-import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.organizer.domain.Organizer;
+import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.seat.domain.EventSeat;
 import com.ssafy.tickle.seat.domain.EventSection;
 import com.ssafy.tickle.seat.domain.SeatErrorCode;
@@ -404,19 +405,6 @@ class SeatServiceTest {
         return e;
     }
 
-    private EventPricePolicy createPricePolicy(Event e) {
-        EventPricePolicy pp = EventPricePolicy.builder()
-                .event(e)
-                .priceGrade("R석")
-                .audienceType("일반")
-                .salePriceAmount(new BigDecimal("150000"))
-                .currencyCode("KRW")
-                .displayOrder(1)
-                .build();
-        setAuditFields(pp);
-        return pp;
-    }
-
     private EventSession createSession(Event e) {
         Instant now = Instant.now();
         EventSession s = EventSession.builder()
@@ -430,6 +418,19 @@ class SeatServiceTest {
                 .build();
         setAuditFields(s);
         return s;
+    }
+
+    private EventPricePolicy createPricePolicy(Event e) {
+        EventPricePolicy pp = EventPricePolicy.builder()
+                .event(e)
+                .priceGrade(SeatGrade.R)
+                .priceAmount(new BigDecimal("150000"))
+                .discountInfo(List.of())
+                .currencyCode("KRW")
+                .displayOrder(1)
+                .build();
+        setAuditFields(pp);
+        return pp;
     }
 
     private EventSection createSection(Event e, String name, int displayOrder) {
@@ -450,8 +451,8 @@ class SeatServiceTest {
                 .venueId(venue.getId())
                 .rowLabel(rowLabel)
                 .seatNumber(number)
-                .seatLabel(rowLabel + number)
-                .seatType(EventSeat.SeatType.REGULAR)
+                .seatLabel(rowLabel + "-" + number)
+                .seatGrade(SeatGrade.R)
                 .build();
         setAuditFields(es);
         return es;
