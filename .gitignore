@@ -1,3 +1,5 @@
 data/
 node_modules/
-__pycache__/
+__pycache__
+package-lock.json
+mockServiceWorker.js
