@@ -56,6 +56,7 @@ public interface SeatApiDoc {
             description = """
                     선택한 좌석 전체를 동시에 선점합니다 (All-or-Nothing).
                     
+                    - **1인당 최대 4개**까지 선점 가능합니다.
                     - 세션 단위 Redis 분산 락으로 동시 요청을 직렬화합니다.
                     - 하나라도 AVAILABLE이 아닌 좌석이 포함되면 전체 실패합니다.
                     - 성공 시 Redis에 15분 TTL 키를 등록합니다.
