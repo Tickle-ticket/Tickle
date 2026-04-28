@@ -26,7 +26,8 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
             JOIN FETCH es.eventSection sec
             JOIN FETCH es.eventPricePolicy pp
             WHERE ss.session.id = :sessionId
-            ORDER BY sec.displayOrder ASC, es.rowLabel ASC, es.seatNumber ASC
+            ORDER BY sec.displayOrder ASC, es.rowLabel ASC,
+                     CAST(es.seatNumber AS integer) ASC
             """)
     List<SessionSeat> findBySessionIdWithDetails(@Param("sessionId") Long sessionId);
 }

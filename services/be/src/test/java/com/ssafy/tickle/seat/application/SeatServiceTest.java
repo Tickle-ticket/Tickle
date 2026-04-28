@@ -143,7 +143,7 @@ class SeatServiceTest {
         void getSeatMap_eventNotFound() {
             assertThatThrownBy(() -> seatService.getSeatMap(9999L, session.getId()))
                     .isInstanceOf(BaseException.class)
-                    .hasMessageContaining("공연을 찾을 수 없습니다.");
+                    .hasMessageContaining("속하는 회차");
         }
 
         @Test
@@ -151,7 +151,7 @@ class SeatServiceTest {
         void getSeatMap_sessionNotFound() {
             assertThatThrownBy(() -> seatService.getSeatMap(event.getId(), 9999L))
                     .isInstanceOf(BaseException.class)
-                    .hasMessageContaining("회차를 찾을 수 없습니다.");
+                    .hasMessageContaining("속하는 회차");
         }
 
         @Test
@@ -163,7 +163,7 @@ class SeatServiceTest {
 
             assertThatThrownBy(() -> seatService.getSeatMap(event.getId(), anotherSession.getId()))
                     .isInstanceOf(BaseException.class)
-                    .hasMessageContaining("해당 공연의 회차를 찾을 수 없습니다.");
+                    .hasMessageContaining("속하는 회차");
         }
 
         @Test

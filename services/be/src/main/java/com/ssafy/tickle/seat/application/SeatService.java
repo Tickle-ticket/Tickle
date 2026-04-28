@@ -2,8 +2,6 @@ package com.ssafy.tickle.seat.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.event.domain.EventSession;
-import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.seat.domain.EventSection;
 import com.ssafy.tickle.seat.domain.SessionSeat;
@@ -15,10 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 좌석 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
@@ -28,7 +26,6 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class SeatService {
 
-    private final EventRepository eventRepository;
     private final EventSessionRepository eventSessionRepository;
     private final SessionSeatRepository sessionSeatRepository;
 
@@ -43,35 +40,42 @@ public class SeatService {
      * @return 구역별 좌석 상태 배치도
      */
     public SeatMapResponse getSeatMap(Long eventId, Long scheduleId) {
-        // 공연 존재 여부 확인
-        if (!eventRepository.existsById(eventId)) {
-            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다.");
-        }
-
-        // 회차 존재 여부 및 해당 공연 소속 여부 확인
-        EventSession session = eventSessionRepository.findById(scheduleId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "회차를 찾을 수 없습니다."));
-
-        if (!session.getEvent().getId().equals(eventId)) {
-            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "해당 공연의 회차를 찾을 수 없습니다.");
-        }
+        // 공연 소속 검증: eventId + sessionId를 한 쿼리로 확인 (N+1 방지)
+        validateSession(eventId, scheduleId);
 
         // 회차의 전체 좌석을 fetch join으로 한 번에 조회
         List<SessionSeat> sessionSeats = sessionSeatRepository.findBySessionIdWithDetails(scheduleId);
 
-        // 구역별로 그룹핑 (displayOrder 유지)
-        Map<EventSection, List<SeatItemResponse>> seatsBySection = new LinkedHashMap<>();
-        for (SessionSeat sessionSeat : sessionSeats) {
-            EventSection section = sessionSeat.getEventSeat().getEventSection();
-            seatsBySection.computeIfAbsent(section, k -> new ArrayList<>())
-                    .add(SeatItemResponse.from(sessionSeat));
-        }
+        // 구역별로 그룹핑 (DB ORDER BY로 정렬된 순서 유지)
+        Map<EventSection, List<SeatItemResponse>> seatsBySection = sessionSeats.stream()
+                .collect(Collectors.groupingBy(
+                        ss -> ss.getEventSeat().getEventSection(),
+                        LinkedHashMap::new,
+                        Collectors.mapping(SeatItemResponse::from, Collectors.toList())
+                ));
 
-        // 구역별 응답 목록 생성
         List<SeatSectionResponse> sections = seatsBySection.entrySet().stream()
                 .map(entry -> SeatSectionResponse.of(entry.getKey(), entry.getValue()))
                 .toList();
 
-        return SeatMapResponse.of(sections);
+        return new SeatMapResponse(sections);
+    }
+
+    /**
+     * 회차가 해당 공연에 속하는지 검증합니다.
+     *
+     * <p>공연 존재 여부와 회차 소속 여부를 단일 쿼리로 검증하여
+     * 불필요한 DB 조회를 최소화합니다.</p>
+     *
+     * @param eventId    공연 식별자
+     * @param scheduleId 회차 식별자
+     * @throws BaseException 공연 또는 회차를 찾을 수 없는 경우
+     */
+    private void validateSession(Long eventId, Long scheduleId) {
+        eventSessionRepository.findByIdAndEventId(scheduleId, eventId)
+                .orElseThrow(() -> new BaseException(
+                        GlobalErrorCode.RESOURCE_NOT_FOUND,
+                        "공연(%d)에 속하는 회차(%d)를 찾을 수 없습니다.".formatted(eventId, scheduleId)
+                ));
     }
 }

@@ -10,14 +10,4 @@ import java.util.List;
  * @param sections 구역별 좌석 목록 (displayOrder 오름차순)
  */
 public record SeatMapResponse(List<SeatSectionResponse> sections) {
-
-    /**
-     * 구역 목록으로 응답 DTO를 생성합니다.
-     *
-     * @param sections 구역별 좌석 응답 목록
-     * @return 좌석 배치도 응답 DTO
-     */
-    public static SeatMapResponse of(List<SeatSectionResponse> sections) {
-        return new SeatMapResponse(sections);
-    }
 }
