@@ -2,9 +2,11 @@ import { http, HttpResponse, delay } from 'msw';
 
 export const queueHandlers = [
   // 1. Enter Queue
-  http.post('/api/v1/queues/:sessionId/enter', async () => {
+  http.post('*/api/v1/queues/:sessionId/enter', async () => {
     await delay(500);
     return HttpResponse.json({
+      status: 200,
+      message: 'success',
       data: {
         requestId: 'f6f4c4aa-mock-request-id',
         status: 'PENDING'
@@ -13,9 +15,11 @@ export const queueHandlers = [
   }),
   
   // 2. Get Queue Token
-  http.get('/api/v1/queues/:sessionId/token', async () => {
+  http.get('*/api/v1/queues/:sessionId/token', async () => {
     await delay(300);
     return HttpResponse.json({
+      status: 200,
+      message: 'success',
       data: {
         queueToken: 'qt-mock-queue-token',
         status: 'WAITING'
@@ -24,9 +28,13 @@ export const queueHandlers = [
   }),
   
   // 6. Leave Queue
-  http.post('/api/v1/queues/:sessionId/leave', async () => {
+  http.post('*/api/v1/queues/:sessionId/leave', async () => {
     await delay(200);
-    return HttpResponse.json({ success: true });
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: null
+    });
   }),
   
   // 3. SSE Stream

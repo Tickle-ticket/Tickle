@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { fetchRanking, fetchOpeningSoonEvents } from '@/src/shared/api/eventApi';
 import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 
@@ -21,6 +22,7 @@ export interface PerformanceData {
   openDate?: string;
 }
 
+// 배너는 아직 백엔드에 전용 엔드포인트가 없으므로 기존 MSW 유지
 export const useHomeBanners = () => {
   return useQuery({
     queryKey: ['homeBanners'],
@@ -32,24 +34,51 @@ export const useHomeBanners = () => {
   });
 };
 
+// BE: GET /api/v1/events/ranking → CategoryRankingResponse
 export const useHomeRanking = () => {
   return useQuery({
     queryKey: ['homeRanking'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<PerformanceData[]>>('/api/v1/home/ranking');
-      return response.data;
+      const response = await fetchRanking();
+      const data = response.data;
+      return data.rankings.map((item) => {
+        const startDate = new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '');
+        const endDate = new Date(item.eventEndAt).toLocaleDateString().replace(/\s/g, '');
+        return {
+          id: String(item.eventId),
+          title: item.eventName,
+          imageUrl: item.thumbnailUrl,
+          venue: item.venueName,
+          date: `${startDate} ~ ${endDate}`,
+          badges: item.tags || [],
+        } as PerformanceData;
+      });
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1000,
   });
 };
 
+// BE: GET /api/v1/events/opening-soon → OpeningSoonEventsResponse
 export const useHomeUpcoming = () => {
   return useQuery({
     queryKey: ['homeUpcoming'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<PerformanceData[]>>('/api/v1/home/upcoming');
-      return response.data;
+      const response = await fetchOpeningSoonEvents();
+      const data = response.data;
+      return data.events.map((item) => {
+        const startDate = new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '');
+        const endDate = new Date(item.eventEndAt).toLocaleDateString().replace(/\s/g, '');
+        return {
+          id: String(item.eventId),
+          title: item.eventName,
+          imageUrl: item.thumbnailUrl,
+          venue: item.venueName,
+          date: `${startDate} ~ ${endDate}`,
+          badges: item.tags || [],
+          openDate: item.salesStartAt,
+        } as PerformanceData;
+      });
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1000,
   });
 };

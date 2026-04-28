@@ -11,6 +11,7 @@ import { CustomCAPTCHA } from '@/src/shared/components/CustomCAPTCHA';
 import { Accordion } from '@/src/shared/components/Accordion';
 import { Toggle } from '@/src/shared/components/Toggle';
 import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
+import { useBookStore } from '../store/useBookStore';
 import { Modal } from '@/src/shared/components/Modal';
 
 interface BookViewProps {
@@ -28,13 +29,22 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
 
   const { data: eventDetail, isLoading: isEventLoading } = useEventDetail('1'); // 이벤트 ID 1로 하드코딩
 
-  const [selectedDate, setSelectedDate] = useState<string | null>(initialSchedule?.date || null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(initialSchedule?.time || null);
-  const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
-  const [selectedSeatsToCancel, setSelectedSeatsToCancel] = useState<Set<string>>(new Set());
-  const [isModifyingSchedule, setIsModifyingSchedule] = useState(initialModifyingSchedule || !initialSchedule);
-  const [confirmedSchedule, setConfirmedSchedule] = useState<{date: string, time: string} | null>(initialSchedule || null);
-  const [isModifyModeActive, setIsModifyModeActive] = useState(initialModifyModeActive);
+  const selectedDate = useBookStore(s => s.selectedDate);
+  const setSelectedDate = useBookStore(s => s.setSelectedDate);
+  const selectedTime = useBookStore(s => s.selectedTime);
+  const setSelectedTime = useBookStore(s => s.setSelectedTime);
+  const selectedSeats = useBookStore(s => s.selectedSeats);
+  const setSelectedSeats = useBookStore(s => s.setSelectedSeats);
+  const toggleSeat = useBookStore(s => s.toggleSeat);
+  const selectedSeatsToCancel = useBookStore(s => s.selectedSeatsToCancel);
+  const setSelectedSeatsToCancel = useBookStore(s => s.setSelectedSeatsToCancel);
+  const toggleCancelSeat = useBookStore(s => s.toggleCancelSeat);
+  const isModifyingSchedule = useBookStore(s => s.isModifyingSchedule);
+  const setIsModifyingSchedule = useBookStore(s => s.setIsModifyingSchedule);
+  const confirmedSchedule = useBookStore(s => s.confirmedSchedule);
+  const setConfirmedSchedule = useBookStore(s => s.setConfirmedSchedule);
+  const isModifyModeActive = useBookStore(s => s.isModifyModeActive);
+  const setIsModifyModeActive = useBookStore(s => s.setIsModifyModeActive);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   
   const enableWs = !isCancelMode || isModifyModeActive;
@@ -45,25 +55,50 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
   
   // Ticket type selection
-  const [bookingStep, setBookingStep] = useState<'SEAT' | 'TICKET_TYPE' | 'PAYMENT' | 'PAY_METHOD'>('SEAT');
+  const bookingStep = useBookStore(s => s.bookingStep);
+  const setBookingStep = useBookStore(s => s.setBookingStep);
   const [ticketTypes, setTicketTypes] = useState<{id: string, label: string, discount: number}[]>([]);
   // gradeTicketCounts: { 'R': { 'adult': 2, 'child': 1 }, 'S': { 'adult': 1 } }
-  const [gradeTicketCounts, setGradeTicketCounts] = useState<Record<string, Record<string, number>>>({});
+  const gradeTicketCounts = useBookStore(s => s.gradeTicketCounts);
+  const setGradeTicketCounts = useBookStore(s => s.setGradeTicketCounts);
   const [openGrade, setOpenGrade] = useState<string | null>(null);
 
   // Payment state
-  const [buyerName, setBuyerName] = useState('');
-  const [buyerEmail, setBuyerEmail] = useState('');
-  const [buyerPhone, setBuyerPhone] = useState('');
-  const [agreeAll, setAgreeAll] = useState(false);
-  const [agreeTerm1, setAgreeTerm1] = useState(false);
-  const [agreeTerm2, setAgreeTerm2] = useState(false);
+  const buyerName = useBookStore(s => s.buyerName);
+  const setBuyerName = useBookStore(s => s.setBuyerName);
+  const buyerEmail = useBookStore(s => s.buyerEmail);
+  const setBuyerEmail = useBookStore(s => s.setBuyerEmail);
+  const buyerPhone = useBookStore(s => s.buyerPhone);
+  const setBuyerPhone = useBookStore(s => s.setBuyerPhone);
+  const agreeAll = useBookStore(s => s.agreeAll);
+  const setAgreeAll = useBookStore(s => s.setAgreeAll);
+  const agreeTerm1 = useBookStore(s => s.agreeTerm1);
+  const setAgreeTerm1 = useBookStore(s => s.setAgreeTerm1);
+  const agreeTerm2 = useBookStore(s => s.agreeTerm2);
+  const setAgreeTerm2 = useBookStore(s => s.setAgreeTerm2);
   const [termExpand1, setTermExpand1] = useState(false);
   const [termExpand2, setTermExpand2] = useState(false);
 
   // Pay method selection
-  const [payCategory, setPayCategory] = useState<'pay' | 'other' | null>(null);
-  const [selectedPayMethod, setSelectedPayMethod] = useState<string | null>(null);
+  const payCategory = useBookStore(s => s.payCategory);
+  const setPayCategory = useBookStore(s => s.setPayCategory);
+  const selectedPayMethod = useBookStore(s => s.selectedPayMethod);
+  const setSelectedPayMethod = useBookStore(s => s.setSelectedPayMethod);
+
+
+  const resetStore = useBookStore(s => s.resetStore);
+  
+  useEffect(() => {
+    resetStore({
+      selectedDate: initialSchedule?.date || null,
+      selectedTime: initialSchedule?.time || null,
+      confirmedSchedule: initialSchedule || null,
+      isModifyingSchedule: initialModifyingSchedule || !initialSchedule,
+      isModifyModeActive: initialModifyModeActive,
+      bookingStep: 'SEAT'
+    });
+    return () => resetStore();
+  }, [initialSchedule, initialModifyingSchedule, initialModifyModeActive, resetStore]);
 
   const isScheduleChanged = confirmedSchedule && initialSchedule && (confirmedSchedule.date !== initialSchedule.date || confirmedSchedule.time !== initialSchedule.time);
   const effectiveSeatsToCancel = isScheduleChanged ? new Set(initialSeats) : selectedSeatsToCancel;
@@ -188,24 +223,14 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
     
     // 취소 모드이거나 (예약 변경 모드 내의 초기 좌석)
     if ((isCancelMode && !isModifyModeActive) || initialSeats.includes(id)) {
-      setSelectedSeatsToCancel(prev => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
+      toggleCancelSeat(id);
       return;
     }
 
     const seatData = seatsData[id];
     if (!scheduleId || !seatData || seatData.status !== 'selectable') return;
 
-    setSelectedSeats(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    toggleSeat(id);
   };
 
   const SEAT_PRICES = eventDetail.zonePrices || [];
@@ -418,7 +443,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
             </div>
           ) : (
             // Phase 2: Seat Selection (Current UI)
-            <div className="flex-1 overflow-hidden p-8 flex flex-col gap-6 pb-32 animate-fade-in">
+            <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6 pb-32 animate-fade-in [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="flex justify-between items-center bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-gray-200 dark:border-zinc-700 shadow-sm mb-4 shrink-0">
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">선택된 일시</span>
@@ -531,31 +556,15 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                           <button 
                             onClick={() => {
                               if (isCancelMode && !isModifyModeActive) {
-                                setSelectedSeatsToCancel(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(seatId);
-                                  return next;
-                                });
+                                setSelectedSeatsToCancel(new Set([...selectedSeatsToCancel].filter(s => s !== seatId)));
                               } else if (isModifyModeActive) {
                                 if (initialSeats.includes(seatId)) {
-                                  setSelectedSeatsToCancel(prev => {
-                                    const next = new Set(prev);
-                                    next.add(seatId);
-                                    return next;
-                                  });
+                                  setSelectedSeatsToCancel(new Set([...selectedSeatsToCancel, seatId]));
                                 } else {
-                                  setSelectedSeats(prev => {
-                                    const next = new Set(prev);
-                                    next.delete(seatId);
-                                    return next;
-                                  });
+                                  setSelectedSeats(new Set([...selectedSeats].filter(s => s !== seatId)));
                                 }
                               } else {
-                                setSelectedSeats(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(seatId);
-                                  return next;
-                                });
+                                setSelectedSeats(new Set([...selectedSeats].filter(s => s !== seatId)));
                               }
                             }}
                             className="text-gray-300 hover:text-gray-500 dark:hover:text-gray-400 transition-colors p-1"

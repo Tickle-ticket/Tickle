@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { http } from '@/src/shared/api/http';
-import { ApiResponse } from '@/src/shared/api/types';
+import { fetchEventList } from '@/src/shared/api/eventApi';
 
 export interface SearchPerformance {
   id: string;
@@ -17,8 +16,18 @@ export const useSearchData = (query: string) => {
     queryKey: ['search', query],
     queryFn: async () => {
       if (!query.trim()) return [];
-      const res = await http.get<ApiResponse<SearchPerformance[]>>(`/api/v1/search?q=${encodeURIComponent(query)}`);
-      return res.data;
+      const res = await fetchEventList({ keyword: query, size: 20, page: 0 });
+      
+      // Map EventItem to SearchPerformance for the UI
+      return res.data.items.map((item) => ({
+        id: String(item.eventId),
+        title: item.title,
+        imageUrl: item.thumbnailUrl,
+        venue: item.venueLocation,
+        date: `${new Date(item.eventStartAt).toLocaleDateString()} ~ ${new Date(item.eventEndAt).toLocaleDateString()}`,
+        openDate: item.eventStartAt,
+        badges: item.metadata?.tags || [],
+      })) as SearchPerformance[];
     },
     enabled: !!query.trim(),
   });

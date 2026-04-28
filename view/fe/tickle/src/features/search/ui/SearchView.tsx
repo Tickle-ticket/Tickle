@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Header } from '@/src/features/detail/ui/Header';
+import { Header } from '@/src/shared/components/Header';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Title } from '@/src/shared/components/Title';
 import { useSearchData } from '@/src/features/search/api/useSearchData';
+import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 
 export const SearchView = () => {
   const router = useRouter();
@@ -13,9 +14,32 @@ export const SearchView = () => {
   const query = searchParams?.get('q') || '';
   
   const { data: results, isLoading } = useSearchData(query);
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
 
   const handleCardClick = (id: string) => {
-    router.push(`/detail/${id}`);
+    router.push(`/detail?id=${id}`);
+  };
+
+  const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
+    e.stopPropagation();
+    try {
+      if (wishlistedIds.has(eventId)) {
+        await deleteFavorite(eventId);
+      } else {
+        await createFavorite(eventId);
+      }
+      setWishlistedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(eventId)) {
+          next.delete(eventId);
+        } else {
+          next.add(eventId);
+        }
+        return next;
+      });
+    } catch (error) {
+      console.error('찜 등록/취소 실패:', error);
+    }
   };
 
   return (
@@ -43,27 +67,32 @@ export const SearchView = () => {
                 </div>
               ))
             ) : results && results.length > 0 ? (
-              results.map((item) => (
-                <div
-                  key={item.id}
-                  className="w-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
-                  onClick={() => handleCardClick(item.id)}
-                >
-                  <InfoCard
-                    src={item.imageUrl}
-                    title={item.title}
-                    place={item.venue}
-                    day={item.date}
-                    showTime={!!item.openDate}
-                    targetDate={item.openDate}
-                    badges={item.badges.map((b) => ({
-                      text: b,
-                      color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
-                      variant: 'fill' as const,
-                    }))}
-                  />
-                </div>
-              ))
+              results.map((item) => {
+                const isWishlisted = wishlistedIds.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="w-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                    onClick={() => handleCardClick(item.id)}
+                  >
+                    <InfoCard
+                      src={item.imageUrl}
+                      title={item.title}
+                      place={item.venue}
+                      day={item.date}
+                      showTime={!!item.openDate}
+                      targetDate={item.openDate}
+                      isWishlisted={isWishlisted}
+                      onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
+                      badges={item.badges.map((b) => ({
+                        text: b,
+                        color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
+                        variant: 'fill' as const,
+                      }))}
+                    />
+                  </div>
+                );
+              })
             ) : query ? (
               <div className="col-span-full py-20 text-center text-gray-500">
                 검색 결과가 없습니다. 다른 검색어를 입력해보세요.

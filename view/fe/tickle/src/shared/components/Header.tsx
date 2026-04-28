@@ -41,7 +41,7 @@ export const Header = () => {
 
   const handleCardClick = (id: string) => {
     clearSearch();
-    router.push(`/detail/${id}`);
+    router.push(`/detail?id=${id}`);
   };
 
   return (
@@ -82,6 +82,7 @@ export const Header = () => {
                 className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
                 onClick={() => {
                   setIsProfileOpen(false);
+                  clearSearch();
                   router.push('/mypage');
                 }}
               >
@@ -91,6 +92,7 @@ export const Header = () => {
                 className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left"
                 onClick={() => {
                   setIsProfileOpen(false);
+                  clearSearch();
                   router.push('/mypage?tab=WAITLIST');
                 }}
               >
@@ -100,6 +102,7 @@ export const Header = () => {
                 className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left"
                 onClick={() => {
                   setIsProfileOpen(false);
+                  clearSearch();
                   router.push('/mypage?tab=UPCOMING');
                 }}
               >

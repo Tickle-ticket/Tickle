@@ -2,18 +2,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
+import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<PerformanceData[]>>('/api/v1/mypage/wishlist/upcoming');
-      return response.data;
+      const response = await getFavoriteEvents(0, 100);
+      const data = response.data;
+      return data.items.map((item: any) => ({
+        id: String(item.eventId),
+        imageUrl: item.thumbnailUrl,
+        title: item.title,
+        venue: item.venueLocation,
+        date: `${new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '')} ~ ${new Date(item.eventEndAt).toLocaleDateString().replace(/\s/g, '')}`,
+        badges: item.metadata?.tags || [],
+        openDate: item.eventStartAt,
+        isWishlisted: item.isFavorite
+      })) as PerformanceData[];
     },
     staleTime: 5 * 60 * 1000,
   });
 };
-
 export interface BookingData {
   id: string;
   imageUrl: string;
