@@ -14,7 +14,7 @@ import java.util.List;
  *
  * <p>키 형식: {@code held:{scheduleId}:{userId}}</p>
  * <p>값: 선점된 sessionSeatId 목록 (List&lt;Long&gt;)</p>
- * <p>TTL: 15분 — 만료 이벤트 처리는 WebSocket 이슈에서 구현 예정</p>
+ * <p>TTL: 15분 — 만료 이벤트 처리는 {@code SeatHoldExpiredListener} 담당</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -28,8 +28,8 @@ public class SeatHoldKeyStore {
     /**
      * 사용자의 선점 좌석 목록을 Redis에 저장합니다.
      *
-     * @param scheduleId   회차 ID
-     * @param userId       선점 사용자 ID
+     * @param scheduleId     회차 ID
+     * @param userId         선점 사용자 ID
      * @param sessionSeatIds 선점된 sessionSeat ID 목록
      */
     public void registerHeld(Long scheduleId, Long userId, List<Long> sessionSeatIds) {
