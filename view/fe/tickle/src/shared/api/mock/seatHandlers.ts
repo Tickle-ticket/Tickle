@@ -79,7 +79,7 @@ export const seatHandlers = [
             client.send(JSON.stringify({ 
               type: 'UPDATE', 
               seatId: randomSeat, 
-              isAvailable: currentMockSeats[randomSeat].isAvailable 
+              isAvailable: currentMockSeats[randomSeat].isAvailable
             }));
           }, 3000);
         }

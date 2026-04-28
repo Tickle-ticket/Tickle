@@ -33,7 +33,7 @@ export const eventHandlers = [
             eventStartAt: "2026-04-27T10:49:28.431Z",
             eventEndAt: "2026-04-27T12:49:28.431Z",
             categoryName: "콘서트",
-            thumbnailUrl: "https://i.namu.wiki/i/u4Jy5i1HH21xCnVvPY0FXyC_jYRlt9rorKH95IMVNFdO5ZiFsd6J8JPuPK-JgRUb2Ngu6M-r6vudsw27aZ8yJJeJRz3SDXYHuM326_zq3LevCttDTg8dujFCCFUE4TMUzD2Waez43-6e2j-DZrf-NA.webp",
+            thumbnailUrl: "https://picsum.photos/seed/poster0/800/1200",
             metadata: {
               tags: ["밴드", "SSAFY", "공연"]
             },
@@ -80,13 +80,13 @@ export const eventHandlers = [
           {
             eventImageId: 1,
             imageType: 'THUMBNAIL',
-            imageUrl: 'https://i.namu.wiki/i/u4Jy5i1HH21xCnVvPY0FXyC_jYRlt9rorKH95IMVNFdO5ZiFsd6J8JPuPK-JgRUb2Ngu6M-r6vudsw27aZ8yJJeJRz3SDXYHuM326_zq3LevCttDTg8dujFCCFUE4TMUzD2Waez43-6e2j-DZrf-NA.webp',
+            imageUrl: 'https://picsum.photos/seed/poster1/800/1200',
             displayOrder: 1
           },
           {
             eventImageId: 2,
             imageType: 'DETAIL',
-            imageUrl: 'https://tkfile.yes24.com/Upload2/Board/202310/20231018/45927_18.jpg',
+            imageUrl: 'https://picsum.photos/seed/poster2/800/1200',
             displayOrder: 2
           }
         ],

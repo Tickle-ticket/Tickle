@@ -1,9 +1,11 @@
+'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { useSearchData } from '@/src/features/search/api/useSearchData';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
+import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 
 interface SearchContentProps {
@@ -14,11 +16,12 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
   const router = useRouter();
   const { data: searchResults, isLoading: isSearchLoading } = useSearchData(query);
   const { clearSearch } = useSearchStore();
+  const { openDetail } = useDetailStore();
   const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
 
-  const handleCardClick = (id: string) => {
+  const handleCardClick = (id: string, layoutId: string) => {
     clearSearch();
-    router.push(`/detail?id=${id}`);
+    openDetail(id, layoutId);
   };
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
@@ -71,9 +74,10 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
               <div
                 key={item.id}
                 className="w-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
-                onClick={() => handleCardClick(item.id)}
+                onClick={() => handleCardClick(item.id, `poster-search-${item.id}`)}
               >
                 <InfoCard
+                  layoutId={`poster-search-${item.id}`}
                   src={item.imageUrl}
                   title={item.title}
                   place={item.venue}

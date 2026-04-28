@@ -1,35 +1,35 @@
 import type { BadgeSize, BadgeColor, BadgeVariant, BadgeProps } from './types';
 
 const sizeStyles: Record<BadgeSize, string> = {
-  xsmall: 'text-[0.6rem] px-[0.4em] py-[0.1em] font-bold',
-  small: 'text-[0.75rem] px-[0.5em] py-[0.15em] font-semibold',
-  medium: 'text-[0.875rem] px-[0.6em] py-[0.2em] font-medium',
-  large: 'text-[1rem] px-[0.7em] py-[0.25em] font-medium',
+  xsmall: 'text-[10px] px-2 py-0.5 font-bold',
+  small: 'text-xs px-2.5 py-0.5 font-semibold tracking-wide',
+  medium: 'text-sm px-3 py-1 font-medium tracking-wide',
+  large: 'text-base px-3.5 py-1 font-medium tracking-wide',
 };
 
 const skeletonSizeStyles: Record<BadgeSize, string> = {
-  xsmall: 'h-[1rem] w-[2.5rem]',
-  small: 'h-[1.2rem] w-[3.5rem]',
-  medium: 'h-[1.5rem] w-[4rem]',
-  large: 'h-[1.8rem] w-[5rem]',
+  xsmall: 'h-4 w-10',
+  small: 'h-5 w-12',
+  medium: 'h-6 w-16',
+  large: 'h-8 w-20',
 };
 
 const colorStyles: Record<BadgeColor, Record<BadgeVariant, string>> = {
   blue: {
-    fill: 'bg-blue-100 text-blue-600',
-    outline: 'border-[0.08em] border-blue-600 text-blue-600 bg-transparent',
+    fill: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10',
+    outline: 'border border-blue-200 text-blue-600 bg-white shadow-sm hover:bg-blue-50',
   },
   red: {
-    fill: 'bg-red-100 text-red-600',
-    outline: 'border-[0.08em] border-red-600 text-red-600 bg-transparent',
+    fill: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/10',
+    outline: 'border border-red-200 text-red-600 bg-white shadow-sm hover:bg-red-50',
   },
   grey: {
-    fill: 'bg-gray-100 text-gray-600',
-    outline: 'border-[0.08em] border-gray-400 text-gray-600 bg-transparent',
+    fill: 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10',
+    outline: 'border border-gray-200 text-gray-600 bg-white shadow-sm hover:bg-gray-50',
   },
   green: {
-    fill: 'bg-green-100 text-green-600',
-    outline: 'border-[0.08em] border-green-600 text-green-600 bg-transparent',
+    fill: 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20',
+    outline: 'border border-green-200 text-green-600 bg-white shadow-sm hover:bg-green-50',
   },
   purple: {
     fill: 'bg-purple-100 text-purple-600',
@@ -57,7 +57,7 @@ export const Badge = ({
     return <span className={combinedClassName} />;
   }
 
-  const baseStyles = 'inline-flex items-center justify-center rounded-[0.3em] transition-all whitespace-nowrap';
+  const baseStyles = 'inline-flex items-center justify-center rounded-md transition-all whitespace-nowrap';
   const widthStyle = fullWidth ? 'w-full' : 'w-fit';
   const selectedSize = sizeStyles[size];
   const selectedColor = colorStyles[color][variant];

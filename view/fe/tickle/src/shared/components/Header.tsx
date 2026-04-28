@@ -6,6 +6,8 @@ import { Avatar } from '@/src/shared/components/Avatar';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useSearchData } from '@/src/features/search/api/useSearchData';
+import { useMypageStore } from '@/src/shared/store/useMypageStore';
+import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Title } from '@/src/shared/components/Title';
 
@@ -16,6 +18,8 @@ export const Header = () => {
   // Zustand 전역 상태로 검색어 연동 (URL 라우팅 안 함 -> 포커스 완벽 유지, IME 분리 문제 해결)
   const { searchValue, setSearchValue, clearSearch } = useSearchStore();
   const { data: searchResults, isLoading: isSearchLoading } = useSearchData(searchValue);
+  const { openMypage, closeMypage } = useMypageStore();
+  const { openDetail, closeDetail } = useDetailStore();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -36,16 +40,20 @@ export const Header = () => {
 
   const handleLogoClick = () => {
     clearSearch();
+    closeMypage();
+    closeDetail();
     router.push('/');
   };
 
   const handleCardClick = (id: string) => {
     clearSearch();
-    router.push(`/detail?id=${id}`);
+    closeMypage();
+    // router.push(`/detail?id=${id}`);
+    openDetail(id);
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#f8f8f8] w-full flex items-center justify-between border-b border-black/10 pt-3 pb-3 mb-6">
+    <header className="sticky top-0 z-50 bg-[#f8f8f8] -mx-6 px-6 md:-mx-10 md:px-10 flex items-center justify-between border-b border-black/10 pt-3 pb-3 mb-6">
       {/* Left: Logo */}
       <div className="flex items-center gap-12">
         <Logo variant="black" size="small" onClick={handleLogoClick} />
@@ -83,27 +91,42 @@ export const Header = () => {
                 onClick={() => {
                   setIsProfileOpen(false);
                   clearSearch();
-                  router.push('/mypage');
+                  if (window.location.pathname !== '/') {
+                    router.push('/');
+                    setTimeout(() => openMypage('USER'), 100);
+                  } else {
+                    openMypage('USER');
+                  }
                 }}
               >
                 마이페이지
               </button>
               <button 
-                className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left"
+                className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
                 onClick={() => {
                   setIsProfileOpen(false);
                   clearSearch();
-                  router.push('/mypage?tab=WAITLIST');
+                  if (window.location.pathname !== '/') {
+                    router.push('/');
+                    setTimeout(() => openMypage('WAITLIST'), 100);
+                  } else {
+                    openMypage('WAITLIST');
+                  }
                 }}
               >
                 나의 취소표 관리
               </button>
               <button 
-                className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left"
+                className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
                 onClick={() => {
                   setIsProfileOpen(false);
                   clearSearch();
-                  router.push('/mypage?tab=UPCOMING');
+                  if (window.location.pathname !== '/') {
+                    router.push('/');
+                    setTimeout(() => openMypage('UPCOMING'), 100);
+                  } else {
+                    openMypage('UPCOMING');
+                  }
                 }}
               >
                 관심 공연

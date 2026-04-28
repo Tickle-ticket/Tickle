@@ -31,23 +31,71 @@ export const BannerNavigation = ({
     );
   }
 
-  // 배지 형태: 포스터 우측 상단 등에 들어가는 반투명한 인디케이터
+  // 배지 형태: 사용자가 첨부한 다크 둥근 알약 형태 (1 / 3 | < >)
   if (variant === 'badge') {
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md text-white text-xs md:text-sm font-medium tracking-wide shadow-lg ${className}`}>
-        <span>{current}</span>
-        <span className="opacity-40">/</span>
-        <span className="opacity-70">{total}</span>
+      <div 
+        className={`inline-flex items-center px-4 py-2 rounded-full bg-black/50 backdrop-blur-sm text-white font-medium shadow-md ${className}`}
+        onClick={(e) => e.stopPropagation()} // 배너 클릭 이벤트 전파 방지
+      >
+        {/* 숫자 부분 */}
+        <div className="flex items-center gap-1.5 text-[15px] font-bold mr-4">
+          <span className="text-white">{current}</span>
+          <span className="text-white/40">/</span>
+          <span className="text-white/60">{total}</span>
+        </div>
         
+        {/* 화살표 및 구분선 부분 */}
         {(onNext || onPrev) && (
-          <div className="flex items-center gap-1 ml-1 pl-2 border-l border-white/20">
-            <button onClick={onPrev} aria-label="이전" className="p-1 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors">
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3.5 h-3.5">
+          <div className="flex items-center gap-3 pl-4 border-l border-white/20">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onPrev?.(); }} 
+              aria-label="이전" 
+              className="text-white hover:text-white/70 active:scale-90 transition-all"
+            >
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-[18px] h-[18px]">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
-            <button onClick={onNext} aria-label="다음" className="p-1 hover:bg-white/20 active:bg-white/30 rounded-full transition-colors">
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3.5 h-3.5">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onNext?.(); }} 
+              aria-label="다음" 
+              className="text-white hover:text-white/70 active:scale-90 transition-all"
+            >
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-[18px] h-[18px]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 배지 화살표 전용 형태: 숫자 없이 좌우 화살표만 있는 다크 알약 형태
+  if (variant === 'badge-arrows') {
+    return (
+      <div 
+        className={`inline-flex items-center px-4 py-2 rounded-full bg-black/50 backdrop-blur-sm shadow-md ${className}`}
+        onClick={(e) => e.stopPropagation()} // 배너 클릭 이벤트 전파 방지
+      >
+        {(onNext || onPrev) && (
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={(e) => { e.stopPropagation(); onPrev?.(); }} 
+              aria-label="이전" 
+              className="text-white hover:text-white/70 active:scale-90 transition-all"
+            >
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-[18px] h-[18px]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onNext?.(); }} 
+              aria-label="다음" 
+              className="text-white hover:text-white/70 active:scale-90 transition-all"
+            >
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-[18px] h-[18px]">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
             </button>

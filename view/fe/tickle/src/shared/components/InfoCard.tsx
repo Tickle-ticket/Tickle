@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { InfoPoster } from './InfoPoster';
 import { InfoTitle } from './InfoTitle';
 import { InfoPlace } from './InfoPlace';
@@ -25,6 +26,7 @@ export const InfoCard = ({
   isWishlisted,
   onWishlistToggle,
   wishlistVariant = 'default',
+  layoutId,
 }: InfoCardProps) => {
 
   // 요구사항에 맞춰 뱃지는 최대 3개까지만 렌더링되게 방어 설계
@@ -44,14 +46,18 @@ export const InfoCard = ({
         )}
 
         {/* 배경 포스터 이미지 (호버 효과 제거) */}
-        <div className="w-full flex justify-center">
+        <motion.div 
+          className="w-full flex justify-center origin-center"
+          layoutId={layoutId}
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+        >
           <InfoPoster 
             src={src} 
             alt={alt} 
             disabled={disabled}
             isLoading={isLoading}
           />
-        </div>
+        </motion.div>
 
         {/* 내부 텍스트 영역: 포스터 위로 올라가도록 절대 위치(absolute) 지정 */}
         <div className="absolute inset-0 flex flex-col justify-end items-start gap-0.5 p-5 z-10 pointer-events-none">
