@@ -221,4 +221,24 @@ public interface AgencyEventApiDoc {
             )
             AgencyCreateEventSeatsRequest request
     );
+
+    @Operation(
+            summary = "공연 삭제",
+            description = "기획사가 등록한 공연을 삭제합니다. 예매 시작 전인 공연만 삭제할 수 있으며, 회차/좌석/가격정책/이미지/찜 데이터도 함께 제거합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "공연 삭제 성공")
+    @ApiResponse(
+            responseCode = "400",
+            description = "예매가 이미 시작된 공연",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "공연을 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<Void>> deleteEvent(
+            @Parameter(description = "공연 식별자", required = true, example = "3011")
+            Long eventId
+    );
 }

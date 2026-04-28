@@ -1,6 +1,7 @@
 package com.ssafy.tickle.agency.event.presentation;
 
 import com.ssafy.tickle.agency.event.application.AgencyEventBasicService;
+import com.ssafy.tickle.agency.event.application.AgencyEventDeleteService;
 import com.ssafy.tickle.agency.event.application.AgencyEventSeatBatchService;
 import com.ssafy.tickle.agency.event.application.AgencyEventSessionService;
 import com.ssafy.tickle.agency.event.application.AgencyVenueTemplateService;
@@ -15,6 +16,7 @@ import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyVenueTempla
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgencyEventController implements AgencyEventApiDoc {
 
     private final AgencyEventBasicService agencyEventBasicService;
+    private final AgencyEventDeleteService agencyEventDeleteService;
     private final AgencyEventSessionService agencyEventSessionService;
     private final AgencyEventSeatBatchService agencyEventSeatBatchService;
     private final AgencyVenueTemplateService agencyVenueTemplateService;
@@ -91,6 +94,13 @@ public class AgencyEventController implements AgencyEventApiDoc {
             @Valid @RequestBody AgencyCreateEventSeatsRequest request
     ) {
         agencyEventSeatBatchService.createEventSeats(eventId, request.seats());
+        return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
+    }
+
+    @Override
+    @DeleteMapping("/events/{eventId}")
+    public ResponseEntity<BaseResponse<Void>> deleteEvent(@PathVariable Long eventId) {
+        agencyEventDeleteService.deleteEvent(eventId);
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 }
