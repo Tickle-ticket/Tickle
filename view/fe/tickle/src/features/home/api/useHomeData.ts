@@ -35,11 +35,11 @@ export const useHomeBanners = () => {
 };
 
 // BE: GET /api/v1/events/ranking → CategoryRankingResponse
-export const useHomeRanking = () => {
+export const useHomeRanking = (categoryId?: number) => {
   return useQuery({
-    queryKey: ['homeRanking'],
+    queryKey: ['homeRanking', categoryId],
     queryFn: async () => {
-      const response = await fetchRanking();
+      const response = await fetchRanking(categoryId);
       const data = response.data;
       return data.rankings.map((item) => {
         const startDate = new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '');

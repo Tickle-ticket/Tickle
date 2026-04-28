@@ -225,7 +225,13 @@ export const MyBookingsView = () => {
             );
           })
         ) : (
-          <div className="col-span-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+          <div className="col-span-full w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-4">
+              <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
+              <path d="M13 5v2"></path>
+              <path d="M13 17v2"></path>
+              <path d="M13 11v2"></path>
+            </svg>
             <Text typography="t5" fontWeight="bold" color="secondary" className="mb-1">예매 내역이 없습니다.</Text>
             <Text typography="t6" color="tertiary">새로운 공연을 예매해 보세요!</Text>
           </div>

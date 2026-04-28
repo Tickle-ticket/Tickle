@@ -7,16 +7,28 @@ import { Text } from '@/src/shared/components/Text';
 import { Avatar } from '@/src/shared/components/Avatar';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
-import { useUserProfile } from '@/src/shared/api/useUserProfile';
+import { Modal } from '@/src/shared/components/Modal';
+import { useUserProfile, useUpdateUserProfile, useWithdrawUser } from '@/src/shared/api/useUserProfile';
 
 export const UserManagementView = () => {
   const { data, isLoading } = useUserProfile();
+  const updateProfileMutation = useUpdateUserProfile();
+  const withdrawMutation = useWithdrawUser();
   
   const [isEditingNickname, setIsEditingNickname] = useState(false);
-  const [nickname, setNickname] = useState(data?.name || '티클유저');
+  const [nickname, setNickname] = useState(data?.nickname || data?.name || '티클유저');
   
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [email, setEmail] = useState(data?.email || 'user@tickle.com');
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(data?.phoneNumber || '010-0000-0000');
+
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+
+  // 프로필 이미지 변경 모의 함수
+  const handleProfileImageChange = () => {
+    // 실제로는 파일 입력을 받거나 이미지 업로드 API를 타야 하지만, 임시로 랜덤 아바타 URL을 주입합니다.
+    const newRandomAvatar = `https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}`;
+    updateProfileMutation.mutate({ profileImageUrl: newRandomAvatar });
+  };
 
   return (
     <div className="flex flex-col gap-8 w-full animate-fade-in">
@@ -31,7 +43,11 @@ export const UserManagementView = () => {
               isLoading={isLoading} 
             />
             {/* 사진 변경 버튼 */}
-            <button className="absolute bottom-0 right-0 w-9 h-9 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center text-blue-500 hover:text-blue-600 hover:scale-105 transition-all">
+            <button 
+              onClick={handleProfileImageChange}
+              disabled={updateProfileMutation.isPending}
+              className="absolute bottom-0 right-0 w-9 h-9 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center text-blue-500 hover:text-blue-600 hover:scale-105 transition-all"
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -60,7 +76,12 @@ export const UserManagementView = () => {
                 )}
               </div>
               <button 
-                onClick={() => setIsEditingNickname(!isEditingNickname)}
+                onClick={() => {
+                  if (isEditingNickname) {
+                    updateProfileMutation.mutate({ nickname });
+                  }
+                  setIsEditingNickname(!isEditingNickname);
+                }}
                 className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${
                   isEditingNickname 
                     ? "text-blue-600 bg-blue-50 hover:bg-blue-100" 
@@ -79,33 +100,39 @@ export const UserManagementView = () => {
               </button>
             </Box>
 
-            {/* 이메일 */}
+            {/* 전화번호 (수정 가능) */}
             <Box variant="outline" padding="small" className="flex items-center gap-4 w-full h-14 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
               <div className="w-20 shrink-0">
-                <Text typography="t6" fontWeight="bold" color="tertiary">이메일</Text>
+                <Text typography="t6" fontWeight="bold" color="tertiary">전화번호</Text>
               </div>
               <div className="flex-1">
-                {isEditingEmail ? (
+                {isEditingPhone ? (
                   <input 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
+                    value={phoneNumber} 
+                    onChange={(e) => setPhoneNumber(e.target.value)} 
                     className="w-full text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
                     autoFocus
+                    placeholder="010-0000-0000"
                   />
                 ) : (
-                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[18px]">{email}</Text>
+                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[18px]">{phoneNumber}</Text>
                 )}
               </div>
               <button 
-                onClick={() => setIsEditingEmail(!isEditingEmail)}
+                onClick={() => {
+                  if (isEditingPhone) {
+                    updateProfileMutation.mutate({ phoneNumber });
+                  }
+                  setIsEditingPhone(!isEditingPhone);
+                }}
                 className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${
-                  isEditingEmail 
+                  isEditingPhone 
                     ? "text-blue-600 bg-blue-50 hover:bg-blue-100" 
                     : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
                 }`}
                 title="수정"
               >
-                {isEditingEmail ? (
+                {isEditingPhone ? (
                   <span className="px-1">저장</span>
                 ) : (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -129,11 +156,28 @@ export const UserManagementView = () => {
           <Text typography="t5" fontWeight="bold" color="primary">고객 지원 (FAQ)</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </button>
-        <button className="flex items-center justify-between w-full p-5 hover:bg-red-50 transition-colors group">
+        <button 
+          onClick={() => setIsWithdrawModalOpen(true)}
+          className="flex items-center justify-between w-full p-5 hover:bg-red-50 transition-colors group"
+        >
           <Text typography="t5" fontWeight="bold" className="text-red-500 group-hover:text-red-600 transition-colors">회원 탈퇴</Text>
           <Text typography="t6" className="text-red-300">›</Text>
         </button>
       </Box>
+
+      {/* 회원 탈퇴 모달 */}
+      <Modal 
+        isOpen={isWithdrawModalOpen}
+        onClose={() => setIsWithdrawModalOpen(false)}
+        title="회원 탈퇴"
+        description="정말로 회원을 탈퇴하시겠습니까? 탈퇴 후에는 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다."
+        confirmText="탈퇴하기"
+        cancelText="취소"
+        onConfirm={() => {
+          withdrawMutation.mutate();
+        }}
+        isLoading={withdrawMutation.isPending}
+      />
     </div>
   );
 };

@@ -94,7 +94,11 @@ export const PastBookingsView = () => {
             );
           })
         ) : (
-          <div className="col-span-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+          <div className="col-span-full w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-4">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
             <Text typography="t5" fontWeight="bold" color="secondary" className="mb-1">과거 예매 내역이 없습니다.</Text>
             <Text typography="t6" color="tertiary">새로운 공연을 예매해 보세요!</Text>
           </div>

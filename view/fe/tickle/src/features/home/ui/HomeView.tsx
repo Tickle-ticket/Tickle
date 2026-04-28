@@ -65,8 +65,8 @@ const CarouselNav = ({ canLeft, canRight, onPrev, onNext }: {
       onClick={onPrev}
       disabled={!canLeft}
       className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-150 ${canLeft
-          ? 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 active:scale-90'
-          : 'border-gray-200 text-gray-250 cursor-default'
+        ? 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 active:scale-90'
+        : 'border-gray-200 text-gray-250 cursor-default'
         }`}
       aria-label="이전"
     >
@@ -78,8 +78,8 @@ const CarouselNav = ({ canLeft, canRight, onPrev, onNext }: {
       onClick={onNext}
       disabled={!canRight}
       className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-150 ${canRight
-          ? 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 active:scale-90'
-          : 'border-gray-200 text-gray-250 cursor-default'
+        ? 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 active:scale-90'
+        : 'border-gray-200 text-gray-250 cursor-default'
         }`}
       aria-label="다음"
     >
@@ -93,7 +93,6 @@ const CarouselNav = ({ canLeft, canRight, onPrev, onNext }: {
 export const HomeView = () => {
   const router = useRouter();
   const { data: banners, isLoading: bannersLoading } = useHomeBanners();
-  const { data: ranking, isLoading: rankingLoading } = useHomeRanking();
   const { data: upcoming, isLoading: upcomingLoading } = useHomeUpcoming();
   const { searchValue, setSearchValue } = useSearchStore();
 
@@ -101,6 +100,9 @@ export const HomeView = () => {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
   const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+
+  const categoryId = activeTab === 0 ? undefined : activeTab;
+  const { data: ranking, isLoading: rankingLoading } = useHomeRanking(categoryId);
 
   const rankingCarousel = useCarouselScroll();
   const upcomingCarousel = useCarouselScroll();
@@ -294,7 +296,7 @@ export const HomeView = () => {
             <section className="mt-16 pb-32">
               <div className="flex items-center mb-6">
                 <Title
-                  title="🎟️ 오픈 예정"
+                  title="오픈 예정"
                   bottomBorder={false}
                   className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
                 />

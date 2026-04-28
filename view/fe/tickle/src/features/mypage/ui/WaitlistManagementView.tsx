@@ -190,7 +190,13 @@ export const WaitlistManagementView = () => {
             );
           })
         ) : (
-          <div className="col-span-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+          <div className="col-span-full w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-4">
+              <path d="M5 22h14"></path>
+              <path d="M5 2h14"></path>
+              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path>
+              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path>
+            </svg>
             <Text typography="t5" fontWeight="bold" color="secondary" className="mb-1">진행 중인 취소표 대기 내역이 없습니다.</Text>
             <Text typography="t6" color="tertiary">취소표 대기를 신청하시면 우선순위로 예매 기회를 얻을 수 있습니다.</Text>
           </div>
