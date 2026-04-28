@@ -20,11 +20,17 @@ import org.springframework.http.ResponseEntity;
 /**
  * 기획사 공연 관리 API 문서 인터페이스입니다.
  *
- * <p>공연 기본정보, 가격 정책, 회차, 좌석, 공연장 템플릿 조회를 분리해서 문서화합니다.</p>
+ * 공연 기본정보, 가격 정책, 회차, 좌석, 공연장 템플릿 조회, 공연 삭제를 분리해서 문서화합니다.
  */
 @Tag(name = "Agency Event Management", description = "기획사 공연 기본정보/가격 정책/회차/좌석 등록 API")
 public interface AgencyEventApiDoc {
 
+    /**
+     * 공연장 템플릿 조회 API를 문서화합니다.
+     *
+     * @param venueId 공연장 식별자
+     * @return 공연장 템플릿 응답
+     */
     @Operation(
             summary = "공연장 이벤트 등록 골격 조회",
             description = "이미 등록된 공연장의 구역/좌석 골격을 조회하여 공연 등록 화면의 기본 템플릿으로 사용합니다."
@@ -40,6 +46,12 @@ public interface AgencyEventApiDoc {
             Long venueId
     );
 
+    /**
+     * 공연 기본정보 등록 API를 문서화합니다.
+     *
+     * @param request 공연 기본정보 등록 요청 DTO
+     * @return 생성된 공연 응답
+     */
     @Operation(
             summary = "공연 기본정보 등록",
             description = "기존 공연장과 카테고리를 기반으로 공연 기본정보만 먼저 등록합니다."
@@ -80,6 +92,13 @@ public interface AgencyEventApiDoc {
             AgencyCreateEventBasicRequest request
     );
 
+    /**
+     * 공연 가격 정책 등록 API를 문서화합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 공연 가격 정책 등록 요청 DTO
+     * @return 성공 응답
+     */
     @Operation(
             summary = "공연 가격 정책 등록",
             description = "기본정보가 등록된 공연에 가격 정책 목록을 추가합니다."
@@ -136,6 +155,13 @@ public interface AgencyEventApiDoc {
             AgencyCreateEventPricePoliciesRequest request
     );
 
+    /**
+     * 공연 회차 등록 API를 문서화합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 공연 회차 등록 요청 DTO
+     * @return 성공 응답
+     */
     @Operation(
             summary = "공연 회차 등록",
             description = "기본정보가 등록된 공연에 회차 목록을 추가합니다. 회차 번호는 서버가 시작 시각 순으로 자동 부여합니다."
@@ -178,6 +204,13 @@ public interface AgencyEventApiDoc {
             AgencyCreateEventSessionsRequest request
     );
 
+    /**
+     * 공연 좌석 등록 API를 문서화합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 공연 좌석 등록 요청 DTO
+     * @return 성공 응답
+     */
     @Operation(
             summary = "공연 좌석 등록",
             description = "기본정보와 회차가 등록된 공연에 좌석 그룹을 가격 정책별로 추가합니다."
@@ -222,6 +255,12 @@ public interface AgencyEventApiDoc {
             AgencyCreateEventSeatsRequest request
     );
 
+    /**
+     * 공연 삭제 API를 문서화합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 성공 응답
+     */
     @Operation(
             summary = "공연 삭제",
             description = "기획사가 등록한 공연을 삭제합니다. 예매 시작 전인 공연만 삭제할 수 있으며, 회차/좌석/가격정책/이미지/찜 데이터도 함께 제거합니다."

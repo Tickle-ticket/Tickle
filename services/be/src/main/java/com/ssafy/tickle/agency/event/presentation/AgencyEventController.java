@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 기획사 공연 기본정보, 가격 정책, 회차, 좌석 등록 API를 제공합니다.
+ * 기획사 공연 등록과 삭제 API를 제공합니다.
  */
 @RestController
 @RequestMapping("/api/v1/agency")
@@ -67,6 +67,13 @@ public class AgencyEventController implements AgencyEventApiDoc {
                 .body(BaseResponse.success(SuccessCode.CREATED, response));
     }
 
+    /**
+     * 공연 가격 정책을 등록합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 공연 가격 정책 등록 요청 DTO
+     * @return 성공 응답
+     */
     @Override
     @PostMapping("/events/{eventId}/price-policies")
     public ResponseEntity<BaseResponse<Void>> createPricePolicies(
@@ -77,6 +84,13 @@ public class AgencyEventController implements AgencyEventApiDoc {
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
+    /**
+     * 공연 회차를 등록합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 공연 회차 등록 요청 DTO
+     * @return 성공 응답
+     */
     @Override
     @PostMapping("/events/{eventId}/sessions")
     public ResponseEntity<BaseResponse<Void>> createSessions(
@@ -87,6 +101,13 @@ public class AgencyEventController implements AgencyEventApiDoc {
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
+    /**
+     * 공연 좌석을 등록합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 공연 좌석 등록 요청 DTO
+     * @return 성공 응답
+     */
     @Override
     @PostMapping("/events/{eventId}/seats")
     public ResponseEntity<BaseResponse<Void>> createSeats(
@@ -97,6 +118,12 @@ public class AgencyEventController implements AgencyEventApiDoc {
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
+    /**
+     * 예매 시작 전인 공연을 삭제합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 성공 응답
+     */
     @Override
     @DeleteMapping("/events/{eventId}")
     public ResponseEntity<BaseResponse<Void>> deleteEvent(@PathVariable Long eventId) {

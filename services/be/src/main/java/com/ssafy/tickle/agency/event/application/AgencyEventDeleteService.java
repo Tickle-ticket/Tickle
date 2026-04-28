@@ -20,8 +20,8 @@ import java.time.Instant;
 /**
  * 기획사 공연 삭제를 담당합니다.
  *
- * <p>예매 시작 전인 공연만 삭제할 수 있으며,
- * 등록 과정에서 생성된 회차/좌석/가격정책/이미지/찜 데이터도 함께 hard delete 합니다.</p>
+ * 예매 시작 전인 공연만 삭제할 수 있으며,
+ * 등록 과정에서 생성된 회차/좌석/가격정책/이미지/찜 데이터도 함께 hard delete 합니다.
  */
 @Service
 @RequiredArgsConstructor
@@ -37,6 +37,11 @@ public class AgencyEventDeleteService {
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
 
+    /**
+     * 공연과 공연에 종속된 하위 데이터를 함께 삭제합니다.
+     *
+     * @param eventId 공연 식별자
+     */
     @Transactional
     public void deleteEvent(Long eventId) {
         Event event = eventRepository.findById(eventId)
@@ -44,6 +49,7 @@ public class AgencyEventDeleteService {
 
         validateDeletable(event);
 
+        // FK 제약을 피하기 위해 하위 데이터부터 순서대로 제거
         favoriteRepository.deleteByEvent_Id(eventId);
         eventImageRepository.deleteByEventId(eventId);
         sessionSeatRepository.deleteByEventId(eventId);
@@ -55,6 +61,11 @@ public class AgencyEventDeleteService {
         eventRepository.delete(event);
     }
 
+    /**
+     * 예매 시작 전인 공연인지 검증합니다.
+     *
+     * @param event 삭제 대상 공연
+     */
     private void validateDeletable(Event event) {
         Instant salesStartAt = event.getSalesStartAt();
         if (salesStartAt != null && !Instant.now().isBefore(salesStartAt)) {
