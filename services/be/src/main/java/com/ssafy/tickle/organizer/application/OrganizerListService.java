@@ -1,6 +1,6 @@
 package com.ssafy.tickle.organizer.application;
 
-import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.organizer.presentation.dto.OrganizerListItemResponse;
 import com.ssafy.tickle.organizer.presentation.dto.OrganizerListResponse;
 import lombok.RequiredArgsConstructor;

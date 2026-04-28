@@ -1,6 +1,6 @@
 package com.ssafy.tickle.organizer.presentation.dto;
 
-import com.ssafy.tickle.event.domain.Organizer;
+import com.ssafy.tickle.organizer.domain.Organizer;
 
 /**
  * 주최자 목록 아이템 응답입니다.

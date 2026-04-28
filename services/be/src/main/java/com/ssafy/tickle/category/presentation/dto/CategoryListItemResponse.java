@@ -1,6 +1,6 @@
 package com.ssafy.tickle.category.presentation.dto;
 
-import com.ssafy.tickle.event.domain.Category;
+import com.ssafy.tickle.category.domain.Category;
 
 /**
  * 카테고리 목록 아이템 응답입니다.

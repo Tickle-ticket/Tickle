@@ -2,7 +2,7 @@ package com.ssafy.tickle.category.application;
 
 import com.ssafy.tickle.category.presentation.dto.CategoryListItemResponse;
 import com.ssafy.tickle.category.presentation.dto.CategoryListResponse;
-import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
+import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
