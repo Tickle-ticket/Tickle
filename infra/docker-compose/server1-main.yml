@@ -63,6 +63,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://172.31.57.10:4317
       OTEL_SERVICE_NAME: tickle-be
       CORS_FE_ORIGIN: ${CORS_FE_ORIGIN}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
     ports:
       - "8080:8080"
     depends_on:
