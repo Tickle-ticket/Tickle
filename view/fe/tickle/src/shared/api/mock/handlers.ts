@@ -7,12 +7,14 @@ import { homeHandlers } from './homeHandlers';
 import { searchHandlers } from './searchHandlers';
 import { favoriteHandlers } from './favoriteHandlers';
 import { trialHandlers } from './trialHandlers';
+import { agencyHandlers } from './agencyHandlers';
 
 export const handlers = [
   ...trialHandlers,
   ...homeHandlers,
   ...searchHandlers,
   ...favoriteHandlers,
+  ...agencyHandlers,
   ...eventHandlers,
   ...userHandlers,
   ...seatHandlers,

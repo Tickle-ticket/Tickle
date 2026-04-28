@@ -4,6 +4,7 @@ interface KakaoLoginButtonProps {
   className?: string;
   disabled?: boolean;
   onClick?: () => void;
+  size?: 'large' | 'xlarge';
 }
 
 function KakaoSymbol() {
@@ -18,12 +19,13 @@ export function KakaoLoginButton({
   className = '',
   disabled = false,
   onClick,
+  size = 'xlarge',
 }: KakaoLoginButtonProps) {
   return (
     <Button
       type="button"
       display="block"
-      size="xlarge"
+      size={size}
       disabled={disabled}
       onClick={onClick}
       aria-label="카카오 로그인"
@@ -34,7 +36,7 @@ export function KakaoLoginButton({
         borderRadius: '12px',
         fontFamily:
           'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        fontSize: '18px',
+        fontSize: size === 'large' ? '16px' : '18px',
         fontWeight: 700,
       }}
     >
