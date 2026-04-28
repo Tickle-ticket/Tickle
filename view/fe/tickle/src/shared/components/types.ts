@@ -173,7 +173,7 @@ export interface BannerNavigationProps {
   onPrev?: () => void;
   current?: number;
   total?: number;
-  variant?: 'arrow' | 'scroll-down' | 'badge' | 'dots';
+  variant?: 'arrow' | 'scroll-down' | 'badge' | 'dots' | 'badge-arrows';
   className?: string;
   isLoading?: boolean;
 }
@@ -235,6 +235,7 @@ export interface InfoCardProps {
   isWishlisted?: boolean;
   onWishlistToggle?: (e: React.MouseEvent) => void;
   wishlistVariant?: 'default' | 'greyPlus'; // default: 반투명 검정 배경, greyPlus: 불투명 회색 배경
+  layoutId?: string;
 }
 
 export interface LogoProps {
@@ -302,8 +303,8 @@ export interface CalendarProps {
 }
 
 export type SeatStatus = 'selectable' | 'disabled';
-export type SeatColor = 'pink' | 'yellow' | 'mint' | 'red' | 'green' | 'blue' | 'purple' | 'gray' | 'orange';
-export type CongestionLevel = 'red' | 'yellow' | 'green' | 'blue' | 'none';
+export type SeatColor = 'pink' | 'yellow' | 'mint' | 'red' | 'green' | 'blue' | 'purple' | 'gray' | 'orange' | 'cyan' | 'high' | 'medium' | 'low';
+export type CongestionLevel = 'high' | 'medium' | 'low' | 'none';
 
 export interface SeatProps extends Omit<React.CanvasHTMLAttributes<HTMLCanvasElement>, 'onClick'> {
   status?: SeatStatus;

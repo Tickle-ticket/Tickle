@@ -166,7 +166,7 @@ export const InteractiveMapViewer = ({ children, showZoomControls = true }: Inte
       </div>
 
       {showZoomControls && (
-        <div className="zoom-controls absolute top-6 right-6 flex flex-col bg-white dark:bg-zinc-800 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-zinc-700 overflow-hidden cursor-auto z-20">
+        <div className="zoom-controls absolute bottom-6 right-6 flex flex-col bg-white dark:bg-zinc-800 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-zinc-700 overflow-hidden cursor-auto z-20">
           <button 
             onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
             className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"

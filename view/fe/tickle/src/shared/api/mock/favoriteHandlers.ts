@@ -36,7 +36,7 @@ export const favoriteHandlers = [
             eventStartAt: "2024-07-26T19:30:00Z",
             eventEndAt: "2024-11-16T21:30:00Z",
             categoryName: "뮤지컬",
-            thumbnailUrl: "https://i.namu.wiki/i/u4Jy5i1HH21xCnVvPY0FXyC_jYRlt9rorKH95IMVNFdO5ZiFsd6J8JPuPK-JgRUb2Ngu6M-r6vudsw27aZ8yJJeJRz3SDXYHuM326_zq3LevCttDTg8dujFCCFUE4TMUzD2Waez43-6e2j-DZrf-NA.webp",
+            thumbnailUrl: "https://picsum.photos/seed/poster3/800/1200",
             metadata: { tags: ["뮤지컬", "HOT"] },
             isFavorite: true
           },
@@ -47,7 +47,7 @@ export const favoriteHandlers = [
             eventStartAt: "2025-01-09T19:30:00Z",
             eventEndAt: "2025-06-01T21:30:00Z",
             categoryName: "뮤지컬",
-            thumbnailUrl: "https://ticketimage.interpark.com/Play/image/large/24/24015262_p.gif",
+            thumbnailUrl: "https://picsum.photos/seed/poster4/800/1200",
             metadata: { tags: ["뮤지컬", "NEW"] },
             isFavorite: true
           },
@@ -58,7 +58,7 @@ export const favoriteHandlers = [
             eventStartAt: "2025-04-16T19:30:00Z",
             eventEndAt: "2025-04-25T21:30:00Z",
             categoryName: "콘서트",
-            thumbnailUrl: "https://ticketimage.interpark.com/Play/image/large/24/24013233_p.gif",
+            thumbnailUrl: "https://picsum.photos/seed/poster5/800/1200",
             metadata: { tags: ["콘서트", "HOT"] },
             isFavorite: true
           },
@@ -69,7 +69,7 @@ export const favoriteHandlers = [
             eventStartAt: "2024-01-01T19:30:00Z",
             eventEndAt: "2025-12-31T21:30:00Z",
             categoryName: "연극",
-            thumbnailUrl: "https://ticketimage.interpark.com/Play/image/large/23/23010526_p.gif",
+            thumbnailUrl: "https://picsum.photos/seed/poster6/800/1200",
             metadata: { tags: ["연극", "BEST"] },
             isFavorite: true
           },
@@ -80,7 +80,7 @@ export const favoriteHandlers = [
             eventStartAt: "2024-03-29T10:00:00Z",
             eventEndAt: "2024-10-13T19:00:00Z",
             categoryName: "전시/행사",
-            thumbnailUrl: "https://ticketimage.interpark.com/Play/image/large/24/24003324_p.gif",
+            thumbnailUrl: "https://picsum.photos/seed/poster7/800/1200",
             metadata: { tags: ["전시/행사", "BEST"] },
             isFavorite: true
           }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import type { InfoPosterProps } from './types';
 
 export const InfoPoster = ({
@@ -58,10 +59,12 @@ export const InfoPoster = ({
           </div>
         </div>
       ) : (
-        <img 
+        <Image
           src={src} 
           alt={alt} 
-          className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`} 
+          fill
+          sizes="(max-width: 768px) 240px, 280px"
+          className={`object-cover transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`} 
           onError={() => setImgFailed(true)}
         />
       )}

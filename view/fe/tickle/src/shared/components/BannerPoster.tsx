@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import type { BannerPosterProps } from './types';
 
 export const BannerPoster = ({
@@ -57,10 +58,13 @@ export const BannerPoster = ({
           </div>
         </div>
       ) : (
-        <img
+        <Image
           src={src}
           alt={alt}
-          className="w-full h-full object-cover"
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 400px"
+          className="object-cover"
           onError={() => setImgFailed(true)}
         />
       )}

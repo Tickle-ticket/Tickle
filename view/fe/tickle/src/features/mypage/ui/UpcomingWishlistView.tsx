@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useMyUpcomingWishlist } from '@/src/features/mypage/api/useMyPageData';
+import { useDetailStore } from '@/src/shared/store/useDetailStore';
+import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Text } from '@/src/shared/components/Text';
 
@@ -46,13 +48,15 @@ export const UpcomingWishlistView = () => {
             return (
               <div
                 key={item.id}
-                className="w-full flex justify-center transition-transform duration-200"
+                className="w-full flex justify-center transition-transform duration-200 cursor-pointer hover:scale-[1.02]"
                 onClick={() => {
-                  window.location.href = `/detail?id=${item.id}`;
+                  useDetailStore.getState().openDetail(item.id, `poster-mypage-upcoming-${item.id}`);
+                  useMypageStore.getState().closeMypage();
                 }}
               >
                 <div className="w-full max-w-[280px]">
                   <InfoCard
+                    layoutId={`poster-mypage-upcoming-${item.id}`}
                     src={item.imageUrl}
                     title={item.title}
                     place={item.venue}

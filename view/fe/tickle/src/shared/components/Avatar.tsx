@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import type { AvatarProps } from './types';
 
 const SIZE_MAP = {
@@ -60,10 +61,12 @@ export const Avatar = ({
           />
         </svg>
       ) : (
-        <img
+        <Image
           src={src}
           alt={alt}
-          className="w-full h-full object-cover rounded-full"
+          fill
+          sizes={`${numericSize}px`}
+          className="object-cover rounded-full"
           onError={() => setImgFailed(true)}
         />
       )}

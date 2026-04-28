@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { BookView } from '@/src/features/book/ui/BookView';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
+import { Footer } from '@/src/shared/components/Footer';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -221,68 +222,60 @@ export const DetailView = () => {
               </Box>
             </div>
 
-            <div className="flex flex-wrap gap-8 w-full items-start">
+            <div className="flex flex-col gap-8 w-full">
               {/* 2. 가격 */}
-              <div
-                id="price"
-                className={`scroll-mt-32 transition-all duration-500 ease-in-out ${isBannerFolded ? 'w-[calc(50%-1rem)]' : 'w-full'}`}
-              >
-                <Box variant="flat" padding="medium" className="w-full border border-black/5">
-                  <div className="flex flex-col items-start gap-4 w-full">
-                    <Title title="가격 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
-                    <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
-                      <Table
-                        columns={[
-                          { 
-                            key: 'seat', 
-                            header: '좌석 등급', 
-                            align: 'left',
-                            render: (row: any) => {
-                              const gradeColors: Record<string, string> = {
-                                'VIP': 'bg-pink-400',
-                                'R': 'bg-yellow-400',
-                                'S': 'bg-orange-400',
-                                'A': 'bg-blue-400',
-                              };
-                              return (
-                                <div className="flex items-center gap-3">
-                                  <span className={`w-4 h-4 rounded-full ${gradeColors[row.seat] || 'bg-gray-200'}`} />
-                                  <Text typography="t4" fontWeight="bold" color="primary">{row.seat}</Text>
-                                </div>
-                              );
-                            }
-                          },
-                          { 
-                            key: 'price', 
-                            header: '가격', 
-                            align: 'right',
-                            render: (row: any) => (
-                              <Text typography="t4" fontWeight="bold" color="primary">{row.price}</Text>
-                            )
+              <div id="price" className="scroll-mt-32 transition-all duration-500 ease-in-out w-full">
+                <Box variant="flat" padding="large" className="w-full border border-black/5 flex flex-col gap-4 shadow-sm bg-white rounded-2xl">
+                  <Title title="가격 정보" bottomBorder={false} className="!px-0 !pt-0 !pb-2 mb-0 w-full [&>div]:!px-0 [&_h1]:!text-2xl shrink-0" />
+                  <div className="w-full rounded-xl overflow-hidden border border-gray-100">
+                    <Table
+                      columns={[
+                        { 
+                          key: 'seat', 
+                          header: '좌석 등급', 
+                          align: 'left',
+                          render: (row: any) => {
+                            const gradeColors: Record<string, string> = {
+                              'VIP': 'bg-pink-400',
+                              'R': 'bg-yellow-400',
+                              'S': 'bg-orange-400',
+                              'A': 'bg-blue-400',
+                            };
+                            return (
+                              <div className="flex items-center gap-3">
+                                <span className={`w-3 h-3 rounded-full ${gradeColors[row.seat] || 'bg-gray-200'}`} />
+                                <Text typography="t5" fontWeight="bold" color="primary">{row.seat}</Text>
+                              </div>
+                            );
                           }
-                        ]}
-                        data={data?.zonePrices?.map(p => ({ seat: p.grade, price: `${p.price.toLocaleString()}원` })) || []}
-                        isLoading={isLoading}
-                      />
-                    </div>
+                        },
+                        { 
+                          key: 'price', 
+                          header: '가격', 
+                          align: 'right',
+                          render: (row: any) => (
+                            <Text typography="t5" fontWeight="medium" color="primary">{row.price}</Text>
+                          )
+                        },
+                      ]}
+                      data={data?.zonePrices?.map(p => ({ seat: p.grade, price: `${p.price.toLocaleString()}원` })) || []}
+                      isLoading={isLoading}
+                    />
                   </div>
                 </Box>
               </div>
 
               {/* 3. 공연 일정 */}
-              <div
-                id="schedule"
-                className={`scroll-mt-32 transition-all duration-500 ease-in-out ${isBannerFolded ? 'w-[calc(50%-1rem)]' : 'w-full'}`}
-              >
-                <Box variant="flat" padding="medium" className="w-full border border-black/5">
-                  <div className="flex flex-col items-start gap-4 w-full">
-                    <Title title="공연 일정" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
+              <div id="schedule" className="scroll-mt-32 transition-all duration-500 ease-in-out w-full">
+                <Box variant="flat" padding="large" className="w-full border border-black/5 flex flex-col items-start shadow-sm bg-white rounded-2xl">
+                  <div className="w-full flex flex-col items-start gap-4">
+                    <Title title="공연 일정" bottomBorder={false} className="!px-0 !pt-0 !pb-2 mb-0 w-full [&>div]:!px-0 [&_h1]:!text-2xl" />
                     <div className="flex flex-col gap-8 w-full mt-2">
                       <div className="w-full flex justify-center">
                         <Calendar
                           enabledDates={enabledDates}
-                          selectedDate={selectedDate}
-                          onSelect={setSelectedDate}
+                          selectedDate={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : null}
+                          onSelect={(date) => setSelectedDate(date ? new Date(date) : null)}
                           isLoading={isLoading}
                         />
                       </div>
@@ -297,13 +290,13 @@ export const DetailView = () => {
                                   key={idx}
                                   className="inline-flex flex-col items-center justify-center px-6 py-3 border border-gray-200 rounded-xl bg-white"
                                 >
-                                  <Text typography="t5" fontWeight="bold" color="primary">{timeObj.time}</Text>
+                                  <Text typography="t4" fontWeight="bold" color="primary">{timeObj.time}</Text>
                                 </div>
                               ))}
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-center h-full min-h-[200px] border border-dashed border-gray-300 rounded-xl bg-gray-50/50">
+                          <div className="flex items-center justify-center h-32 border border-dashed border-gray-300 rounded-xl bg-gray-50/50">
                             <Text typography="t6" color="tertiary">관람하실 날짜를 캘린더에서 선택해주세요.</Text>
                           </div>
                         )}
@@ -336,6 +329,8 @@ export const DetailView = () => {
 
         </section>
 
+        {/* 전역 푸터 */}
+        <Footer />
       </main>
 
       {/* Booking Pipeline Overlays */}

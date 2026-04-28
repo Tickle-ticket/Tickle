@@ -35,7 +35,7 @@ export const Seat = ({
     // 비활성화(disabled) 상태라면 설정으로 강제라도 눌리지 않도록 예외처리
     const effectiveIsSelected = isSelectable && isSelected;
 
-    // 비활성화, 렌더링 컬러 결정
+    // 상태 및 선택 여부에 따른 렌더링 컬러 결정
     const activeColorKey = !isSelectable
       ? 'disabled'
       : effectiveIsSelected
@@ -94,29 +94,7 @@ export const Seat = ({
     drawRoundRect(padding, topY, rectW, rectH, radius);
     ctx.fill();
 
-    // 혼잡도 테두리 추가 (좌석 바깥쪽으로 헤일로 형태로 감싸기)
-    if (congestion && congestion !== 'none') {
-      const congestionColors = {
-        red: '#ef4444',     // 매우 혼잡
-        yellow: '#eab308',  // 혼잡
-        green: '#22c55e',   // 보통
-        blue: '#3b82f6',    // 여유
-      };
-      
-      const gap = 2; // 좌석과 혼잡도 테두리 사이의 간격
-      ctx.strokeStyle = congestionColors[congestion];
-      ctx.lineWidth = 2; // 테두리 두께
-      
-      // 전체 3D 좌석의 Bounding Box를 감싸도록 그림
-      drawRoundRect(
-        padding - gap, 
-        topY - gap, 
-        rectW + gap * 2, 
-        rectH + (effectiveIsSelected ? offset : maxOffset) + gap * 2, 
-        radius + 1
-      );
-      ctx.stroke();
-    }
+    // (혼잡도는 BookView에서 아예 메인 컬러로 덮어씌워서 넘겨주므로, 별도의 책갈피나 테두리를 그리지 않습니다.)
 
     // 선택된 좌석에 십자/체크/가운데 점 등 시각적 하이라이트 (가운데 큰 흰색 점)
     if (effectiveIsSelected) {

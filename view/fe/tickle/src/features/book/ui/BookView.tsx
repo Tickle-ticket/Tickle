@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useSeatData } from '@/src/features/book/api/useSeatData';
 import { SSAFY_18 } from '@/src/shared/components/SSAFY_18';
 import { PriceLegend } from '@/src/shared/components/PriceLegend';
@@ -8,6 +9,9 @@ import { InteractiveMapViewer } from '@/src/shared/components/InteractiveMapView
 import { Calendar } from '@/src/shared/components/Calendar';
 import { useEventDetail } from '@/src/features/book/api/useEventDetail';
 import { CustomCAPTCHA } from '@/src/shared/components/CustomCAPTCHA';
+import { Seat } from '@/src/shared/components/Seat';
+import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
+import { Title } from '@/src/shared/components/Title';
 import { Accordion } from '@/src/shared/components/Accordion';
 import { Toggle } from '@/src/shared/components/Toggle';
 import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
@@ -82,6 +86,8 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
   const setAgreeTerm2 = useBookStore(s => s.setAgreeTerm2);
   const [termExpand1, setTermExpand1] = useState(false);
   const [termExpand2, setTermExpand2] = useState(false);
+
+  const [viewMode, setViewMode] = useState<'grade' | 'congestion'>('grade');
 
   // Pay method selection
   const payCategory = useBookStore(s => s.payCategory);
@@ -192,20 +198,20 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
       const status: SeatStatus = isSelectable ? 'selectable' : 'disabled';
       const isSelected = isMyInitialSeat ? selectedSeatsToCancel.has(seatId) : selectedSeats.has(seatId);
 
-      let congestion: 'red' | 'yellow' | 'green' | 'blue' | 'none' = 'none';
+      let congestion: 'high' | 'medium' | 'low' | 'none' = 'none';
       if (isWaitlistMode && !info.isAvailable) {
         const hash = seatId.charCodeAt(0) + (parseInt(seatId.slice(1)) || 0);
-        if (hash % 5 === 0) congestion = 'red';
-        else if (hash % 5 === 1) congestion = 'yellow';
-        else if (hash % 5 === 2) congestion = 'green';
-        else congestion = 'blue';
+        if (hash % 3 === 0) congestion = 'high';
+        else if (hash % 3 === 1) congestion = 'medium';
+        else congestion = 'low';
       }
 
       if (bookingStep === 'TICKET_TYPE' && !isSelected) {
         seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor, congestion };
       } else {
-        const color = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode) ? 'disabled' : info.grade.toLowerCase());
-        seatsData[seatId] = { status, isSelected, color: color as SeatColor, congestion };
+        const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode) ? 'disabled' : info.grade.toLowerCase());
+        const finalColor = (viewMode === 'congestion' && congestion !== 'none') ? congestion : gradeColor;
+        seatsData[seatId] = { status, isSelected, color: finalColor as SeatColor, congestion };
       }
     });
   }
@@ -352,7 +358,23 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
             />
           </InteractiveMapViewer>
 
-          <PriceLegend prices={SEAT_PRICES} />
+          {isWaitlistMode && (
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-3 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-4 py-2.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.1)] border border-gray-200 dark:border-zinc-700">
+              <span 
+                className="text-sm font-extrabold text-gray-800 dark:text-gray-200 cursor-pointer select-none" 
+                onClick={() => setViewMode(viewMode === 'grade' ? 'congestion' : 'grade')}
+              >
+                혼잡도 보기
+              </span>
+              <Toggle 
+                checked={viewMode === 'congestion'} 
+                onChange={(checked) => setViewMode(checked ? 'congestion' : 'grade')} 
+                size="medium"
+              />
+            </div>
+          )}
+
+          <PriceLegend prices={SEAT_PRICES} viewMode={viewMode} />
         </div>
 
         {/* Right Side: Information & Checkout */}
@@ -952,19 +974,19 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
             id: 'kakaopay',
             label: '카카오페이',
             selectedColor: 'border-[#FEE500] bg-[#FEE500] text-[#381E1F]',
-            icon: <img src="/images/payment_icon_yellow_small.png" alt="카카오페이" className="h-5 w-auto mr-2" />
+            icon: <Image src="/images/payment_icon_yellow_small.png" alt="카카오페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />
           },
           {
             id: 'naverpay',
             label: '네이버페이',
             selectedColor: 'border-[#03C75A] bg-[#03C75A] text-white',
-            icon: <img src="/images/logo_npaybk_large.svg" alt="네이버페이" className="h-5 w-auto mr-2" />
+            icon: <Image src="/images/logo_npaybk_large.svg" alt="네이버페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />
           },
           {
             id: 'tosspay',
             label: '토스페이',
             selectedColor: 'border-[#3182F6] bg-[#3182F6] text-white',
-            icon: <img src="/images/Toss_Symbol_Primary.png" alt="토스페이" className="h-5 w-auto mr-2" />
+            icon: <Image src="/images/Toss_Symbol_Primary.png" alt="토스페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />
           },
           {
             id: 'payco',
