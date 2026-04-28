@@ -16,7 +16,7 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
   await mypageBtn.click();
 
   // 마이페이지 컨텐츠가 렌더링되었는지 확인 (예: '회원 관리' 탭)
-  await expect(page.getByText('회원 관리')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible();
 
   // 로고를 클릭하여 다시 홈 화면으로 복귀 (마이페이지 닫힘)
   const logoBtn = page.locator('header svg').first();
