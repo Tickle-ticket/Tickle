@@ -219,12 +219,12 @@ export const HomeView = () => {
           }`}
       >
         <motion.div 
-          className={`w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
+          className={`w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner && 'id' in activeBanner ? 'cursor-pointer' : ''}`}
           layoutId={clickedLayoutId || "main-banner"}
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           onClick={() => {
-            if (!selectedDetailId && activeBanner?.id) {
-              handleCardClick(activeBanner.id, "main-banner");
+            if (!selectedDetailId && activeBanner && 'id' in activeBanner) {
+              handleCardClick(String(activeBanner.id), "main-banner");
             }
           }}
         >
