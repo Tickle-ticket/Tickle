@@ -2,6 +2,7 @@ package com.ssafy.tickle.agency.event.application;
 
 import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
+import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePolicyRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyCreateEventResponse;
 import com.ssafy.tickle.common.exception.BaseException;
@@ -28,7 +29,7 @@ import java.util.Set;
 /**
  * 기획사 공연 기본정보와 가격정책 등록을 담당합니다.
  *
- * <p>공연 기본정보와 가격 정책만 저장하고, 회차와 좌석은 별도 API로 분리합니다.</p>
+ * <p>공연 기본정보, 가격 정책, 회차, 좌석은 각각 별도 API로 등록합니다.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -42,7 +43,7 @@ public class AgencyEventBasicService {
     private final VenueRepository venueRepository;
 
     /**
-     * 공연 기본정보와 가격정책을 등록합니다.
+     * 공연 기본정보를 등록합니다.
      *
      * @param request 공연 기본정보 등록 요청 DTO
      * @return 생성된 공연 응답 DTO
@@ -69,8 +70,20 @@ public class AgencyEventBasicService {
                 .status(Event.Status.PENDING)
                 .build());
 
-        createPricePolicies(event, request.pricePolicies());
         return AgencyCreateEventResponse.from(event);
+    }
+
+    /**
+     * 공연 가격 정책을 등록합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param request 가격 정책 등록 요청 DTO
+     */
+    @Transactional
+    public void createPricePolicies(Long eventId, AgencyCreateEventPricePoliciesRequest request) {
+        Event event = getEvent(eventId);
+        validatePricePoliciesNotRegistered(eventId);
+        savePricePolicies(event, request.pricePolicies());
     }
 
     /**
@@ -93,7 +106,7 @@ public class AgencyEventBasicService {
     /**
      * 공연 가격 정책을 등록합니다.
      */
-    private void createPricePolicies(
+    private void savePricePolicies(
             Event event,
             List<AgencyCreateEventPricePolicyRequest> requests
     ) {
@@ -124,6 +137,17 @@ public class AgencyEventBasicService {
         }
 
         eventPricePolicyRepository.saveAll(policies);
+    }
+
+    private void validatePricePoliciesNotRegistered(Long eventId) {
+        if (!eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId).isEmpty()) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "이미 가격 정책이 등록된 공연입니다.");
+        }
+    }
+
+    private Event getEvent(Long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
     }
 
     /**

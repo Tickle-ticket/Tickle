@@ -7,6 +7,7 @@ import com.ssafy.tickle.agency.event.application.AgencyVenueTemplateService;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
+import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyCreateEventResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSeatsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSessionsRequest;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 기획사 공연 기본정보, 회차, 좌석 등록 API를 제공합니다.
+ * 기획사 공연 기본정보, 가격 정책, 회차, 좌석 등록 API를 제공합니다.
  */
 @RestController
 @RequestMapping("/api/v1/agency")
@@ -61,6 +62,16 @@ public class AgencyEventController implements AgencyEventApiDoc {
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
                 .body(BaseResponse.success(SuccessCode.CREATED, response));
+    }
+
+    @Override
+    @PostMapping("/events/{eventId}/price-policies")
+    public ResponseEntity<BaseResponse<Void>> createPricePolicies(
+            @PathVariable Long eventId,
+            @Valid @RequestBody AgencyCreateEventPricePoliciesRequest request
+    ) {
+        agencyEventBasicService.createPricePolicies(eventId, request);
+        return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
     @Override

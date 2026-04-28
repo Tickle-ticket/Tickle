@@ -1,8 +1,6 @@
 package com.ssafy.tickle.agency.event.presentation.dto.request;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -22,7 +20,6 @@ import java.util.List;
  * @param eventEndAt 공연 종료 시각
  * @param tags 태그 목록
  * @param notice 공지사항
- * @param pricePolicies 가격 정책 목록
  */
 public record AgencyCreateEventBasicRequest(
         @NotNull(message = "organizerId는 필수입니다.")
@@ -53,9 +50,6 @@ public record AgencyCreateEventBasicRequest(
         List<String> tags,
 
         @Size(max = 10000, message = "notice는 10000자 이하여야 합니다.")
-        String notice,
-
-        @NotEmpty(message = "pricePolicies는 하나 이상 필요합니다.")
-        List<@Valid AgencyCreateEventPricePolicyRequest> pricePolicies
+        String notice
 ) {
 }
