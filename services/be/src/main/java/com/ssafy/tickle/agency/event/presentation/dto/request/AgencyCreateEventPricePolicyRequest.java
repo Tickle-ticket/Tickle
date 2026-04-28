@@ -1,4 +1,4 @@
-package com.ssafy.tickle.event.presentation.dto.agency;
+package com.ssafy.tickle.agency.event.presentation.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;

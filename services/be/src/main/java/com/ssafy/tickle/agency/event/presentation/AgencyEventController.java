@@ -2,6 +2,7 @@ package com.ssafy.tickle.event.presentation;
 
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.event.application.AgencyVenueQueryService;
 import com.ssafy.tickle.event.application.AgencyEventService;
 import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventRequest;
 import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventResponse;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgencyEventController implements AgencyEventApiDoc {
 
     private final AgencyEventService agencyEventService;
+    private final AgencyVenueQueryService agencyVenueQueryService;
 
     /**
      * 공연 등록에 사용할 공연장 구역/좌석 템플릿을 조회합니다.
@@ -35,7 +37,7 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @Override
     @GetMapping("/venues/{venueId}/template")
     public ResponseEntity<BaseResponse<AgencyVenueTemplateResponse>> getVenueTemplate(@PathVariable Long venueId) {
-        return ResponseEntity.ok(BaseResponse.success(agencyEventService.getVenueTemplate(venueId)));
+        return ResponseEntity.ok(BaseResponse.success(agencyVenueQueryService.getVenueTemplate(venueId)));
     }
 
     /**

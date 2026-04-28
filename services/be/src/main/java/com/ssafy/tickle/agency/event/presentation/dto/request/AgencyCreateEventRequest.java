@@ -1,4 +1,4 @@
-package com.ssafy.tickle.event.presentation.dto.agency;
+package com.ssafy.tickle.agency.event.presentation.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -24,7 +24,7 @@ import java.util.List;
  * @param notice 공지사항
  * @param pricePolicies 가격 정책 목록
  * @param sessions 회차 목록
- * @param seats 공연 좌석/가격정책 매핑 목록
+ * @param seats 가격 정책별 공연 좌석 매핑 목록
  */
 public record AgencyCreateEventRequest(
         @NotNull(message = "organizerId는 필수입니다.")
@@ -64,6 +64,6 @@ public record AgencyCreateEventRequest(
         List<@Valid AgencyCreateEventSessionRequest> sessions,
 
         @NotEmpty(message = "seats는 하나 이상 필요합니다.")
-        List<@Valid AgencyCreateEventSeatRequest> seats
+        List<@Valid AgencyCreateEventSeatGroupRequest> seats
 ) {
 }

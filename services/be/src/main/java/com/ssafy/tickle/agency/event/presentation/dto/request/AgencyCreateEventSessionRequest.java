@@ -1,4 +1,4 @@
-package com.ssafy.tickle.event.presentation.dto.agency;
+package com.ssafy.tickle.agency.event.presentation.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

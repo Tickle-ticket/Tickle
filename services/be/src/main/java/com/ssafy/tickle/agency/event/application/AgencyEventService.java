@@ -15,25 +15,32 @@ import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventPricePolicyRequest;
 import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventRequest;
 import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventResponse;
-import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventSeatRequest;
+import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventSeatGroupRequest;
 import com.ssafy.tickle.event.presentation.dto.agency.AgencyCreateEventSessionRequest;
-import com.ssafy.tickle.event.presentation.dto.agency.AgencyVenueTemplateResponse;
+import com.ssafy.tickle.event.application.dto.agency.CreatedEventSeat;
+import com.ssafy.tickle.event.application.dto.agency.EventSeatInsertCommand;
+import com.ssafy.tickle.event.application.dto.agency.SessionSeatInsertCommand;
 import com.ssafy.tickle.seat.domain.EventSeat;
 import com.ssafy.tickle.seat.domain.EventSection;
-import com.ssafy.tickle.seat.domain.SessionSeat;
-import com.ssafy.tickle.seat.infrastructure.persistence.EventSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
-import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.domain.VenueSeat;
 import com.ssafy.tickle.venue.domain.VenueSection;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueSeatRepository;
-import com.ssafy.tickle.venue.infrastructure.persistence.VenueSectionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -55,27 +62,9 @@ public class AgencyEventService {
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final VenueRepository venueRepository;
-    private final VenueSectionRepository venueSectionRepository;
     private final VenueSeatRepository venueSeatRepository;
     private final EventSectionRepository eventSectionRepository;
-    private final EventSeatRepository eventSeatRepository;
-    private final SessionSeatRepository sessionSeatRepository;
-
-    /**
-     * 공연장 구역과 좌석 골격을 조회합니다.
-     *
-     * @param venueId 공연장 식별자
-     * @return 공연 등록 화면에서 사용할 공연장 골격 응답 DTO
-     */
-    public AgencyVenueTemplateResponse getVenueTemplate(Long venueId) {
-        Venue venue = getVenueOrThrow(venueId);
-
-        List<VenueSection> sections = venueSectionRepository.findByVenue_IdOrderByDisplayOrderAsc(venueId);
-
-        List<VenueSeat> seats = venueSeatRepository.findByVenueIdOrderBySection_DisplayOrderAscRowLabelAscSeatNumberAsc(venueId);
-
-        return AgencyVenueTemplateResponse.from(venue, sections, seats);
-    }
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * 공연, 가격 정책, 회차, 좌석 정보를 한 번에 등록합니다.
@@ -112,7 +101,7 @@ public class AgencyEventService {
 
         List<EventSession> sessions = createSessions(event, request.sessions());
 
-        List<EventSeat> eventSeats = createEventSeats(event, venue.getId(), request.seats(), pricePolicyByKey);
+        List<CreatedEventSeat> eventSeats = createEventSeats(event, venue.getId(), request.seats(), pricePolicyByKey);
 
         createSessionSeats(sessions, eventSeats);
 
@@ -214,15 +203,19 @@ public class AgencyEventService {
      * @param pricePolicyByKey 가격 정책 조합 키 기준 맵
      * @return 생성된 공연 좌석 목록
      */
-    private List<EventSeat> createEventSeats(
+    private List<CreatedEventSeat> createEventSeats(
             Event event,
             Long venueId,
-            List<AgencyCreateEventSeatRequest> requests,
+            List<AgencyCreateEventSeatGroupRequest> requests,
             Map<PricePolicyKey, EventPricePolicy> pricePolicyByKey
     ) {
         Set<Long> venueSeatIds = new LinkedHashSet<>();
-        for (AgencyCreateEventSeatRequest request : requests) {
-            validateDuplicateVenueSeat(venueSeatIds, request.venueSeatId());
+        Set<PricePolicyKey> seatGroupKeys = new LinkedHashSet<>();
+        for (AgencyCreateEventSeatGroupRequest request : requests) {
+            validateDuplicatePricePolicyGroup(seatGroupKeys, request.priceGrade(), request.audienceType());
+            for (Long venueSeatId : request.seatIds()) {
+                validateDuplicateVenueSeat(venueSeatIds, venueSeatId);
+            }
         }
 
         List<VenueSeat> venueSeats = getVenueSeatsOrThrow(venueSeatIds);
@@ -235,24 +228,33 @@ public class AgencyEventService {
 
         // 이벤트 구역은 실제 선택된 공연장 구역만 복제해서 생성합니다.
         Map<Long, EventSection> eventSectionByVenueSectionId = createEventSections(event, venueId, venueSeats);
-        List<EventSeat> eventSeats = new ArrayList<>();
+        List<EventSeatInsertCommand> commands = new ArrayList<>();
 
-        for (AgencyCreateEventSeatRequest request : requests) {
-            VenueSeat venueSeat = venueSeatById.get(request.venueSeatId());
+        for (AgencyCreateEventSeatGroupRequest request : requests) {
             EventPricePolicy pricePolicy = getPricePolicy(pricePolicyByKey, request.priceGrade(), request.audienceType());
 
-            eventSeats.add(EventSeat.builder()
-                    .eventSection(eventSectionByVenueSectionId.get(venueSeat.getSection().getId()))
-                    .eventPricePolicy(pricePolicy)
-                    .venueId(venueId)
-                    .rowLabel(venueSeat.getRowLabel())
-                    .seatNumber(venueSeat.getSeatNumber())
-                    .seatLabel(venueSeat.getSeatLabel())
-                    .seatType(EventSeat.SeatType.valueOf(venueSeat.getSeatType().name()))
-                    .build());
+            for (Long venueSeatId : request.seatIds()) {
+                VenueSeat venueSeat = venueSeatById.get(venueSeatId);
+
+                commands.add(new EventSeatInsertCommand(
+                        eventSectionByVenueSectionId.get(venueSeat.getSection().getId()).getId(),
+                        pricePolicy.getId(),
+                        venueId,
+                        venueSeat.getRowLabel(),
+                        venueSeat.getSeatNumber(),
+                        venueSeat.getSeatLabel(),
+                        EventSeat.SeatType.valueOf(venueSeat.getSeatType().name()),
+                        Instant.now()
+                ));
+            }
         }
 
-        return eventSeatRepository.saveAll(eventSeats);
+        List<Long> eventSeatIds = batchInsertEventSeats(commands);
+        List<CreatedEventSeat> createdEventSeats = new ArrayList<>(eventSeatIds.size());
+        for (int i = 0; i < eventSeatIds.size(); i++) {
+            createdEventSeats.add(new CreatedEventSeat(eventSeatIds.get(i), commands.get(i).eventSectionId()));
+        }
+        return createdEventSeats;
     }
 
     /**
@@ -297,23 +299,112 @@ public class AgencyEventService {
      * @param sessions 생성된 회차 목록
      * @param eventSeats 생성된 공연 좌석 목록
      */
-    private void createSessionSeats(List<EventSession> sessions, List<EventSeat> eventSeats) {
-        List<SessionSeat> sessionSeats = new ArrayList<>();
+    private void createSessionSeats(List<EventSession> sessions, List<CreatedEventSeat> eventSeats) {
+        List<SessionSeatInsertCommand> commands = new ArrayList<>();
 
         for (EventSession session : sessions) {
             // 회차 좌석은 공연 좌석을 그대로 복제하고, 최초 상태만 AVAILABLE로 초기화합니다.
-            for (EventSeat eventSeat : eventSeats) {
-                sessionSeats.add(SessionSeat.builder()
-                        .session(session)
-                        .eventSeat(eventSeat)
-                        .eventSectionId(eventSeat.getEventSection().getId())
-                        .saleStatus(SessionSeat.SaleStatus.AVAILABLE)
-                        .versionNo(1L)
-                        .build());
+            for (CreatedEventSeat eventSeat : eventSeats) {
+                commands.add(SessionSeatInsertCommand.of(session.getId(), eventSeat));
             }
         }
 
-        sessionSeatRepository.saveAll(sessionSeats);
+        batchInsertSessionSeats(commands);
+    }
+
+    /**
+     * 공연 좌석을 JDBC 배치로 저장합니다.
+     *
+     * @param commands 공연 좌석 insert 명령 목록
+     * @return 생성된 공연 좌석 식별자 목록
+     */
+    private List<Long> batchInsertEventSeats(List<EventSeatInsertCommand> commands) {
+        if (commands.isEmpty()) {
+            return List.of();
+        }
+
+        String sql = "INSERT INTO event_seats (event_section_id, event_price_policy_id, venue_id, row_label, seat_number, seat_label, seat_type, created_at, updated_at) VALUES "
+                + String.join(", ", commands.stream().map(command -> "(?,?,?,?,?,?,?,?,?)").toList());
+
+        return jdbcTemplate.execute((ConnectionCallback<List<Long>>) con -> {
+            try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                int index = 1;
+                for (EventSeatInsertCommand command : commands) {
+                    ps.setLong(index++, command.eventSectionId());
+                    ps.setLong(index++, command.eventPricePolicyId());
+                    ps.setLong(index++, command.venueId());
+                    ps.setString(index++, command.rowLabel());
+                    ps.setString(index++, command.seatNumber());
+                    ps.setString(index++, command.seatLabel());
+                    ps.setString(index++, command.seatType().name());
+                    ps.setTimestamp(index++, Timestamp.from(command.createdAt()));
+                    ps.setTimestamp(index++, Timestamp.from(command.updatedAt()));
+                }
+
+                ps.executeUpdate();
+
+                List<Long> generatedIds = new ArrayList<>(commands.size());
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    while (rs.next()) {
+                        generatedIds.add(rs.getLong(1));
+                    }
+                }
+                if (generatedIds.size() != commands.size()) {
+                    throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "공연 좌석 배치 저장에 실패했습니다.");
+                }
+                return generatedIds;
+            }
+        });
+    }
+
+    /**
+     * 회차 좌석을 JDBC 배치로 저장합니다.
+     *
+     * @param commands 회차 좌석 insert 명령 목록
+     */
+    private void batchInsertSessionSeats(List<SessionSeatInsertCommand> commands) {
+        if (commands.isEmpty()) {
+            return;
+        }
+
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO session_seats (session_id, event_seat_id, event_section_id, sale_status, version_no, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                new BatchPreparedStatementSetter() {
+                    @Override
+                    public void setValues(PreparedStatement ps, int i) throws SQLException {
+                        SessionSeatInsertCommand command = commands.get(i);
+                        ps.setLong(1, command.sessionId());
+                        ps.setLong(2, command.eventSeatId());
+                        ps.setLong(3, command.eventSectionId());
+                        ps.setString(4, command.saleStatus().name());
+                        ps.setLong(5, command.versionNo());
+                        ps.setTimestamp(6, Timestamp.from(command.updatedAt()));
+                    }
+
+                    @Override
+                    public int getBatchSize() {
+                        return commands.size();
+                    }
+                }
+        );
+    }
+
+    /**
+     * 좌석 그룹이 동일한 가격 정책 조합으로 중복 등록되지 않도록 검증합니다.
+     *
+     * @param seatGroupKeys 이미 확인한 가격 정책 조합
+     * @param priceGrade 가격 등급
+     * @param audienceType 관람 대상 유형
+     */
+    private void validateDuplicatePricePolicyGroup(
+            Set<PricePolicyKey> seatGroupKeys,
+            String priceGrade,
+            String audienceType
+    ) {
+        PricePolicyKey key = new PricePolicyKey(priceGrade, audienceType);
+        if (!seatGroupKeys.add(key)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "좌석 가격 정책 그룹이 중복되었습니다: " + key);
+        }
     }
 
     /**
@@ -439,4 +530,5 @@ public class AgencyEventService {
             String audienceType
     ) {
     }
+
 }

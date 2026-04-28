@@ -37,7 +37,7 @@ public interface AgencyEventApiDoc {
 
     @Operation(
             summary = "공연/회차/좌석 일괄 등록",
-            description = "기존 공연장 골격을 기반으로 공연, 가격 정책, 회차, 공연 좌석, 회차 좌석을 한 번에 생성합니다."
+            description = "기존 공연장 골격을 기반으로 공연, 가격 정책, 회차, 가격 정책별 공연 좌석, 회차 좌석을 한 번에 생성합니다."
     )
     @ApiResponse(responseCode = "201", description = "공연 등록 성공")
     @ApiResponse(
@@ -96,14 +96,14 @@ public interface AgencyEventApiDoc {
                                               ],
                                               "seats": [
                                                 {
-                                                  "venueSeatId": 21001,
                                                   "priceGrade": "VIP",
-                                                  "audienceType": "ALL"
+                                                  "audienceType": "ALL",
+                                                  "seatIds": [21001, 21002]
                                                 },
                                                 {
-                                                  "venueSeatId": 21003,
                                                   "priceGrade": "R",
-                                                  "audienceType": "ALL"
+                                                  "audienceType": "ALL",
+                                                  "seatIds": [21003]
                                                 }
                                               ]
                                             }
