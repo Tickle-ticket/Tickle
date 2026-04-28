@@ -38,7 +38,7 @@ export const queueHandlers = [
   }),
   
   // 3. SSE Stream
-  http.get('/api/v1/queues/:sessionId/stream', () => {
+  http.get('*/api/v1/queues/:sessionId/stream', () => {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -103,6 +103,24 @@ export const queueHandlers = [
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+      }
+    });
+  }),
+  
+  // 4. Get Queue Status
+  http.get('*/api/v1/queues/:sessionId/status', async () => {
+    await delay(300);
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: {
+        queueToken: 'qt-mock-queue-token',
+        status: 'WAITING',
+        rank: 12,
+        waitingCount: 284,
+        estimatedWaitSeconds: 24,
+        estimatedEntryAt: new Date(Date.now() + 24000).toISOString(),
+        admitToken: null
       }
     });
   }),

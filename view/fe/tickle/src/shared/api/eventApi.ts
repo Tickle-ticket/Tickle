@@ -9,6 +9,7 @@ export interface EventItem {
   eventEndAt: string;
   categoryName: string;
   thumbnailUrl: string;
+  salesStartAt?: string;
   metadata: {
     tags: string[];
   };

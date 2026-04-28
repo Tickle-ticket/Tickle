@@ -8,12 +8,12 @@ import { searchHandlers } from './searchHandlers';
 import { favoriteHandlers } from './favoriteHandlers';
 
 export const handlers = [
+  ...homeHandlers,
+  ...searchHandlers,
+  ...favoriteHandlers,
   ...eventHandlers,
   ...userHandlers,
   ...seatHandlers,
   ...queueHandlers,
   ...ticketTypeHandlers,
-  ...homeHandlers,
-  ...searchHandlers,
-  ...favoriteHandlers,
 ];

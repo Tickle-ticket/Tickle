@@ -18,16 +18,18 @@ export const useSearchData = (query: string) => {
       if (!query.trim()) return [];
       const res = await fetchEventList({ keyword: query, size: 20, page: 0 });
       
-      // Map EventItem to SearchPerformance for the UI
-      return res.data.items.map((item) => ({
-        id: String(item.eventId),
-        title: item.title,
-        imageUrl: item.thumbnailUrl,
-        venue: item.venueLocation,
-        date: `${new Date(item.eventStartAt).toLocaleDateString()} ~ ${new Date(item.eventEndAt).toLocaleDateString()}`,
-        openDate: item.eventStartAt,
-        badges: item.metadata?.tags || [],
-      })) as SearchPerformance[];
+      return res.data.items.map((item) => {
+        const isOpeningSoon = item.salesStartAt && new Date(item.salesStartAt).getTime() > Date.now();
+        return {
+          id: String(item.eventId),
+          title: item.title,
+          imageUrl: item.thumbnailUrl,
+          venue: item.venueLocation,
+          date: `${new Date(item.eventStartAt).toLocaleDateString()} ~ ${new Date(item.eventEndAt).toLocaleDateString()}`,
+          openDate: isOpeningSoon ? item.salesStartAt : undefined,
+          badges: item.metadata?.tags || [],
+        };
+      }) as SearchPerformance[];
     },
     enabled: !!query.trim(),
   });
