@@ -146,13 +146,10 @@ export default function AgencySettlementsPage() {
     <div className="space-y-6 p-5 sm:p-8">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">Agency workspace</p>
+          <p className="text-sm font-bold text-blue-600">공연 정산</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
             공연 정산 조회
           </h1>
-          <p className="mt-2 text-sm font-medium text-slate-500">
-            정산 요약 카드와 월별/분기별 필터, 지급 상태 테이블을 조합한 초안입니다.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

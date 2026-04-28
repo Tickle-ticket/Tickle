@@ -169,13 +169,10 @@ export default function AgencyPerformancesPage() {
     <div className="space-y-6 p-5 sm:p-8">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">Agency workspace</p>
+          <p className="text-sm font-bold text-blue-600">공연 목록</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
             등록한 공연 목록
           </h1>
-          <p className="mt-2 text-sm font-medium text-slate-500">
-            SearchBar, SegmentedControl, Table 조합으로 기획사 운영 화면의 기본 관리 패턴을 구성했습니다.
-          </p>
         </div>
 
         <Button color="primary" size="medium">

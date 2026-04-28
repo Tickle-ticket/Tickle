@@ -13,6 +13,7 @@ import { Button } from '@/src/shared/components/Button';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
+import { PerformanceScheduleAddedModal } from '@/src/shared/components/PerformanceScheduleAddedModal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 
 const performanceTypeOptions = [
@@ -51,6 +52,8 @@ const venueOptions = [
   },
 ];
 
+const maxPerformanceHashtagCount = 3;
+
 type SeatGradeKey = 'vip' | 'r' | 's' | 'a';
 
 const seatGradeFields: Array<{
@@ -67,7 +70,7 @@ const seatGradeFields: Array<{
 
 const registrationChecklist = [
   '공연 유형과 공연장 선택',
-  '티켓 오픈일, 티켓 종료일, 공연 오픈일, 공연 종료일 입력',
+  '티켓 오픈 기준, 티켓 종료 기준, 공연 오픈일, 공연 종료일 입력',
   'VIP, R, S, A 등급별 좌석 금액과 좌석도 배치 설정',
   '포스터, 공연 소개, 공지사항 입력',
 ];
@@ -206,7 +209,38 @@ type IntroImageItem = {
 
 type PerformanceScheduleMap = Record<string, string[]>;
 
+type AddedScheduleNotice = {
+  timeValue: string;
+  dateLabels: string[];
+};
+
+type TicketScheduleRule = {
+  days: number;
+  time: string;
+};
+
+type TicketSchedulePreview = {
+  id: string;
+  dateKey: string;
+  timeValue: string;
+  scheduleAt: Date;
+  ticketOpenAt: Date;
+  ticketCloseAt: Date;
+};
+
 const createIntroImageKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+
+const normalizeHashtag = (value: string) => value.trim().replace(/^#+/, '').replace(/\s+/g, '');
+const parseOffsetDayValue = (value: string) => {
+  const digits = value.replace(/[^\d]/g, '');
+  return digits ? Number(digits) : 0;
+};
+
+const buildTicketScheduleDate = (scheduleAt: Date, rule: TicketScheduleRule) => {
+  const nextDate = new Date(scheduleAt);
+  nextDate.setDate(nextDate.getDate() - rule.days);
+  return withSelectedTime(nextDate, rule.time);
+};
 
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024 * 1024) {
@@ -238,6 +272,15 @@ const formatScheduleDateShortLabel = (value: Date) =>
     month: 'numeric',
     day: 'numeric',
     weekday: 'short',
+  }).format(value);
+
+const formatScheduleDateTimePreviewLabel = (value: Date) =>
+  new Intl.DateTimeFormat('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(value);
 
 const isValidScheduleTime = (value: string) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
@@ -294,6 +337,59 @@ function DateTimeTriggerField({
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TicketScheduleRuleField({
+  label,
+  description,
+  rule,
+  onDaysChange,
+  onTimeChange,
+}: {
+  label: string;
+  description: string;
+  rule: TicketScheduleRule;
+  onDaysChange: (days: number) => void;
+  onTimeChange: (time: string) => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-base font-black text-slate-950">{label}</p>
+          <p className="mt-1 text-sm font-medium leading-6 text-slate-500">{description}</p>
+        </div>
+        <Badge color="blue" variant="outline">
+          공연일 {rule.days}일 전 {rule.time}
+        </Badge>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-bold tracking-[0.08em] text-slate-400">공연일 기준 일수</span>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={rule.days}
+            onChange={(event) => onDaysChange(parseOffsetDayValue(event.target.value))}
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+          />
+        </label>
+
+        <label className="flex flex-col gap-2">
+          <span className="text-xs font-bold tracking-[0.08em] text-slate-400">적용 시각</span>
+          <input
+            type="time"
+            step={600}
+            value={rule.time}
+            onChange={(event) => onTimeChange(event.target.value)}
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+          />
+        </label>
       </div>
     </div>
   );
@@ -508,10 +604,14 @@ export default function AgencyRegistrationPage() {
   const [performanceType, setPerformanceType] = useState('musical');
   const [selectedVenue, setSelectedVenue] = useState(venueOptions[0]?.value ?? '');
   const [isVenueOpen, setIsVenueOpen] = useState(false);
-  const [ticketOpenAt, setTicketOpenAt] = useState(() => new Date('2026-05-01T14:00:00'));
-  const [ticketCloseAt, setTicketCloseAt] = useState(() => new Date('2026-06-21T17:00:00'));
-  const [ticketOpenInputValue, setTicketOpenInputValue] = useState(() => formatDateTimeLabel(new Date('2026-05-01T14:00:00')));
-  const [ticketCloseInputValue, setTicketCloseInputValue] = useState(() => formatDateTimeLabel(new Date('2026-06-21T17:00:00')));
+  const [ticketOpenRule, setTicketOpenRule] = useState<TicketScheduleRule>({
+    days: 14,
+    time: '14:00',
+  });
+  const [ticketCloseRule, setTicketCloseRule] = useState<TicketScheduleRule>({
+    days: 0,
+    time: '17:00',
+  });
   const [performanceOpenAt, setPerformanceOpenAt] = useState(() => new Date('2026-05-08T19:30:00'));
   const [performanceCloseAt, setPerformanceCloseAt] = useState(() => new Date('2026-06-21T18:00:00'));
   const [performanceOpenInputValue, setPerformanceOpenInputValue] = useState(() => formatDateTimeLabel(new Date('2026-05-08T19:30:00')));
@@ -523,6 +623,8 @@ export default function AgencyRegistrationPage() {
   const [noticeText, setNoticeText] = useState(
     '예매 오픈 전 최종 검수 후 노출되는 운영 공지사항을 입력합니다.',
   );
+  const [performanceHashtags, setPerformanceHashtags] = useState<string[]>([]);
+  const [hashtagInputValue, setHashtagInputValue] = useState('');
   const [seatPrices, setSeatPrices] = useState<Record<SeatGradeKey, string>>({
     vip: '180000',
     r: '140000',
@@ -533,8 +635,8 @@ export default function AgencyRegistrationPage() {
   const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
   const [performanceSchedules, setPerformanceSchedules] = useState<PerformanceScheduleMap>({});
   const [scheduleTimeInputValue, setScheduleTimeInputValue] = useState('19:30');
+  const [addedScheduleNotice, setAddedScheduleNotice] = useState<AddedScheduleNotice | null>(null);
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
-  const [isTicketDateModalOpen, setIsTicketDateModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
   const venueDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -590,6 +692,53 @@ export default function AgencyRegistrationPage() {
   const selectedVenueInfo = useMemo(
     () => venueOptions.find((venue) => venue.value === selectedVenue) ?? venueOptions[0],
     [selectedVenue],
+  );
+  const registeredTicketSchedulePreviews = useMemo<TicketSchedulePreview[]>(
+    () =>
+      Object.entries(performanceSchedules)
+        .flatMap(([dateKey, times]) => {
+          const scheduleDate = parseDateKey(dateKey);
+
+          if (!scheduleDate) {
+            return [];
+          }
+
+          return times
+            .filter((timeValue) => isValidScheduleTime(timeValue))
+            .map((timeValue) => {
+              const scheduleAt = withSelectedTime(scheduleDate, timeValue);
+
+              return {
+                id: `${dateKey}-${timeValue}`,
+                dateKey,
+                timeValue,
+                scheduleAt,
+                ticketOpenAt: buildTicketScheduleDate(scheduleAt, ticketOpenRule),
+                ticketCloseAt: buildTicketScheduleDate(scheduleAt, ticketCloseRule),
+              };
+            });
+        })
+        .sort((left, right) => left.scheduleAt.getTime() - right.scheduleAt.getTime()),
+    [performanceSchedules, ticketCloseRule, ticketOpenRule],
+  );
+  const activeTicketSchedulePreviews = useMemo(
+    () =>
+      selectedScheduleDateKeys.length > 0
+        ? registeredTicketSchedulePreviews.filter((preview) =>
+            selectedScheduleDateKeys.includes(preview.dateKey),
+          )
+        : registeredTicketSchedulePreviews,
+    [registeredTicketSchedulePreviews, selectedScheduleDateKeys],
+  );
+  const ticketSchedulePreviewItems = activeTicketSchedulePreviews.slice(0, 3);
+  const hiddenTicketSchedulePreviewCount = Math.max(0, activeTicketSchedulePreviews.length - ticketSchedulePreviewItems.length);
+  const hasInvalidTicketWindow = registeredTicketSchedulePreviews.some(
+    (preview) => preview.ticketOpenAt.getTime() >= preview.ticketCloseAt.getTime(),
+  );
+  const hasTicketWindowAfterScheduleStart = registeredTicketSchedulePreviews.some(
+    (preview) =>
+      preview.ticketOpenAt.getTime() >= preview.scheduleAt.getTime() ||
+      preview.ticketCloseAt.getTime() >= preview.scheduleAt.getTime(),
   );
 
   useEffect(() => {
@@ -657,6 +806,12 @@ export default function AgencyRegistrationPage() {
   const introImageCountLabel =
     introImages.length > 0 ? `등록된 이미지 ${introImages.length}장` : '아직 등록된 이미지가 없습니다.';
   const posterImageLabel = posterImage ? '포스터 이미지가 등록되었습니다.' : '아직 등록된 포스터가 없습니다.';
+  const normalizedHashtagInput = normalizeHashtag(hashtagInputValue);
+  const formattedHashtagInput = normalizedHashtagInput ? `#${normalizedHashtagInput}` : '';
+  const canAddHashtag =
+    formattedHashtagInput.length > 1 &&
+    performanceHashtags.length < maxPerformanceHashtagCount &&
+    !performanceHashtags.includes(formattedHashtagInput);
 
   const formatSeatPriceInput = (value: string) => {
     if (value.length === 0) {
@@ -863,37 +1018,6 @@ export default function AgencyRegistrationPage() {
     }
   };
 
-  const handleTicketOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value;
-    const parsed = parseDateTimeLabel(nextValue);
-
-    setTicketOpenInputValue(nextValue);
-
-    if (!parsed) {
-      return;
-    }
-
-    setTicketOpenAt(parsed);
-
-    if (ticketCloseAt.getTime() < parsed.getTime()) {
-      setTicketCloseAt(parsed);
-      setTicketCloseInputValue(formatDateTimeLabel(parsed));
-    }
-  };
-
-  const handleTicketCloseInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value;
-    const parsed = parseDateTimeLabel(nextValue);
-
-    setTicketCloseInputValue(nextValue);
-
-    if (!parsed || parsed.getTime() < ticketOpenAt.getTime()) {
-      return;
-    }
-
-    setTicketCloseAt(parsed);
-  };
-
   const handlePerformanceOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
     const parsed = parseDateTimeLabel(nextValue);
@@ -930,6 +1054,28 @@ export default function AgencyRegistrationPage() {
     syncSchedulesToPerformanceRange(performanceOpenAt, parsed);
   };
 
+  const handleHashtagAdd = (rawValue = hashtagInputValue) => {
+    const normalizedValue = normalizeHashtag(rawValue);
+
+    if (!normalizedValue || performanceHashtags.length >= maxPerformanceHashtagCount) {
+      return;
+    }
+
+    const nextHashtag = `#${normalizedValue}`;
+
+    if (performanceHashtags.includes(nextHashtag)) {
+      setHashtagInputValue('');
+      return;
+    }
+
+    setPerformanceHashtags((current) => [...current, nextHashtag]);
+    setHashtagInputValue('');
+  };
+
+  const handleHashtagRemove = (targetHashtag: string) => {
+    setPerformanceHashtags((current) => current.filter((hashtag) => hashtag !== targetHashtag));
+  };
+
   const handleScheduleTimeAdd = (timeValue = scheduleTimeInputValue) => {
     if (!isValidScheduleTime(timeValue)) {
       return;
@@ -945,20 +1091,31 @@ export default function AgencyRegistrationPage() {
       return;
     }
 
-    setPerformanceSchedules((current) => {
-      const nextSchedules = { ...current };
+    const nextSchedules = { ...performanceSchedules };
+    const addedDateKeys: string[] = [];
 
-      targetDateKeys.forEach((dateKey) => {
-        const currentTimes = nextSchedules[dateKey] ?? [];
+    targetDateKeys.forEach((dateKey) => {
+      const currentTimes = nextSchedules[dateKey] ?? [];
 
-        if (currentTimes.includes(timeValue)) {
-          return;
-        }
+      if (currentTimes.includes(timeValue)) {
+        return;
+      }
 
-        nextSchedules[dateKey] = [...currentTimes, timeValue].sort();
-      });
+      nextSchedules[dateKey] = [...currentTimes, timeValue].sort();
+      addedDateKeys.push(dateKey);
+    });
 
-      return nextSchedules;
+    if (addedDateKeys.length === 0) {
+      return;
+    }
+
+    setPerformanceSchedules(nextSchedules);
+    setAddedScheduleNotice({
+      timeValue,
+      dateLabels: addedDateKeys
+        .map((dateKey) => parseDateKey(dateKey))
+        .filter((value): value is Date => value !== null)
+        .map((value) => formatScheduleDateShortLabel(value)),
     });
   };
 
@@ -992,30 +1149,15 @@ export default function AgencyRegistrationPage() {
   };
 
   return (
-    <div className="space-y-5 p-4 sm:p-6">
-      <header className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+    <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <header className="flex flex-col gap-4">
         <div>
-          <p className="text-sm font-bold text-blue-600">Agency workspace</p>
-          <h1 className="mt-1 text-[28px] font-black tracking-normal text-slate-950 sm:text-[30px]">
-            공연 등록
-          </h1>
-          <p className="mt-2 text-sm font-medium text-slate-500">
-            등록 가능한 공연장만 목록에서 선택하고, 판매 일정과 좌석 금액을 한 화면에서 구성하는 초안입니다.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge color="green" variant="fill">임시 저장 2건</Badge>
-          <Button color="dark" variant="weak" size="small">
-            미리보기 공유
-          </Button>
-          <Button color="primary" size="small">
-            검수 요청
-          </Button>
+          <p className="text-sm font-bold text-blue-600">공연 등록</p>
+          <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">공연 등록 대시보드</h1>
         </div>
       </header>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_340px]">
+      <section className="grid gap-5 items-start xl:grid-cols-[minmax(0,1.6fr)_340px]">
         <div className="space-y-5">
           <Box variant="shadow" className="space-y-5">
             <div>
@@ -1204,6 +1346,76 @@ export default function AgencyRegistrationPage() {
                     className="min-h-[180px] rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
+
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <span className="text-sm font-bold text-slate-500">해시태그</span>
+                      <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                        상세 페이지와 탐색 목록에서 함께 노출할 키워드를 최대 3개까지 등록합니다.
+                      </p>
+                    </div>
+                    <Badge color="blue" variant="outline">
+                      {performanceHashtags.length}/{maxPerformanceHashtagCount}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <label className="flex min-w-0 flex-1 flex-col gap-2">
+                      <span className="text-xs font-bold tracking-[0.08em] text-slate-400">키워드 입력</span>
+                      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
+                        <span className="text-sm font-black text-blue-600">#</span>
+                        <input
+                          type="text"
+                          value={hashtagInputValue}
+                          onChange={(event) => setHashtagInputValue(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleHashtagAdd();
+                            }
+                          }}
+                          placeholder="초연, OST, 한정공연"
+                          disabled={performanceHashtags.length >= maxPerformanceHashtagCount}
+                          className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </label>
+
+                    <Button
+                      color="primary"
+                      size="medium"
+                      disabled={!canAddHashtag}
+                      onClick={() => handleHashtagAdd()}
+                    >
+                      추가
+                    </Button>
+                  </div>
+
+                  {performanceHashtags.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {performanceHashtags.map((hashtag) => (
+                        <button
+                          key={hashtag}
+                          type="button"
+                          onClick={() => handleHashtagRemove(hashtag)}
+                          className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
+                        >
+                          <span>{hashtag}</span>
+                          <span className="text-xs text-blue-400">삭제</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-400">
+                      아직 등록된 해시태그가 없습니다.
+                    </div>
+                  )}
+
+                  <p className="mt-3 text-xs font-medium text-slate-400">
+                    공백은 자동으로 제거되고, 같은 해시태그는 한 번만 등록됩니다.
+                  </p>
+                </div>
               </div>
             </div>
           </Box>
@@ -1213,7 +1425,7 @@ export default function AgencyRegistrationPage() {
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  공연 기본 정보와 판매 일정을 먼저 채웁니다.
+                  공연 기본 정보와 회차 기준 판매 일정을 먼저 채웁니다.
                 </p>
               </div>
               <Badge color="blue" variant="outline">필수 입력</Badge>
@@ -1298,20 +1510,6 @@ export default function AgencyRegistrationPage() {
               </div>
 
               <DateTimeTriggerField
-                label="티켓 오픈일"
-                value={ticketOpenInputValue}
-                onChange={handleTicketOpenInputChange}
-                onBlur={() => setTicketOpenInputValue(formatDateTimeLabel(ticketOpenAt))}
-                onOpen={() => setIsTicketDateModalOpen(true)}
-              />
-              <DateTimeTriggerField
-                label="티켓 종료일"
-                value={ticketCloseInputValue}
-                onChange={handleTicketCloseInputChange}
-                onBlur={() => setTicketCloseInputValue(formatDateTimeLabel(ticketCloseAt))}
-                onOpen={() => setIsTicketDateModalOpen(true)}
-              />
-              <DateTimeTriggerField
                 label="공연 오픈일"
                 value={performanceOpenInputValue}
                 onChange={handlePerformanceOpenInputChange}
@@ -1325,6 +1523,124 @@ export default function AgencyRegistrationPage() {
                 onBlur={() => setPerformanceCloseInputValue(formatDateTimeLabel(performanceCloseAt))}
                 onOpen={() => setIsPerformanceDateModalOpen(true)}
               />
+
+              <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(255,255,255,1)_100%)] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[18px] font-black text-slate-950">티켓 일정 기준</p>
+                    <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                      등록된 각 회차 시간을 기준으로 예매 오픈일과 종료일을 자동 계산합니다.
+                    </p>
+                  </div>
+                  <Badge color="blue" variant="outline">
+                    회차별 자동 계산
+                  </Badge>
+                </div>
+
+                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                  <TicketScheduleRuleField
+                    label="티켓 오픈 기준"
+                    description="각 회차의 공연일을 기준으로 예매 시작 시점을 공연 시작 전으로 잡습니다."
+                    rule={ticketOpenRule}
+                    onDaysChange={(days) =>
+                      setTicketOpenRule((current) => ({ ...current, days }))
+                    }
+                    onTimeChange={(time) =>
+                      setTicketOpenRule((current) => ({ ...current, time }))
+                    }
+                  />
+
+                  <TicketScheduleRuleField
+                    label="티켓 종료 기준"
+                    description="각 회차의 공연일을 기준으로 예매 종료 시점을 공연 시작 전으로 잡습니다."
+                    rule={ticketCloseRule}
+                    onDaysChange={(days) =>
+                      setTicketCloseRule((current) => ({ ...current, days }))
+                    }
+                    onTimeChange={(time) =>
+                      setTicketCloseRule((current) => ({ ...current, time }))
+                    }
+                  />
+                </div>
+
+                <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-slate-500">
+                        {selectedScheduleDateKeys.length > 0 ? '선택한 회차 미리보기' : '등록 회차 미리보기'}
+                      </p>
+                      <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                        회차를 추가하면 아래에서 실제 예매 오픈일과 종료일이 어떻게 계산되는지 바로 확인할 수 있습니다.
+                      </p>
+                    </div>
+                    <Badge color="grey" variant="outline">
+                      {activeTicketSchedulePreviews.length}회차 기준
+                    </Badge>
+                  </div>
+
+                  {ticketSchedulePreviewItems.length > 0 ? (
+                    <div className="mt-4 space-y-3">
+                      {ticketSchedulePreviewItems.map((preview) => (
+                        <div
+                          key={preview.id}
+                          className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-black text-slate-950">
+                                공연 {formatScheduleDateTimePreviewLabel(preview.scheduleAt)}
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-slate-400">
+                                회차 시간 {preview.timeValue}
+                              </p>
+                            </div>
+                            <Badge color="blue" size="small">
+                              {preview.dateKey}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
+                              <p className="text-xs font-bold tracking-[0.08em] text-slate-400">티켓 오픈</p>
+                              <p className="mt-2 text-sm font-black text-slate-950">
+                                {formatDateTimeLabel(preview.ticketOpenAt)}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
+                              <p className="text-xs font-bold tracking-[0.08em] text-slate-400">티켓 종료</p>
+                              <p className="mt-2 text-sm font-black text-slate-950">
+                                {formatDateTimeLabel(preview.ticketCloseAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {hiddenTicketSchedulePreviewCount > 0 ? (
+                        <p className="text-sm font-medium text-slate-400">
+                          나머지 {hiddenTicketSchedulePreviewCount}개 회차도 같은 기준으로 자동 계산됩니다.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-medium leading-6 text-slate-400">
+                      아직 등록된 회차가 없습니다. 공연 일정 등록에서 회차를 추가하면 회차별 티켓 오픈일과 종료일이 자동 계산됩니다.
+                    </div>
+                  )}
+
+                  {hasInvalidTicketWindow ? (
+                    <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-600">
+                      현재 기준에서는 일부 회차의 티켓 오픈일이 종료일보다 늦습니다. 오픈/종료 기준을 다시 조정해 주세요.
+                    </div>
+                  ) : null}
+
+                  {hasTicketWindowAfterScheduleStart ? (
+                    <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-700">
+                      일부 회차는 현재 설정대로면 공연 시작 이후에도 예매가 열려 있습니다. 같은 날 종료를 쓰는 경우 공연 시작 시간보다 이르게 설정해 주세요.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </Box>
 
@@ -1749,26 +2065,6 @@ export default function AgencyRegistrationPage() {
         />
       ) : null}
 
-      {isTicketDateModalOpen ? (
-        <DateRangeModal
-          isOpen={isTicketDateModalOpen}
-          title="티켓 일정 설정"
-          description="티켓 시작일과 종료일을 한 번에 확인하면서 날짜와 시간을 함께 설정합니다."
-          startLabel="티켓 시작일"
-          endLabel="티켓 종료일"
-          initialStartAt={ticketOpenAt}
-          initialEndAt={ticketCloseAt}
-          onClose={() => setIsTicketDateModalOpen(false)}
-          onConfirm={(nextStartAt, nextEndAt) => {
-            setTicketOpenAt(nextStartAt);
-            setTicketCloseAt(nextEndAt);
-            setTicketOpenInputValue(formatDateTimeLabel(nextStartAt));
-            setTicketCloseInputValue(formatDateTimeLabel(nextEndAt));
-            setIsTicketDateModalOpen(false);
-          }}
-        />
-      ) : null}
-
       {isPerformanceDateModalOpen ? (
         <DateRangeModal
           isOpen={isPerformanceDateModalOpen}
@@ -1787,6 +2083,15 @@ export default function AgencyRegistrationPage() {
             syncSchedulesToPerformanceRange(nextStartAt, nextEndAt);
             setIsPerformanceDateModalOpen(false);
           }}
+        />
+      ) : null}
+
+      {addedScheduleNotice ? (
+        <PerformanceScheduleAddedModal
+          isOpen={Boolean(addedScheduleNotice)}
+          onClose={() => setAddedScheduleNotice(null)}
+          addedTime={addedScheduleNotice.timeValue}
+          addedDateLabels={addedScheduleNotice.dateLabels}
         />
       ) : null}
     </div>
