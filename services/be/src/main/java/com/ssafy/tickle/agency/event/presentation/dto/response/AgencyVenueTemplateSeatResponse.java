@@ -1,22 +1,25 @@
-package com.ssafy.tickle.agency.event.presentation.dto;
+package com.ssafy.tickle.agency.event.presentation.dto.response;
 
+import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.venue.domain.VenueSeat;
 
 /**
  * 공연 등록용 공연장 좌석 응답입니다.
  *
+ * <p>좌석 등급과 표기 정보를 함께 내려줘서 공연 좌석 매핑 기준으로 사용합니다.</p>
+ *
  * @param venueSeatId 공연장 좌석 식별자
  * @param rowLabel 열
  * @param seatNumber 번호
  * @param seatLabel 표기명
- * @param seatType 좌석 유형
+ * @param seatGrade 좌석 등급
  */
 public record AgencyVenueTemplateSeatResponse(
         Long venueSeatId,
         String rowLabel,
         String seatNumber,
         String seatLabel,
-        VenueSeat.SeatType seatType
+        SeatGrade seatGrade
 ) {
 
     /**
@@ -31,7 +34,7 @@ public record AgencyVenueTemplateSeatResponse(
                 seat.getRowLabel(),
                 seat.getSeatNumber(),
                 seat.getSeatLabel(),
-                seat.getSeatType()
+                seat.getSeatGrade()
         );
     }
 }

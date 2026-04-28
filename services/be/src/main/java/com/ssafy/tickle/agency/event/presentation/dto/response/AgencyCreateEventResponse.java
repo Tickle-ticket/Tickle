@@ -1,4 +1,4 @@
-package com.ssafy.tickle.agency.event.presentation.dto;
+package com.ssafy.tickle.agency.event.presentation.dto.response;
 
 import com.ssafy.tickle.event.domain.Event;
 /**
