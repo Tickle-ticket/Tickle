@@ -46,7 +46,7 @@ export function AdminSidebar({
 
   return (
     <aside
-      className={`hidden h-screen w-[280px] shrink-0 flex-col justify-between border-r border-white/60 bg-white/72 px-5 py-6 backdrop-blur-2xl shadow-[20px_0_60px_rgba(15,23,42,0.06)] lg:flex ${className}`}
+      className={`fixed inset-y-0 left-0 z-30 hidden h-screen w-[280px] shrink-0 flex-col justify-between overflow-y-auto border-r border-white/60 bg-white/72 px-5 py-6 backdrop-blur-2xl shadow-[20px_0_60px_rgba(15,23,42,0.06)] lg:flex ${className}`}
     >
       <div>
         <div className="rounded-[28px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(239,246,255,0.88))] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]">

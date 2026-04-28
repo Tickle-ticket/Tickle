@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 export type BadgeSize = 'xsmall' | 'small' | 'medium' | 'large';
-export type BadgeColor = 'blue' | 'red' | 'grey' | 'green';
+export type BadgeColor = 'blue' | 'red' | 'grey' | 'green' | 'purple';
 export type BadgeVariant = 'fill' | 'outline';
 
 export interface BadgeProps {
@@ -93,7 +93,7 @@ export interface TitleProps {
   textColor?: string;
 }
 
-export interface TableColumn<T = any> {
+export interface TableColumn<T = unknown> {
   key: Extract<keyof T, string> | string;
   header: string;
   width?: string | number;
@@ -101,7 +101,7 @@ export interface TableColumn<T = any> {
   render?: (row: T, index: number) => ReactNode;
 }
 
-export interface TableProps<T = any> {
+export interface TableProps<T = unknown> {
   columns: TableColumn<T>[];
   data: T[];
   isLoading?: boolean;
