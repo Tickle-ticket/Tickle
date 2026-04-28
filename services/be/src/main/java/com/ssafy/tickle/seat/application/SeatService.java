@@ -15,6 +15,7 @@ import com.ssafy.tickle.seat.presentation.dto.SeatItemResponse;
 import com.ssafy.tickle.seat.presentation.dto.SeatMapResponse;
 import com.ssafy.tickle.seat.presentation.dto.SeatSectionResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,6 +105,10 @@ public class SeatService {
             seatHoldKeyStore.registerHeld(scheduleId, userId, request.sessionSeatIds());
 
             return new SeatHoldResponse(request.sessionSeatIds(), expiresAt);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            // 락-커밋 타이밍 갭에서 @Version 충돌 발생 시 409로 변환
+            // (분산락이 해제된 후 트랜잭션 커밋 전 찰나에 다른 요청이 동일 좌석을 선점한 경우)
+            throw new BaseException(SeatErrorCode.SEAT_LOCK_FAILED);
         } finally {
             redisLockManager.unlock(lockKey);
         }

@@ -60,19 +60,6 @@ public class SeatHoldKeyStore {
         redissonClient.getBucket(buildKey(scheduleId, userId)).delete();
     }
 
-    /**
-     * 선점 잔여 만료 시각을 반환합니다.
-     *
-     * @param scheduleId 회차 ID
-     * @param userId     사용자 ID
-     * @return 남은 TTL Duration (키 없으면 Duration.ZERO)
-     */
-    public Duration getRemainingTtl(Long scheduleId, Long userId) {
-        long remainMs = redissonClient.getBucket(buildKey(scheduleId, userId))
-                .remainTimeToLive();
-        return remainMs > 0 ? Duration.ofMillis(remainMs) : Duration.ZERO;
-    }
-
     private String buildKey(Long scheduleId, Long userId) {
         return KEY_PREFIX + scheduleId + ":" + userId;
     }
