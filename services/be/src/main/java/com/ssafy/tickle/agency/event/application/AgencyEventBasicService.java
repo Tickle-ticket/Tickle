@@ -133,7 +133,7 @@ public class AgencyEventBasicService {
     }
 
     private void validatePricePoliciesNotRegistered(Long eventId) {
-        if (!eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId).isEmpty()) {
+        if (eventPricePolicyRepository.existsByEventId(eventId)) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "이미 가격 정책이 등록된 공연입니다.");
         }
     }
