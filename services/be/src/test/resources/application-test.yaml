@@ -26,3 +26,7 @@ spring:
 
 server:
   port: 0
+
+internal:
+  # 테스트 전용 더미 시크릿 (실제 환경변수 없이도 컨텍스트 로드 가능)
+  secret: test-internal-secret

@@ -25,7 +25,7 @@ public class InternalSecretInterceptor implements HandlerInterceptor {
 
     private static final String INTERNAL_SECRET_HEADER = "X-Internal-Secret";
 
-    @Value("${internal.secret}")
+    @Value("${internal.secret:}")
     private String internalSecret;
 
     private final ObjectMapper objectMapper;
