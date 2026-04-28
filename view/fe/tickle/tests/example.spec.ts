@@ -39,11 +39,11 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
   // 3. 보안 인증(CAPTCHA) 모달 대기 및 통과 처리
   // "다음 숫자를 순서대로 누르세요" 텍스트가 나타날 때까지 대기
   await expect(page.getByText('다음 숫자를 순서대로 누르세요')).toBeVisible({ timeout: 15000 });
-  
+
   // 제시된 정답 시퀀스 숫자 읽기
   const targetSpans = page.locator('div.bg-gray-50 > div.flex > span.w-10');
   const count = await targetSpans.count();
-  
+
   for (let i = 0; i < count; i++) {
     const text = await targetSpans.nth(i).textContent();
     if (text && text.trim().length > 0) {
@@ -60,7 +60,7 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
   // 캘린더에서 클릭 가능한(disabled가 아닌) 첫 번째 날짜 버튼 클릭
   const availableDateBtn = page.locator('button:not([disabled])', { hasText: /^[0-9]{1,2}$/ }).first();
   await availableDateBtn.click();
-  
+
   // 회차 버튼 클릭 (예: "1회차 - 19:00" 등)
   const timeBtn = page.locator('button', { hasText: /회차 -/ }).first();
   await expect(timeBtn).toBeVisible();
@@ -79,17 +79,17 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
 
   // 7. 인원 선택 단계 진입 확인 및 인원 추가 (+)
   await expect(page.getByText('인원 선택')).toBeVisible();
-  
+
   // 아코디언이 닫혀있다면 클릭해서 열기 (좌석 등급 타이틀 클릭)
   // 보통 자동으로 열려있을 수 있지만 확실히 하기 위해 버튼들 탐색
   const plusButton = page.getByRole('button', { name: '+' }).first();
-  
+
   // 만약 + 버튼이 안 보이면 아코디언 타이틀을 눌러서 엽니다.
   if (!(await plusButton.isVisible())) {
     const accordionTitle = page.locator('button:has-text("석")').first();
     await accordionTitle.click();
   }
-  
+
   await expect(plusButton).toBeVisible();
   await plusButton.click(); // 인원 1명 추가
 
@@ -106,7 +106,7 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
   // 10. 최종 "결제하기" 버튼 클릭
   const finalPayButton = page.getByRole('button', { name: /결제하기/ });
   await expect(finalPayButton).toBeVisible();
-  
+
   // 실제 결제가 발생하지 않도록 클릭만 테스트하거나 대화상자 처리할 수 있음
   await finalPayButton.click();
 
