@@ -1,5 +1,6 @@
 package com.ssafy.tickle.venue.domain;
 
+import com.ssafy.tickle.common.domain.SeatGrade;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -55,10 +56,10 @@ public class VenueSeat {
     @Column(name = "seat_label", nullable = false, length = 50)
     private String seatLabel;
 
-    // 좌석 유형
+    // 좌석 등급
     @Enumerated(EnumType.STRING)
     @Column(name = "seat_type", nullable = false, length = 30)
-    private SeatType seatType;
+    private SeatGrade seatGrade;
 
     // 생성 시각
     @Column(name = "created_at", nullable = false)
@@ -68,15 +69,6 @@ public class VenueSeat {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public enum SeatType {
-        REGULAR,
-        VIP,
-        R,
-        S,
-        A,
-        RESTRICTED_VIEW
-    }
-
     /**
      * 공연장 좌석 엔티티를 생성합니다.
      *
@@ -85,7 +77,7 @@ public class VenueSeat {
      * @param rowLabel 열 라벨
      * @param seatNumber 좌석 번호
      * @param seatLabel 좌석 표기명
-     * @param seatType 좌석 유형
+     * @param seatGrade 좌석 등급
      */
     @Builder
     public VenueSeat(
@@ -94,14 +86,14 @@ public class VenueSeat {
             String rowLabel,
             String seatNumber,
             String seatLabel,
-            SeatType seatType
+            SeatGrade seatGrade
     ) {
         this.section = section;
         this.venueId = venueId;
         this.rowLabel = rowLabel;
         this.seatNumber = seatNumber;
         this.seatLabel = seatLabel;
-        this.seatType = seatType;
+        this.seatGrade = seatGrade;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
