@@ -1,18 +1,18 @@
 package com.ssafy.tickle.favorite.application;
 
+import com.ssafy.tickle.category.domain.Category;
+import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.event.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
-import com.ssafy.tickle.event.domain.Organizer;
-import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
-import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.favorite.infrastructure.persistence.FavoriteRepository;
 import com.ssafy.tickle.favorite.presentation.dto.FavoriteCreateResponse;
 import com.ssafy.tickle.favorite.presentation.dto.FavoriteEventsResponse;
+import com.ssafy.tickle.organizer.domain.Organizer;
+import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.user.domain.User;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
