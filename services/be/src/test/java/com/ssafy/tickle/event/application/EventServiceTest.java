@@ -2,18 +2,19 @@ package com.ssafy.tickle.event.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.event.domain.Category;
+import com.ssafy.tickle.common.domain.SeatGrade;
+import com.ssafy.tickle.category.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
-import com.ssafy.tickle.event.domain.Organizer;
-import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
+import com.ssafy.tickle.organizer.domain.Organizer;
+import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
-import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
@@ -136,8 +137,8 @@ class EventServiceTest {
                     createSession(savedEvent, 2, Instant.parse("2026-05-02T10:00:00Z"))
             ));
             savedPricePolicies = eventPricePolicyRepository.saveAll(List.of(
-                    createPricePolicy(savedEvent, "VIP", "220000", 0),
-                    createPricePolicy(savedEvent, "R", "150000", 1)
+                    createPricePolicy(savedEvent, SeatGrade.VIP, "220000", 0),
+                    createPricePolicy(savedEvent, SeatGrade.R, "150000", 1)
             ));
         }
 
@@ -325,50 +326,50 @@ class EventServiceTest {
             Event first = saveOpeningSoonEvent(
                     "Opening Soon 1",
                     concertCategory,
-                    Instant.parse("2099-04-24T01:00:00Z"),
-                    Instant.parse("2099-05-01T10:00:00Z"),
+                    Instant.parse("2026-04-24T01:00:00Z"),
+                    Instant.parse("2026-05-01T10:00:00Z"),
                     List.of("A")
             );
             Event second = saveOpeningSoonEvent(
                     "Opening Soon 2",
                     concertCategory,
-                    Instant.parse("2099-04-24T02:00:00Z"),
-                    Instant.parse("2099-05-02T10:00:00Z"),
+                    Instant.parse("2026-04-24T02:00:00Z"),
+                    Instant.parse("2026-05-02T10:00:00Z"),
                     List.of("B")
             );
             Event third = saveOpeningSoonEvent(
                     "Opening Soon 3",
                     concertCategory,
-                    Instant.parse("2099-04-24T03:00:00Z"),
-                    Instant.parse("2099-05-03T10:00:00Z"),
+                    Instant.parse("2026-04-24T03:00:00Z"),
+                    Instant.parse("2026-05-03T10:00:00Z"),
                     List.of("C")
             );
             Event fourth = saveOpeningSoonEvent(
                     "Opening Soon 4",
                     concertCategory,
-                    Instant.parse("2099-04-24T04:00:00Z"),
-                    Instant.parse("2099-05-04T10:00:00Z"),
+                    Instant.parse("2026-04-24T04:00:00Z"),
+                    Instant.parse("2026-05-04T10:00:00Z"),
                     List.of("D")
             );
             Event fifth = saveOpeningSoonEvent(
                     "Opening Soon 5",
                     concertCategory,
-                    Instant.parse("2099-04-24T05:00:00Z"),
-                    Instant.parse("2099-05-05T10:00:00Z"),
+                    Instant.parse("2026-04-24T05:00:00Z"),
+                    Instant.parse("2026-05-05T10:00:00Z"),
                     List.of("E")
             );
             saveOpeningSoonEvent(
                     "Opening Soon 6",
                     concertCategory,
-                    Instant.parse("2099-04-24T06:00:00Z"),
-                    Instant.parse("2099-05-06T10:00:00Z"),
+                    Instant.parse("2026-04-24T06:00:00Z"),
+                    Instant.parse("2026-05-06T10:00:00Z"),
                     List.of("F")
             );
             saveOpeningSoonEvent(
                     "Past Pending",
                     concertCategory,
-                    Instant.now().minusSeconds(3600),  // 현재보다 과거 → findBySalesStartAtAfter(now) 필터에서 제외
-                    Instant.parse("2099-04-29T10:00:00Z"),
+                    Instant.parse("2026-04-23T23:00:00Z"),
+                    Instant.parse("2026-04-29T10:00:00Z"),
                     List.of("PAST")
             );
 
@@ -521,12 +522,18 @@ class EventServiceTest {
         return session;
     }
 
-    private EventPricePolicy createPricePolicy(Event event, String priceGrade, String salePriceAmount, int displayOrder) {
+    private EventPricePolicy createPricePolicy(Event event, SeatGrade priceGrade, String actualPriceAmount, int displayOrder) {
         EventPricePolicy pricePolicy = EventPricePolicy.builder()
                 .event(event)
                 .priceGrade(priceGrade)
-                .audienceType("일반")
-                .salePriceAmount(new BigDecimal(salePriceAmount))
+                .priceAmount(new BigDecimal(actualPriceAmount))
+                .discountInfo(List.of(
+                        new EventPricePolicy.DiscountInfo(
+                                "기본 할인",
+                                BigDecimal.ZERO,
+                                new BigDecimal(actualPriceAmount)
+                        )
+                ))
                 .currencyCode("KRW")
                 .displayOrder(displayOrder)
                 .build();
