@@ -4,6 +4,9 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyCreateEventResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventDetailResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventListResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventSeatResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSeatsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSessionsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyVenueTemplateResponse;
@@ -24,6 +27,75 @@ import org.springframework.http.ResponseEntity;
  */
 @Tag(name = "Agency Event Management", description = "기획사 공연 기본정보/가격 정책/회차/좌석 등록 API")
 public interface AgencyEventApiDoc {
+
+    /**
+     * 기획사 공연 목록 조회 API를 문서화합니다.
+     *
+     * @param organizerId 기획사 식별자
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 공연 목록 응답
+     */
+    @Operation(
+            summary = "기획사 공연 목록 조회",
+            description = "기획사가 등록한 공연 목록을 조회합니다. 예매율은 CONFIRMED 좌석 수를 공연장 capacity로 나눈 값입니다."
+    )
+    @ApiResponse(responseCode = "200", description = "공연 목록 조회 성공")
+    @ApiResponse(
+            responseCode = "404",
+            description = "기획사를 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<AgencyEventListResponse>> getEvents(
+            @Parameter(description = "기획사 식별자", required = true, example = "2001")
+            Long organizerId,
+            @Parameter(description = "페이지 번호", required = true, example = "0")
+            int page,
+            @Parameter(description = "페이지 크기", required = true, example = "20")
+            int size
+    );
+
+    /**
+     * 기획사 공연 상세 조회 API를 문서화합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 상세 응답
+     */
+    @Operation(
+            summary = "기획사 공연 상세 조회",
+            description = "기획사가 등록한 공연의 기본정보, 가격 정책, 회차 정보를 함께 조회합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "공연 상세 조회 성공")
+    @ApiResponse(
+            responseCode = "404",
+            description = "공연을 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(
+            @Parameter(description = "공연 식별자", required = true, example = "3011")
+            Long eventId
+    );
+
+    /**
+     * 기획사 공연 좌석 조회 API를 문서화합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 좌석 응답
+     */
+    @Operation(
+            summary = "기획사 공연 좌석 조회",
+            description = "기획사가 등록한 공연의 구역별 좌석 정보와 연결된 가격 정책 정보를 조회합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "공연 좌석 조회 성공")
+    @ApiResponse(
+            responseCode = "404",
+            description = "공연을 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class))
+    )
+    ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(
+            @Parameter(description = "공연 식별자", required = true, example = "3011")
+            Long eventId
+    );
 
     /**
      * 공연장 템플릿 조회 API를 문서화합니다.
