@@ -68,8 +68,6 @@ public interface AgencyEventApiDoc {
                                               "venueId": 2001,
                                               "categoryId": 2001,
                                               "title": "기획사 등록 샘플 공연",
-                                              "salesStartAt": "2026-06-01T00:00:00Z",
-                                              "salesEndAt": "2026-06-20T00:00:00Z",
                                               "eventStartAt": "2026-07-01T19:00:00Z",
                                               "eventEndAt": "2026-07-01T22:00:00Z",
                                               "tags": ["admin", "sample"],

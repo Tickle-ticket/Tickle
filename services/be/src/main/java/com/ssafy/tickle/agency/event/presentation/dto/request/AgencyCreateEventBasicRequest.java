@@ -14,8 +14,6 @@ import java.util.List;
  * @param venueId 공연장 식별자
  * @param categoryId 카테고리 식별자
  * @param title 공연명
- * @param salesStartAt 공연 판매 시작 시각
- * @param salesEndAt 공연 판매 종료 시각
  * @param eventStartAt 공연 시작 시각
  * @param eventEndAt 공연 종료 시각
  * @param tags 태그 목록
@@ -34,13 +32,6 @@ public record AgencyCreateEventBasicRequest(
         @NotBlank(message = "title은 필수입니다.")
         @Size(max = 255, message = "title은 255자 이하여야 합니다.")
         String title,
-
-        @NotNull(message = "salesStartAt은 필수입니다.")
-        Instant salesStartAt,
-
-        @NotNull(message = "salesEndAt은 필수입니다.")
-        Instant salesEndAt,
-
         @NotNull(message = "eventStartAt은 필수입니다.")
         Instant eventStartAt,
 

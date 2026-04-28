@@ -12,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 기획사 공연 회차 등록을 담당합니다.
@@ -54,7 +56,9 @@ public class AgencyEventSessionService {
                     .build());
         }
 
-        return eventSessionRepository.saveAll(sessions);
+        List<EventSession> savedSessions = eventSessionRepository.saveAll(sessions);
+        updateEventSalesPeriod(event);
+        return savedSessions;
     }
 
     private void validateSessionTimeline(AgencyCreateEventSessionRequest request) {
@@ -71,5 +75,25 @@ public class AgencyEventSessionService {
     private Event getEvent(Long eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
+    }
+
+    private void updateEventSalesPeriod(Event event) {
+        List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(event.getId());
+
+        if (sessions.isEmpty()) {
+            return;
+        }
+
+        Instant firstSalesOpenAt = sessions.stream()
+                .map(EventSession::getSalesOpenAt)
+                .min(Comparator.naturalOrder())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "회차 예매 시작 시각이 없습니다."));
+
+        Instant lastSalesCloseAt = sessions.stream()
+                .map(EventSession::getSalesCloseAt)
+                .max(Comparator.naturalOrder())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "회차 예매 종료 시각이 없습니다."));
+
+        event.updateSalesPeriod(firstSalesOpenAt, lastSalesCloseAt);
     }
 }

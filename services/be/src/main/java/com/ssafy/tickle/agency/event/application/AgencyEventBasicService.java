@@ -50,7 +50,7 @@ public class AgencyEventBasicService {
      */
     @Transactional
     public AgencyCreateEventResponse createBasicEvent(AgencyCreateEventBasicRequest request) {
-        validateEventTimeline(request.salesStartAt(), request.salesEndAt(), request.eventStartAt(), request.eventEndAt());
+        validateEventTimeline(request.eventStartAt(), request.eventEndAt());
 
         Organizer organizer = getOrganizer(request.organizerId());
         Venue venue = getVenue(request.venueId());
@@ -61,8 +61,6 @@ public class AgencyEventBasicService {
                 .venue(venue)
                 .title(request.title())
                 .category(category)
-                .salesStartAt(request.salesStartAt())
-                .salesEndAt(request.salesEndAt())
                 .eventStartAt(request.eventStartAt())
                 .eventEndAt(request.eventEndAt())
                 .metadata(new Event.EventMetadata(request.tags()))
@@ -90,14 +88,9 @@ public class AgencyEventBasicService {
      * 공연 판매 기간과 공연 진행 기간의 선후관계를 검증합니다.
      */
     private void validateEventTimeline(
-            java.time.Instant salesStartAt,
-            java.time.Instant salesEndAt,
             java.time.Instant eventStartAt,
             java.time.Instant eventEndAt
     ) {
-        if (!salesStartAt.isBefore(salesEndAt)) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "공연 판매 시작 시각은 종료 시각보다 빨라야 합니다.");
-        }
         if (!eventStartAt.isBefore(eventEndAt)) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "공연 시작 시각은 종료 시각보다 빨라야 합니다.");
         }
