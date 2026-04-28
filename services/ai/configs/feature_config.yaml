@@ -107,3 +107,20 @@ exclude:
   - label
   - stage
   - selectedSeats
+
+raw:
+ - pre_click_mouse_path_pattern_300ms
+ - pre_click_mouse_path_pattern_500ms
+
+input_features_chan:
+  - mousemove_event_rate
+  - pre_click_mousemove_count
+  - mouse_direction_change_count
+  - pre_click_path_300ms_total_distance_px
+  - mouse_stop_segment_count
+  - pre_click_path_500ms_total_distance_px
+  - time_from_element_visible_to_click_ms
+  - time_from_element_clickable_to_click_ms
+  - click_offset_from_element_center_px
+  - inter_click_interval_ms
+  
