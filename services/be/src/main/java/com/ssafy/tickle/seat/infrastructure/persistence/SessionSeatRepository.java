@@ -41,4 +41,22 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
      */
     @Query("SELECT ss FROM SessionSeat ss WHERE ss.id IN :ids")
     List<SessionSeat> findAllByIdIn(@Param("ids") List<Long> ids);
+
+    /**
+     * TTL 만료 이벤트 처리 시 userId + sessionId 기준으로 HELD 좌석을 조회합니다.
+     *
+     * <p>Redis 키 만료 후에는 값을 읽을 수 없으므로, 키 이름에서 파싱한
+     * scheduleId와 userId로 DB를 직접 조회합니다.</p>
+     *
+     * @param sessionId    회차 식별자
+     * @param heldByUserId 선점 사용자 식별자
+     * @param saleStatus   조회할 상태 (HELD)
+     * @return 해당 사용자가 선점 중인 SessionSeat 목록
+     */
+    @Query("SELECT ss FROM SessionSeat ss WHERE ss.session.id = :sessionId AND ss.heldByUserId = :heldByUserId AND ss.saleStatus = :saleStatus")
+    List<SessionSeat> findAllBySessionIdAndHeldByUserIdAndSaleStatus(
+            @Param("sessionId") Long sessionId,
+            @Param("heldByUserId") Long heldByUserId,
+            @Param("saleStatus") SessionSeat.SaleStatus saleStatus
+    );
 }
