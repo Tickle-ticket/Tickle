@@ -61,11 +61,11 @@ public class Event {
     private Category category;
 
     // 판매 시작 시각
-    @Column(name = "sales_start_at", nullable = false)
+    @Column(name = "sales_start_at")
     private Instant salesStartAt;
 
     // 판매 종료 시각
-    @Column(name = "sales_end_at", nullable = false)
+    @Column(name = "sales_end_at")
     private Instant salesEndAt;
 
     // 이벤트 시작 시각
@@ -156,5 +156,17 @@ public class Event {
         this.status = status;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
+    }
+
+    /**
+     * 이벤트의 판매 기간을 회차 예매 기간 기준으로 갱신합니다.
+     *
+     * @param salesStartAt 이벤트 판매 시작 시각
+     * @param salesEndAt 이벤트 판매 종료 시각
+     */
+    public void updateSalesPeriod(Instant salesStartAt, Instant salesEndAt) {
+        this.salesStartAt = salesStartAt;
+        this.salesEndAt = salesEndAt;
+        this.updatedAt = Instant.now();
     }
 }
