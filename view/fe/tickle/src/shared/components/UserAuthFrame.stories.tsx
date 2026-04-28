@@ -25,7 +25,6 @@ export const LoginLayout: Story = {
     activeTab: 'login',
     label: '로그인',
     title: '실제 서비스처럼 바로 로그인할 수 있는 인증 화면',
-    description: '설명 패널 없이 계정 입력과 이동 동선에만 집중하는 얇은 인증 프레임입니다.',
     children: (
       <form className="space-y-6">
         <div className="grid gap-5">

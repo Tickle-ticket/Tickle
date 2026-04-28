@@ -10,10 +10,10 @@ interface UserAuthFrameProps {
   activeTab: AuthTab;
   label: string;
   title: string;
-  description: string;
   children: ReactNode;
   footer?: ReactNode;
   size?: FrameSize;
+  compact?: boolean;
 }
 
 const frameSizeClass: Record<FrameSize, string> = {
@@ -48,13 +48,13 @@ export function UserAuthFrame({
   activeTab,
   label,
   title,
-  description,
   children,
   footer,
   size = 'narrow',
+  compact = false,
 }: UserAuthFrameProps) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f4f7fb]">
+    <div className="relative h-dvh overflow-y-auto overflow-x-hidden bg-[#f4f7fb] [scrollbar-gutter:stable]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-[-8%] top-[-14%] h-72 w-72 rounded-full bg-sky-200/70 blur-3xl sm:h-96 sm:w-96" />
         <div className="absolute right-[-6%] top-[12%] h-64 w-64 rounded-full bg-cyan-100/90 blur-3xl sm:h-80 sm:w-80" />
@@ -73,13 +73,13 @@ export function UserAuthFrame({
           </Link>
         </header>
 
-        <main className="flex flex-1 items-center justify-center py-8 sm:py-12">
+        <main className={`flex flex-1 items-center justify-center ${compact ? 'py-2 sm:py-3' : 'py-8 sm:py-12'}`}>
           <Box
             variant="shadow"
             padding="none"
             className={`w-full ${frameSizeClass[size]} rounded-[32px] border border-white/80 bg-white/92 shadow-[0_36px_120px_rgba(15,23,42,0.12)] backdrop-blur-xl`}
           >
-            <div className="px-6 py-6 sm:px-8 sm:py-8">
+            <div className={compact ? 'px-6 py-4 sm:px-7 sm:py-5' : 'px-6 py-6 sm:px-8 sm:py-8'}>
               <div className="flex items-center justify-between gap-4">
                 <div className="inline-flex rounded-full bg-slate-100 p-1">
                   {renderAuthTab(activeTab, 'login')}
@@ -90,19 +90,24 @@ export function UserAuthFrame({
                 </span>
               </div>
 
-              <div className="mt-8">
+              <div className={compact ? 'mt-4' : 'mt-8'}>
                 <p className="text-sm font-bold text-blue-600">{label}</p>
-                <h1 className="mt-2 text-[30px] font-black leading-[1.1] tracking-[-0.04em] text-slate-950 sm:text-[34px]">
+                <h1
+                  className={`mt-2 font-black leading-[1.1] tracking-[-0.04em] text-slate-950 ${
+                    compact ? 'text-[26px] sm:text-[28px]' : 'text-[30px] sm:text-[34px]'
+                  }`}
+                >
                   {title}
                 </h1>
-                <p className="mt-3 text-sm font-medium leading-6 text-slate-500 sm:text-[15px]">
-                  {description}
-                </p>
               </div>
 
-              <div className="mt-8">{children}</div>
+              <div className={compact ? 'mt-5' : 'mt-8'}>{children}</div>
 
-              {footer ? <div className="mt-8 border-t border-slate-200 pt-6">{footer}</div> : null}
+              {footer ? (
+                <div className={compact ? 'mt-5 border-t border-slate-200 pt-4' : 'mt-8 border-t border-slate-200 pt-6'}>
+                  {footer}
+                </div>
+              ) : null}
             </div>
           </Box>
         </main>

@@ -7,7 +7,6 @@ import { UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
 
 export const metadata: Metadata = {
   title: '로그인 | Tikkle',
-  description: '티클 로그인 페이지',
 };
 
 export default function LoginPage() {
@@ -16,7 +15,7 @@ export default function LoginPage() {
       activeTab="login"
       label="로그인"
       title="티클 계정으로 바로 시작하세요"
-      description="이메일 또는 카카오 계정으로 로그인하고 예매와 공연 탐색을 이어가세요."
+      compact
       footer={
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span className="font-medium text-slate-500">아직 계정이 없나요?</span>
@@ -26,8 +25,8 @@ export default function LoginPage() {
         </div>
       }
     >
-      <form className="space-y-6">
-        <div className="grid gap-5">
+      <form className="space-y-4">
+        <div className="grid gap-4">
           <Input
             label="이메일"
             type="email"
@@ -37,6 +36,7 @@ export default function LoginPage() {
             fullWidth
             required
             style={{ letterSpacing: '-0.02em' }}
+            className="[&_input]:text-[20px]"
           />
 
           <Input
@@ -48,6 +48,7 @@ export default function LoginPage() {
             fullWidth
             required
             style={{ letterSpacing: '-0.02em' }}
+            className="[&_input]:text-[20px]"
           />
         </div>
 
@@ -63,10 +64,10 @@ export default function LoginPage() {
         </div>
 
         <div className="grid gap-3">
-          <Button type="submit" display="block" size="xlarge">
+          <Button type="submit" display="block" size="large">
             로그인
           </Button>
-          <KakaoLoginButton />
+          <KakaoLoginButton size="large" />
         </div>
       </form>
     </UserAuthFrame>
