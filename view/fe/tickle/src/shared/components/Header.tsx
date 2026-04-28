@@ -76,6 +76,7 @@ export const Header = () => {
           <div 
             className="cursor-pointer hover:opacity-80 transition-opacity" 
             onClick={() => setIsProfileOpen(!isProfileOpen)}
+            data-testid="profile-avatar"
           >
             <Avatar
               size="medium"

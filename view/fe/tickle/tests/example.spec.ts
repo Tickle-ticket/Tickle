@@ -6,7 +6,7 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
 
   // 1-1. 마이페이지 슬라이드-인 동작 테스트
   // 아바타 아이콘(프로필) 클릭
-  const avatar = page.locator('header img').first();
+  const avatar = page.getByTestId('profile-avatar');
   await expect(avatar).toBeVisible();
   await avatar.click();
 
