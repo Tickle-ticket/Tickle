@@ -46,12 +46,16 @@ const std = (arr: number[]): number | null => {
 
 // ─── Collector Class ────────────────────────────────────────
 
-const SNAPSHOT_INTERVAL_MS = 2000;
-const MOUSE_THROTTLE_MS = 50;
-const DOUBLE_CLICK_THRESHOLD_MS = 400;
-const RECLICK_THRESHOLD_MS = 600;
-const PRE_CLICK_WINDOW_MS = 500;
-const EDGE_MARGIN_PX = 20;
+import { TRIAL_CONFIG } from '@/trialConfig';
+
+const {
+  SNAPSHOT_INTERVAL_MS,
+  MOUSE_THROTTLE_MS,
+  DOUBLE_CLICK_THRESHOLD_MS,
+  RECLICK_THRESHOLD_MS,
+  PRE_CLICK_WINDOW_MS,
+  EDGE_MARGIN_PX,
+} = TRIAL_CONFIG;
 
 export class TrialCollector {
   // ─── Identity ─────────────────────────────────────────────
