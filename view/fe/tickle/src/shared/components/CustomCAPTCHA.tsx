@@ -142,6 +142,7 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
             return (
               <button
                 key={num}
+                data-track-id={`captcha-key-${num}`}
                 onClick={() => handleKeyPress(num)}
                 disabled={isPressed || isSuccess || isError || currentInput.length >= targetSequence.length}
                 className={`
@@ -160,6 +161,7 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
           
           <button
             onClick={handleDelete}
+            data-track-id="captcha-delete"
             disabled={isSuccess || currentInput.length === 0}
             className="col-span-3 mt-2 py-3.5 rounded-xl text-base font-bold transition-all duration-200 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
             aria-label="지우기"

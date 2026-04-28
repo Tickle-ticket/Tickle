@@ -13,6 +13,7 @@ import { Toggle } from '@/src/shared/components/Toggle';
 import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
 import { useBookStore } from '../store/useBookStore';
 import { Modal } from '@/src/shared/components/Modal';
+import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 
 interface BookViewProps {
   onClose: () => void;
@@ -53,6 +54,9 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
   const [isBotVerified, setIsBotVerified] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
+
+  // ── Trial Collector (행동 데이터 수집) ──────────────────────
+  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({ enabled: mode === 'BOOK' });
   
   // Ticket type selection
   const bookingStep = useBookStore(s => s.bookingStep);
@@ -99,6 +103,21 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
     });
     return () => resetStore();
   }, [initialSchedule, initialModifyingSchedule, initialModifyModeActive, resetStore]);
+
+  // ── Trial: stage 변경 추적 ──────────────────────────────────
+  // queue(초기) → captcha(CAPTCHA 표시 시) → booking(CAPTCHA 통과 후 좌석 선택)
+  useEffect(() => {
+    if (!isBotVerified) {
+      setTrialStage('captcha');
+    } else if (bookingStep === 'SEAT') {
+      setTrialStage('booking');
+    }
+  }, [isBotVerified, bookingStep, setTrialStage]);
+
+  // ── Trial: 선택 좌석 추적 ──────────────────────────────────
+  useEffect(() => {
+    setTrialSeats([...selectedSeats]);
+  }, [selectedSeats, setTrialSeats]);
 
   const isScheduleChanged = confirmedSchedule && initialSchedule && (confirmedSchedule.date !== initialSchedule.date || confirmedSchedule.time !== initialSchedule.time);
   const effectiveSeatsToCancel = isScheduleChanged ? new Set(initialSeats) : selectedSeatsToCancel;
@@ -614,7 +633,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                     </span>
                   </div>
                   <button 
-                    onClick={() => {
+                    onClick={async () => {
                       if (selectedSeats.size > 0) {
                         if (isWaitlistMode) {
                           setIsWaitlistCompleteModalOpen(true);
@@ -631,6 +650,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                             initial[grade] = {};
                           });
                           setGradeTicketCounts(initial);
+                          await finalizeTrial();
                           setBookingStep('TICKET_TYPE');
                         }
                       } else {
@@ -656,7 +676,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                     </span>
                   </div>
                   <button 
-                    onClick={() => {
+                    onClick={async () => {
                       if (isWaitlistMode) {
                         setIsWaitlistCompleteModalOpen(true);
                       } else {
@@ -672,6 +692,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                           initial[grade] = {};
                         });
                         setGradeTicketCounts(initial);
+                        await finalizeTrial();
                         setBookingStep('TICKET_TYPE');
                       }
                     }}
@@ -1291,8 +1312,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                 ) : (
                   <button
                     disabled={!selectedPayMethod}
-                    onClick={() => {
-                      // const methodLabel = [...payMethods, ...otherMethods.map(m => ({...m, color: ''}))].find(m => m.id === selectedPayMethod)?.label;
+                    onClick={async () => {
                       // TODO: 실제 결제 처리 API 호출 등의 로직을 이곳에 추가하세요.
                       console.log(`결제 수단: ${selectedPayMethod}, 결제 금액: ${finalPrice.toLocaleString()}원`);
                     }}
@@ -1301,6 +1321,7 @@ export const BookView = ({ onClose, mode = 'BOOK', initialSchedule, initialSeats
                         ? 'bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] shadow-lg shadow-red-500/25'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
+                    data-track-id="payment-confirm"
                   >
                     {finalPrice.toLocaleString()}원 결제하기
                   </button>

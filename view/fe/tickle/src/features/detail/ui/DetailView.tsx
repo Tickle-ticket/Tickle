@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
-import { useMouseTracking } from '@/src/shared/hooks/useMouseTracking';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { Title } from '@/src/shared/components/Title';
 import { BannerSubtitle } from '@/src/shared/components/BannerSubtitle';
@@ -45,11 +44,6 @@ export const DetailView = () => {
   const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
-
-  useMouseTracking({
-    enabled: flowState !== 'NONE',
-    sessionId: data?.eventId?.toString() || 'unknown',
-  });
 
   useEffect(() => {
     if (data?.openDate) {
