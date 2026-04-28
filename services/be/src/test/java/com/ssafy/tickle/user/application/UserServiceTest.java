@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -169,7 +168,7 @@ class UserServiceTest {
     }
 
     private User createUser(String userNo, String email, String name) {
-        User user = User.builder()
+        return User.builder()
                 .userNo(userNo)
                 .email(email)
                 .phoneNumber("010-1234-5678")
@@ -179,10 +178,8 @@ class UserServiceTest {
                 .birthDate(LocalDate.of(1998, 4, 12))
                 .status(User.Status.ACTIVE)
                 .lastLoginAt(Instant.parse("2026-04-25T12:30:00Z"))
+                .createdAt(Instant.parse("2026-04-20T00:00:00Z"))
+                .updatedAt(Instant.parse("2026-04-20T00:00:00Z"))
                 .build();
-
-        ReflectionTestUtils.setField(user, "createdAt", Instant.parse("2026-04-20T00:00:00Z"));
-        ReflectionTestUtils.setField(user, "updatedAt", Instant.parse("2026-04-20T00:00:00Z"));
-        return user;
     }
 }
