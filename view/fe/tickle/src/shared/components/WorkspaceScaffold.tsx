@@ -31,7 +31,7 @@ export function WorkspaceScaffold({
   const backdrop = toneBackdropClass[tone];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f4f7fb] text-slate-900">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#f4f7fb] text-slate-900">
       <div className="pointer-events-none absolute inset-0">
         <div className={`absolute left-[-10%] top-[-8%] h-[32rem] w-[32rem] rounded-full blur-3xl ${backdrop.primary}`} />
         <div className={`absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full blur-3xl ${backdrop.secondary}`} />
@@ -41,7 +41,7 @@ export function WorkspaceScaffold({
 
       <div className="relative flex min-h-screen">
         {sidebar}
-        <section className="relative min-w-0 flex-1">{children}</section>
+        <section className="relative min-w-0 flex-1 lg:pl-[280px]">{children}</section>
       </div>
     </main>
   );

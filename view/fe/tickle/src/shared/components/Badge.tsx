@@ -31,6 +31,10 @@ const colorStyles: Record<BadgeColor, Record<BadgeVariant, string>> = {
     fill: 'bg-green-100 text-green-600',
     outline: 'border-[0.08em] border-green-600 text-green-600 bg-transparent',
   },
+  purple: {
+    fill: 'bg-purple-100 text-purple-600',
+    outline: 'border-[0.08em] border-purple-600 text-purple-600 bg-transparent',
+  },
 };
 
 export const Badge = ({

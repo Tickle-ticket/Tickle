@@ -25,6 +25,24 @@ const performanceTypeOptions = [
   { label: '팬미팅', value: 'fanmeeting' },
 ];
 
+const registrationStepItems = [
+  {
+    title: '노출/기본 정보',
+    sections: '노출 콘텐츠, 기본 정보',
+    detail: '공연 유형을 포함한 기본 정보를 먼저 입력합니다.',
+  },
+  {
+    title: '티켓/공연 일정',
+    sections: '티켓 일정 기준, 공연 일정 등록',
+    detail: '예매 오픈/종료 기준과 회차 일정을 설정합니다.',
+  },
+  {
+    title: '판매/좌석 설정',
+    sections: '판매 정책, 좌석 등급/비활성 설정',
+    detail: '좌석 금액과 좌석 운영 정책을 마무리합니다.',
+  },
+];
+
 const venueOptions = [
   {
     value: 'blue-square',
@@ -54,31 +72,19 @@ const venueOptions = [
 
 const maxPerformanceHashtagCount = 3;
 
-type SeatGradeKey = 'vip' | 'r' | 's' | 'a';
+type SeatGradeKey = 'vip' | 'r' | 's' | 'a' | 'restricted';
 
 const seatGradeFields: Array<{
   key: SeatGradeKey;
   label: string;
-  badgeColor: 'red' | 'blue' | 'green' | 'grey';
+  badgeColor: 'red' | 'blue' | 'green' | 'grey' | 'purple';
   description: string;
 }> = [
   { key: 'vip', label: 'VIP석', badgeColor: 'red', description: '가장 높은 등급의 프리미엄 좌석' },
   { key: 'r', label: 'R석', badgeColor: 'blue', description: '무대 중심 시야 구간' },
   { key: 's', label: 'S석', badgeColor: 'green', description: '일반 판매 핵심 구간' },
   { key: 'a', label: 'A석', badgeColor: 'grey', description: '입문형 가격대 좌석' },
-];
-
-const registrationChecklist = [
-  '공연 유형과 공연장 선택',
-  '티켓 오픈 기준, 티켓 종료 기준, 공연 오픈일, 공연 종료일 입력',
-  'VIP, R, S, A 등급별 좌석 금액과 좌석도 배치 설정',
-  '포스터, 공연 소개, 공지사항 입력',
-];
-
-const reviewMilestones = [
-  { title: '초안 작성', detail: '공연 기본 정보, 공연장, 티켓 일정 정리' },
-  { title: '운영 검수', detail: '좌석 금액, 판매 일정, 노출 정보 확인' },
-  { title: '최종 승인', detail: '승인 완료 후 판매 채널과 운영 대시보드에 반영' },
+  { key: 'restricted', label: '시야제한석', badgeColor: 'purple', description: '시야 제한이 있는 좌석 구간' },
 ];
 
 const formatDateKey = (value: Date) => {
@@ -216,7 +222,6 @@ type AddedScheduleNotice = {
 
 type TicketScheduleRule = {
   days: number;
-  time: string;
 };
 
 type TicketSchedulePreview = {
@@ -236,10 +241,20 @@ const parseOffsetDayValue = (value: string) => {
   return digits ? Number(digits) : 0;
 };
 
-const buildTicketScheduleDate = (scheduleAt: Date, rule: TicketScheduleRule) => {
+const withTimeFromDate = (sourceDate: Date, timeSourceDate: Date) => {
+  const nextDate = new Date(sourceDate);
+  nextDate.setHours(timeSourceDate.getHours(), timeSourceDate.getMinutes(), 0, 0);
+  return nextDate;
+};
+
+const buildTicketScheduleDate = (
+  scheduleAt: Date,
+  rule: TicketScheduleRule,
+  timeSourceDate: Date,
+) => {
   const nextDate = new Date(scheduleAt);
   nextDate.setDate(nextDate.getDate() - rule.days);
-  return withSelectedTime(nextDate, rule.time);
+  return withTimeFromDate(nextDate, timeSourceDate);
 };
 
 const formatFileSize = (bytes: number) => {
@@ -347,13 +362,11 @@ function TicketScheduleRuleField({
   description,
   rule,
   onDaysChange,
-  onTimeChange,
 }: {
   label: string;
   description: string;
   rule: TicketScheduleRule;
   onDaysChange: (days: number) => void;
-  onTimeChange: (time: string) => void;
 }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
@@ -363,11 +376,11 @@ function TicketScheduleRuleField({
           <p className="mt-1 text-sm font-medium leading-6 text-slate-500">{description}</p>
         </div>
         <Badge color="blue" variant="outline">
-          공연일 {rule.days}일 전 {rule.time}
+          공연일 {rule.days}일 전
         </Badge>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
+      <div className="mt-4">
         <label className="flex flex-col gap-2">
           <span className="text-xs font-bold tracking-[0.08em] text-slate-400">공연일 기준 일수</span>
           <input
@@ -376,17 +389,6 @@ function TicketScheduleRuleField({
             step={1}
             value={rule.days}
             onChange={(event) => onDaysChange(parseOffsetDayValue(event.target.value))}
-            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
-        </label>
-
-        <label className="flex flex-col gap-2">
-          <span className="text-xs font-bold tracking-[0.08em] text-slate-400">적용 시각</span>
-          <input
-            type="time"
-            step={600}
-            value={rule.time}
-            onChange={(event) => onTimeChange(event.target.value)}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
           />
         </label>
@@ -601,16 +603,15 @@ function DateRangeModal({
 }
 
 export default function AgencyRegistrationPage() {
+  const [activeRegistrationStep, setActiveRegistrationStep] = useState(0);
   const [performanceType, setPerformanceType] = useState('musical');
   const [selectedVenue, setSelectedVenue] = useState(venueOptions[0]?.value ?? '');
   const [isVenueOpen, setIsVenueOpen] = useState(false);
   const [ticketOpenRule, setTicketOpenRule] = useState<TicketScheduleRule>({
     days: 14,
-    time: '14:00',
   });
   const [ticketCloseRule, setTicketCloseRule] = useState<TicketScheduleRule>({
     days: 0,
-    time: '17:00',
   });
   const [performanceOpenAt, setPerformanceOpenAt] = useState(() => new Date('2026-05-08T19:30:00'));
   const [performanceCloseAt, setPerformanceCloseAt] = useState(() => new Date('2026-06-21T18:00:00'));
@@ -630,6 +631,7 @@ export default function AgencyRegistrationPage() {
     r: '140000',
     s: '110000',
     a: '80000',
+    restricted: '60000',
   });
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null);
   const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
@@ -713,13 +715,21 @@ export default function AgencyRegistrationPage() {
                 dateKey,
                 timeValue,
                 scheduleAt,
-                ticketOpenAt: buildTicketScheduleDate(scheduleAt, ticketOpenRule),
-                ticketCloseAt: buildTicketScheduleDate(scheduleAt, ticketCloseRule),
+                ticketOpenAt: buildTicketScheduleDate(
+                  scheduleAt,
+                  ticketOpenRule,
+                  performanceOpenAt,
+                ),
+                ticketCloseAt: buildTicketScheduleDate(
+                  scheduleAt,
+                  ticketCloseRule,
+                  performanceCloseAt,
+                ),
               };
             });
         })
         .sort((left, right) => left.scheduleAt.getTime() - right.scheduleAt.getTime()),
-    [performanceSchedules, ticketCloseRule, ticketOpenRule],
+    [performanceCloseAt, performanceOpenAt, performanceSchedules, ticketCloseRule, ticketOpenRule],
   );
   const activeTicketSchedulePreviews = useMemo(
     () =>
@@ -808,6 +818,8 @@ export default function AgencyRegistrationPage() {
   const posterImageLabel = posterImage ? '포스터 이미지가 등록되었습니다.' : '아직 등록된 포스터가 없습니다.';
   const normalizedHashtagInput = normalizeHashtag(hashtagInputValue);
   const formattedHashtagInput = normalizedHashtagInput ? `#${normalizedHashtagInput}` : '';
+  const isFirstRegistrationStep = activeRegistrationStep === 0;
+  const isLastRegistrationStep = activeRegistrationStep === registrationStepItems.length - 1;
   const canAddHashtag =
     formattedHashtagInput.length > 1 &&
     performanceHashtags.length < maxPerformanceHashtagCount &&
@@ -1148,6 +1160,81 @@ export default function AgencyRegistrationPage() {
     });
   };
 
+  const goToPreviousRegistrationStep = () => {
+    setActiveRegistrationStep((current) => Math.max(0, current - 1));
+  };
+
+  const goToNextRegistrationStep = () => {
+    setActiveRegistrationStep((current) => Math.min(registrationStepItems.length - 1, current + 1));
+  };
+
+  const hashtagSection = (
+    <div className="flex min-h-[268px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-bold text-slate-500">해시태그</span>
+        <Badge color="blue" variant="outline">
+          {performanceHashtags.length}/{maxPerformanceHashtagCount}
+        </Badge>
+      </div>
+
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="text-xs font-bold tracking-[0.08em] text-slate-400">키워드 입력</span>
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
+            <span className="text-sm font-black text-blue-600">#</span>
+            <input
+              type="text"
+              value={hashtagInputValue}
+              onChange={(event) => setHashtagInputValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleHashtagAdd();
+                }
+              }}
+              placeholder="초연, OST, 한정공연"
+              disabled={performanceHashtags.length >= maxPerformanceHashtagCount}
+              className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+            />
+          </div>
+        </label>
+
+        <Button
+          color="primary"
+          size="medium"
+          disabled={!canAddHashtag}
+          onClick={() => handleHashtagAdd()}
+        >
+          추가
+        </Button>
+      </div>
+
+      {performanceHashtags.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {performanceHashtags.map((hashtag) => (
+            <button
+              key={hashtag}
+              type="button"
+              onClick={() => handleHashtagRemove(hashtag)}
+              className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
+            >
+              <span>{hashtag}</span>
+              <span className="text-xs text-blue-400">삭제</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-400">
+          아직 등록된 해시태그가 없습니다.
+        </div>
+      )}
+
+      <p className="mt-3 text-xs font-medium text-slate-400">
+        공백은 자동으로 제거되고, 같은 해시태그는 한 번만 등록됩니다.
+      </p>
+    </div>
+  );
+
   return (
     <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <header className="flex flex-col gap-4">
@@ -1157,9 +1244,52 @@ export default function AgencyRegistrationPage() {
         </div>
       </header>
 
+      <nav
+        aria-label="공연 등록 단계"
+        className="grid gap-3 lg:grid-cols-3 xl:mr-[360px]"
+      >
+        {registrationStepItems.map((step, index) => {
+          const isActive = activeRegistrationStep === index;
+
+          return (
+            <button
+              key={step.title}
+              type="button"
+              onClick={() => setActiveRegistrationStep(index)}
+              className={`rounded-3xl border px-5 py-4 text-left transition ${
+                isActive
+                  ? 'border-blue-500 bg-blue-50 shadow-[0_14px_34px_rgba(49,130,246,0.14)]'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+              }`}
+              aria-current={isActive ? 'step' : undefined}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className={`text-xs font-black ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+                  STEP {index + 1}
+                </span>
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-slate-200'}`}
+                  aria-hidden="true"
+                />
+              </div>
+              <p className="mt-3 text-base font-black text-slate-950">{step.title}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">{step.sections}</p>
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-400">{step.detail}</p>
+            </button>
+          );
+        })}
+      </nav>
+
       <section className="grid gap-5 items-start xl:grid-cols-[minmax(0,1.6fr)_340px]">
-        <div className="space-y-5">
-          <Box variant="shadow" className="space-y-5">
+        <div className="flex flex-col gap-5">
+          <Box
+            variant="shadow"
+            className="space-y-5"
+            style={{
+              display: activeRegistrationStep === 0 ? undefined : 'none',
+              order: activeRegistrationStep === 0 ? 2 : undefined,
+            }}
+          >
             <div>
               <h2 className="text-[18px] font-black text-slate-950">노출 콘텐츠</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
@@ -1347,91 +1477,37 @@ export default function AgencyRegistrationPage() {
                   />
                 </label>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <span className="text-sm font-bold text-slate-500">해시태그</span>
-                      <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
-                        상세 페이지와 탐색 목록에서 함께 노출할 키워드를 최대 3개까지 등록합니다.
-                      </p>
-                    </div>
-                    <Badge color="blue" variant="outline">
-                      {performanceHashtags.length}/{maxPerformanceHashtagCount}
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                    <label className="flex min-w-0 flex-1 flex-col gap-2">
-                      <span className="text-xs font-bold tracking-[0.08em] text-slate-400">키워드 입력</span>
-                      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
-                        <span className="text-sm font-black text-blue-600">#</span>
-                        <input
-                          type="text"
-                          value={hashtagInputValue}
-                          onChange={(event) => setHashtagInputValue(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault();
-                              handleHashtagAdd();
-                            }
-                          }}
-                          placeholder="초연, OST, 한정공연"
-                          disabled={performanceHashtags.length >= maxPerformanceHashtagCount}
-                          className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
-                        />
-                      </div>
-                    </label>
-
-                    <Button
-                      color="primary"
-                      size="medium"
-                      disabled={!canAddHashtag}
-                      onClick={() => handleHashtagAdd()}
-                    >
-                      추가
-                    </Button>
-                  </div>
-
-                  {performanceHashtags.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {performanceHashtags.map((hashtag) => (
-                        <button
-                          key={hashtag}
-                          type="button"
-                          onClick={() => handleHashtagRemove(hashtag)}
-                          className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
-                        >
-                          <span>{hashtag}</span>
-                          <span className="text-xs text-blue-400">삭제</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-400">
-                      아직 등록된 해시태그가 없습니다.
-                    </div>
-                  )}
-
-                  <p className="mt-3 text-xs font-medium text-slate-400">
-                    공백은 자동으로 제거되고, 같은 해시태그는 한 번만 등록됩니다.
-                  </p>
-                </div>
               </div>
             </div>
           </Box>
 
-          <Box variant="shadow" className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <Box
+            variant="shadow"
+            className="space-y-4"
+            style={{
+              display:
+                activeRegistrationStep === 0 || activeRegistrationStep === 1
+                  ? undefined
+                  : 'none',
+              order: activeRegistrationStep === 0 ? 1 : undefined,
+            }}
+          >
+            <div
+              className="flex flex-wrap items-center justify-between gap-3"
+              style={{ display: activeRegistrationStep === 0 ? undefined : 'none' }}
+            >
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  공연 기본 정보와 회차 기준 판매 일정을 먼저 채웁니다.
+                  공연명, 공연장, 공연 유형과 운영 기간을 입력합니다.
                 </p>
               </div>
-              <Badge color="blue" variant="outline">필수 입력</Badge>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div
+              className="grid gap-5 md:grid-cols-2"
+              style={{ display: activeRegistrationStep === 0 ? undefined : 'none' }}
+            >
               <Input
                 label="공연명"
                 defaultValue="뮤지컬 Tikkle Original"
@@ -1509,56 +1585,83 @@ export default function AgencyRegistrationPage() {
                 </span>
               </div>
 
-              <DateTimeTriggerField
-                label="공연 오픈일"
-                value={performanceOpenInputValue}
-                onChange={handlePerformanceOpenInputChange}
-                onBlur={() => setPerformanceOpenInputValue(formatDateTimeLabel(performanceOpenAt))}
-                onOpen={() => setIsPerformanceDateModalOpen(true)}
-              />
-              <DateTimeTriggerField
-                label="공연 종료일"
-                value={performanceCloseInputValue}
-                onChange={handlePerformanceCloseInputChange}
-                onBlur={() => setPerformanceCloseInputValue(formatDateTimeLabel(performanceCloseAt))}
-                onOpen={() => setIsPerformanceDateModalOpen(true)}
-              />
+              <div className="md:col-span-2 grid gap-5 md:grid-cols-2">
+                <div className="space-y-5">
+                  <DateTimeTriggerField
+                    label="공연 오픈일"
+                    value={performanceOpenInputValue}
+                    onChange={handlePerformanceOpenInputChange}
+                    onBlur={() => setPerformanceOpenInputValue(formatDateTimeLabel(performanceOpenAt))}
+                    onOpen={() => setIsPerformanceDateModalOpen(true)}
+                  />
 
-              <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96)_0%,rgba(255,255,255,1)_100%)] p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[18px] font-black text-slate-950">티켓 일정 기준</p>
-                    <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
-                      등록된 각 회차 시간을 기준으로 예매 오픈일과 종료일을 자동 계산합니다.
-                    </p>
+                  <div className="flex min-h-[268px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-slate-500">공연 유형</p>
+                        <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                          판매 정책 전에 공연 유형을 먼저 선택합니다.
+                        </p>
+                      </div>
+                      <Badge color="blue" variant="outline">
+                        {performanceTypeOptions.find((option) => option.value === performanceType)?.label}
+                      </Badge>
+                    </div>
+                    <SegmentedControl
+                      options={performanceTypeOptions}
+                      value={performanceType}
+                      onChange={setPerformanceType}
+                      columns={3}
+                      rows={2}
+                      size="large"
+                      className="mt-2 flex-1"
+                    />
                   </div>
-                  <Badge color="blue" variant="outline">
-                    회차별 자동 계산
-                  </Badge>
                 </div>
+
+                <div className="space-y-5">
+                  <DateTimeTriggerField
+                    label="공연 종료일"
+                    value={performanceCloseInputValue}
+                    onChange={handlePerformanceCloseInputChange}
+                    onBlur={() => setPerformanceCloseInputValue(formatDateTimeLabel(performanceCloseAt))}
+                    onOpen={() => setIsPerformanceDateModalOpen(true)}
+                  />
+
+                  {hashtagSection}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="space-y-5"
+              style={{ display: activeRegistrationStep === 1 ? undefined : 'none' }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[18px] font-black text-slate-950">티켓 일정 기준</p>
+                  <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                    등록된 각 회차 날짜와 공연 오픈/종료 시각을 기준으로 예매 오픈일과 종료일을 자동 계산합니다.
+                  </p>
+                </div>
+              </div>
 
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">
                   <TicketScheduleRuleField
                     label="티켓 오픈 기준"
-                    description="각 회차의 공연일을 기준으로 예매 시작 시점을 공연 시작 전으로 잡습니다."
+                    description="각 회차의 공연일을 기준으로 며칠 전에 예매를 열지 설정합니다."
                     rule={ticketOpenRule}
                     onDaysChange={(days) =>
                       setTicketOpenRule((current) => ({ ...current, days }))
-                    }
-                    onTimeChange={(time) =>
-                      setTicketOpenRule((current) => ({ ...current, time }))
                     }
                   />
 
                   <TicketScheduleRuleField
                     label="티켓 종료 기준"
-                    description="각 회차의 공연일을 기준으로 예매 종료 시점을 공연 시작 전으로 잡습니다."
+                    description="각 회차의 공연일을 기준으로 며칠 전에 예매를 닫을지 설정합니다."
                     rule={ticketCloseRule}
                     onDaysChange={(days) =>
                       setTicketCloseRule((current) => ({ ...current, days }))
-                    }
-                    onTimeChange={(time) =>
-                      setTicketCloseRule((current) => ({ ...current, time }))
                     }
                   />
                 </div>
@@ -1636,36 +1739,27 @@ export default function AgencyRegistrationPage() {
 
                   {hasTicketWindowAfterScheduleStart ? (
                     <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-700">
-                      일부 회차는 현재 설정대로면 공연 시작 이후에도 예매가 열려 있습니다. 같은 날 종료를 쓰는 경우 공연 시작 시간보다 이르게 설정해 주세요.
+                      일부 회차는 현재 설정대로면 공연 시작 이후에도 예매가 열려 있습니다. 같은 날 종료를 쓰는 경우 공연 종료 시각을 확인해 주세요.
                     </div>
                   ) : null}
                 </div>
               </div>
-            </div>
           </Box>
 
-          <Box variant="shadow" className="space-y-5">
+          <Box
+            variant="shadow"
+            className="space-y-5"
+            style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
+          >
             <div>
               <h2 className="text-[18px] font-black text-slate-950">판매 정책</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                공연 유형을 선택하고 VIP / R / S / A 좌석별 금액을 직접 입력합니다.
+                VIP / R / S / A / 시야제한석 좌석별 금액을 직접 입력합니다.
               </p>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-slate-500">공연 유형</p>
-                  <SegmentedControl
-                    options={performanceTypeOptions}
-                    value={performanceType}
-                    onChange={setPerformanceType}
-                    columns={3}
-                    rows={2}
-                    size="large"
-                  />
-                </div>
-
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-bold text-slate-500">좌석 금액 설정</p>
@@ -1697,14 +1791,9 @@ export default function AgencyRegistrationPage() {
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-500">선택 요약</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge color="blue">
-                    {performanceTypeOptions.find((option) => option.value === performanceType)?.label}
-                  </Badge>
-                </div>
+                <p className="text-sm font-bold text-slate-500">좌석 금액 요약</p>
 
-                <div className="mt-4 space-y-2.5">
+                <div className="mt-3 space-y-2.5">
                   {seatPriceSummary.map((field) => (
                     <div
                       key={field.key}
@@ -1728,12 +1817,16 @@ export default function AgencyRegistrationPage() {
             </div>
           </Box>
 
-          <Box variant="shadow" className="space-y-5">
+          <Box
+            variant="shadow"
+            className="space-y-5"
+            style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
+          >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">좌석 등급/비활성 설정</h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  좌석도에서 어떤 좌석을 VIP, R, S, A로 운영할지와 판매 제외 좌석을 직접 지정합니다.
+                  좌석도에서 어떤 좌석을 VIP, R, S, A, 시야제한석으로 운영할지와 판매 제외 좌석을 직접 지정합니다.
                 </p>
               </div>
               <Button
@@ -1746,7 +1839,7 @@ export default function AgencyRegistrationPage() {
               </Button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
               <div className="rounded-3xl border border-red-100 bg-red-50/70 p-5">
                 <div className="flex items-center">
                   <Badge color="red" size="small">VIP</Badge>
@@ -1791,6 +1884,17 @@ export default function AgencyRegistrationPage() {
                 <p className="mt-2 text-sm font-medium text-slate-500">입문형 가격대 좌석</p>
               </div>
 
+              <div className="rounded-3xl border border-purple-100 bg-purple-50/70 p-5">
+                <div className="flex items-center">
+                  <Badge color="purple" size="small">시야제한석</Badge>
+                </div>
+                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
+                  {seatPolicySummary.restricted}
+                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-500">시야 제한이 있는 좌석</p>
+              </div>
+
               <div className="rounded-3xl border border-slate-300 bg-white p-5">
                 <div className="flex items-center">
                   <Badge color="grey" variant="outline" size="small">비활성</Badge>
@@ -1804,7 +1908,11 @@ export default function AgencyRegistrationPage() {
             </div>
           </Box>
 
-          <Box variant="shadow" className="space-y-5">
+          <Box
+            variant="shadow"
+            className="space-y-5"
+            style={{ display: activeRegistrationStep === 1 ? undefined : 'none' }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">공연 일정 등록</h2>
@@ -1999,59 +2107,78 @@ export default function AgencyRegistrationPage() {
           </Box>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-5 xl:fixed xl:right-8 xl:top-6 xl:z-20 xl:max-h-[calc(100vh-3rem)] xl:w-[340px] xl:overflow-y-auto xl:pr-1">
           <Box variant="outline" className="space-y-4">
             <div>
-              <h2 className="text-[18px] font-black text-slate-950">등록 체크리스트</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                운영팀 전달 전에 확인할 핵심 항목입니다.
-              </p>
+              <h2 className="text-[18px] font-black text-slate-950">진행 단계</h2>
             </div>
 
             <div className="space-y-3">
-              {registrationChecklist.map((item, index) => (
-                <div key={item} className="flex gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-black text-blue-700">
-                    {index + 1}
-                  </span>
-                  <p className="text-sm font-semibold text-slate-700">{item}</p>
-                </div>
-              ))}
+              {registrationStepItems.map((item, index) => {
+                const isActive = activeRegistrationStep === index;
+
+                return (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => setActiveRegistrationStep(index)}
+                    className={`flex w-full gap-3 rounded-2xl px-4 py-3 text-left transition ${
+                      isActive ? 'bg-blue-50' : 'bg-slate-50 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${
+                        isActive ? 'bg-blue-100 text-blue-700' : 'bg-white text-slate-400'
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-black text-slate-800">{item.title}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+                        {item.sections}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </Box>
 
-          <Box variant="gray" className="space-y-4">
-            <div>
-              <h2 className="text-[18px] font-black text-slate-950">승인 일정</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                공연 등록 후 운영 플로우가 어떻게 이어지는지 바로 보이도록 정리했습니다.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {reviewMilestones.map((milestone) => (
-                <div key={milestone.title} className="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-black/5">
-                  <p className="text-sm font-black text-slate-900">{milestone.title}</p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600">{milestone.detail}</p>
-                </div>
-              ))}
-            </div>
-          </Box>
-
-          <Box variant="shadow" className="space-y-4">
+          <Box variant="outline" className="space-y-4">
             <div>
               <h2 className="text-[18px] font-black text-slate-950">다음 액션</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                등록 신청 전 초안 저장과 내부 공유 링크를 함께 둘 수 있게 구성했습니다.
+                현재 단계는 {activeRegistrationStep + 1}단계입니다.
               </p>
             </div>
 
-            <Button color="primary" display="block" size="medium">
-              공연 등록 신청
-            </Button>
-            <Button color="dark" variant="weak" display="block" size="small">
-              임시 저장
-            </Button>
+            {isLastRegistrationStep ? (
+              <>
+                <Button color="primary" display="block" size="medium">
+                  공연 등록 신청하기
+                </Button>
+                <Button color="primary" variant="weak" display="block" size="medium">
+                  미리보기
+                </Button>
+              </>
+            ) : (
+              <Button color="primary" display="block" size="medium" onClick={goToNextRegistrationStep}>
+                다음 단계
+              </Button>
+            )}
+
+            {isFirstRegistrationStep ? null : (
+              <Button
+                color="dark"
+                variant="weak"
+                display="block"
+                size="medium"
+                onClick={goToPreviousRegistrationStep}
+              >
+                이전 단계
+              </Button>
+            )}
           </Box>
         </div>
       </section>
