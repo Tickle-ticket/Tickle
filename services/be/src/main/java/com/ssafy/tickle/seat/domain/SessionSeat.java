@@ -65,12 +65,18 @@ public class SessionSeat {
     private Instant updatedAt;
 
     public enum SaleStatus {
+        /** 빈 좌석. 누구나 선점 가능 */
         AVAILABLE,
+        /** 선점 중. Redis 분산락 + 15분 TTL. 취소표 대기 신청 불가 */
         HELD,
-        BOOKED,
+        /** 입금대기. 무통장 입금 클릭 후 입금 전 상태. 24시간 TTL. 취소표 대기 신청 가능 */
+        PENDING,
+        /** 예매 확정. 결제 완료. 취소표 대기 신청 가능 */
+        CONFIRMED,
+        /** 관리자 지정 차단 좌석 (VIP석, 스태프석 등) */
         BLOCKED,
-        UNAVAILABLE,
-        BANNED
+        /** 물리적 사용 불가 좌석 (기둥 가림, 무대 인접 등) */
+        UNAVAILABLE
     }
 
     /**

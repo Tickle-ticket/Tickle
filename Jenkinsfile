@@ -60,6 +60,7 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER1_IP} '
                                         set -e
+                                        source ~/.bashrc 2>/dev/null || true
                                         echo "[BE] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
@@ -94,6 +95,7 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER4_IP} '
                                         set -e
+                                        source ~/.bashrc 2>/dev/null || true
                                         echo "[Auth] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
