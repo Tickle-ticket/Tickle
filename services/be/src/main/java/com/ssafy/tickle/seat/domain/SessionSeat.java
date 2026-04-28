@@ -1,5 +1,6 @@
 package com.ssafy.tickle.seat.domain;
 
+import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.event.domain.EventSession;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -101,5 +102,34 @@ public class SessionSeat {
         this.eventSectionId = eventSectionId;
         this.saleStatus = saleStatus;
         this.versionNo = versionNo;
+    }
+
+    /**
+     * 좌석을 선점 상태로 전환합니다.
+     *
+     * <p>AVAILABLE 상태인 경우에만 HELD로 전환 가능합니다.</p>
+     *
+     * @throws BaseException 선점 불가 상태인 경우 (SEAT_ALREADY_HELD)
+     */
+    public void hold() {
+        if (this.saleStatus != SaleStatus.AVAILABLE) {
+            throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
+        }
+        this.saleStatus = SaleStatus.HELD;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 선점된 좌석을 다시 빈 좌석으로 해제합니다.
+     *
+     * <p>HELD 상태인 경우에만 AVAILABLE로 복구 가능합니다.
+     * 이미 해제됐거나 다른 상태인 경우 조용히 무시합니다 (멱등성).</p>
+     */
+    public void release() {
+        if (this.saleStatus != SaleStatus.HELD) {
+            return;
+        }
+        this.saleStatus = SaleStatus.AVAILABLE;
+        this.updatedAt = Instant.now();
     }
 }

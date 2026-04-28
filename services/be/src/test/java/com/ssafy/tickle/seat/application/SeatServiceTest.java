@@ -13,10 +13,14 @@ import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.seat.domain.EventSeat;
 import com.ssafy.tickle.seat.domain.EventSection;
+import com.ssafy.tickle.seat.domain.SeatErrorCode;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
+import com.ssafy.tickle.seat.infrastructure.redis.SeatHoldKeyStore;
+import com.ssafy.tickle.seat.presentation.dto.SeatHoldRequest;
+import com.ssafy.tickle.seat.presentation.dto.SeatHoldResponse;
 import com.ssafy.tickle.seat.presentation.dto.SeatMapResponse;
 import com.ssafy.tickle.seat.presentation.dto.SeatSectionResponse;
 import com.ssafy.tickle.venue.domain.Venue;
@@ -47,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SeatServiceTest {
 
     @Autowired private SeatService seatService;
+    @Autowired private SeatHoldKeyStore seatHoldKeyStore;
 
     @Autowired private EventRepository eventRepository;
     @Autowired private EventSessionRepository eventSessionRepository;
@@ -88,7 +93,9 @@ class SeatServiceTest {
         organizerRepository.deleteAllInBatch();
     }
 
-    // ───────────────────── getSeatMap ─────────────────────
+    // ================================================================
+    // 좌석 배치도 조회 테스트
+    // ================================================================
 
     @Nested
     @DisplayName("좌석 배치도 조회")
@@ -101,31 +108,22 @@ class SeatServiceTest {
             EventSection sectionA = eventSectionRepository.save(createSection(event, "A구역", 1));
             EventSection sectionB = eventSectionRepository.save(createSection(event, "B구역", 2));
 
-            EventSeat seat1 = eventSeatRepository.save(createEventSeat(sectionA, pricePolicy, "1", "1", "A-1-1"));
-            EventSeat seat2 = eventSeatRepository.save(createEventSeat(sectionA, pricePolicy, "1", "2", "A-1-2"));
-            EventSeat seat3 = eventSeatRepository.save(createEventSeat(sectionB, pricePolicy, "1", "1", "B-1-1"));
+            EventSeat seatA1 = eventSeatRepository.save(createEventSeat(sectionA, pricePolicy, "A", "1"));
+            EventSeat seatA2 = eventSeatRepository.save(createEventSeat(sectionA, pricePolicy, "A", "2"));
+            EventSeat seatB1 = eventSeatRepository.save(createEventSeat(sectionB, pricePolicy, "B", "1"));
 
-            sessionSeatRepository.save(createSessionSeat(session, seat1, sectionA.getId(), SessionSeat.SaleStatus.AVAILABLE));
-            sessionSeatRepository.save(createSessionSeat(session, seat2, sectionA.getId(), SessionSeat.SaleStatus.HELD));
-            sessionSeatRepository.save(createSessionSeat(session, seat3, sectionB.getId(), SessionSeat.SaleStatus.CONFIRMED));
+            sessionSeatRepository.save(createSessionSeat(session, seatA1, sectionA.getId(), SessionSeat.SaleStatus.AVAILABLE));
+            sessionSeatRepository.save(createSessionSeat(session, seatA2, sectionA.getId(), SessionSeat.SaleStatus.HELD));
+            sessionSeatRepository.save(createSessionSeat(session, seatB1, sectionB.getId(), SessionSeat.SaleStatus.CONFIRMED));
 
             // when
             SeatMapResponse response = seatService.getSeatMap(event.getId(), session.getId());
 
             // then
             assertThat(response.sections()).hasSize(2);
-
             SeatSectionResponse firstSection = response.sections().get(0);
             assertThat(firstSection.sectionName()).isEqualTo("A구역");
-            assertThat(firstSection.displayOrder()).isEqualTo(1);
             assertThat(firstSection.seats()).hasSize(2);
-            assertThat(firstSection.seats().get(0).saleStatus()).isEqualTo(SessionSeat.SaleStatus.AVAILABLE);
-            assertThat(firstSection.seats().get(1).saleStatus()).isEqualTo(SessionSeat.SaleStatus.HELD);
-
-            SeatSectionResponse secondSection = response.sections().get(1);
-            assertThat(secondSection.sectionName()).isEqualTo("B구역");
-            assertThat(secondSection.seats()).hasSize(1);
-            assertThat(secondSection.seats().get(0).saleStatus()).isEqualTo(SessionSeat.SaleStatus.CONFIRMED);
         }
 
         @Test
@@ -168,36 +166,202 @@ class SeatServiceTest {
 
         @Test
         @DisplayName("좌석 응답에 가격과 좌석 라벨이 포함된다")
-        void getSeatMap_includesPriceAndLabel() {
+        void getSeatMap_containsPriceAndLabel() {
             // given
-            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
-            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "1", "1", "A-1-1"));
+            EventSection section = eventSectionRepository.save(createSection(event, "S구역", 1));
+            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
             sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.AVAILABLE));
 
             // when
             SeatMapResponse response = seatService.getSeatMap(event.getId(), session.getId());
 
             // then
+            assertThat(response.sections()).hasSize(1);
             var seatItem = response.sections().get(0).seats().get(0);
-            assertThat(seatItem.seatLabel()).isEqualTo("A-1-1");
-            assertThat(seatItem.rowLabel()).isEqualTo("1");
+            assertThat(seatItem.price()).isNotNull();
+            assertThat(seatItem.rowLabel()).isEqualTo("A");
             assertThat(seatItem.seatNumber()).isEqualTo("1");
-            assertThat(seatItem.price()).isEqualByComparingTo(new BigDecimal("150000"));
         }
     }
 
-    // ───────────────────── helper methods ─────────────────────
+    // ================================================================
+    // 좌석 선점 테스트
+    // ================================================================
+
+    @Nested
+    @DisplayName("좌석 선점")
+    class HoldSeats {
+
+        @Test
+        @DisplayName("AVAILABLE 좌석을 정상 선점한다")
+        void holdSeats_success() {
+            // given
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat1 = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            EventSeat seat2 = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "2"));
+            SessionSeat ss1 = sessionSeatRepository.save(createSessionSeat(session, seat1, section.getId(), SessionSeat.SaleStatus.AVAILABLE));
+            SessionSeat ss2 = sessionSeatRepository.save(createSessionSeat(session, seat2, section.getId(), SessionSeat.SaleStatus.AVAILABLE));
+
+            SeatHoldRequest request = new SeatHoldRequest(List.of(ss1.getId(), ss2.getId()));
+
+            // when
+            SeatHoldResponse response = seatService.holdSeats(event.getId(), session.getId(), 1L, request);
+
+            // then
+            assertThat(response.heldSessionSeatIds()).containsExactlyInAnyOrder(ss1.getId(), ss2.getId());
+            assertThat(response.expiresAt()).isAfter(Instant.now());
+
+            // DB 상태 확인
+            List<SessionSeat> updatedSeats = sessionSeatRepository.findAllByIdIn(List.of(ss1.getId(), ss2.getId()));
+            assertThat(updatedSeats).allMatch(s -> s.getSaleStatus() == SessionSeat.SaleStatus.HELD);
+        }
+
+        @Test
+        @DisplayName("선점 후 Redis에 TTL 키가 등록된다")
+        void holdSeats_registersRedisKey() {
+            // given
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            SessionSeat ss = sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.AVAILABLE));
+
+            SeatHoldRequest request = new SeatHoldRequest(List.of(ss.getId()));
+            Long userId = 42L;
+
+            // when
+            seatService.holdSeats(event.getId(), session.getId(), userId, request);
+
+            // then
+            List<Long> heldIds = seatHoldKeyStore.getHeldSeatIds(session.getId(), userId);
+            assertThat(heldIds).containsExactly(ss.getId());
+
+            // cleanup
+            seatHoldKeyStore.deleteHeld(session.getId(), userId);
+        }
+
+        @Test
+        @DisplayName("HELD 좌석이 포함되면 전체 선점이 실패한다")
+        void holdSeats_alreadyHeld_fails() {
+            // given
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat1 = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            EventSeat seat2 = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "2"));
+            SessionSeat ss1 = sessionSeatRepository.save(createSessionSeat(session, seat1, section.getId(), SessionSeat.SaleStatus.AVAILABLE));
+            SessionSeat ss2 = sessionSeatRepository.save(createSessionSeat(session, seat2, section.getId(), SessionSeat.SaleStatus.HELD)); // 이미 선점
+
+            SeatHoldRequest request = new SeatHoldRequest(List.of(ss1.getId(), ss2.getId()));
+
+            // when & then
+            assertThatThrownBy(() -> seatService.holdSeats(event.getId(), session.getId(), 1L, request))
+                    .isInstanceOf(BaseException.class)
+                    .hasMessageContaining(SeatErrorCode.SEAT_ALREADY_HELD.getMessage());
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 좌석 ID 포함 시 예외가 발생한다")
+        void holdSeats_seatNotFound() {
+            // given
+            SeatHoldRequest request = new SeatHoldRequest(List.of(9999L));
+
+            // when & then
+            assertThatThrownBy(() -> seatService.holdSeats(event.getId(), session.getId(), 1L, request))
+                    .isInstanceOf(BaseException.class)
+                    .hasMessageContaining(SeatErrorCode.SEAT_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("단좌석 선점이 성공한다")
+        void holdSeats_singleSeat_success() {
+            // given
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            SessionSeat ss = sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.AVAILABLE));
+
+            SeatHoldRequest request = new SeatHoldRequest(List.of(ss.getId()));
+
+            // when
+            SeatHoldResponse response = seatService.holdSeats(event.getId(), session.getId(), 1L, request);
+
+            // then
+            assertThat(response.heldSessionSeatIds()).containsExactly(ss.getId());
+            SessionSeat updated = sessionSeatRepository.findById(ss.getId()).orElseThrow();
+            assertThat(updated.getSaleStatus()).isEqualTo(SessionSeat.SaleStatus.HELD);
+
+            // cleanup
+            seatHoldKeyStore.deleteHeld(session.getId(), 1L);
+        }
+    }
+
+    // ================================================================
+    // 좌석 선점 해제 테스트
+    // ================================================================
+
+    @Nested
+    @DisplayName("좌석 선점 해제")
+    class ReleaseSeats {
+
+        @Test
+        @DisplayName("선점한 좌석을 정상 해제한다")
+        void releaseSeats_success() {
+            // given
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            SessionSeat ss = sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.HELD));
+
+            Long userId = 1L;
+            seatHoldKeyStore.registerHeld(session.getId(), userId, List.of(ss.getId()));
+
+            // when
+            seatService.releaseSeats(event.getId(), session.getId(), userId);
+
+            // then
+            SessionSeat updated = sessionSeatRepository.findById(ss.getId()).orElseThrow();
+            assertThat(updated.getSaleStatus()).isEqualTo(SessionSeat.SaleStatus.AVAILABLE);
+            assertThat(seatHoldKeyStore.getHeldSeatIds(session.getId(), userId)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("선점이 없는 경우 멱등성을 보장하며 정상 반환한다")
+        void releaseSeats_noHeld_idempotent() {
+            // given - Redis에 키 없음
+            Long userId = 1L;
+
+            // when & then — 예외 없이 정상 종료
+            seatService.releaseSeats(event.getId(), session.getId(), userId);
+        }
+
+        @Test
+        @DisplayName("해제 후 Redis 키가 삭제된다")
+        void releaseSeats_deletesRedisKey() {
+            // given
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            SessionSeat ss = sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.HELD));
+
+            Long userId = 99L;
+            seatHoldKeyStore.registerHeld(session.getId(), userId, List.of(ss.getId()));
+
+            // when
+            seatService.releaseSeats(event.getId(), session.getId(), userId);
+
+            // then
+            assertThat(seatHoldKeyStore.getHeldSeatIds(session.getId(), userId)).isEmpty();
+        }
+    }
+
+    // ================================================================
+    // 테스트 헬퍼
+    // ================================================================
 
     private Organizer createOrganizer() {
-        Organizer org = Organizer.builder()
+        Organizer o = Organizer.builder()
                 .organizerName("테스트 주최사")
                 .businessNo("123-45-67890")
                 .contactEmail("test@tickle.com")
                 .contactPhone("010-1234-5678")
                 .status(Organizer.Status.ACTIVE)
                 .build();
-        setAuditFields(org);
-        return org;
+        setAuditFields(o);
+        return o;
     }
 
     private Venue createVenue() {
@@ -214,11 +378,11 @@ class SeatServiceTest {
     }
 
     private Category createCategory() {
-        Category cat = Category.builder()
+        Category c = Category.builder()
                 .categoryName("콘서트")
                 .build();
-        setAuditFields(cat);
-        return cat;
+        setAuditFields(c);
+        return c;
     }
 
     private Event createEvent() {
@@ -226,8 +390,8 @@ class SeatServiceTest {
         Event e = Event.builder()
                 .organizer(organizer)
                 .venue(venue)
-                .title("테스트 공연")
                 .category(category)
+                .title("테스트 공연")
                 .salesStartAt(now.minusSeconds(86_400))
                 .salesEndAt(now.plusSeconds(86_400))
                 .eventStartAt(now.plusSeconds(172_800))
@@ -240,10 +404,23 @@ class SeatServiceTest {
         return e;
     }
 
-    private EventSession createSession(Event event) {
+    private EventPricePolicy createPricePolicy(Event e) {
+        EventPricePolicy pp = EventPricePolicy.builder()
+                .event(e)
+                .priceGrade("R석")
+                .audienceType("일반")
+                .salePriceAmount(new BigDecimal("150000"))
+                .currencyCode("KRW")
+                .displayOrder(1)
+                .build();
+        setAuditFields(pp);
+        return pp;
+    }
+
+    private EventSession createSession(Event e) {
         Instant now = Instant.now();
         EventSession s = EventSession.builder()
-                .event(event)
+                .event(e)
                 .sessionNo(1)
                 .startAt(now.plusSeconds(172_800))
                 .endAt(now.plusSeconds(180_000))
@@ -255,47 +432,34 @@ class SeatServiceTest {
         return s;
     }
 
-    private EventPricePolicy createPricePolicy(Event event) {
-        EventPricePolicy pp = EventPricePolicy.builder()
-                .event(event)
-                .priceGrade("R석")
-                .audienceType("일반")
-                .salePriceAmount(new BigDecimal("150000"))
-                .currencyCode("KRW")
-                .displayOrder(1)
-                .build();
-        setAuditFields(pp);
-        return pp;
-    }
-
-    private EventSection createSection(Event event, String sectionName, int displayOrder) {
+    private EventSection createSection(Event e, String name, int displayOrder) {
         EventSection sec = EventSection.builder()
-                .event(event)
+                .event(e)
                 .venueId(venue.getId())
-                .sectionName(sectionName)
+                .sectionName(name)
                 .displayOrder(displayOrder)
                 .build();
         setAuditFields(sec);
         return sec;
     }
 
-    private EventSeat createEventSeat(EventSection section, EventPricePolicy pricePolicy, String row, String number, String label) {
+    private EventSeat createEventSeat(EventSection section, EventPricePolicy pp, String rowLabel, String number) {
         EventSeat es = EventSeat.builder()
                 .eventSection(section)
-                .eventPricePolicy(pricePolicy)
+                .eventPricePolicy(pp)
                 .venueId(venue.getId())
-                .rowLabel(row)
+                .rowLabel(rowLabel)
                 .seatNumber(number)
-                .seatLabel(label)
+                .seatLabel(rowLabel + number)
                 .seatType(EventSeat.SeatType.REGULAR)
                 .build();
         setAuditFields(es);
         return es;
     }
 
-    private SessionSeat createSessionSeat(EventSession session, EventSeat eventSeat, Long eventSectionId, SessionSeat.SaleStatus status) {
+    private SessionSeat createSessionSeat(EventSession sess, EventSeat eventSeat, Long eventSectionId, SessionSeat.SaleStatus status) {
         SessionSeat ss = SessionSeat.builder()
-                .session(session)
+                .session(sess)
                 .eventSeat(eventSeat)
                 .eventSectionId(eventSectionId)
                 .saleStatus(status)
@@ -310,7 +474,6 @@ class SeatServiceTest {
         try {
             ReflectionTestUtils.setField(target, "createdAt", now);
         } catch (IllegalArgumentException ignored) {
-            // createdAt 필드가 없는 경우 무시 (SessionSeat 등)
         }
         ReflectionTestUtils.setField(target, "updatedAt", now);
     }

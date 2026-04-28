@@ -30,4 +30,15 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
                      CAST(es.seatNumber AS integer) ASC
             """)
     List<SessionSeat> findBySessionIdWithDetails(@Param("sessionId") Long sessionId);
+
+    /**
+     * 좌석 ID 목록으로 SessionSeat을 일괄 조회합니다.
+     *
+     * <p>선점/해제 시 요청된 좌석들을 한 번의 쿼리로 조회합니다.</p>
+     *
+     * @param ids sessionSeat ID 목록
+     * @return 조회된 SessionSeat 목록
+     */
+    @Query("SELECT ss FROM SessionSeat ss WHERE ss.id IN :ids")
+    List<SessionSeat> findAllByIdIn(@Param("ids") List<Long> ids);
 }
