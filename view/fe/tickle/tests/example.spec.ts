@@ -54,7 +54,7 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
   }
 
   // 4. CAPTCHA 통과 후 좌석 선택 단계 진입 확인
-  await expect(page.getByText('좌석 선택')).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: '좌석 선택' })).toBeVisible({ timeout: 10000 });
 
   // 4-1. 관람 일시(날짜/회차) 선택
   // 캘린더에서 클릭 가능한(disabled가 아닌) 첫 번째 날짜 버튼 클릭
@@ -78,7 +78,7 @@ test('Tickle 전체 플로우 테스트 (홈 -> 마이페이지 -> 상세페이�
   await peopleSelectButton.click();
 
   // 7. 인원 선택 단계 진입 확인 및 인원 추가 (+)
-  await expect(page.getByText('인원 선택')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '인원 선택' })).toBeVisible();
 
   // 아코디언이 닫혀있다면 클릭해서 열기 (좌석 등급 타이틀 클릭)
   // 보통 자동으로 열려있을 수 있지만 확실히 하기 위해 버튼들 탐색
