@@ -17,7 +17,7 @@ export interface EventDetailResponse {
   date: string;
   zonePrices: GradePrice[];
   schedules: EventSchedule[];
-  refundPolicy: string;
+  notice: string;
 }
 
 export const useEventDetail = (eventId: string) => {
@@ -50,10 +50,6 @@ export const useEventDetail = (eventId: string) => {
       const startDate = new Date(data.eventStartAt).toLocaleDateString().replace(/\s/g, '');
       const endDate = new Date(data.eventEndAt).toLocaleDateString().replace(/\s/g, '');
 
-      const noticeLines = (data.notice || '').split('\n');
-      const refundLine = noticeLines.find(l => l.startsWith('취소정책'));
-      const refundPolicy = refundLine ? refundLine.replace('취소정책: ', '').replace('취소정책:', '').trim() : '';
-
       return {
         eventId: String(data.eventId),
         title: data.title,
@@ -61,7 +57,7 @@ export const useEventDetail = (eventId: string) => {
         date: `${startDate} ~ ${endDate}`,
         zonePrices: data.pricePolicies.map(p => ({ grade: p.priceGrade, price: p.salePriceAmount })),
         schedules,
-        refundPolicy,
+        notice: data.notice || '',
       } as EventDetailResponse;
     },
     staleTime: 5 * 60 * 1000,

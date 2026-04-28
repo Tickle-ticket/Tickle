@@ -11,16 +11,15 @@ export interface DetailData {
   endDate: string;
   venue: string;
   venueAddress: string;
-  viewingAge: string;
-  runningTime: string;
-  ticketNotice: string;
+  notice: string;
   zonePrices: { grade: string; price: number }[];
   schedules: { 
     date: string; 
     times: { time: string; remainingSeats: { grade: string; count: number }[]; }[] 
   }[];
-  refundPolicy: string;
   detailImageUrl: string;
+  isFavorite: boolean;
+  tags: string[];
 }
 
 export const useDetailData = (eventId: string = '1') => {
@@ -50,30 +49,22 @@ export const useDetailData = (eventId: string = '1') => {
         times
       }));
 
-      // notice에서 관람등급/러닝타임/취소정책을 파싱 (BE에는 metadata에 tags만 존재)
-      const noticeLines = (data.notice || '').split('\n');
-      const findNotice = (prefix: string) => {
-        const line = noticeLines.find(l => l.startsWith(prefix));
-        return line ? line.replace(`${prefix}: `, '').replace(`${prefix}:`, '').trim() : '';
-      };
-
       return {
         eventId: String(data.eventId),
         title: data.title,
         subTitle: data.categoryName || '',
-        imageUrl: data.images.find(img => img.imageType === 'THUMBNAIL')?.imageUrl || '',
+        imageUrl: data.images.find(img => img.imageType === 'THUMBNAIL' || img.imageType === 'POSTER')?.imageUrl || '',
         openDate: data.salesStartAt,
         startDate: new Date(data.eventStartAt).toLocaleDateString().replace(/\s/g, ''),
         endDate: new Date(data.eventEndAt).toLocaleDateString().replace(/\s/g, ''),
         venue: data.venueName,
         venueAddress: data.venueAddress,
-        viewingAge: findNotice('관람등급'),
-        runningTime: findNotice('러닝타임'),
-        ticketNotice: data.notice,
+        notice: data.notice || '',
         zonePrices: data.pricePolicies.map(p => ({ grade: p.priceGrade, price: p.salePriceAmount })),
         schedules,
-        refundPolicy: findNotice('취소정책'),
-        detailImageUrl: data.images.find(img => img.imageType === 'DETAIL')?.imageUrl || ''
+        detailImageUrl: data.images.find(img => img.imageType === 'DETAIL')?.imageUrl || '',
+        isFavorite: data.isFavorite || false,
+        tags: data.metadata?.tags || []
       } as DetailData;
     },
     staleTime: 5 * 60 * 1000,

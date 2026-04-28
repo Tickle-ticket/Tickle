@@ -54,7 +54,7 @@ export const useHomeRanking = () => {
         } as PerformanceData;
       });
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1000,
   });
 };
 
@@ -79,6 +79,6 @@ export const useHomeUpcoming = () => {
         } as PerformanceData;
       });
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1000,
   });
 };

@@ -205,9 +205,7 @@ export const DetailView = () => {
                   <div className="flex flex-col gap-6 w-full">
                     {[
                       { title: '장소', descriptions: [data?.venue || '', data?.venueAddress || ''] },
-                      { title: '등급', descriptions: [data?.viewingAge || ''] },
-                      { title: '러닝타임', descriptions: [data?.runningTime || ''] },
-                      { title: '기타', descriptions: data?.ticketNotice?.split('\n') || [] }
+                      { title: '공지사항', descriptions: data?.notice?.split('\n') || [] }
                     ].map((item, idx) => (
                       <div key={idx} className="flex flex-col gap-1.5">
                         <Text typography="t6" fontWeight="bold" color="primary">{item.title}</Text>
