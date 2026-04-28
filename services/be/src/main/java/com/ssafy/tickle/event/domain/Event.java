@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.ssafy.tickle.category.domain.Category;
+import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.venue.domain.Venue;
 
 import java.time.Instant;
