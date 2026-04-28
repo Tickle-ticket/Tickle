@@ -102,6 +102,7 @@ public class SessionSeat {
         this.eventSectionId = eventSectionId;
         this.saleStatus = saleStatus;
         this.versionNo = versionNo;
+        this.updatedAt = Instant.now();
     }
 
     /**

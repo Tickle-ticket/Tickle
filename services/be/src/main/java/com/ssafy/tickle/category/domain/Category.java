@@ -1,4 +1,4 @@
-package com.ssafy.tickle.event.domain;
+package com.ssafy.tickle.category.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,5 +49,7 @@ public class Category {
     @Builder
     public Category(String categoryName) {
         this.categoryName = categoryName;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

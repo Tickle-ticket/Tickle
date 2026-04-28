@@ -1,4 +1,4 @@
-package com.ssafy.tickle.event.domain;
+package com.ssafy.tickle.organizer.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -87,5 +87,7 @@ public class Organizer {
         this.contactEmail = contactEmail;
         this.contactPhone = contactPhone;
         this.status = status;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

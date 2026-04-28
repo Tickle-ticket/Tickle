@@ -2,7 +2,7 @@ package com.ssafy.tickle.event.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.event.domain.Category;
+import com.ssafy.tickle.category.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
@@ -13,7 +13,7 @@ import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEvent;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEventsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
 import com.ssafy.tickle.event.infrastructure.cache.store.OpeningSoonEventCacheStore;
-import com.ssafy.tickle.event.infrastructure.persistence.CategoryRepository;
+import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;

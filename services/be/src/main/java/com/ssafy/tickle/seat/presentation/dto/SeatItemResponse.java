@@ -40,7 +40,7 @@ public record SeatItemResponse(
                 eventSeat.getSeatNumber(),
                 eventSeat.getSeatLabel(),
                 sessionSeat.getSaleStatus(),
-                eventSeat.getEventPricePolicy().getSalePriceAmount()
+                eventSeat.getEventPricePolicy().getPriceAmount()
         );
     }
 }
