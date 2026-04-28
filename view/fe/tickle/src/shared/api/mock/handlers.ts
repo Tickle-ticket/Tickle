@@ -6,8 +6,10 @@ import { ticketTypeHandlers } from './ticketTypeHandlers';
 import { homeHandlers } from './homeHandlers';
 import { searchHandlers } from './searchHandlers';
 import { favoriteHandlers } from './favoriteHandlers';
+import { trialHandlers } from './trialHandlers';
 
 export const handlers = [
+  ...trialHandlers,
   ...homeHandlers,
   ...searchHandlers,
   ...favoriteHandlers,
