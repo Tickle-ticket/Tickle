@@ -104,8 +104,8 @@ class QueueEnterServiceTest {
         @Test
         @DisplayName("대기열 진입 요청을 호출하면 Kafka에 enter-request를 적재한다")
         void enter_publishesEnterRequestToKafka() {
-            long sessionId = 10L;
-            long userId = 1L;
+            long sessionId = 99L;  // 다른 테스트와 겹치지 않는 고유 sessionId
+            long userId = 99L;
             sessionOpenInfoStore.save(new SessionOpenInfo(
                     sessionId,
                     Instant.now().minusSeconds(60),
@@ -116,13 +116,20 @@ class QueueEnterServiceTest {
             embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
             QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
-            ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
+
+            // getSingleRecord 대신 getRecords로 조회 후 해당 requestId 포함 여부 검증
+            var records = KafkaTestUtils.getRecords(consumer, java.time.Duration.ofSeconds(3));
+            var matchingRecord = java.util.stream.StreamSupport.stream(
+                    records.records(QueueConstants.ENTER_REQUEST_TOPIC).spliterator(), false
+            )
+                    .filter(r -> r.value().contains(response.requestId()))
+                    .findFirst();
 
             assertThat(response.requestId()).isNotBlank();
-            assertThat(record.key()).isEqualTo(String.valueOf(sessionId));
-            assertThat(record.value()).contains(response.requestId());
-            assertThat(record.value()).contains("\"userId\":" + userId);
-            assertThat(record.value()).contains("\"sessionId\":" + sessionId);
+            assertThat(matchingRecord).isPresent();
+            assertThat(matchingRecord.get().key()).isEqualTo(String.valueOf(sessionId));
+            assertThat(matchingRecord.get().value()).contains("\"userId\":" + userId);
+            assertThat(matchingRecord.get().value()).contains("\"sessionId\":" + sessionId);
 
             consumer.close();
         }
@@ -193,11 +200,11 @@ class QueueEnterServiceTest {
     private Consumer<String, String> createConsumer() {
         Map<String, Object> properties = new HashMap<>();
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafkaBroker.getBrokersAsString());
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "queue-enter-service-test");
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, "queue-enter-service-test-" + System.nanoTime()); // 테스트마다 고유 그룹
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
 
         return new DefaultKafkaConsumerFactory<>(properties, new StringDeserializer(), new StringDeserializer())
                 .createConsumer();

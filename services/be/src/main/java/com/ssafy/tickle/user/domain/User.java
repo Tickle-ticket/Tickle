@@ -87,18 +87,25 @@ public class User {
     /**
      * 사용자 엔티티를 생성합니다.
      *
-     * @param userNo 사용자 번호
-     * @param email 이메일
-     * @param phoneNumber 전화번호
-     * @param name 실명
-     * @param nickname 닉네임
+     * <p>id / createdAt / updatedAt은 일반적으로 DB/JPA 자동 생성이지만,
+     * 내부 API를 통한 생성 또는 테스트 목적으로 명시 지정도 허용합니다.</p>
+     *
+     * @param id              사용자 PK (null 시 DB auto-increment)
+     * @param userNo          사용자 번호
+     * @param email           이메일
+     * @param phoneNumber     전화번호
+     * @param name            실명
+     * @param nickname        닉네임
      * @param profileImageUrl 프로필 이미지 URL
-     * @param birthDate 생년월일
-     * @param status 사용자 상태
-     * @param lastLoginAt 마지막 로그인 시각
+     * @param birthDate       생년월일
+     * @param status          사용자 상태
+     * @param lastLoginAt     마지막 로그인 시각
+     * @param createdAt       생성 시각 (null 시 Instant.now())
+     * @param updatedAt       수정 시각 (null 시 Instant.now())
      */
     @Builder
     public User(
+            Long id,
             String userNo,
             String email,
             String phoneNumber,
@@ -107,8 +114,11 @@ public class User {
             String profileImageUrl,
             LocalDate birthDate,
             Status status,
-            Instant lastLoginAt
+            Instant lastLoginAt,
+            Instant createdAt,
+            Instant updatedAt
     ) {
+        this.id = id;
         this.userNo = userNo;
         this.email = email;
         this.phoneNumber = phoneNumber;
@@ -118,6 +128,8 @@ public class User {
         this.birthDate = birthDate;
         this.status = status;
         this.lastLoginAt = lastLoginAt;
+        this.createdAt = (createdAt != null) ? createdAt : Instant.now();
+        this.updatedAt = (updatedAt != null) ? updatedAt : Instant.now();
     }
 
     /**

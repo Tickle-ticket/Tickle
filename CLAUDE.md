@@ -96,6 +96,15 @@ com.ssafy.tickle
 `application-local.yaml`은 환경변수로 구성된다. 로컬 실행 시 `.env.example` 참고해서 환경변수 세팅 필요.
 주요 변수: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `SERVER_PORT`
 
+## ERD 참고
+`docs/erd.md` — tickle_core 전체 테이블 구조 (2026-04-28 최신화)
+
+주요 특이사항:
+- `users`: oauth_provider 없음, nickname NOT NULL, profileImgUrl nullable, deleted_at 없음
+- `event_seats`: event_price_policy_id FK 추가됨 (session_seats에서 이동)
+- `bookings`: booked_at → created_at 변경
+- `booking_ticket_status_histories`: booking_id → booking_ticket_id FK 변경
+
 ## 인프라 참고
 - `infra/docker-compose/` — 서버별 docker-compose 파일 (server1~5)
 - `infra/redis/` — Redis 설정

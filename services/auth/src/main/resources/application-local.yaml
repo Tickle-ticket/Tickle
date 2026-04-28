@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: tickle-auth
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Seoul
+    show-sql: ${JPA_SHOW_SQL}
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 3s
+
+server:
+  port: ${SERVER_PORT}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiry-seconds: ${JWT_ACCESS_TOKEN_EXPIRY_SECONDS:1800}    # 기본 30분
+  refresh-token-expiry-seconds: ${JWT_REFRESH_TOKEN_EXPIRY_SECONDS:604800} # 기본 7일
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://${SERVER3_PRIVATE_IP}:4318/v1/traces
+
+internal:
+  be:
+    url: ${BE_INTERNAL_URL:http://localhost:8080}
+    secret: ${INTERNAL_SECRET}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /api-docs

@@ -325,50 +325,50 @@ class EventServiceTest {
             Event first = saveOpeningSoonEvent(
                     "Opening Soon 1",
                     concertCategory,
-                    Instant.parse("2026-04-24T01:00:00Z"),
-                    Instant.parse("2026-05-01T10:00:00Z"),
+                    Instant.parse("2099-04-24T01:00:00Z"),
+                    Instant.parse("2099-05-01T10:00:00Z"),
                     List.of("A")
             );
             Event second = saveOpeningSoonEvent(
                     "Opening Soon 2",
                     concertCategory,
-                    Instant.parse("2026-04-24T02:00:00Z"),
-                    Instant.parse("2026-05-02T10:00:00Z"),
+                    Instant.parse("2099-04-24T02:00:00Z"),
+                    Instant.parse("2099-05-02T10:00:00Z"),
                     List.of("B")
             );
             Event third = saveOpeningSoonEvent(
                     "Opening Soon 3",
                     concertCategory,
-                    Instant.parse("2026-04-24T03:00:00Z"),
-                    Instant.parse("2026-05-03T10:00:00Z"),
+                    Instant.parse("2099-04-24T03:00:00Z"),
+                    Instant.parse("2099-05-03T10:00:00Z"),
                     List.of("C")
             );
             Event fourth = saveOpeningSoonEvent(
                     "Opening Soon 4",
                     concertCategory,
-                    Instant.parse("2026-04-24T04:00:00Z"),
-                    Instant.parse("2026-05-04T10:00:00Z"),
+                    Instant.parse("2099-04-24T04:00:00Z"),
+                    Instant.parse("2099-05-04T10:00:00Z"),
                     List.of("D")
             );
             Event fifth = saveOpeningSoonEvent(
                     "Opening Soon 5",
                     concertCategory,
-                    Instant.parse("2026-04-24T05:00:00Z"),
-                    Instant.parse("2026-05-05T10:00:00Z"),
+                    Instant.parse("2099-04-24T05:00:00Z"),
+                    Instant.parse("2099-05-05T10:00:00Z"),
                     List.of("E")
             );
             saveOpeningSoonEvent(
                     "Opening Soon 6",
                     concertCategory,
-                    Instant.parse("2026-04-24T06:00:00Z"),
-                    Instant.parse("2026-05-06T10:00:00Z"),
+                    Instant.parse("2099-04-24T06:00:00Z"),
+                    Instant.parse("2099-05-06T10:00:00Z"),
                     List.of("F")
             );
             saveOpeningSoonEvent(
                     "Past Pending",
                     concertCategory,
-                    Instant.parse("2026-04-23T23:00:00Z"),
-                    Instant.parse("2026-04-29T10:00:00Z"),
+                    Instant.now().minusSeconds(3600),  // 현재보다 과거 → findBySalesStartAtAfter(now) 필터에서 제외
+                    Instant.parse("2099-04-29T10:00:00Z"),
                     List.of("PAST")
             );
 
@@ -525,6 +525,7 @@ class EventServiceTest {
         EventPricePolicy pricePolicy = EventPricePolicy.builder()
                 .event(event)
                 .priceGrade(priceGrade)
+                .audienceType("일반")
                 .salePriceAmount(new BigDecimal(salePriceAmount))
                 .currencyCode("KRW")
                 .displayOrder(displayOrder)
