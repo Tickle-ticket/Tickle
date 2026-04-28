@@ -1,7 +1,7 @@
-import { ServerMonitoringChart } from '@/src/shared/components/ServerMonitoringChart';
 import { LoadMetricGaugePanel } from '@/src/shared/components/LoadMetricGaugePanel';
-import type { ServerMonitoringPoint } from '@/src/shared/components/ServerMonitoringChart';
+import { ServerMonitoringChart } from '@/src/shared/components/ServerMonitoringChart';
 import type { LoadMetricGauge } from '@/src/shared/components/LoadMetricGaugePanel';
+import type { ServerMonitoringPoint } from '@/src/shared/components/ServerMonitoringChart';
 
 const serverMonitoringData: ServerMonitoringPoint[] = [
   { time: '13:00', activeUsers: 1260, mtps: 28920, mttrMinutes: 18, p95LatencyMs: 212, errorRatePercent: 0.4 },
@@ -17,12 +17,6 @@ const serverMonitoringData: ServerMonitoringPoint[] = [
   { time: '13:50', activeUsers: 1912, mtps: 43440, mttrMinutes: 8, p95LatencyMs: 232, errorRatePercent: 0.4 },
   { time: '13:55', activeUsers: 1798, mtps: 41400, mttrMinutes: 8, p95LatencyMs: 226, errorRatePercent: 0.4 },
   { time: '14:00', activeUsers: 1726, mtps: 39840, mttrMinutes: 7, p95LatencyMs: 218, errorRatePercent: 0.3 },
-];
-
-const summaryItems = [
-  { label: '총 요청 수', value: '1,284,000', caption: '최근 1시간 누적' },
-  { label: '현재 접속자', value: '1,726', caption: '전 구간 대비 -72명' },
-  { label: '서비스 가용률', value: '99.98%', caption: 'SLO 99.90% 이상' },
 ];
 
 const serverMetricGauges: LoadMetricGauge[] = [
@@ -144,80 +138,118 @@ const statusStyle: Record<string, string> = {
   위험: 'bg-red-50 text-red-600',
 };
 
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('ko-KR').format(value);
+}
+
 export default function ServerMonitoringPage() {
+  const peakActiveUsers = Math.max(...serverMonitoringData.map((point) => point.activeUsers));
+  const attentionCount = serverEvents.filter((event) => event.status === '주의').length;
+
+  const operationalHighlights = [
+    {
+      label: '피크 접속',
+      value: `${formatNumber(peakActiveUsers)}명`,
+      caption: '최근 1시간 최고치',
+    },
+    {
+      label: '주의 이벤트',
+      value: `${attentionCount}건`,
+      caption: '즉시 확인 필요',
+    },
+    {
+      label: '최근 복구 시간',
+      value: `${serverMetricGauges.find((metric) => metric.id === 'mttr')?.value ?? 0}분`,
+      caption: '목표 기준 이내',
+    },
+  ];
+
   return (
-    <div className="space-y-6 p-5 sm:p-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <header className="flex flex-col gap-4">
         <div>
-          <p className="text-sm font-bold text-blue-600">서버 상태 모니터링</p>
+          <p className="text-sm font-bold text-blue-600">서버 모니터링</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
             서버 모니터링 대시보드
           </h1>
         </div>
-
-        <label className="flex w-full flex-col gap-2 sm:w-[300px]">
-          <span className="text-[12px] font-bold text-slate-500">서비스 선택</span>
-          <select className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-            <option>전체 서비스</option>
-            <option>tickle-api</option>
-            <option>ticket-api</option>
-            <option>payment-api</option>
-          </select>
-        </label>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {summaryItems.map((item) => (
-          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5">
-            <p className="text-sm font-bold text-slate-500">{item.label}</p>
-            <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
-            <p className="mt-2 text-xs font-bold text-slate-500">{item.caption}</p>
-          </article>
-        ))}
+      <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.55fr)_320px]">
+        <div>
+          <ServerMonitoringChart
+            data={serverMonitoringData}
+            title="실시간 접속자 수"
+            subtitle="최근 1시간 활성 접속자 수 변화"
+          />
+        </div>
+
+        <div className="h-full">
+          <aside className="flex h-full flex-col rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <label className="flex flex-col gap-2">
+              <span className="text-[12px] font-black text-slate-500">서비스 선택</span>
+              <select className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white">
+                <option>전체 서비스</option>
+                <option>tickle-api</option>
+                <option>ticket-api</option>
+                <option>payment-api</option>
+              </select>
+            </label>
+
+            <div className="mt-5 flex flex-1 flex-col gap-3">
+              {operationalHighlights.map((item) => (
+                <div key={item.label} className="flex flex-1 flex-col justify-center rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                  <p className="mt-2 text-[24px] font-black tracking-tight text-slate-950">{item.value}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">{item.caption}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
       </section>
 
-      <ServerMonitoringChart
-        data={serverMonitoringData}
-        title="실시간 접속자 수"
-        subtitle="최근 1시간 활성 접속자 수 변화"
-      />
-
-      <section className="space-y-3">
+      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
         <header className="px-1">
-          <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
+          <h2 className="text-[16px] font-black leading-6 tracking-tight text-slate-950">
             서버 핵심 지표
           </h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">
+            한계치에 가까워지는 항목을 빠르게 읽을 수 있도록 게이지 카드로 정리했습니다.
+          </p>
         </header>
-        <LoadMetricGaugePanel metrics={serverMetricGauges} />
+        <div className="mt-4">
+          <LoadMetricGaugePanel metrics={serverMetricGauges} />
+        </div>
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
-        <header className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
+      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <header className="border-b border-slate-200/80 px-5 py-4">
+          <h2 className="text-[16px] font-black leading-6 tracking-tight text-slate-950">
             서버 이벤트 로그
           </h2>
         </header>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+          <table className="w-full min-w-[1180px] table-auto text-left text-sm">
+            <thead className="bg-slate-50/90 text-slate-500">
               <tr>
-                <th className="px-5 py-3 font-black">메트릭</th>
-                <th className="px-5 py-3 font-black">서비스</th>
-                <th className="px-5 py-3 font-black">값</th>
-                <th className="px-5 py-3 font-black">일자</th>
-                <th className="px-5 py-3 font-black">처리상태</th>
+                <th className="px-5 py-3 font-black whitespace-nowrap">메트릭</th>
+                <th className="px-5 py-3 font-black whitespace-nowrap">서비스</th>
+                <th className="px-5 py-3 font-black whitespace-nowrap">값</th>
+                <th className="px-5 py-3 font-black whitespace-nowrap">일자</th>
+                <th className="px-5 py-3 font-black whitespace-nowrap">처리상태</th>
                 <th className="px-5 py-3 font-black">내용</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {serverEvents.map((event) => (
-                <tr key={`${event.metric}-${event.date}`}>
-                  <td className="px-5 py-4 font-black text-slate-900">{event.metric}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{event.service}</td>
-                  <td className="px-5 py-4 font-black text-slate-900">{event.value}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{event.date}</td>
-                  <td className="px-5 py-4">
+                <tr key={`${event.metric}-${event.date}`} className="align-top">
+                  <td className="px-5 py-4 font-black text-slate-900 whitespace-nowrap">{event.metric}</td>
+                  <td className="px-5 py-4 font-semibold text-slate-500 whitespace-nowrap">{event.service}</td>
+                  <td className="px-5 py-4 font-black text-slate-900 whitespace-nowrap">{event.value}</td>
+                  <td className="px-5 py-4 font-semibold text-slate-500 whitespace-nowrap">{event.date}</td>
+                  <td className="px-5 py-4 whitespace-nowrap">
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-black ${
                         statusStyle[event.status] ?? 'bg-slate-100 text-slate-600'
@@ -226,7 +258,9 @@ export default function ServerMonitoringPage() {
                       {event.status}
                     </span>
                   </td>
-                  <td className="px-5 py-4 font-semibold text-slate-600">{event.message}</td>
+                  <td className="min-w-[420px] px-5 py-4 font-semibold leading-6 text-slate-600">
+                    {event.message}
+                  </td>
                 </tr>
               ))}
             </tbody>

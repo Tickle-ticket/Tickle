@@ -17,7 +17,7 @@ export interface AgencySidebarProps extends Pick<AdminSidebarProps, 'className'>
 
 export function AgencySidebar({
   items = agencySidebarItems,
-  brandLabel = 'Tikkle Agency',
+  brandLabel = '티클 기획사',
   title = '기획사',
   className,
 }: AgencySidebarProps) {

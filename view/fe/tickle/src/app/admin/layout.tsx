@@ -1,4 +1,5 @@
 import { AdminSidebar } from '@/src/shared/components/AdminSidebar';
+import { WorkspaceScaffold } from '@/src/shared/components/WorkspaceScaffold';
 
 export default function AdminLayout({
   children,
@@ -6,11 +7,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="flex min-h-screen">
-        <AdminSidebar />
-        <section className="flex min-w-0 flex-1 flex-col">{children}</section>
-      </div>
-    </main>
+    <WorkspaceScaffold tone="admin" sidebar={<AdminSidebar />}>
+      {children}
+    </WorkspaceScaffold>
   );
 }
