@@ -153,6 +153,12 @@ KNOWN_BUTTONS = {"Left": "left", "Right": "right", "Middle": "middle"}
 DROP_STATES = {"Released", "Down", "Up"}
 MOVE_STATES = {"Move", "Drag"}
 
+# Balabit 측정 artifact: x 또는 y == 65535 (0xFFFF, 16-bit unsigned overflow/sentinel)
+# 정상 모니터 좌표가 아니라 OS 가 마우스 화면 밖으로 나갔거나 이벤트 누락 시 박는 sentinel.
+# 이 값을 그대로 두면 인접 segment 의 dx/dy 가 ~92,000 px 로 폭발해 max_speed outlier 유발
+# (진단 결과: top3 max_speed > 5,700 이 모두 65535 sentinel 행 인접 segment 였음).
+SENTINEL_COORD = 65535
+
 
 # === 변환 로직 ===
 
@@ -182,8 +188,11 @@ def map_state_event(state: str, button: str, unknown_counter: dict) -> tuple[str
     return None
 
 
-def csv_to_events(df: pd.DataFrame, unknown_counter: dict) -> list[dict]:
-    """CSV 한 세션 -> ts_ms/event/x/y/button 만 채워진 이벤트 dict 리스트 (시간순)."""
+def csv_to_events(df: pd.DataFrame, unknown_counter: dict, sentinel_counter: dict) -> list[dict]:
+    """CSV 한 세션 -> ts_ms/event/x/y/button 만 채워진 이벤트 dict 리스트 (시간순).
+
+    sentinel_counter: dict[str, int]. "dropped" 키에 65535 좌표 drop 누적.
+    """
     if df.empty:
         return []
     df = df.sort_values("client timestamp", kind="stable").reset_index(drop=True)
@@ -199,6 +208,10 @@ def csv_to_events(df: pd.DataFrame, unknown_counter: dict) -> list[dict]:
     for ts, state, button, x, y in zip(ts_arr, state_arr, button_arr, x_arr, y_arr):
         if pd.isna(x) or pd.isna(y) or pd.isna(ts):
             continue
+        ix, iy = int(x), int(y)
+        if ix == SENTINEL_COORD or iy == SENTINEL_COORD:
+            sentinel_counter["dropped"] = sentinel_counter.get("dropped", 0) + 1
+            continue
         mapping = map_state_event(str(state), str(button), unknown_counter)
         if mapping is None:
             continue
@@ -206,8 +219,8 @@ def csv_to_events(df: pd.DataFrame, unknown_counter: dict) -> list[dict]:
         evt: dict = {
             "ts_ms": round((float(ts) - base_ts) * 1000.0, 3),
             "event": event_type,
-            "x": int(x),
-            "y": int(y),
+            "x": ix,
+            "y": iy,
         }
         if btn is not None:
             evt["button"] = btn
@@ -356,6 +369,7 @@ def process_user(
     rng = random.Random(seed)
     sessions = sorted(user_dir.glob("session_*"))
     unknown_counter: dict = {}
+    sentinel_counter: dict = {}
 
     per_session_chunks: dict[str, list[list[dict]]] = {}
     for sess_path in sessions:
@@ -364,7 +378,7 @@ def process_user(
         except Exception as e:
             print(f"  [warn] {user_name}/{sess_path.name} read failed: {e}")
             continue
-        events = csv_to_events(df, unknown_counter)
+        events = csv_to_events(df, unknown_counter, sentinel_counter)
         if not events:
             continue
         compute_deltas(events)
@@ -376,13 +390,16 @@ def process_user(
         top = sorted(unknown_counter.items(), key=lambda kv: -kv[1])[:5]
         summary = ", ".join(f"{state}/{btn}={n}" for (state, btn), n in top)
         print(f"  [{user_name}] unknown/dropped state-button: {summary}")
+    sentinel_dropped = sentinel_counter.get("dropped", 0)
+    if sentinel_dropped:
+        print(f"  [{user_name}] sentinel coord (65535) drop: {sentinel_dropped} rows")
 
     if not per_session_chunks:
         return {
             "user": user_name, "trials_written": 0, "skipped_exists": 0,
             "next_trial_id": start_trial_id, "first_trial_id": None, "last_trial_id": None,
             "available_chunks_total": 0, "available_sessions": 0, "target_chunks": 0,
-            "avg_events": 0, "avg_clicks": 0,
+            "avg_events": 0, "avg_clicks": 0, "sentinel_dropped": sentinel_dropped,
         }
 
     chunk_counts = {s: len(c) for s, c in per_session_chunks.items()}
@@ -433,6 +450,7 @@ def process_user(
         "last_trial_id": last_id,
         "avg_events": round(mean(event_counts), 1) if event_counts else 0,
         "avg_clicks": round(mean(click_counts), 2) if click_counts else 0,
+        "sentinel_dropped": sentinel_dropped,
     }
 
 
@@ -512,10 +530,11 @@ def main() -> int:
     print("=== Balabit 변환 결과 ===")
     total_written = 0
     total_skip = 0
+    total_sentinel = 0
     for r in user_results:
         if r["trials_written"] == 0 and r["skipped_exists"] == 0:
             print(f"  {r['user']:8s}: 변환 0  (사용 가능 chunk={r['available_chunks_total']}, "
-                  f"sessions={r['available_sessions']})")
+                  f"sessions={r['available_sessions']}, sentinel={r.get('sentinel_dropped', 0)})")
         else:
             range_str = (
                 f"trial_{r['first_trial_id']}..{r['last_trial_id']}"
@@ -525,14 +544,17 @@ def main() -> int:
                 f"  {r['user']:8s}: 변환 {r['trials_written']:3d} chunks -> {range_str}  "
                 f"(avg_events={r['avg_events']}, avg_clicks={r['avg_clicks']}, "
                 f"available={r['available_chunks_total']} from {r['available_sessions']} sessions, "
-                f"target={r['target_chunks']}, skip_exists={r['skipped_exists']})"
+                f"target={r['target_chunks']}, skip_exists={r['skipped_exists']}, "
+                f"sentinel_drop={r.get('sentinel_dropped', 0)})"
             )
         total_written += r["trials_written"]
         total_skip += r["skipped_exists"]
+        total_sentinel += r.get("sentinel_dropped", 0)
 
     print("---")
     print(f"  총 변환: {total_written}")
     print(f"  총 skip-exists: {total_skip}")
+    print(f"  총 sentinel (65535) drop: {total_sentinel} rows")
     if total_written > 0 or total_skip > 0:
         print(f"  trial_id 범위: {args.start_trial_id} ~ {next_trial_id - 1}")
     print(f"  출력 폴더: {output_dir}")
