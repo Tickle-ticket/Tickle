@@ -3,6 +3,7 @@ import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
+import { normalizeImageUrl } from '@/src/shared/utils/imageUrl';
 
 export const useMyUpcomingWishlist = () => {
   return useQuery({
@@ -10,7 +11,7 @@ export const useMyUpcomingWishlist = () => {
     queryFn: async () => {
       const response = await getFavoriteEvents(0, 100);
       const data = response.data;
-      return data.items.map((item: any) => ({
+      return data.items.map((item) => ({
         id: String(item.eventId),
         imageUrl: item.thumbnailUrl,
         title: item.title,
@@ -35,12 +36,31 @@ export interface BookingData {
   ticketCount: number;
 }
 
+export interface WaitlistSeatData {
+  id: string;
+  info: string;
+  waitlistNumber: number;
+}
+
+export interface WaitlistBookingData {
+  id: string;
+  imageUrl: string;
+  title: string;
+  venue: string;
+  performanceDate: string;
+  waitDate: string;
+  seats: WaitlistSeatData[];
+}
+
 export const useMyBookings = () => {
   return useQuery({
     queryKey: ['myBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings');
-      return response.data;
+      return response.data.map((item) => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl),
+      }));
     },
   });
 };
@@ -50,7 +70,10 @@ export const usePastBookings = () => {
     queryKey: ['pastBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
-      return response.data;
+      return response.data.map((item) => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl),
+      }));
     },
   });
 };
@@ -59,8 +82,11 @@ export const useWaitlistBookings = () => {
   return useQuery({
     queryKey: ['waitlistBookings'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<any[]>>('/api/v1/mypage/waitlist');
-      return response.data;
+      const response = await http.get<ApiResponse<WaitlistBookingData[]>>('/api/v1/mypage/waitlist');
+      return response.data.map((item) => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl),
+      }));
     },
   });
 };
