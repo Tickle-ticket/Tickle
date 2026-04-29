@@ -46,6 +46,7 @@ public class BookingPreorderService {
     private final SeatHoldKeyStore seatHoldKeyStore;
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
+
     /**
      * 좌석과 권종 선택값을 기반으로 예매 초안을 생성합니다.
      *
@@ -93,6 +94,18 @@ public class BookingPreorderService {
         return createPreorder(user, session, seats, selectionBySeatId);
     }
 
+    /**
+     * 새로운 예매 초안을 생성합니다.
+     *
+     * <p>좌석별 티켓 가격, 수수료, 최종 금액을 계산한 뒤
+     * DRAFT 예매와 DRAFT 티켓을 함께 저장합니다.</p>
+     *
+     * @param user 예매 사용자
+     * @param session 예매 회차
+     * @param seats 예매 대상 좌석 목록
+     * @param selectionBySeatId 좌석별 권종 선택 정보
+     * @return 생성된 예매 초안 응답
+     */
     private BookingPreorderResponse createPreorder(
             User user,
             EventSession session,
@@ -125,6 +138,14 @@ public class BookingPreorderService {
         );
     }
 
+    /**
+     * 동일 사용자와 회차의 기존 DRAFT 중 요청 좌석과 완전히 같은 초안을 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionId 회차 식별자
+     * @param requestedSeatIds 요청 좌석 ID 목록
+     * @return 재사용 가능한 DRAFT 예매
+     */
     private Optional<Booking> findMatchingDraft(Long userId, Long sessionId, List<Long> requestedSeatIds) {
         Set<Long> requestedSeatSet = new LinkedHashSet<>(requestedSeatIds);
         List<Booking> draftBookings = bookingRepository.findAllByUserIdAndSessionIdAndBookingStatusOrderByIdDesc(
@@ -146,6 +167,13 @@ public class BookingPreorderService {
         return Optional.empty();
     }
 
+    /**
+     * Redis hold 정보를 기준으로 요청 좌석이 아직 유효하게 선점되어 있는지 검증합니다.
+     *
+     * @param sessionId 회차 식별자
+     * @param userId 사용자 식별자
+     * @param seatIds 요청 좌석 ID 목록
+     */
     private void validateHeldSeats(Long sessionId, Long userId, List<Long> seatIds) {
         // Redis에는 현재 사용자가 hold 중인 좌석 목록만 저장되어 있다.
         List<Long> heldSeatIds = seatHoldKeyStore.getHeldSeatIds(sessionId, userId);
@@ -157,6 +185,11 @@ public class BookingPreorderService {
         }
     }
 
+    /**
+     * 요청 좌석 ID 목록의 기본 형식을 검증합니다.
+     *
+     * @param seatIds 요청 좌석 ID 목록
+     */
     private void validateSeatIds(List<Long> seatIds) {
         if (seatIds == null || seatIds.isEmpty()) {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석 ID 목록은 비어 있을 수 없습니다.");
@@ -171,6 +204,12 @@ public class BookingPreorderService {
         }
     }
 
+    /**
+     * 좌석 목록과 권종 선택 목록이 정확히 대응되는지 검증합니다.
+     *
+     * @param seatIds 요청 좌석 ID 목록
+     * @param optionSelections 좌석별 권종 선택 정보
+     */
     private void validateOptionSelections(
             List<Long> seatIds,
             List<PaymentOptionSelectionRequest> optionSelections
@@ -203,6 +242,16 @@ public class BookingPreorderService {
         }
     }
 
+    /**
+     * 좌석에 대해 실제 적용할 티켓 가격을 계산합니다.
+     *
+     * <p>discountName이 없으면 기본가를 사용하고,
+     * 값이 있으면 가격 정책에 등록된 할인/권종 가격만 허용합니다.</p>
+     *
+     * @param seat 대상 좌석
+     * @param selection 좌석별 권종 선택 정보
+     * @return 적용할 티켓 가격
+     */
     private BigDecimal getSelectedPrice(SessionSeat seat, PaymentOptionSelectionRequest selection) {
         if (selection == null) {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석별 권종 선택 정보가 누락되었습니다.");
@@ -252,6 +301,14 @@ public class BookingPreorderService {
         return calculateFinalPrice(ticketPriceAmount, serviceFeeAmount);
     }
 
+    /**
+     * DRAFT 예매 티켓을 생성합니다.
+     *
+     * @param booking 상위 예매
+     * @param seat 대상 좌석
+     * @param selection 좌석별 권종 선택 정보
+     * @return 생성할 DRAFT 티켓
+     */
     private BookingTicket createDraftTicket(
             Booking booking,
             SessionSeat seat,
@@ -274,6 +331,12 @@ public class BookingPreorderService {
         );
     }
 
+    /**
+     * 요청 기준 좌석별 권종명을 응답용 맵으로 변환합니다.
+     *
+     * @param selectionBySeatId 좌석별 권종 선택 정보
+     * @return 좌석별 권종명 맵
+     */
     private Map<Long, String> getDiscountNameBySeatId(Map<Long, PaymentOptionSelectionRequest> selectionBySeatId) {
         return selectionBySeatId.entrySet().stream()
                 .collect(Collectors.toMap(
@@ -282,6 +345,12 @@ public class BookingPreorderService {
                 ));
     }
 
+    /**
+     * 저장된 티켓 목록으로부터 좌석별 권종명을 복원합니다.
+     *
+     * @param tickets 저장된 예매 티켓 목록
+     * @return 좌석별 권종명 맵
+     */
     private Map<Long, String> getDiscountNameBySeatId(List<BookingTicket> tickets) {
         return tickets.stream()
                 .collect(Collectors.toMap(
@@ -290,6 +359,12 @@ public class BookingPreorderService {
                 ));
     }
 
+    /**
+     * 저장된 티켓 가격을 기준으로 권종명을 복원합니다.
+     *
+     * @param ticket 예매 티켓
+     * @return 복원된 권종명, 기본가인 경우 null
+     */
     private String resolveDiscountName(BookingTicket ticket) {
         EventPricePolicy pricePolicy = ticket.getSessionSeat().getEventSeat().getEventPricePolicy();
 
@@ -304,20 +379,44 @@ public class BookingPreorderService {
                 .orElse(null);
     }
 
+    /**
+     * 현재 사용자의 좌석 hold 만료 시각을 조회합니다.
+     *
+     * @param sessionId 회차 식별자
+     * @param userId 사용자 식별자
+     * @return 좌석 hold 만료 시각
+     */
     private Instant holdExpiresAt(Long sessionId, Long userId) {
         // preorder 응답은 아직 결제가 아니므로 좌석 hold TTL을 함께 알려준다.
         return seatHoldKeyStore.getHeldExpiresAt(sessionId, userId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.CONFLICT, "유효한 좌석 선점 정보를 찾을 수 없습니다."));
     }
 
+    /**
+     * 외부 노출용 예매 번호를 생성합니다.
+     *
+     * @return 예매 번호
+     */
     private String generateBookingNo() {
         return "BK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
 
+    /**
+     * 외부 노출용 티켓 번호를 생성합니다.
+     *
+     * @return 티켓 번호
+     */
     private String generateTicketNo() {
         return "TK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
 
+    /**
+     * 공연에 속한 회차를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param sessionId 회차 식별자
+     * @return 조회된 회차
+     */
     private EventSession getSession(Long eventId, Long sessionId) {
         return eventSessionRepository.findByIdAndEventId(sessionId, eventId)
                 .orElseThrow(() -> new BaseException(
@@ -326,11 +425,26 @@ public class BookingPreorderService {
                 ));
     }
 
+    /**
+     * 사용자를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @return 조회된 사용자
+     */
     private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(PaymentErrorCode.PAYMENT_USER_NOT_FOUND));
     }
 
+    /**
+     * DB에서 조회한 좌석 목록이 요청과 일치하는지 검증합니다.
+     *
+     * <p>좌석 개수와 HELD 상태, 선점 사용자까지 함께 확인합니다.</p>
+     *
+     * @param userId 사용자 식별자
+     * @param seatIds 요청 좌석 ID 목록
+     * @param seats DB에서 조회한 좌석 목록
+     */
     private void validateSeats(Long userId, List<Long> seatIds, List<SessionSeat> seats) {
         if (seats.size() != seatIds.size()) {
             throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "요청한 좌석을 모두 찾을 수 없습니다.");
