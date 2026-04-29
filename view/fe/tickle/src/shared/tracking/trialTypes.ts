@@ -4,7 +4,7 @@
  */
 
 // ─── Stage ───────────────────────────────────────────────────
-export type TrialStage = 'captcha' | 'booking';
+export type TrialStage = 'captcha' | 'booking' | 'ticket_type' | 'payment';
 
 // ─── Label ───────────────────────────────────────────────────
 export type TrialLabel = 'human' | 'macro' | 'none';
