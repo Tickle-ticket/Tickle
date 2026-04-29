@@ -98,12 +98,25 @@ export interface DiscountInfo {
 export interface EventPricePolicy {
   eventPricePolicyId: number;
   priceGrade: string;
-  audienceType: string;
-  salePriceAmount: number;
+  audienceType?: string;
+  priceAmount?: number | null;
+  salePriceAmount?: number | null;
   currencyCode: string;
   displayOrder: number;
   discountInfo?: DiscountInfo[];
 }
+
+export const getEventPriceAmount = (pricePolicy: EventPricePolicy) => {
+  if (typeof pricePolicy.priceAmount === 'number') {
+    return pricePolicy.priceAmount;
+  }
+
+  if (typeof pricePolicy.salePriceAmount === 'number') {
+    return pricePolicy.salePriceAmount;
+  }
+
+  return 0;
+};
 
 export interface EventDetailResponseData {
   eventId: number;
