@@ -1,8 +1,11 @@
 package com.ssafy.tickle.event.domain;
 
+import com.ssafy.tickle.common.domain.SeatGrade;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -12,14 +15,17 @@ import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.math.BigDecimal;
 
 import static lombok.AccessLevel.PROTECTED;
 
 /**
- * 이벤트의 가격 등급과 판매 금액 정책을 관리하는 엔티티입니다.
+ * 이벤트의 가격 등급과 할인 정책을 관리하는 엔티티입니다.
  */
 @Getter
 @NoArgsConstructor(access = PROTECTED)
@@ -39,16 +45,18 @@ public class EventPricePolicy {
     private Event event;
 
     // 가격 등급
+    @Enumerated(EnumType.STRING)
     @Column(name = "price_grade", nullable = false, length = 30)
-    private String priceGrade;
+    private SeatGrade priceGrade;
 
-    // 관람 대상 유형
-    @Column(name = "audience_type", nullable = false, length = 30)
-    private String audienceType;
+    // 기본 가격
+    @Column(name = "price_amount", nullable = false, precision = 18, scale = 2)
+    private BigDecimal priceAmount;
 
-    // 판매가
-    @Column(name = "sale_price_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal salePriceAmount;
+    // 할인 정보
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "discount_info", columnDefinition = "json", nullable = false)
+    private List<DiscountInfo> discountInfo;
 
     // 통화
     @Column(name = "currency_code", nullable = false, length = 3)
@@ -71,25 +79,41 @@ public class EventPricePolicy {
      *
      * @param event 대상 이벤트
      * @param priceGrade 가격 등급
-     * @param audienceType 관람 대상 유형
-     * @param salePriceAmount 판매 금액
+     * @param priceAmount 기본 가격
+     * @param discountInfo 할인 정보
      * @param currencyCode 통화 코드
      * @param displayOrder 노출 순서
      */
     @Builder
     public EventPricePolicy(
             Event event,
-            String priceGrade,
-            String audienceType,
-            BigDecimal salePriceAmount,
+            SeatGrade priceGrade,
+            BigDecimal priceAmount,
+            List<DiscountInfo> discountInfo,
             String currencyCode,
             Integer displayOrder
     ) {
         this.event = event;
         this.priceGrade = priceGrade;
-        this.audienceType = audienceType;
-        this.salePriceAmount = salePriceAmount;
+        this.priceAmount = priceAmount;
+        this.discountInfo = discountInfo == null ? List.of() : discountInfo;
         this.currencyCode = currencyCode;
         this.displayOrder = displayOrder;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    /**
+     * 할인 정보 JSON 모델입니다.
+     *
+     * @param discountName 할인 정보 이름
+     * @param discountRate 할인율
+     * @param actualPriceAmount 실제 가격
+     */
+    public record DiscountInfo(
+            String discountName,
+            java.math.BigDecimal discountRate,
+            java.math.BigDecimal actualPriceAmount
+    ) {
     }
 }

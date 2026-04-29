@@ -2,6 +2,7 @@ package com.ssafy.tickle.seat.infrastructure.persistence;
 
 import com.ssafy.tickle.seat.domain.SessionSeat;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -59,4 +60,8 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
             @Param("heldByUserId") Long heldByUserId,
             @Param("saleStatus") SessionSeat.SaleStatus saleStatus
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from SessionSeat ss where ss.session.event.id = :eventId")
+    void deleteByEventId(@Param("eventId") Long eventId);
 }

@@ -2,6 +2,8 @@ package com.ssafy.tickle.event.infrastructure.persistence;
 
 import com.ssafy.tickle.event.domain.EventImage;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -9,6 +11,9 @@ import java.util.List;
  * 이벤트 이미지 엔티티를 조회하고 저장하는 JPA 리포지토리입니다.
  */
 public interface EventImageRepository extends JpaRepository<EventImage, Long> {
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    void deleteByEventId(@Param("eventId") Long eventId);
 
     /**
      * 단일 이벤트의 이미지를 노출 순서대로 조회합니다.

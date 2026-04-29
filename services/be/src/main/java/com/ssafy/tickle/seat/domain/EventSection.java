@@ -67,10 +67,17 @@ public class EventSection {
      * @param displayOrder 노출 순서
      */
     @Builder
-    public EventSection(Event event, Long venueId, String sectionName, Integer displayOrder) {
+    public EventSection(
+            Event event,
+            Long venueId,
+            String sectionName,
+            Integer displayOrder
+    ) {
         this.event = event;
         this.venueId = venueId;
         this.sectionName = sectionName;
         this.displayOrder = displayOrder;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }

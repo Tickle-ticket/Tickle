@@ -93,5 +93,7 @@ public class Venue {
         this.addressLine2 = addressLine2;
         this.cityName = cityName;
         this.capacity = capacity;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }
