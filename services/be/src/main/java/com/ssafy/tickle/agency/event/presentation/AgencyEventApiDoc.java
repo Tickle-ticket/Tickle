@@ -155,7 +155,12 @@ public interface AgencyEventApiDoc {
                                               "eventStartAt": "2026-07-01T19:00:00Z",
                                               "eventEndAt": "2026-07-01T22:00:00Z",
                                               "tags": ["admin", "sample"],
-                                              "notice": "기획사 API 샘플 공연입니다."
+                                              "notice": "기획사 API 샘플 공연입니다.",
+                                              "posterImageUrl": "https://cdn.example.com/events/poster.jpg",
+                                              "detailImageUrls": [
+                                                "https://cdn.example.com/events/detail-1.jpg",
+                                                "https://cdn.example.com/events/detail-2.jpg"
+                                              ]
                                             }
                                             """
                             )

@@ -7,8 +7,10 @@ import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventSeatRe
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
@@ -43,6 +45,7 @@ public class AgencyEventQueryService {
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     private final EventRepository eventRepository;
+    private final EventImageRepository eventImageRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
     private final EventSessionRepository eventSessionRepository;
     private final OrganizerRepository organizerRepository;
@@ -87,9 +90,10 @@ public class AgencyEventQueryService {
      */
     public AgencyEventDetailResponse getEventDetail(Long eventId) {
         Event event = getEventOrThrow(eventId);
+        List<EventImage> images = eventImageRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
         List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
         List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
-        return AgencyEventDetailResponse.from(event, pricePolicies, sessions);
+        return AgencyEventDetailResponse.from(event, images, pricePolicies, sessions);
     }
 
     /**

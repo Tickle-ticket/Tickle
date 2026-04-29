@@ -10,7 +10,9 @@ import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.organizer.domain.Organizer;
@@ -47,6 +49,9 @@ class AgencyEventBasicServiceTest {
     private EventPricePolicyRepository eventPricePolicyRepository;
 
     @Autowired
+    private EventImageRepository eventImageRepository;
+
+    @Autowired
     private OrganizerRepository organizerRepository;
 
     @Autowired
@@ -68,6 +73,7 @@ class AgencyEventBasicServiceTest {
 
     @AfterEach
     void tearDown() {
+        eventImageRepository.deleteAllInBatch();
         eventPricePolicyRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
@@ -86,12 +92,18 @@ class AgencyEventBasicServiceTest {
                 Instant.parse("2026-07-01T10:00:00Z"),
                 Instant.parse("2026-07-01T12:00:00Z"),
                 List.of("rock", "live"),
-                "공연 공지"
+                "공연 공지",
+                "https://cdn.test/poster.jpg",
+                List.of(
+                        "https://cdn.test/detail-1.jpg",
+                        "https://cdn.test/detail-2.jpg"
+                )
         );
 
         AgencyCreateEventResponse response = agencyEventBasicService.createBasicEvent(request);
 
         Event savedEvent = eventRepository.findById(response.eventId()).orElseThrow();
+        List<EventImage> savedImages = eventImageRepository.findByEventIdOrderByDisplayOrderAsc(response.eventId());
         List<EventPricePolicy> savedPolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(response.eventId());
 
         assertThat(response.title()).isEqualTo("기획사 등록 공연");
@@ -101,6 +113,15 @@ class AgencyEventBasicServiceTest {
         assertThat(savedEvent.getStatus()).isEqualTo(Event.Status.PENDING);
         assertThat(savedEvent.getSalesStartAt()).isNull();
         assertThat(savedEvent.getSalesEndAt()).isNull();
+        assertThat(savedImages).hasSize(4);
+        assertThat(savedImages)
+                .extracting(EventImage::getImageType, EventImage::getImageUrl, EventImage::getDisplayOrder)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.POSTER, "https://cdn.test/poster.jpg", 0),
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.THUMBNAIL, "https://cdn.test/poster.jpg", 0),
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.DETAIL, "https://cdn.test/detail-1.jpg", 0),
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.DETAIL, "https://cdn.test/detail-2.jpg", 1)
+                );
         assertThat(savedPolicies).isEmpty();
     }
 
@@ -115,7 +136,9 @@ class AgencyEventBasicServiceTest {
                 Instant.parse("2026-07-01T12:00:00Z"),
                 Instant.parse("2026-07-01T10:00:00Z"),
                 List.of(),
-                null
+                null,
+                "https://cdn.test/poster.jpg",
+                List.of()
         );
 
         assertThatThrownBy(() -> agencyEventBasicService.createBasicEvent(request))

@@ -9,7 +9,9 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.category.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
@@ -37,6 +39,7 @@ import java.util.Set;
 public class AgencyEventBasicService {
 
     private final EventRepository eventRepository;
+    private final EventImageRepository eventImageRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
@@ -67,6 +70,8 @@ public class AgencyEventBasicService {
                 .notice(request.notice())
                 .status(Event.Status.PENDING)
                 .build());
+
+        saveEventImages(event, request.posterImageUrl(), request.detailImageUrls());
 
         return AgencyCreateEventResponse.from(event);
     }
@@ -130,6 +135,39 @@ public class AgencyEventBasicService {
         }
 
         eventPricePolicyRepository.saveAll(policies);
+    }
+
+    /**
+     * 등록 화면에서 전달한 포스터/소개 이미지를 이벤트 이미지로 저장합니다.
+     */
+    private void saveEventImages(Event event, String posterImageUrl, List<String> detailImageUrls) {
+        List<EventImage> images = new ArrayList<>();
+
+        // 포스터는 상세 대표 이미지이면서 목록 썸네일로도 사용한다.
+        images.add(EventImage.builder()
+                .event(event)
+                .imageType(EventImage.ImageType.POSTER)
+                .imageUrl(posterImageUrl)
+                .displayOrder(0)
+                .build());
+        images.add(EventImage.builder()
+                .event(event)
+                .imageType(EventImage.ImageType.THUMBNAIL)
+                .imageUrl(posterImageUrl)
+                .displayOrder(0)
+                .build());
+
+        List<String> detailUrls = detailImageUrls == null ? List.of() : detailImageUrls;
+        for (int index = 0; index < detailUrls.size(); index++) {
+            images.add(EventImage.builder()
+                    .event(event)
+                    .imageType(EventImage.ImageType.DETAIL)
+                    .imageUrl(detailUrls.get(index))
+                    .displayOrder(index)
+                    .build());
+        }
+
+        eventImageRepository.saveAll(images);
     }
 
     private void validatePricePoliciesNotRegistered(Long eventId) {

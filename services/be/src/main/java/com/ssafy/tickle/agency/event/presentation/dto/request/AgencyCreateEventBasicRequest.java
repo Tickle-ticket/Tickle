@@ -18,6 +18,8 @@ import java.util.List;
  * @param eventEndAt 공연 종료 시각
  * @param tags 태그 목록
  * @param notice 공지사항
+ * @param posterImageUrl 대표 포스터 이미지 URL
+ * @param detailImageUrls 소개 이미지 URL 목록
  */
 public record AgencyCreateEventBasicRequest(
         @NotNull(message = "organizerId는 필수입니다.")
@@ -41,6 +43,14 @@ public record AgencyCreateEventBasicRequest(
         List<String> tags,
 
         @Size(max = 10000, message = "notice는 10000자 이하여야 합니다.")
-        String notice
+        String notice,
+
+        @NotBlank(message = "posterImageUrl은 필수입니다.")
+        @Size(max = 1000, message = "posterImageUrl은 1000자 이하여야 합니다.")
+        String posterImageUrl,
+
+        List<@NotBlank(message = "detailImageUrls의 각 항목은 비어 있을 수 없습니다.")
+                @Size(max = 1000, message = "detailImageUrls의 각 항목은 1000자 이하여야 합니다.")
+                String> detailImageUrls
 ) {
 }

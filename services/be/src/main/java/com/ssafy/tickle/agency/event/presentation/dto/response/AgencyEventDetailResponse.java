@@ -1,6 +1,7 @@
 package com.ssafy.tickle.agency.event.presentation.dto.response;
 
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 
@@ -13,12 +14,14 @@ import java.util.List;
  *
  * @param eventId 공연 식별자
  * @param basicInfo 공연 기본정보
+ * @param images 이미지 목록
  * @param pricePolicies 가격 정책 목록
  * @param sessions 회차 목록
  */
 public record AgencyEventDetailResponse(
         Long eventId,
         BasicInfo basicInfo,
+        List<ImageInfo> images,
         List<PricePolicy> pricePolicies,
         List<SessionInfo> sessions
 ) {
@@ -27,21 +30,49 @@ public record AgencyEventDetailResponse(
      * 공연 엔티티와 하위 정보를 상세 응답으로 변환합니다.
      *
      * @param event 공연 엔티티
+     * @param images 이미지 엔티티 목록
      * @param pricePolicies 가격 정책 엔티티 목록
      * @param sessions 회차 엔티티 목록
      * @return 공연 상세 응답
      */
     public static AgencyEventDetailResponse from(
             Event event,
+            List<EventImage> images,
             List<EventPricePolicy> pricePolicies,
             List<EventSession> sessions
     ) {
         return new AgencyEventDetailResponse(
                 event.getId(),
                 BasicInfo.from(event),
+                images.stream().map(ImageInfo::from).toList(),
                 pricePolicies.stream().map(PricePolicy::from).toList(),
                 sessions.stream().map(SessionInfo::from).toList()
         );
+    }
+
+    /**
+     * 기획사 공연 이미지 응답입니다.
+     *
+     * @param eventImageId 이미지 식별자
+     * @param imageType 이미지 타입
+     * @param imageUrl 이미지 URL
+     * @param displayOrder 노출 순서
+     */
+    public record ImageInfo(
+            Long eventImageId,
+            EventImage.ImageType imageType,
+            String imageUrl,
+            Integer displayOrder
+    ) {
+
+        public static ImageInfo from(EventImage image) {
+            return new ImageInfo(
+                    image.getId(),
+                    image.getImageType(),
+                    image.getImageUrl(),
+                    image.getDisplayOrder()
+            );
+        }
     }
 
     /**
