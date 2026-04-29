@@ -28,39 +28,38 @@ import { DetailContent } from '@/src/features/detail/ui/DetailContent';
 
 const TAB_ITEMS = ['전체', '뮤지컬', '콘서트', '연극', '전시/행사'];
 
-/** 스크롤 상태 관리 훅 (ResizeObserver 제거 — 카운트다운 깜빡임 방지) */
 const useCarouselScroll = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
   const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 4);
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }, []);
+  }, [el]);
 
   useEffect(() => {
-    const el = scrollRef.current;
     if (!el) return;
-    // 초기 체크 + 스크롤 이벤트만 리슨 (ResizeObserver 제거)
+    // 초기 체크 + 스크롤 이벤트 리슨
     const timer = setTimeout(checkScroll, 100);
     el.addEventListener('scroll', checkScroll, { passive: true });
-    return () => { clearTimeout(timer); el.removeEventListener('scroll', checkScroll); };
-  }, [checkScroll]);
+    window.addEventListener('resize', checkScroll); // 리사이즈 대비
+    return () => { 
+      clearTimeout(timer); 
+      el.removeEventListener('scroll', checkScroll); 
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [el, checkScroll]);
 
   const scroll = useCallback((dir: 'left' | 'right') => {
-    const el = scrollRef.current;
     if (!el) return;
-
-    // scroll-snap이 걸려있을 때 100%를 이동하면 브라우저에 따라 제자리로 튕기는(snapping back) 버그가 있습니다.
-    // 이를 방지하고 자연스럽게 이전/다음 카드로 넘어가도록 이동 거리를 80%로 조정합니다.
+    // scroll-snap 버그 방지 및 자연스러운 이동을 위해 80% 이동
     const amount = el.clientWidth * 0.8;
     el.scrollBy({ left: dir === 'right' ? amount : -amount, behavior: 'smooth' });
-  }, []);
+  }, [el]);
 
-  return { scrollRef, canScrollLeft, canScrollRight, scroll };
+  return { scrollRef: setEl, canScrollLeft, canScrollRight, scroll };
 };
 
 /** 타이틀 옆 네비게이션 화살표 */
