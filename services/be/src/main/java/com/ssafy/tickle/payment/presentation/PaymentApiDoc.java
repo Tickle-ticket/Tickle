@@ -22,9 +22,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface PaymentApiDoc {
 
     @Operation(
-            summary = "무통장 입금 결제 준비",
+            summary = "무통장 입금 결제 확정 및 입금 안내 조회",
             description = """
-                    좌석 hold 성공 후 무통장 입금 결제를 시작합니다.
+                    좌석 hold 성공 후 결제 수단을 무통장 입금으로 확정하고 입금 안내 정보를 반환합니다.
 
                     - Redis hold 키와 DB HELD 상태를 함께 검증합니다.
                     - 예매 초안(`DRAFT`)을 `PENDING_PAYMENT`로 전환합니다.
@@ -35,11 +35,11 @@ public interface PaymentApiDoc {
                     """
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "무통장 입금 준비 성공"),
+            @ApiResponse(responseCode = "200", description = "무통장 입금 확정 및 안내 조회 성공"),
             @ApiResponse(responseCode = "404", description = "좌석 hold 또는 사용자/회차를 찾을 수 없음"),
             @ApiResponse(responseCode = "409", description = "이미 처리된 결제 또는 유효하지 않은 결제 상태")
     })
-    ResponseEntity<BaseResponse<BankTransferPrepareResponse>> prepareBankTransfer(
+    ResponseEntity<BaseResponse<BankTransferPrepareResponse>> confirmBankTransferPayment(
             @Parameter(description = "공연 식별자", required = true, example = "1")
             @PathVariable Long eventId,
             @Parameter(description = "회차 식별자", required = true, example = "1")

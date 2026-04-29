@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * 무통장 입금 결제 준비 응답 DTO입니다.
+ * 무통장 입금 확정 후 입금 안내 응답 DTO입니다.
  *
  * @param paymentId 결제 식별자
  * @param bookingId 예매 식별자
@@ -38,12 +38,12 @@ public record BankTransferPrepareResponse(
         List<PaymentSeatSummaryResponse> seats
 ) {
     /**
-     * 무통장 입금 결제 준비 응답을 생성합니다.
+     * 무통장 입금 확정 후 입금 안내 응답을 생성합니다.
      *
      * @param payment 결제 정보
      * @param tickets 결제 대상 티켓
      * @param depositDeadline 입금 마감 시각
-     * @return 결제 준비 응답
+     * @return 입금 안내 응답
      */
     public static BankTransferPrepareResponse from(
             Payment payment,

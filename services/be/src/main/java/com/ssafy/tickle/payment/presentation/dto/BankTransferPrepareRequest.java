@@ -3,7 +3,7 @@ package com.ssafy.tickle.payment.presentation.dto;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * 무통장 입금 결제 준비 요청 DTO입니다.
+ * 무통장 입금 결제 확정 요청 DTO입니다.
  *
  * @param bookingId 예매 초안 식별자
  */

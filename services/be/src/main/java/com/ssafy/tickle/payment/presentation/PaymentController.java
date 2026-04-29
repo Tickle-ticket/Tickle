@@ -31,7 +31,7 @@ public class PaymentController implements PaymentApiDoc {
 
     @Override
     @PostMapping("/events/{eventId}/schedules/{scheduleId}/payments/bank-transfer")
-    public ResponseEntity<BaseResponse<BankTransferPrepareResponse>> prepareBankTransfer(
+    public ResponseEntity<BaseResponse<BankTransferPrepareResponse>> confirmBankTransferPayment(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
             @RequestParam Long userId,
@@ -40,7 +40,7 @@ public class PaymentController implements PaymentApiDoc {
         return ResponseEntity.ok(
                 BaseResponse.success(
                         SuccessCode.OK,
-                        paymentService.prepareBankTransfer(eventId, scheduleId, userId, request)
+                        paymentService.confirmBankTransferPayment(eventId, scheduleId, userId, request)
                 )
         );
     }
