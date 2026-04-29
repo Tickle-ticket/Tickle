@@ -24,7 +24,7 @@ import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
 import { PerformanceScheduleAddedModal } from '@/src/shared/components/PerformanceScheduleAddedModal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
-import { SSAFY_18_SEAT_IDS } from '@/src/shared/components/SSAFY_18';
+import { STAGE_1_SEAT_IDS as SSAFY_18_SEAT_IDS } from '@/src/shared/components/Stage_1';
 
 const FIXED_ORGANIZER_ID = 2001;
 const FIXED_VENUE_ID = 2001;
