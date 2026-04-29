@@ -1,23 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { SSAFY_18 } from './SSAFY_18';
+import { Stage_1 } from './Stage_1';
 import type { SeatColor, SeatStatus } from './types';
 import { useState } from 'react';
 
 const meta = {
-  title: 'Shared/SSAFY_18',
-  component: SSAFY_18,
+  title: 'Shared/Stage_1',
+  component: Stage_1,
   parameters: {
     layout: 'fullscreen',
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof SSAFY_18>;
+} satisfies Meta<typeof Stage_1>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 // 예시 데이터 맵핑 (간단한 색상 시각화를 위해 A열만 다르게 칠해봄)
 const generateMockSeatsData = () => {
-  const data: Record<string, { color: SeatColor; status: SeatStatus }> = {};
+  const data: Record<string, { color: SeatColor; status: SeatStatus; isSelected?: boolean }> = {};
   
   // A열은 보라색
   ['A1','A2','A3','A4','A5','A6','A7','A8','A9','A10'].forEach(id => {
@@ -37,7 +37,7 @@ const generateMockSeatsData = () => {
   return data;
 };
 
-const InteractiveSSAFY_18 = () => {
+const InteractiveStage_1 = () => {
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
   const baseData = generateMockSeatsData();
 
@@ -64,7 +64,7 @@ const InteractiveSSAFY_18 = () => {
 
   return (
     <div className="w-full h-screen bg-gray-100 overflow-auto flex items-start justify-center p-8">
-      <SSAFY_18 
+      <Stage_1 
         seatsData={seatsData} 
         onSeatClick={handleSeatClick} 
       />
@@ -73,5 +73,5 @@ const InteractiveSSAFY_18 = () => {
 };
 
 export const Default: Story = {
-  render: () => <InteractiveSSAFY_18 />,
+  render: () => <InteractiveStage_1 />,
 };
