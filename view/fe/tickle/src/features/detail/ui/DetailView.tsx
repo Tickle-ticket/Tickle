@@ -171,6 +171,12 @@ export const DetailView = () => {
                     취소표 대기하기
                   </Button>
                 </div>
+                {/* 테스트용 버튼: 예매 대기 중이어도 강제 진입 가능하도록 활성화 상태로 둠 */}
+                <div className="flex items-center gap-3 mt-2">
+                  <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-red-500/30 text-red-500 bg-red-50/50" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')} isLoading={isLoading}>
+                    Test
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-3">

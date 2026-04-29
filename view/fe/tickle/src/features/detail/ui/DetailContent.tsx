@@ -40,7 +40,7 @@ export const DetailContent = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
-  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
+  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
 
   // 예매 플로우 진행 중 새로고침/탭 닫기 방지
@@ -138,6 +138,12 @@ export const DetailContent = () => {
                   취소표 대기하기
                 </Button>
               </div>
+              {/* 테스트용 버튼: 예매 대기 중이어도 강제 진입 가능하도록 활성화 상태로 둠 */}
+              <div className="flex items-center gap-3 mt-2">
+                <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-red-500/30 text-red-500 bg-red-50/50" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')}>
+                  Test
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-3">
@@ -146,6 +152,9 @@ export const DetailContent = () => {
               </Button>
               <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10" onClick={() => setFlowState('WAITLIST_QUEUE')}>
                 취소표 대기하기
+              </Button>
+              <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-red-500/30 text-red-500 bg-red-50/50" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')}>
+                Test
               </Button>
             </div>
           )}
@@ -304,21 +313,23 @@ export const DetailContent = () => {
       </section>
 
       {/* Booking Pipeline Overlays */}
-      {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
+      {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView 
             sessionId={data?.eventId || '1'} 
+            fastMode={flowState === 'TEST_WAITLIST_QUEUE'}
             onAdmitted={(token) => {
               setAdmitToken(token);
-              setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
+              if (flowState === 'TEST_WAITLIST_QUEUE') setFlowState('TEST_WAITLIST_BOOK');
+              else setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
             }}
             onClose={() => setFlowState('NONE')}
           />
         </div>
       )}
-      {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
+      {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView eventId={data?.eventId || '1'} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={data?.eventId || '1'} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>
