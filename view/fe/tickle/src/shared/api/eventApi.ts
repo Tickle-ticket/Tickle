@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { ApiResponse } from './types';
+import { normalizeImageUrl } from '@/src/shared/utils/imageUrl';
 
 export interface EventItem {
   eventId: number;
@@ -33,12 +34,25 @@ export interface EventListRequestParams {
   size?: number;
 }
 
+const normalizeEventListData = (data: EventListResponseData): EventListResponseData => ({
+  ...data,
+  items: data.items.map((item) => ({
+    ...item,
+    thumbnailUrl: normalizeImageUrl(item.thumbnailUrl),
+  })),
+});
+
 export const fetchEventList = async (params: EventListRequestParams = {}): Promise<ApiResponse<EventListResponseData>> => {
   const cleanParams: Record<string, string | number | boolean> = {};
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) cleanParams[key] = value;
   });
-  return apiClient<ApiResponse<EventListResponseData>>('/api/v1/events', { params: cleanParams });
+  const response = await apiClient<ApiResponse<EventListResponseData>>('/api/v1/events', { params: cleanParams });
+
+  return {
+    ...response,
+    data: normalizeEventListData(response.data),
+  };
 };
 
 export interface EventImage {
@@ -67,12 +81,25 @@ export interface DiscountInfo {
 export interface EventPricePolicy {
   eventPricePolicyId: number;
   priceGrade: string;
-  audienceType: string;
-  salePriceAmount: number;
+  audienceType?: string;
+  priceAmount?: number | null;
+  salePriceAmount?: number | null;
   currencyCode: string;
   displayOrder: number;
   discountInfo?: DiscountInfo[];
 }
+
+export const getEventPriceAmount = (pricePolicy: EventPricePolicy) => {
+  if (typeof pricePolicy.priceAmount === 'number') {
+    return pricePolicy.priceAmount;
+  }
+
+  if (typeof pricePolicy.salePriceAmount === 'number') {
+    return pricePolicy.salePriceAmount;
+  }
+
+  return 0;
+};
 
 export interface EventDetailResponseData {
   eventId: number;
@@ -99,7 +126,18 @@ export interface EventDetailResponseData {
 }
 
 export const fetchEventDetail = async (eventId: number | string): Promise<ApiResponse<EventDetailResponseData>> => {
-  return apiClient<ApiResponse<EventDetailResponseData>>(`/api/v1/events/${eventId}`);
+  const response = await apiClient<ApiResponse<EventDetailResponseData>>(`/api/v1/events/${eventId}`);
+
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      images: response.data.images.map((image) => ({
+        ...image,
+        imageUrl: normalizeImageUrl(image.imageUrl),
+      })),
+    },
+  };
 };
 
 // --- 랭킹 API ---
@@ -125,9 +163,20 @@ export interface CategoryRankingResponseData {
 }
 
 export const fetchRanking = async (categoryId?: number, userId?: number): Promise<ApiResponse<CategoryRankingResponseData>> => {
-  return apiClient<ApiResponse<CategoryRankingResponseData>>('/api/v1/events/ranking', {
+  const response = await apiClient<ApiResponse<CategoryRankingResponseData>>('/api/v1/events/ranking', {
     params: { ...(categoryId !== undefined && { categoryId }), ...(userId !== undefined && { userId }) },
   });
+
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      rankings: response.data.rankings.map((item) => ({
+        ...item,
+        thumbnailUrl: normalizeImageUrl(item.thumbnailUrl),
+      })),
+    },
+  };
 };
 
 // --- 오픈 예정 API ---
@@ -150,7 +199,18 @@ export interface OpeningSoonEventsResponseData {
 }
 
 export const fetchOpeningSoonEvents = async (userId?: number): Promise<ApiResponse<OpeningSoonEventsResponseData>> => {
-  return apiClient<ApiResponse<OpeningSoonEventsResponseData>>('/api/v1/events/opening-soon', {
+  const response = await apiClient<ApiResponse<OpeningSoonEventsResponseData>>('/api/v1/events/opening-soon', {
     params: { ...(userId !== undefined && { userId }) },
   });
+
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      events: response.data.events.map((item) => ({
+        ...item,
+        thumbnailUrl: normalizeImageUrl(item.thumbnailUrl),
+      })),
+    },
+  };
 };

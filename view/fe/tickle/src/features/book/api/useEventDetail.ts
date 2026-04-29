@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { GradePrice } from '@/src/shared/components/PriceLegend';
-import { fetchEventDetail } from '@/src/shared/api/eventApi';
+import { fetchEventDetail, getEventPriceAmount } from '@/src/shared/api/eventApi';
 
 export interface EventSchedule {
   date: string;
@@ -9,6 +9,16 @@ export interface EventSchedule {
     remainingSeats: { grade: string; count: number }[];
   }[];
 }
+
+type RemainingSeat = {
+  grade: string;
+  count: number;
+};
+
+type ScheduleTime = {
+  time: string;
+  remainingSeats: RemainingSeat[];
+};
 
 export interface EventDetailResponse {
   eventId: string;
@@ -27,7 +37,7 @@ export const useEventDetail = (eventId: string) => {
       const response = await fetchEventDetail(eventId);
       const data = response.data;
 
-      const scheduleMap = new Map<string, { time: string, remainingSeats: any[] }[]>();
+      const scheduleMap = new Map<string, ScheduleTime[]>();
       data.sessions.forEach(session => {
         const dateObj = new Date(session.startAt);
         const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;

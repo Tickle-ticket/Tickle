@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import { ApiResponse } from './types';
 import { EventListResponseData } from './eventApi';
+import { normalizeImageUrl } from '@/src/shared/utils/imageUrl';
 
 export interface FavoriteCreateResponseData {
   favoriteId: number;
@@ -26,8 +27,19 @@ export const deleteFavorite = async (eventId: number | string, userId?: number):
 export const getFavoriteEvents = async (page: number = 0, size: number = 20, userId?: number): Promise<ApiResponse<EventListResponseData>> => {
   const params: Record<string, string | number | boolean> = { page, size };
   if (userId !== undefined) params.userId = userId;
-  return apiClient<ApiResponse<EventListResponseData>>('/api/v1/users/me/favorites', {
+  const response = await apiClient<ApiResponse<EventListResponseData>>('/api/v1/users/me/favorites', {
     method: 'GET',
     params,
   });
+
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      items: response.data.items.map((item) => ({
+        ...item,
+        thumbnailUrl: normalizeImageUrl(item.thumbnailUrl),
+      })),
+    },
+  };
 };
