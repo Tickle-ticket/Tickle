@@ -544,7 +544,7 @@ def main() -> int:
         est_spw = est_human_train / max(est_macro_train, 1)
         print(
             f"  scale_pos_weight 예상 (combined train, lv2 51 human / 101 macro 가정): "
-            f"n_neg≈{est_human_train}, n_pos≈{est_macro_train} -> ~{est_spw:.2f} "
+            f"n_neg ~{est_human_train}, n_pos ~{est_macro_train} -> SCALE_POS_WEIGHT ~{est_spw:.2f} "
             f"(xgboost_gyeom.ipynb 자동 갱신)"
         )
 
