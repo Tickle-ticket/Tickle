@@ -138,5 +138,61 @@ public class Payment {
         this.providerName = providerName;
         this.approvedAt = approvedAt;
         this.failedAt = failedAt;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 무통장 입금 대기 결제를 생성합니다.
+     *
+     * @param booking 연결 예매
+     * @param orderAmount 주문 금액
+     * @param currencyCode 통화 코드
+     * @param providerName 제공사명
+     * @return 생성된 결제 엔티티
+     */
+    public static Payment pendingBankTransfer(
+            Booking booking,
+            BigDecimal orderAmount,
+            String currencyCode,
+            String providerName
+    ) {
+        return Payment.builder()
+                .booking(booking)
+                .paymentStatus(Status.PENDING)
+                .paymentMethodType(MethodType.BANK_TRANSFER)
+                .orderAmount(orderAmount)
+                .currencyCode(currencyCode)
+                .providerName(providerName)
+                .build();
+    }
+
+    /**
+     * 결제를 승인 상태로 전환합니다.
+     *
+     * @param approvedAmount 승인 금액
+     */
+    public void approve(BigDecimal approvedAmount) {
+        this.paymentStatus = Status.APPROVED;
+        this.approvedAmount = approvedAmount;
+        this.approvedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 결제를 취소 상태로 전환합니다.
+     */
+    public void cancel() {
+        this.paymentStatus = Status.CANCELLED;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 결제를 실패 상태로 전환합니다.
+     */
+    public void fail() {
+        this.paymentStatus = Status.FAILED;
+        this.failedAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 }
