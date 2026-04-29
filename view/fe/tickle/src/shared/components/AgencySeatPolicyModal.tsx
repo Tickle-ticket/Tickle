@@ -5,7 +5,7 @@ import { Badge } from './Badge';
 import { Button } from './Button';
 import { InteractiveMapViewer } from './InteractiveMapViewer';
 import { Modal } from './Modal';
-import { SSAFY_18, SSAFY_18_SEAT_IDS } from './SSAFY_18';
+import { Stage_1, STAGE_1_SEAT_IDS } from './Stage_1';
 import type { SeatColor, SeatStatus } from './types';
 
 export type AgencySeatAssignmentMode = 'VIP' | 'R' | 'S' | 'A' | 'restricted' | 'disabled';
@@ -74,10 +74,10 @@ const getDefaultSeatAssignment = (seatId: string): AgencySeatAssignmentMode => {
 };
 
 export const createDefaultAgencySeatPolicy = (): AgencySeatPolicy =>
-  Object.fromEntries(SSAFY_18_SEAT_IDS.map((seatId) => [seatId, getDefaultSeatAssignment(seatId)]));
+  Object.fromEntries(STAGE_1_SEAT_IDS.map((seatId) => [seatId, getDefaultSeatAssignment(seatId)]));
 
 export const getAgencySeatPolicySummary = (seatPolicy: AgencySeatPolicy) =>
-  SSAFY_18_SEAT_IDS.reduce(
+  STAGE_1_SEAT_IDS.reduce(
     (summary, seatId) => {
       const assignment = seatPolicy[seatId] ?? getDefaultSeatAssignment(seatId);
 
@@ -104,7 +104,7 @@ export const getAgencySeatPolicySummary = (seatPolicy: AgencySeatPolicy) =>
       a: 0,
       restricted: 0,
       disabled: 0,
-      total: SSAFY_18_SEAT_IDS.length,
+      total: STAGE_1_SEAT_IDS.length,
     },
   );
 
@@ -138,7 +138,7 @@ export const AgencySeatPolicyModal = ({
   const seatMapData = useMemo(
     () =>
       Object.fromEntries(
-        SSAFY_18_SEAT_IDS.map((seatId) => {
+        STAGE_1_SEAT_IDS.map((seatId) => {
           const assignment = draftSeatPolicy[seatId] ?? getDefaultSeatAssignment(seatId);
           const appearance = assignmentToSeatAppearance[assignment];
 
@@ -263,7 +263,7 @@ export const AgencySeatPolicyModal = ({
         <div className="grid max-h-[72vh] overflow-hidden border-t border-slate-200 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="relative h-[420px] bg-slate-100 lg:h-[640px]">
             <InteractiveMapViewer showZoomControls={true}>
-              <SSAFY_18
+              <Stage_1
                 seatsData={seatMapData}
                 onSeatPointerDown={handleSeatPointerDown}
                 onSeatPointerEnter={handleSeatPointerEnter}
