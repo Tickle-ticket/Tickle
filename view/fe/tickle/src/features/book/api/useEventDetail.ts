@@ -32,7 +32,7 @@ export const useEventDetail = (eventId: string) => {
         const dateObj = new Date(session.startAt);
         const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
         const time = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-        
+
         if (!scheduleMap.has(date)) {
           scheduleMap.set(date, []);
         }
@@ -55,7 +55,11 @@ export const useEventDetail = (eventId: string) => {
         title: data.title,
         venue: data.venueName,
         date: `${startDate} ~ ${endDate}`,
-        zonePrices: data.pricePolicies.map(p => ({ grade: p.priceGrade, price: p.salePriceAmount })),
+        zonePrices: data.pricePolicies.map(p => ({
+          grade: p.priceGrade,
+          price: p.salePriceAmount,
+          discountInfo: p.discountInfo
+        })),
         schedules,
         notice: data.notice || '',
       } as EventDetailResponse;

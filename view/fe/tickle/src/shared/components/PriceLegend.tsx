@@ -1,8 +1,10 @@
 import React from 'react';
+import type { DiscountInfo } from '@/src/shared/api/eventApi';
 
 export interface GradePrice {
   grade: string;
   price: number;
+  discountInfo?: DiscountInfo[];
 }
 
 export interface PriceLegendProps {

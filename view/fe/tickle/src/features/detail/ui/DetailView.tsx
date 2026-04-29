@@ -16,7 +16,7 @@ import { Calendar } from '@/src/shared/components/Calendar';
 import { motion } from 'framer-motion';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { TimelineNav } from '@/src/shared/components/TimelineNav';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BookView } from '@/src/features/book/ui/BookView';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
@@ -38,7 +38,9 @@ const formatDateToDot = (date: Date) => {
 
 export const DetailView = () => {
   const router = useRouter();
-  const { data, isLoading } = useDetailData();
+  const searchParams = useSearchParams();
+  const eventId = searchParams.get('id') || undefined;
+  const { data, isLoading } = useDetailData(eventId);
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -162,20 +164,20 @@ export const DetailView = () => {
                   onExpire={() => setIsUpcoming(false)} 
                 />
                 <div className="flex items-center gap-3 mt-2 opacity-50 grayscale pointer-events-none">
-                  <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold">
+                  <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" isLoading={isLoading}>
                     예매하기
                   </Button>
-                  <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10">
+                  <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10" isLoading={isLoading}>
                     취소표 대기하기
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setFlowState('QUEUE')}>
+                <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setFlowState('QUEUE')} isLoading={isLoading}>
                   예매하기
                 </Button>
-                <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10" onClick={() => setFlowState('WAITLIST_QUEUE')}>
+                <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10" onClick={() => setFlowState('WAITLIST_QUEUE')} isLoading={isLoading}>
                   취소표 대기하기
                 </Button>
               </div>
@@ -236,10 +238,10 @@ export const DetailView = () => {
                           align: 'left',
                           render: (row: any) => {
                             const gradeColors: Record<string, string> = {
-                              'VIP': 'bg-pink-400',
-                              'R': 'bg-yellow-400',
-                              'S': 'bg-orange-400',
-                              'A': 'bg-blue-400',
+                              'VIP': 'grade-dot-vip',
+                              'R': 'grade-dot-r',
+                              'S': 'grade-dot-s',
+                              'A': 'grade-dot-a',
                             };
                             return (
                               <div className="flex items-center gap-3">
@@ -274,7 +276,7 @@ export const DetailView = () => {
                       <div className="w-full flex justify-center">
                         <Calendar
                           enabledDates={enabledDates}
-                          selectedDate={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : null}
+                          selectedDate={selectedDate}
                           onSelect={(date) => setSelectedDate(date ? new Date(date) : null)}
                           isLoading={isLoading}
                         />
@@ -348,7 +350,7 @@ export const DetailView = () => {
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={data?.eventId || '1'} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>

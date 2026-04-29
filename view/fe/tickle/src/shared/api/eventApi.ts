@@ -58,6 +58,12 @@ export interface EventSession {
   status: string;
 }
 
+export interface DiscountInfo {
+  discountName: string;
+  discountRate: number;
+  actualPriceAmount: number;
+}
+
 export interface EventPricePolicy {
   eventPricePolicyId: number;
   priceGrade: string;
@@ -65,6 +71,7 @@ export interface EventPricePolicy {
   salePriceAmount: number;
   currencyCode: string;
   displayOrder: number;
+  discountInfo?: DiscountInfo[];
 }
 
 export interface EventDetailResponseData {

@@ -9,7 +9,6 @@ export const setIsRefreshing = (state: boolean) => {
   isRefreshing = state;
 };
 
-// HttpOnly 환경이므로 새 토큰 문자열을 건네받지 않고 단순 실행만 예약합니다.
 export const enqueueWait = (callback: WaitQueueCallback) => {
   waitQueue.push(callback);
 };
@@ -23,14 +22,53 @@ export const clearWaitQueue = () => {
   waitQueue = [];
 };
 
-// 리프레시 API 호출 모듈 (HttpOnly 쿠키 포함)
+// Token Storage Management
+export const getAccessToken = () => {
+  if (typeof window !== 'undefined') return localStorage.getItem('accessToken');
+  return null;
+};
+
+export const getRefreshToken = () => {
+  if (typeof window !== 'undefined') return localStorage.getItem('refreshToken');
+  return null;
+};
+
+export const setTokens = (accessToken: string, refreshToken: string) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+  }
+};
+
+export const clearTokens = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  }
+};
+
+// Refresh API Call
 export const refreshAccessToken = async (baseUrl: string): Promise<boolean> => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
   try {
-    const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+    const response = await fetch(`${baseUrl}/api/v1/auth/reissue`, {
       method: 'POST',
-      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
     });
-    return response.ok;
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.data && data.data.accessToken && data.data.refreshToken) {
+        setTokens(data.data.accessToken, data.data.refreshToken);
+        return true;
+      }
+    }
+    return false;
   } catch {
     return false;
   }
