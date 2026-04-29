@@ -28,4 +28,9 @@ export const TRIAL_CONFIG = {
   
   /** 화면 가장자리(Edge)에 마우스가 도달했다고 판단하는 여백 (기본: 20px) */
   EDGE_MARGIN_PX: 20,
+
+  // ── 봇 탐지 (Bot Detection) 옵션 ──
+  
+  /** 매크로/봇 접근 시 차단 페이지(/blocked)로 강제 이동시킬지 여부 (기본: true) */
+  ENABLE_BOT_DETECTOR: true,
 };

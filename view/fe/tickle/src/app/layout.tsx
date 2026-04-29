@@ -4,6 +4,7 @@ import "./globals.css";
 import { MSWProvider } from "@/src/shared/providers/MSWProvider";
 import { QueryProvider } from "@/src/shared/providers/QueryProvider";
 import { BotDetector } from "@/src/shared/components/BotDetector";
+import { TRIAL_CONFIG } from "../../trialConfig";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <MSWProvider>
           <QueryProvider>
-            <BotDetector>{children}</BotDetector>
+            {TRIAL_CONFIG.ENABLE_BOT_DETECTOR ? (
+              <BotDetector>{children}</BotDetector>
+            ) : (
+              children
+            )}
           </QueryProvider>
         </MSWProvider>
       </body>

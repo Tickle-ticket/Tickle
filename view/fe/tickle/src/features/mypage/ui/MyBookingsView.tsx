@@ -43,17 +43,24 @@ export const MyBookingsView = () => {
   };
 
   const getDetailedSeatInfo = (seatId: string) => {
-    const match = seatId.match(/([a-zA-Z]+)(\d+)/);
+    const match = seatId.match(/^([a-zA-Z]+)(\d+)$/);
     if (!match) return seatId;
-    const num = parseInt(match[2], 10) || 1;
     
-    const floor = num > 50 ? 2 : 1;
-    const zones = ['A', 'B', 'C', 'D', 'E'];
-    const zone = zones[(num - 1) % 5];
-    const row = Math.ceil(num / 15) + (floor === 1 ? 5 : 1);
-    const seatNum = num;
+    const rowStr = match[1].toUpperCase();
+    const num = parseInt(match[2], 10);
     
-    return `${floor}층 ${zone}구역 ${row}열 ${seatNum}번`;
+    let zone = '';
+    if (['A', 'B', 'C'].includes(rowStr)) {
+      zone = num <= 5 ? 'A' : 'B';
+    } else {
+      if (['G', 'H', 'I', 'J'].includes(rowStr)) {
+        zone = num <= 7 ? 'C' : 'D';
+      } else {
+        zone = num <= 8 ? 'C' : 'D';
+      }
+    }
+    
+    return `1층 ${zone}구역 ${rowStr}열 ${num}번`;
   };
 
   const handleOpenCancelModal = (item: any) => {
