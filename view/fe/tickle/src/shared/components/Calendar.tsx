@@ -158,9 +158,9 @@ export const Calendar = ({
             <div key={day} className="flex justify-center items-center h-10 w-full">
               <button
                 disabled={!isEnabled}
-                onClick={() => {
+                onClick={(e) => {
                   if (isEnabled && onSelect) {
-                    onSelect(dateObj);
+                    onSelect(dateObj, e);
                   }
                 }}
                 className={`

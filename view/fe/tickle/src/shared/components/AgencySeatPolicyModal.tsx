@@ -269,7 +269,6 @@ export const AgencySeatPolicyModal = ({
                 onSeatPointerEnter={handleSeatPointerEnter}
                 onSeatPointerUp={handleSeatPointerUp}
                 className="!rounded-none !bg-white !shadow-none"
-                seatClassName="!cursor-pointer"
               />
             </InteractiveMapViewer>
             <div ref={guidePopoverRef} className="absolute left-4 top-4 z-20">

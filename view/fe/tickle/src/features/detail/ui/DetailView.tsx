@@ -128,9 +128,9 @@ export const DetailView = () => {
       </aside>
 
       {/* Toggle Button */}
-      <PanelToggle 
-        isFolded={isBannerFolded} 
-        onToggle={() => setIsBannerFolded(!isBannerFolded)} 
+      <PanelToggle
+        isFolded={isBannerFolded}
+        onToggle={() => setIsBannerFolded(!isBannerFolded)}
       />
 
       {/* Right Column: Main Content */}
@@ -159,9 +159,9 @@ export const DetailView = () => {
                 <Text typography="t5" fontWeight="bold" className="text-[#ef4444] animate-pulse">
                   예매 오픈까지 남은 시간
                 </Text>
-                <CountdownTimer 
-                  targetDate={data.openDate} 
-                  onExpire={() => setIsUpcoming(false)} 
+                <CountdownTimer
+                  targetDate={data.openDate}
+                  onExpire={() => setIsUpcoming(false)}
                 />
                 <div className="flex items-center gap-3 mt-2 opacity-50 grayscale pointer-events-none">
                   <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" isLoading={isLoading}>
@@ -199,7 +199,7 @@ export const DetailView = () => {
 
           {/* Left: Sticky Timeline Navigation */}
           <div className="sticky top-32 self-start">
-            <TimelineNav 
+            <TimelineNav
               items={navItems}
               activeIndex={activeIndex}
               onItemClick={(id, index) => handleScrollTo(id, index)}
@@ -241,9 +241,9 @@ export const DetailView = () => {
                   <div className="w-full rounded-xl overflow-hidden border border-gray-100">
                     <Table
                       columns={[
-                        { 
-                          key: 'seat', 
-                          header: '좌석 등급', 
+                        {
+                          key: 'seat',
+                          header: '좌석 등급',
                           align: 'left',
                           render: (row: any) => {
                             const gradeColors: Record<string, string> = {
@@ -260,9 +260,9 @@ export const DetailView = () => {
                             );
                           }
                         },
-                        { 
-                          key: 'price', 
-                          header: '가격', 
+                        {
+                          key: 'price',
+                          header: '가격',
                           align: 'right',
                           render: (row: any) => (
                             <Text typography="t5" fontWeight="medium" color="primary">{row.price}</Text>
@@ -347,8 +347,8 @@ export const DetailView = () => {
       {/* Booking Pipeline Overlays */}
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <QueueView 
-            sessionId={data?.eventId || '1'} 
+          <QueueView
+            sessionId={data?.eventId || '1'}
             onAdmitted={(token) => {
               setAdmitToken(token);
               if (flowState === 'QUEUE') setFlowState('BOOK');

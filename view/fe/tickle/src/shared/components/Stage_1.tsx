@@ -1,16 +1,15 @@
-import React from 'react';
-import { Seat } from './Seat';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { drawSeat, getSeatColors } from './seatRenderer';
 import { Stage } from './Stage';
 import type { SeatColor, SeatStatus, CongestionLevel } from './types';
 
 export interface Stage_1_Props {
-  seatsData?: Record<string, { color?: SeatColor; status?: SeatStatus; isSelected?: boolean }>;
-  onSeatClick?: (seatId: string) => void;
+  seatsData?: Record<string, { color?: SeatColor; status?: SeatStatus; isSelected?: boolean; congestion?: CongestionLevel }>;
+  onSeatClick?: (seatId: string, e: React.MouseEvent<HTMLCanvasElement>) => void;
   onSeatPointerDown?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
   onSeatPointerEnter?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
   onSeatPointerUp?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
   className?: string;
-  seatClassName?: string;
 }
 
 const upperLeft = [
@@ -52,55 +51,17 @@ const lowerRight = [
 ];
 
 const seatSections = [upperLeft, upperRight, lowerLeft, lowerRight];
-
 export const STAGE_1_SEAT_IDS = seatSections.flatMap((section) =>
   section.flatMap((row) => row.filter((seatId): seatId is string => seatId !== null)),
 );
 
-const SeatWrapper = ({
-  id,
-  data,
-  isDefaultMode,
-  onClick,
-  onPointerDown,
-  onPointerEnter,
-  onPointerUp,
-  seatClassName,
-}: {
-  id: string | null;
-  data?: { color?: SeatColor; status?: SeatStatus; congestion?: CongestionLevel; isSelected?: boolean };
-  isDefaultMode: boolean;
-  onClick?: (id: string) => void;
-  onPointerDown?: (id: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
-  onPointerEnter?: (id: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
-  onPointerUp?: (id: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
-  seatClassName?: string;
-}) => {
-  if (!id) return <div className="w-[36px] h-[42px] shrink-0" />;
-
-  const hasDataForThisSeat = data !== undefined;
-  const isMissingSeat = !isDefaultMode && !hasDataForThisSeat;
-
-  const finalColor = isMissingSeat ? 'gray' : (data?.color || 'gray');
-  const finalStatus = isMissingSeat ? 'disabled' : (data?.status || 'selectable');
-  const finalCongestion = isMissingSeat ? 'none' : (data?.congestion || 'none');
-
-  return (
-    <div className="w-[36px] h-[42px] shrink-0">
-      <Seat
-        color={finalColor}
-        status={finalStatus}
-        congestion={finalCongestion}
-        isSelected={data?.isSelected || false}
-        onClick={() => onClick?.(id)}
-        onPointerDown={(event) => onPointerDown?.(id, event)}
-        onPointerEnter={(event) => onPointerEnter?.(id, event)}
-        onPointerUp={(event) => onPointerUp?.(id, event)}
-        className={seatClassName}
-      />
-    </div>
-  );
-};
+interface SeatRect {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export const Stage_1 = ({
   seatsData = {},
@@ -109,70 +70,214 @@ export const Stage_1 = ({
   onSeatPointerEnter,
   onSeatPointerUp,
   className = '',
-  seatClassName = '',
 }: Stage_1_Props) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hoveredSeat, setHoveredSeat] = useState<string | null>(null);
+
   const isDefaultMode = Object.keys(seatsData).length === 0;
 
-  const renderGrid = (grid: (string | null)[][]) => {
-    const maxCols = Math.max(...grid.map(row => row.length));
+  // 1. Layout 상수 설정
+  const SEAT_W = 36;
+  const SEAT_H = 42;
+  const GAP_X = 6;
+  const GAP_Y = 6;
+  const ROW_HEADER_W = 24;
+  const COL_HEADER_H = 20;
 
-    // 열 헤더 (각 열의 첫 번째 유효한 좌석에서 숫자 추출)
-    const colHeaders = Array.from({ length: maxCols }).map((_, colIndex) => {
-      for (const row of grid) {
-        if (row[colIndex]) {
-          return row[colIndex]!.replace(/[a-zA-Z]/g, '');
+  // 2. 전체 Bounding Boxes 및 캔버스 크기 계산
+  const { seatRects, labels, canvasWidth, canvasHeight } = useMemo(() => {
+    const rects: SeatRect[] = [];
+    const textLabels: { text: string; x: number; y: number; align: 'center' | 'right' }[] = [];
+
+    const calcGrid = (grid: (string | null)[][]) => {
+      let maxX = 0;
+      let maxY = 0;
+      const gRects: SeatRect[] = [];
+      const gLabels: { text: string; x: number; y: number; align: 'center' | 'right' }[] = [];
+
+      const maxCols = Math.max(...grid.map(row => row.length));
+
+      // 열 헤더 계산
+      for (let c = 0; c < maxCols; c++) {
+        for (const row of grid) {
+          if (row[c]) {
+            const colNum = row[c]!.replace(/[a-zA-Z]/g, '');
+            const x = ROW_HEADER_W + c * (SEAT_W + GAP_X) + SEAT_W / 2;
+            const y = COL_HEADER_H - 4;
+            gLabels.push({ text: colNum, x, y, align: 'center' });
+            break;
+          }
         }
       }
-      return '';
-    });
 
-    return (
-      <div className="flex flex-col gap-1.5">
-        {/* 열 헤더 */}
-        <div className="flex gap-1.5 pl-6 mb-1">
-          {colHeaders.map((colNum, idx) => (
-            <div key={`col-${idx}`} className="w-[36px] shrink-0 flex justify-center items-end">
-              <span className="text-xs text-gray-400 dark:text-gray-500 font-bold">{colNum}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* 행 및 좌석들 */}
-        {grid.map((row, rowIndex) => {
-          let rowLabel = '';
-          for (const cell of row) {
-            if (cell) {
-              rowLabel = cell.replace(/[0-9]/g, '');
-              break;
-            }
+      // 행 및 좌석 계산
+      grid.forEach((row, r) => {
+        let rowLabel = '';
+        for (const cell of row) {
+          if (cell) {
+            rowLabel = cell.replace(/[0-9]/g, '');
+            break;
           }
+        }
+        
+        const rowY = COL_HEADER_H + r * (SEAT_H + GAP_Y);
+        gLabels.push({ text: rowLabel, x: ROW_HEADER_W - 4, y: rowY + SEAT_H / 2 + 4, align: 'right' });
 
-          return (
-            <div key={`row-${rowIndex}`} className="flex gap-1.5 items-center">
-              {/* 행 헤더 */}
-              <div className="w-5 shrink-0 flex justify-end pr-1">
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">{rowLabel}</span>
-              </div>
+        row.forEach((cellId, c) => {
+          if (cellId) {
+            const x = ROW_HEADER_W + c * (SEAT_W + GAP_X);
+            const y = rowY;
+            gRects.push({ id: cellId, x, y, width: SEAT_W, height: SEAT_H });
+            maxX = Math.max(maxX, x + SEAT_W);
+            maxY = Math.max(maxY, y + SEAT_H);
+          }
+        });
+      });
 
-              {/* 좌석 */}
-              {row.map((cellId, colIndex) => (
-                <SeatWrapper
-                  key={cellId || `empty-${rowIndex}-${colIndex}`}
-                  id={cellId}
-                  data={cellId ? seatsData[cellId] : undefined}
-                  isDefaultMode={isDefaultMode}
-                  onClick={onSeatClick}
-                  onPointerDown={onSeatPointerDown}
-                  onPointerEnter={onSeatPointerEnter}
-                  onPointerUp={onSeatPointerUp}
-                  seatClassName={seatClassName}
-                />
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    );
+      return { rects: gRects, labels: gLabels, w: maxX, h: maxY };
+    };
+
+    const ul = calcGrid(upperLeft);
+    const ur = calcGrid(upperRight);
+    const ll = calcGrid(lowerLeft);
+    const lr = calcGrid(lowerRight);
+
+    const upperWidth = ul.w + 48 + ur.w;
+    const lowerWidth = ll.w + 40 + lr.w;
+
+    const cW = Math.max(upperWidth, lowerWidth);
+    
+    // 중앙 정렬을 위한 오프셋
+    const upperOffsetX = (cW - upperWidth) / 2;
+    const lowerOffsetX = (cW - lowerWidth) / 2;
+
+    const llStartY = Math.max(ul.h, ur.h) + 48;
+    const cH = llStartY + Math.max(ll.h, lr.h);
+
+    const applyOffset = (gridRes: any, dx: number, dy: number) => {
+      gridRes.rects.forEach((r: any) => { r.x += dx; r.y += dy; rects.push(r); });
+      gridRes.labels.forEach((l: any) => { l.x += dx; l.y += dy; textLabels.push(l); });
+    };
+
+    applyOffset(ul, upperOffsetX, 0);
+    applyOffset(ur, upperOffsetX + ul.w + 48, 0);
+    applyOffset(ll, lowerOffsetX, llStartY);
+    applyOffset(lr, lowerOffsetX + ll.w + 40, llStartY);
+
+    return { seatRects: rects, labels: textLabels, canvasWidth: cW, canvasHeight: cH };
+  }, []);
+
+  // 3. 메인 렌더링 루프
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+
+    const render = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvasWidth * dpr;
+      canvas.height = canvasHeight * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      // 텍스트 라벨 렌더링
+      ctx.fillStyle = '#9ca3af'; // text-gray-400
+      ctx.font = 'bold 12px sans-serif';
+      labels.forEach(l => {
+        ctx.textAlign = l.align;
+        ctx.fillText(l.text, l.x, l.y);
+      });
+
+      // 좌석 렌더링
+      seatRects.forEach(rect => {
+        const data = seatsData[rect.id];
+        const isMissingSeat = !isDefaultMode && !data;
+        const status = isMissingSeat ? 'disabled' : (data?.status || 'selectable');
+        const color = isMissingSeat ? 'gray' : (data?.color || 'gray');
+        const congestion = isMissingSeat ? 'none' : (data?.congestion || 'none');
+        const isSelected = data?.isSelected || false;
+
+        const isHovered = hoveredSeat === rect.id;
+        const colors = getSeatColors(status, color, isSelected);
+
+        drawSeat({
+          ctx,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          status,
+          color,
+          congestion,
+          isSelected,
+          colors,
+          isHovered
+        });
+      });
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [canvasWidth, canvasHeight, seatRects, labels, seatsData, hoveredSeat, isDefaultMode]);
+
+  // 4. 이벤트 핸들러 (Hit Detection)
+  const getHitSeat = (e: React.MouseEvent | React.PointerEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    
+    // CSS Transform(Scale)이 적용되었을 때의 실제 렌더링 좌표 보정
+    const scaleX = canvas.offsetWidth / rect.width;
+    const scaleY = canvas.offsetHeight / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    for (const seat of seatRects) {
+      if (x >= seat.x && x <= seat.x + seat.width && y >= seat.y && y <= seat.y + seat.height) {
+        return seat.id;
+      }
+    }
+    return null;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const hit = getHitSeat(e);
+    
+    if (hit !== hoveredSeat) {
+      setHoveredSeat(hit);
+      if (hit && onSeatPointerEnter) {
+        onSeatPointerEnter(hit, e);
+      }
+    }
+  };
+
+  const handlePointerLeave = () => {
+    setHoveredSeat(null);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!onSeatPointerDown || !hoveredSeat) return;
+    onSeatPointerDown(hoveredSeat, e);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!onSeatPointerUp || !hoveredSeat) return;
+    onSeatPointerUp(hoveredSeat, e);
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onSeatClick) return;
+    const hit = getHitSeat(e);
+    if (hit) {
+      onSeatClick(hit, e);
+    }
   };
 
   return (
@@ -182,16 +287,18 @@ export const Stage_1 = ({
         <Stage width={480} height={72} label="무대" />
       </div>
 
-      {/* 2. Upper Seats */}
-      <div className="flex gap-12">
-        {renderGrid(upperLeft)}
-        {renderGrid(upperRight)}
-      </div>
-
-      {/* 3. Lower Seats */}
-      <div className="flex gap-10">
-        {renderGrid(lowerLeft)}
-        {renderGrid(lowerRight)}
+      {/* 2. Unified Canvas for Seats */}
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          style={{ width: canvasWidth, height: canvasHeight, cursor: hoveredSeat ? 'pointer' : 'default' }}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onClick={handleClick}
+          className="touch-none"
+        />
       </div>
     </div>
   );

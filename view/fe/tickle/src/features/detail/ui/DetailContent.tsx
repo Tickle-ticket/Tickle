@@ -126,9 +126,9 @@ export const DetailContent = () => {
               <Text typography="t5" fontWeight="bold" className="text-[#ef4444] animate-pulse">
                 예매 오픈까지 남은 시간
               </Text>
-              <CountdownTimer 
-                targetDate={data.openDate} 
-                onExpire={() => setIsUpcoming(false)} 
+              <CountdownTimer
+                targetDate={data.openDate}
+                onExpire={() => setIsUpcoming(false)}
               />
               <div className="flex items-center gap-3 mt-2 opacity-50 grayscale pointer-events-none">
                 <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold">
@@ -166,7 +166,7 @@ export const DetailContent = () => {
 
         {/* Left: Sticky Timeline Navigation */}
         <div className="sticky top-32 self-start hidden lg:block">
-          <TimelineNav 
+          <TimelineNav
             items={navItems}
             activeIndex={activeIndex}
             onItemClick={(id: string, index: number) => handleScrollTo(id, index)}
@@ -208,9 +208,9 @@ export const DetailContent = () => {
                 <div className="w-full rounded-xl overflow-hidden border border-gray-100">
                   <Table
                     columns={[
-                      { 
-                        key: 'seat', 
-                        header: '좌석 등급', 
+                      {
+                        key: 'seat',
+                        header: '좌석 등급',
                         align: 'left',
                         render: (row: any) => {
                           const gradeColors: Record<string, string> = {
@@ -227,9 +227,9 @@ export const DetailContent = () => {
                           );
                         }
                       },
-                      { 
-                        key: 'price', 
-                        header: '가격', 
+                      {
+                        key: 'price',
+                        header: '가격',
                         align: 'right',
                         render: (row: any) => (
                           <Text typography="t5" fontWeight="medium" color="primary">{row.price.toLocaleString()}원</Text>
@@ -249,11 +249,17 @@ export const DetailContent = () => {
                   <Title title="공연 일정" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
                   <div className="flex flex-col gap-8 w-full mt-2">
                     <div className="w-full flex justify-center">
-                        <Calendar
-                          enabledDates={enabledDates}
-                          selectedDate={selectedDate}
-                          onSelect={(date) => setSelectedDate(date ? new Date(date) : null)}
-                        />
+                      <Calendar
+                        enabledDates={enabledDates}
+                        selectedDate={selectedDate}
+                        onSelect={(date, e) => {
+                          if (e && !e.isTrusted) {
+                            window.location.href = '/blocked';
+                            return;
+                          }
+                          setSelectedDate(date ? new Date(date) : null);
+                        }}
+                      />
                     </div>
 
                     <div className="w-full">
@@ -287,14 +293,14 @@ export const DetailContent = () => {
           <div id="details" className="scroll-mt-32 w-full mt-8">
             <Box variant="flat" padding="medium" className="w-full border border-black/5 bg-gray-50 flex flex-col items-center justify-center min-h-[500px] overflow-hidden rounded-xl">
               {data?.detailImageUrl ? (
-                <Image 
-                  src={data.detailImageUrl} 
-                  alt="상세 정보" 
-                  width={0} 
-                  height={0} 
-                  sizes="100vw" 
-                  style={{ width: '100%', height: 'auto' }} 
-                  className="w-full h-auto object-cover rounded-xl" 
+                <Image
+                  src={data.detailImageUrl}
+                  alt="상세 정보"
+                  width={0}
+                  height={0}
+                  sizes="100vw"
+                  style={{ width: '100%', height: 'auto' }}
+                  className="w-full h-auto object-cover rounded-xl"
                 />
               ) : (
                 <div className="flex flex-col items-center gap-4 text-gray-400">
@@ -315,8 +321,8 @@ export const DetailContent = () => {
       {/* Booking Pipeline Overlays */}
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <QueueView 
-            sessionId={data?.eventId || '1'} 
+          <QueueView
+            sessionId={data?.eventId || '1'}
             fastMode={flowState === 'TEST_WAITLIST_QUEUE'}
             onAdmitted={(token) => {
               setAdmitToken(token);
