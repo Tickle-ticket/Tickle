@@ -10,9 +10,10 @@ interface QueueViewProps {
   sessionId: string;
   onAdmitted: (admitToken: string) => void;
   onClose: () => void;
+  fastMode?: boolean;
 }
 
-export const QueueView = ({ sessionId, onAdmitted, onClose }: QueueViewProps) => {
+export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueViewProps) => {
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
@@ -30,6 +31,17 @@ export const QueueView = ({ sessionId, onAdmitted, onClose }: QueueViewProps) =>
 
     const startQueue = async (attempt = 1): Promise<void> => {
       if (isCancelled) return;
+
+      if (fastMode) {
+        setStatus('WAITING');
+        setRank(1);
+        setWaitingCount(1);
+        setEstimatedWaitSeconds(1);
+        setTimeout(() => {
+          if (!isCancelled) onAdmitted('test-fast-token');
+        }, 500);
+        return;
+      }
 
       try {
         // 1. Enter Queue

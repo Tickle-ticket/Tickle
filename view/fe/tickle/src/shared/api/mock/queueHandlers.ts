@@ -22,7 +22,7 @@ export const queueHandlers = [
       message: 'success',
       data: {
         queueToken: 'qt-mock-queue-token',
-        status: 'WAITING'
+        status: 'ADMITTED'
       }
     });
   }),

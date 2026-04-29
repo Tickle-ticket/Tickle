@@ -115,7 +115,7 @@ export const Stage_1 = ({
 
   const renderGrid = (grid: (string | null)[][]) => {
     const maxCols = Math.max(...grid.map(row => row.length));
-    
+
     // 열 헤더 (각 열의 첫 번째 유효한 좌석에서 숫자 추출)
     const colHeaders = Array.from({ length: maxCols }).map((_, colIndex) => {
       for (const row of grid) {
@@ -153,7 +153,7 @@ export const Stage_1 = ({
               <div className="w-5 shrink-0 flex justify-end pr-1">
                 <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">{rowLabel}</span>
               </div>
-              
+
               {/* 좌석 */}
               {row.map((cellId, colIndex) => (
                 <SeatWrapper

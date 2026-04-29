@@ -7,7 +7,7 @@
 export type TrialStage = 'captcha' | 'booking';
 
 // ─── Label ───────────────────────────────────────────────────
-export type TrialLabel = 'human' | 'macro';
+export type TrialLabel = 'human' | 'macro' | 'none';
 
 // ─── Summary ─────────────────────────────────────────────────
 export interface TrialSummary {

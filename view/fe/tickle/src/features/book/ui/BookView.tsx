@@ -65,7 +65,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
 
   // ── Trial Collector (행동 데이터 수집) ──────────────────────
-  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({ enabled: mode === 'BOOK' });
+  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({ enabled: mode === 'BOOK' || mode === 'WAITLIST' });
 
   // Ticket type selection
   const bookingStep = useBookStore(s => s.bookingStep);
@@ -165,8 +165,10 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   useEffect(() => {
     if (!isBotVerified) {
       setTrialStage('captcha');
-    } else if (bookingStep === 'SEAT') {
-      setTrialStage('booking');
+    } else {
+      if (bookingStep === 'SEAT') setTrialStage('booking');
+      else if (bookingStep === 'TICKET_TYPE') setTrialStage('ticket_type');
+      else if (bookingStep === 'PAYMENT' || bookingStep === 'PAY_METHOD') setTrialStage('payment');
     }
   }, [isBotVerified, bookingStep, setTrialStage]);
 
@@ -334,6 +336,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
       }
 
       if (isWaitlistMode) {
+        await finalizeTrial();
         setIsWaitlistCompleteModalOpen(true);
       } else {
         const gradeCounts: Record<string, number> = {};
@@ -346,7 +349,6 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
           initial[grade] = {};
         });
         setGradeTicketCounts(initial);
-        await finalizeTrial();
         setBookingStep('TICKET_TYPE');
       }
     } catch (err: any) {
@@ -1017,7 +1019,10 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                   </div>
                   <button
                     disabled={Object.keys(gradeSeats).some(g => getGradeTotal(g) !== gradeSeats[g].length)}
-                    onClick={() => setBookingStep('PAYMENT')}
+                    onClick={async () => {
+                      await finalizeTrial();
+                      setBookingStep('PAYMENT');
+                    }}
                     className={`px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-md ${Object.keys(gradeSeats).some(g => getGradeTotal(g) !== gradeSeats[g].length)
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
                       : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-blue-600/20'

@@ -19,6 +19,16 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
   // 파생 상태: 입력한 숫자 중 하나라도 정답과 틀리면 에러
   const isError = currentInput.some((num, idx) => num !== targetSequence[idx]);
 
+  // Lottie 애니메이션 onComplete가 간헐적으로 동작하지 않는 경우를 대비한 폴백
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => {
+        onSuccess(`custom-captcha-token-${Date.now()}`);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, onSuccess]);
+
   // 미션 생성 및 키패드 섞기
   const generateMission = useCallback(() => {
     // 1. 1~9 무작위 셔플 배열 생성 (봇이 좌표를 외우지 못하도록)

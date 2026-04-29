@@ -62,7 +62,7 @@ export class TrialCollector {
   private trialId: number;
   private userId: number | null = null;
   private sessionId: string;
-  private label: TrialLabel = 'human';
+  private label: TrialLabel = 'none';
   private startTs: number;
   private stage: TrialStage = 'captcha';
 
