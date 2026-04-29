@@ -297,7 +297,7 @@ export interface StageProps extends React.CanvasHTMLAttributes<HTMLCanvasElement
 export interface CalendarProps {
   enabledDates?: (string | Date)[];
   selectedDate?: Date | string | null;
-  onSelect?: (date: Date) => void;
+  onSelect?: (date: Date, e?: React.MouseEvent<HTMLButtonElement>) => void;
   isLoading?: boolean;
   className?: string;
 }
@@ -311,7 +311,7 @@ export interface SeatProps extends Omit<React.CanvasHTMLAttributes<HTMLCanvasEle
   color?: SeatColor;
   congestion?: CongestionLevel;
   isSelected?: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   isLoading?: boolean;
   className?: string;
 }

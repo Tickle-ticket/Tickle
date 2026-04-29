@@ -102,7 +102,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   const setAgreeTerm1 = useBookStore(s => s.setAgreeTerm1);
   const agreeTerm2 = useBookStore(s => s.agreeTerm2);
   const setAgreeTerm2 = useBookStore(s => s.setAgreeTerm2);
-  
+
   const { data: userProfile } = useUserProfile();
   const isProfileLoaded = useRef(false);
 
@@ -296,7 +296,12 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
     return `${floor}층 ${zone}구역 ${row}열 ${seatNum}번`;
   };
 
-  const handleSeatClick = async (id: string) => {
+  const handleSeatClick = async (id: string, e?: React.MouseEvent) => {
+    if (e && !e.isTrusted) {
+      window.location.href = '/blocked';
+      return;
+    }
+
     if (bookingStep === 'TICKET_TYPE') return;
 
     // 취소 모드이거나 (예약 변경 모드 내의 초기 좌석)
@@ -531,7 +536,11 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                     <Calendar
                       enabledDates={eventDetail.schedules.map(s => s.date.replace(/\./g, '-'))}
                       selectedDate={selectedDate ? selectedDate.replace(/\./g, '-') : null}
-                      onSelect={(date: Date) => {
+                      onSelect={(date: Date, e?: React.MouseEvent) => {
+                        if (e && !e.isTrusted) {
+                          window.location.href = '/blocked';
+                          return;
+                        }
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
                         const day = String(date.getDate()).padStart(2, '0');
@@ -557,7 +566,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                         key={timeObj.time}
                         onClick={() => {
                           const newTime = timeObj.time;
-                          
+
                           // 이전에 확정된 스케줄이 있고, 그 스케줄과 다른 일시를 선택했다면
                           if (confirmedSchedule && (confirmedSchedule.date !== selectedDate || confirmedSchedule.time !== newTime)) {
                             // 예약 변경 모드가 아닌 신규 예매일 때만 좌석을 초기화합니다.
@@ -780,7 +789,11 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                     </span>
                   </div>
                   <button
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      if (!e.isTrusted) {
+                        window.location.href = '/blocked';
+                        return;
+                      }
                       if (selectedSeats.size > 0) {
                         await handleNextStep();
                       } else {
@@ -806,7 +819,13 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                     </span>
                   </div>
                   <button
-                    onClick={handleNextStep}
+                    onClick={(e) => {
+                      if (!e.isTrusted) {
+                        window.location.href = '/blocked';
+                        return;
+                      }
+                      handleNextStep();
+                    }}
                     className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
                   >
                     {isWaitlistMode ? '예약하기' : '인원 선택'}
@@ -1361,7 +1380,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                       const dotClass = gradeDotColors[grade] || 'bg-gray-400';
                       const counts = gradeTicketCounts[grade] || {};
                       let gradeTotalPrice = 0;
-                      
+
                       const gradePriceInfo = eventDetail?.zonePrices.find(p => p.grade === grade);
                       if (gradePriceInfo) {
                         const types = gradePriceInfo.discountInfo?.length ? gradePriceInfo.discountInfo : [{ discountName: '일반', discountRate: 0, actualPriceAmount: gradePriceInfo.price }];
