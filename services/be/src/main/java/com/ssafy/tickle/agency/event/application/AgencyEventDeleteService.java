@@ -50,7 +50,7 @@ public class AgencyEventDeleteService {
         validateDeletable(event);
 
         // FK 제약을 피하기 위해 하위 데이터부터 순서대로 제거
-        favoriteRepository.deleteByEvent_Id(eventId);
+        favoriteRepository.deleteByEventId(eventId);
         eventImageRepository.deleteByEventId(eventId);
         sessionSeatRepository.deleteByEventId(eventId);
         eventSeatRepository.deleteByEventId(eventId);

@@ -18,7 +18,7 @@ import java.util.Optional;
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    void deleteByEvent_Id(Long eventId);
+    void deleteByEventId(Long eventId);
 
     boolean existsByUser_IdAndEvent_Id(Long userId, Long eventId);
 
