@@ -205,15 +205,15 @@ export const DetailContent = () => {
                         align: 'left',
                         render: (row: any) => {
                           const gradeColors: Record<string, string> = {
-                            'VIP': 'bg-pink-400',
-                            'R': 'bg-yellow-400',
-                            'S': 'bg-orange-400',
-                            'A': 'bg-blue-400',
+                            'VIP': 'grade-dot-vip',
+                            'R': 'grade-dot-r',
+                            'S': 'grade-dot-s',
+                            'A': 'grade-dot-a',
                           };
                           return (
                             <div className="flex items-center gap-3">
-                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.seat] || 'bg-gray-200'}`} />
-                              <Text typography="t5" fontWeight="bold" color="primary">{row.seat}</Text>
+                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.grade] || 'bg-gray-200'}`} />
+                              <Text typography="t5" fontWeight="bold" color="primary">{row.grade}</Text>
                             </div>
                           );
                         }
@@ -240,11 +240,11 @@ export const DetailContent = () => {
                   <Title title="공연 일정" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
                   <div className="flex flex-col gap-8 w-full mt-2">
                     <div className="w-full flex justify-center">
-                      <Calendar
-                        enabledDates={enabledDates}
-                        selectedDate={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : null}
-                        onSelect={(date) => setSelectedDate(date ? new Date(date) : null)}
-                      />
+                        <Calendar
+                          enabledDates={enabledDates}
+                          selectedDate={selectedDate}
+                          onSelect={(date) => setSelectedDate(date ? new Date(date) : null)}
+                        />
                     </div>
 
                     <div className="w-full">
@@ -318,7 +318,7 @@ export const DetailContent = () => {
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={data?.eventId || '1'} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>

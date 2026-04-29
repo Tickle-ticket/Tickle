@@ -1,6 +1,6 @@
-import { ws } from 'msw';
+import { ws, http, HttpResponse } from 'msw';
 
-const seatSocket = ws.link('wss://api.tickle.com/ws/seats');
+const seatSocket = ws.link('wss://api.tickle.com/topic/seats/*');
 
 const SEAT_GRADE_MAP: Record<string, string> = {
   // VIP석
@@ -51,46 +51,96 @@ export const seatHandlers = [
   seatSocket.addEventListener('connection', ({ client }) => {
     let interval: NodeJS.Timeout;
 
-    // 클라이언트로부터 메시지를 수신했을 때 처리
+    // In MSW ws connection event, request is not available directly.
+    // We will just use a global mock schedule for simulation.
+    const scheduleId = 'mock-schedule';
+    
+    const currentMockSeats = getMockSeatsForSchedule(scheduleId);
+
+    // 1초마다 랜덤하게 누군가 예매하거나 취소하는 상황 시뮬레이션
+    interval = setInterval(() => {
+      const seatIds = Object.keys(currentMockSeats);
+      const randomSeat = seatIds[Math.floor(Math.random() * seatIds.length)];
+      
+      // 상태 반전 (토글)
+      currentMockSeats[randomSeat].isAvailable = !currentMockSeats[randomSeat].isAvailable;
+      
+      client.send(JSON.stringify({ 
+        seatLabel: randomSeat, 
+        saleStatus: currentMockSeats[randomSeat].isAvailable ? 'AVAILABLE' : 'RESERVED'
+      }));
+    }, 1000);
+
+    // 클라이언트로부터 메시지를 수신했을 때의 더미 핸들러 (현재 FE는 안 보냄)
     client.addEventListener('message', (event) => {
-      try {
-        // ws 이벤트 데이터 파싱
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : null;
-        
-        // SUBSCRIBE 이벤트: 클라이언트가 특정 회차(scheduleId)를 구독하겠다고 요청함
-        if (data && data.type === 'SUBSCRIBE' && data.scheduleId) {
-          const scheduleId = data.scheduleId;
-          const currentMockSeats = getMockSeatsForSchedule(scheduleId);
-
-          // 1. 해당 회차의 전체 좌석 상태 전송 (INIT)
-          client.send(JSON.stringify({ type: 'INIT', seats: currentMockSeats }));
-
-          // 기존 인터벌이 있다면 제거
-          if (interval) clearInterval(interval);
-
-          // 2. 3초마다 랜덤하게 누군가 예매하거나 취소하는 상황 시뮬레이션 (UPDATE)
-          interval = setInterval(() => {
-            const seatIds = Object.keys(currentMockSeats);
-            const randomSeat = seatIds[Math.floor(Math.random() * seatIds.length)];
-            
-            // 상태 반전 (토글)
-            currentMockSeats[randomSeat].isAvailable = !currentMockSeats[randomSeat].isAvailable;
-            
-            client.send(JSON.stringify({ 
-              type: 'UPDATE', 
-              seatId: randomSeat, 
-              isAvailable: currentMockSeats[randomSeat].isAvailable
-            }));
-          }, 3000);
-        }
-      } catch (e) {
-        console.error('Invalid message format', e);
-      }
+      console.log('Received message from client:', event.data);
     });
 
     // 연결 종료 시 인터벌 정리
     client.addEventListener('close', () => {
       if (interval) clearInterval(interval);
+    });
+  }),
+  
+  // 최초 좌석 정보 전체 조회 API
+  http.get('*/api/v1/events/:eventId/schedules/:scheduleId/seats', async ({ params }) => {
+    const { scheduleId } = params;
+    const currentMockSeats = getMockSeatsForSchedule(String(scheduleId));
+    
+    const sectionsRecord: Record<string, any[]> = {};
+
+    Object.entries(currentMockSeats).forEach(([seatLabel, info], index) => {
+      const rowLabel = seatLabel.match(/^[a-zA-Z]+/)?.[0] || 'A';
+      const seatNumber = seatLabel.replace(/^[a-zA-Z]+/, '');
+      
+      if (!sectionsRecord[info.grade]) {
+        sectionsRecord[info.grade] = [];
+      }
+      
+      sectionsRecord[info.grade].push({
+        sessionSeatId: 1000 + index,
+        eventSeatId: 2000 + index,
+        rowLabel,
+        seatNumber,
+        seatLabel,
+        saleStatus: info.isAvailable ? 'AVAILABLE' : 'RESERVED',
+        price: info.grade === 'VIP' ? 170000 : (info.grade === 'R' ? 140000 : (info.grade === 'S' ? 110000 : 80000))
+      });
+    });
+
+    const sections = Object.entries(sectionsRecord).map(([grade, seats], idx) => ({
+      sectionId: idx + 1,
+      sectionName: `${grade}석`,
+      displayOrder: idx + 1,
+      seats
+    }));
+
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: {
+        sections
+      }
+    });
+  }),
+
+  // 좌석 선점 요청
+  http.post('*/api/v1/events/:eventId/schedules/:scheduleId/seats/hold', async () => {
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: {
+        heldSeats: []
+      }
+    });
+  }),
+
+  // 좌석 선점 해제
+  http.delete('*/api/v1/events/:eventId/schedules/:scheduleId/seats/hold', async () => {
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: null
     });
   }),
 ];

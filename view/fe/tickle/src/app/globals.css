@@ -61,6 +61,16 @@
   --seat-a-top: #2dd4bf; /* Cyan/Teal */
   --seat-a-side: #0f766e;
 
+  /* Badge styling tokens */
+  --badge-vip-bg: color-mix(in srgb, var(--seat-vip-top) 15%, transparent);
+  --badge-vip-border: color-mix(in srgb, var(--seat-vip-top) 40%, transparent);
+  --badge-r-bg: color-mix(in srgb, var(--seat-r-top) 15%, transparent);
+  --badge-r-border: color-mix(in srgb, var(--seat-r-top) 40%, transparent);
+  --badge-s-bg: color-mix(in srgb, var(--seat-s-top) 15%, transparent);
+  --badge-s-border: color-mix(in srgb, var(--seat-s-top) 40%, transparent);
+  --badge-a-bg: color-mix(in srgb, var(--seat-a-top) 15%, transparent);
+  --badge-a-border: color-mix(in srgb, var(--seat-a-top) 40%, transparent);
+
   /* Congestion Levels (Extremely Distinct Yellow / Orange / Red) */
   --seat-high-top: #dc2626; /* Red 600 */
   --seat-high-side: #b91c1c; /* Red 700 */
@@ -92,3 +102,31 @@ body {
 .animate-dot-bounce {
   animation: dot-bounce 1s infinite ease-in-out;
 }
+
+/* Seat Grade Badge Utilities */
+.grade-badge-vip {
+  background-color: var(--badge-vip-bg);
+  color: var(--seat-vip-side);
+  border-color: var(--badge-vip-border);
+}
+.grade-badge-r {
+  background-color: var(--badge-r-bg);
+  color: var(--seat-r-side);
+  border-color: var(--badge-r-border);
+}
+.grade-badge-s {
+  background-color: var(--badge-s-bg);
+  color: var(--seat-s-side);
+  border-color: var(--badge-s-border);
+}
+.grade-badge-a {
+  background-color: var(--badge-a-bg);
+  color: var(--seat-a-side);
+  border-color: var(--badge-a-border);
+}
+
+/* Seat Grade Dot Utilities */
+.grade-dot-vip { background-color: var(--seat-vip-top); }
+.grade-dot-r { background-color: var(--seat-r-top); }
+.grade-dot-s { background-color: var(--seat-s-top); }
+.grade-dot-a { background-color: var(--seat-a-top); }

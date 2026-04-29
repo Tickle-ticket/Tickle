@@ -60,7 +60,7 @@ export const useDetailData = (eventId: string = '1') => {
         venue: data.venueName,
         venueAddress: data.venueAddress,
         notice: data.notice || '',
-        zonePrices: data.pricePolicies.map(p => ({ grade: p.priceGrade, price: p.salePriceAmount })),
+        zonePrices: data.pricePolicies.map((p: any) => ({ grade: p.priceGrade || p.grade || p.name || '일반', price: p.salePriceAmount || p.price || 0 })),
         schedules,
         detailImageUrl: data.images.find(img => img.imageType === 'DETAIL')?.imageUrl || '',
         isFavorite: data.isFavorite || false,

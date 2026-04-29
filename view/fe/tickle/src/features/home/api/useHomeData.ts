@@ -30,7 +30,7 @@ export const useHomeBanners = () => {
       const response = await http.get<ApiResponse<BannerData[]>>('/api/v1/home/banners');
       return response.data;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 1000,
   });
 };
 

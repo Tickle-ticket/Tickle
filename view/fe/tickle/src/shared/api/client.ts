@@ -6,6 +6,7 @@ import {
   flushWaitQueue,
   clearWaitQueue,
   refreshAccessToken,
+  getAccessToken,
 } from './tokenManager';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -31,6 +32,8 @@ export const apiClient = async <T>(
   const url = buildUrl(path, options.params);
   const { body, params, headers, ...restOptions } = options;
 
+  const accessToken = getAccessToken();
+
   const config: RequestInit = {
     ...restOptions,
     // 실제 통신 시에는 항상 쿠키 전송이 필요합니다. 개발 단계에서 MSW 연동 문제 시 수정 가능.
@@ -38,6 +41,7 @@ export const apiClient = async <T>(
     redirect: 'manual', // 302 자동 추적 방지
     headers: {
       ...(!(body instanceof FormData) && { 'Content-Type': 'application/json' }),
+      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       ...headers,
     },
   };
