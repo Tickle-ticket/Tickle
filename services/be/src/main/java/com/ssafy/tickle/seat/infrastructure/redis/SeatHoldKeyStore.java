@@ -6,8 +6,10 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 좌석 선점 정보를 Redis에 저장·조회·삭제하는 컴포넌트입니다.
@@ -48,6 +50,22 @@ public class SeatHoldKeyStore {
         RBucket<List<Long>> bucket = redissonClient.getBucket(buildKey(scheduleId, userId));
         List<Long> ids = bucket.get();
         return ids != null ? ids : Collections.emptyList();
+    }
+
+    /**
+     * 사용자의 선점 키 만료 시각을 조회합니다.
+     *
+     * @param scheduleId 회차 ID
+     * @param userId 사용자 ID
+     * @return 만료 시각 Optional
+     */
+    public Optional<Instant> getHeldExpiresAt(Long scheduleId, Long userId) {
+        RBucket<List<Long>> bucket = redissonClient.getBucket(buildKey(scheduleId, userId));
+        long ttlMillis = bucket.remainTimeToLive();
+        if (ttlMillis <= 0) {
+            return Optional.empty();
+        }
+        return Optional.of(Instant.now().plusMillis(ttlMillis));
     }
 
     /**
