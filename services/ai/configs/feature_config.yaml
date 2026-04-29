@@ -107,6 +107,12 @@ exclude:
   - label
   - stage
   - selectedSeats
+  - collection_pipeline
+  - session_id
+  - source
+  - metrics_compatibility
+
+
 
 raw:
  - pre_click_mouse_path_pattern_300ms
