@@ -2,8 +2,6 @@ package com.ssafy.tickle.agency.event.application.dto;
 
 import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
-import com.ssafy.tickle.common.exception.BaseException;
-import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.venue.domain.VenueSeat;
 
 import java.time.Instant;
@@ -35,6 +33,8 @@ public record EventSeatInsertCommand(
 
     /**
      * 공연장 좌석과 가격 정책으로부터 공연 좌석 생성 명령을 만듭니다.
+     *
+     * 공연 좌석 등급은 공연장 좌석 등급이 아니라 가격 정책 등급을 사용합니다.
      */
     public static EventSeatInsertCommand from(
             Long eventSectionId,
@@ -42,10 +42,6 @@ public record EventSeatInsertCommand(
             Long venueId,
             VenueSeat venueSeat
     ) {
-        SeatGrade seatGrade = pricePolicy.getPriceGrade();
-        if (!seatGrade.equals(venueSeat.getSeatGrade())) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "공연장 좌석 등급과 가격 정책 등급이 일치해야 합니다.");
-        }
         Instant now = Instant.now();
         return new EventSeatInsertCommand(
                 eventSectionId,
@@ -54,7 +50,7 @@ public record EventSeatInsertCommand(
                 venueSeat.getRowLabel(),
                 venueSeat.getSeatNumber(),
                 venueSeat.getSeatLabel(),
-                seatGrade,
+                pricePolicy.getPriceGrade(),
                 now,
                 now
         );

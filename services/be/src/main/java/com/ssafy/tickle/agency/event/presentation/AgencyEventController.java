@@ -2,6 +2,7 @@ package com.ssafy.tickle.agency.event.presentation;
 
 import com.ssafy.tickle.agency.event.application.AgencyEventBasicService;
 import com.ssafy.tickle.agency.event.application.AgencyEventDeleteService;
+import com.ssafy.tickle.agency.event.application.AgencyEventQueryService;
 import com.ssafy.tickle.agency.event.application.AgencyEventSeatBatchService;
 import com.ssafy.tickle.agency.event.application.AgencyEventSessionService;
 import com.ssafy.tickle.agency.event.application.AgencyVenueTemplateService;
@@ -10,6 +11,9 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyCreateEventResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventDetailResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventListResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventSeatResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSeatsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSessionsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyVenueTemplateResponse;
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,6 +39,7 @@ public class AgencyEventController implements AgencyEventApiDoc {
 
     private final AgencyEventBasicService agencyEventBasicService;
     private final AgencyEventDeleteService agencyEventDeleteService;
+    private final AgencyEventQueryService agencyEventQueryService;
     private final AgencyEventSessionService agencyEventSessionService;
     private final AgencyEventSeatBatchService agencyEventSeatBatchService;
     private final AgencyVenueTemplateService agencyVenueTemplateService;
@@ -48,6 +54,50 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @GetMapping("/venues/{venueId}/template")
     public ResponseEntity<BaseResponse<AgencyVenueTemplateResponse>> getVenueTemplate(@PathVariable Long venueId) {
         return ResponseEntity.ok(BaseResponse.success(agencyVenueTemplateService.getVenueTemplate(venueId)));
+    }
+
+    /**
+     * 기획사 공연 목록을 조회합니다.
+     *
+     * @param organizerId 기획사 식별자
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 공연 목록 응답
+     */
+    @Override
+    @GetMapping("/events")
+    public ResponseEntity<BaseResponse<AgencyEventListResponse>> getEvents(
+            @RequestParam Long organizerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(BaseResponse.success(
+                agencyEventQueryService.getEvents(organizerId, page, size)
+        ));
+    }
+
+    /**
+     * 기획사 공연 상세를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 상세 응답
+     */
+    @Override
+    @GetMapping("/events/{eventId}")
+    public ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(@PathVariable Long eventId) {
+        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventDetail(eventId)));
+    }
+
+    /**
+     * 기획사 공연 좌석 정보를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 좌석 응답
+     */
+    @Override
+    @GetMapping("/events/{eventId}/seats")
+    public ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(@PathVariable Long eventId) {
+        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventSeats(eventId)));
     }
 
     /**
