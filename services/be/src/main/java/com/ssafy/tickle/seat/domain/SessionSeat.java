@@ -56,6 +56,10 @@ public class SessionSeat {
     @Column(name = "sale_status", nullable = false, length = 30)
     private SaleStatus saleStatus;
 
+    // 선점 사용자 (HELD 상태인 경우에만 값이 있음. TTL 만료 시 DB 조회에 활용)
+    @Column(name = "held_by_user_id")
+    private Long heldByUserId;
+
     // 버전
     @Version
     @Column(name = "version_no", nullable = false)
@@ -110,13 +114,15 @@ public class SessionSeat {
      *
      * <p>AVAILABLE 상태인 경우에만 HELD로 전환 가능합니다.</p>
      *
+     * @param userId 선점 사용자 식별자 (TTL 만료 시 DB 조회에 활용)
      * @throws BaseException 선점 불가 상태인 경우 (SEAT_ALREADY_HELD)
      */
-    public void hold() {
+    public void hold(Long userId) {
         if (this.saleStatus != SaleStatus.AVAILABLE) {
             throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
         }
         this.saleStatus = SaleStatus.HELD;
+        this.heldByUserId = userId;
         this.updatedAt = Instant.now();
     }
 
@@ -131,6 +137,7 @@ public class SessionSeat {
             return;
         }
         this.saleStatus = SaleStatus.AVAILABLE;
+        this.heldByUserId = null;
         this.updatedAt = Instant.now();
     }
 }

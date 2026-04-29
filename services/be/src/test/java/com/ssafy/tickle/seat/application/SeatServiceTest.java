@@ -212,9 +212,13 @@ class SeatServiceTest {
             assertThat(response.heldSessionSeatIds()).containsExactlyInAnyOrder(ss1.getId(), ss2.getId());
             assertThat(response.expiresAt()).isAfter(Instant.now());
 
-            // DB 상태 확인
+            // DB 상태 및 heldByUserId 확인
             List<SessionSeat> updatedSeats = sessionSeatRepository.findAllByIdIn(List.of(ss1.getId(), ss2.getId()));
             assertThat(updatedSeats).allMatch(s -> s.getSaleStatus() == SessionSeat.SaleStatus.HELD);
+            assertThat(updatedSeats).allMatch(s -> s.getHeldByUserId().equals(1L));
+
+            // cleanup
+            seatHoldKeyStore.deleteHeld(session.getId(), 1L);
         }
 
         @Test
@@ -306,9 +310,9 @@ class SeatServiceTest {
             // given
             EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
             EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
-            SessionSeat ss = sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.HELD));
-
             Long userId = 1L;
+            // heldByUserId 세팅 필수 — releaseSeats는 DB 기준으로 조회함
+            SessionSeat ss = sessionSeatRepository.save(createHeldSessionSeat(session, seat, section.getId(), userId));
             seatHoldKeyStore.registerHeld(session.getId(), userId, List.of(ss.getId()));
 
             // when
@@ -317,7 +321,27 @@ class SeatServiceTest {
             // then
             SessionSeat updated = sessionSeatRepository.findById(ss.getId()).orElseThrow();
             assertThat(updated.getSaleStatus()).isEqualTo(SessionSeat.SaleStatus.AVAILABLE);
+            assertThat(updated.getHeldByUserId()).isNull();
             assertThat(seatHoldKeyStore.getHeldSeatIds(session.getId(), userId)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Redis TTL 만료 후 수동 해제해도 정상 동작한다 (Redis 의존 제거 검증)")
+        void releaseSeats_afterTtlExpiry_stillReleases() {
+            // given - Redis 키 없이 DB에만 HELD 상태 (TTL 만료 시나리오 시뮬레이션)
+            EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
+            EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
+            Long userId = 77L;
+            SessionSeat ss = sessionSeatRepository.save(createHeldSessionSeat(session, seat, section.getId(), userId));
+            // Redis 키 등록하지 않음 (TTL 만료 상태 시뮬레이션)
+
+            // when
+            seatService.releaseSeats(event.getId(), session.getId(), userId);
+
+            // then — Redis 키 없어도 DB 기준으로 정상 해제
+            SessionSeat updated = sessionSeatRepository.findById(ss.getId()).orElseThrow();
+            assertThat(updated.getSaleStatus()).isEqualTo(SessionSeat.SaleStatus.AVAILABLE);
+            assertThat(updated.getHeldByUserId()).isNull();
         }
 
         @Test
@@ -336,9 +360,8 @@ class SeatServiceTest {
             // given
             EventSection section = eventSectionRepository.save(createSection(event, "A구역", 1));
             EventSeat seat = eventSeatRepository.save(createEventSeat(section, pricePolicy, "A", "1"));
-            SessionSeat ss = sessionSeatRepository.save(createSessionSeat(session, seat, section.getId(), SessionSeat.SaleStatus.HELD));
-
             Long userId = 99L;
+            SessionSeat ss = sessionSeatRepository.save(createHeldSessionSeat(session, seat, section.getId(), userId));
             seatHoldKeyStore.registerHeld(session.getId(), userId, List.of(ss.getId()));
 
             // when
@@ -459,6 +482,18 @@ class SeatServiceTest {
     }
 
     private SessionSeat createSessionSeat(EventSession sess, EventSeat eventSeat, Long eventSectionId, SessionSeat.SaleStatus status) {
+        return createHeldSessionSeat(sess, eventSeat, eventSectionId, null, status);
+    }
+
+    /**
+     * HELD 상태와 heldByUserId가 세팅된 SessionSeat을 생성합니다.
+     * releaseSeats()는 DB의 heldByUserId 기준으로 조회하므로 이 헬퍼를 사용해야 합니다.
+     */
+    private SessionSeat createHeldSessionSeat(EventSession sess, EventSeat eventSeat, Long eventSectionId, Long userId) {
+        return createHeldSessionSeat(sess, eventSeat, eventSectionId, userId, SessionSeat.SaleStatus.HELD);
+    }
+
+    private SessionSeat createHeldSessionSeat(EventSession sess, EventSeat eventSeat, Long eventSectionId, Long userId, SessionSeat.SaleStatus status) {
         SessionSeat ss = SessionSeat.builder()
                 .session(sess)
                 .eventSeat(eventSeat)
@@ -466,6 +501,9 @@ class SeatServiceTest {
                 .saleStatus(status)
                 .versionNo(0L)
                 .build();
+        if (userId != null) {
+            ReflectionTestUtils.setField(ss, "heldByUserId", userId);
+        }
         ReflectionTestUtils.setField(ss, "updatedAt", Instant.now());
         return ss;
     }

@@ -54,19 +54,25 @@ public interface SeatApiDoc {
     @Operation(
             summary = "좌석 선점",
             description = """
-                    선택한 좌석 전체를 동시에 선점합니다 (All-or-Nothing).
+                    FE에서 선택한 좌석 목록을 "선택완료" 클릭 시 한 번에 선점합니다 (All-or-Nothing).
                     
-                    - **1인당 최대 4개**까지 선점 가능합니다.
-                    - 세션 단위 Redis 분산 락으로 동시 요청을 직렬화합니다.
-                    - 하나라도 AVAILABLE이 아닌 좌석이 포함되면 전체 실패합니다.
+                    **동시성 제어**
+                    - 락은 "선택완료" 클릭 시 밀리초 단위로만 보유합니다.
+                    - FE에서 좌석을 클릭하며 선택하는 동안(선택 단계)은 서버 락이 없습니다.
+                    - 세션 단위 Redis 분산 락으로 동시 "선택완료" 요청을 직렬화합니다.
+                    - 거의 동시에 두 명이 겹치는 좌석으로 "선택완료"를 눌렀다면, 한 명은 밀리초 대기 후 409를 받습니다.
+                    
+                    **선점 규칙**
+                    - 1인당 최대 4개까지 선점 가능합니다 (ADR 시나리오 10).
+                    - 하나라도 AVAILABLE이 아닌 좌석이 포함되면 **전체 실패**합니다.
                     - 성공 시 Redis에 15분 TTL 키를 등록합니다.
-                    - 15분 내 결제 미완료 시 자동 해제됩니다 (WebSocket 이슈에서 구현 예정).
+                    - 15분 내 결제 미완료 시 자동 해제되며 WebSocket으로 상태 변경을 Push합니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "좌석 선점 성공"),
             @ApiResponse(responseCode = "404", description = "공연, 회차 또는 좌석을 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 선점된 좌석 포함 또는 락 획득 실패")
+            @ApiResponse(responseCode = "409", description = "이미 선점된 좌석 포함 / 락 획득 실패")
     })
     ResponseEntity<BaseResponse<SeatHoldResponse>> holdSeats(
             @Parameter(description = "공연 식별자", required = true, example = "1")
