@@ -76,6 +76,7 @@ public class Booking {
     private Instant updatedAt;
 
     public enum Status {
+        DRAFT,
         PENDING_PAYMENT,
         PAYMENT_IN_PROGRESS,
         CONFIRMED,

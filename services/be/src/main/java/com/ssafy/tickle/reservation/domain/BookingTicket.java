@@ -83,6 +83,8 @@ public class BookingTicket {
     private Instant updatedAt;
 
     public enum Status {
+        DRAFT,
+        PENDING_PAYMENT,
         BOOKED,
         CANCELLED,
         USED,
