@@ -5,7 +5,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 
 /**
- * 결제 도메인 Redis 키와 정책 상수를 관리합니다.
+ * 결제 도메인 정책 상수를 관리합니다.
  */
 public final class PaymentConstants {
 
@@ -30,14 +30,8 @@ public final class PaymentConstants {
     // 입금 마감 시각(다음날 23:59:59)
     public static final LocalTime BANK_TRANSFER_DEADLINE_TIME = LocalTime.of(23, 59, 59);
 
-    // 무통장입금 유저 키
-    public static final String BANK_TRANSFER_USER_KEY_PREFIX = "payment:bank-transfer:user:";
-
-    // 무통장입금 유저 만료일 ZSet 키
-    public static final String BANK_TRANSFER_DEADLINE_ZSET_KEY = "payment:bank-transfer:deadline";
-
-    // 만료 처리 배치 사이즈
-    public static final long EXPIRE_BATCH_SIZE = 100L;
+    // 만료 배치 조회 크기
+    public static final int BANK_TRANSFER_EXPIRE_BATCH_SIZE = 500;
 
     private PaymentConstants() {
     }
