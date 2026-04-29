@@ -14,6 +14,19 @@ const buildRemainingSeats = (date: string, time: string) => {
 };
 
 export const eventHandlers = [
+  // 공연장 목록 조회
+  http.get('*/api/v1/venues', async () => {
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: {
+        venues: [
+          { venueId: 1, venueName: '샤롯데씨어터' },
+          { venueId: 18, venueName: 'SSAFY 18기 대강당' },
+        ]
+      }
+    });
+  }),
   // 공연 목록 조회 / 검색 API
   http.get('*/api/v1/events', async ({ request }) => {
     await delay(500);
@@ -111,10 +124,38 @@ export const eventHandlers = [
           }
         ],
         pricePolicies: [
-          { eventPricePolicyId: 1, priceGrade: 'VIP', audienceType: 'ALL', salePriceAmount: 170000, currencyCode: 'KRW', displayOrder: 1 },
-          { eventPricePolicyId: 2, priceGrade: 'R', audienceType: 'ALL', salePriceAmount: 140000, currencyCode: 'KRW', displayOrder: 2 },
-          { eventPricePolicyId: 3, priceGrade: 'S', audienceType: 'ALL', salePriceAmount: 110000, currencyCode: 'KRW', displayOrder: 3 },
-          { eventPricePolicyId: 4, priceGrade: 'A', audienceType: 'ALL', salePriceAmount: 80000, currencyCode: 'KRW', displayOrder: 4 }
+          {
+            eventPricePolicyId: 1, priceGrade: 'VIP', audienceType: 'ALL', salePriceAmount: 170000, currencyCode: 'KRW', displayOrder: 1,
+            discountInfo: [
+              { discountName: '일반', discountRate: 0, actualPriceAmount: 170000 },
+              { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 136000 },
+              { discountName: '장애인/국가유공자 할인', discountRate: 50, actualPriceAmount: 85000 }
+            ]
+          },
+          {
+            eventPricePolicyId: 2, priceGrade: 'R', audienceType: 'ALL', salePriceAmount: 140000, currencyCode: 'KRW', displayOrder: 2,
+            discountInfo: [
+              { discountName: '일반', discountRate: 0, actualPriceAmount: 140000 },
+              { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 112000 },
+              { discountName: '장애인/국가유공자 할인', discountRate: 50, actualPriceAmount: 70000 }
+            ]
+          },
+          {
+            eventPricePolicyId: 3, priceGrade: 'S', audienceType: 'ALL', salePriceAmount: 110000, currencyCode: 'KRW', displayOrder: 3,
+            discountInfo: [
+              { discountName: '일반', discountRate: 0, actualPriceAmount: 110000 },
+              { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 88000 },
+              { discountName: '장애인/국가유공자 할인', discountRate: 50, actualPriceAmount: 55000 }
+            ]
+          },
+          {
+            eventPricePolicyId: 4, priceGrade: 'A', audienceType: 'ALL', salePriceAmount: 80000, currencyCode: 'KRW', displayOrder: 4,
+            discountInfo: [
+              { discountName: '일반', discountRate: 0, actualPriceAmount: 80000 },
+              { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 64000 },
+              { discountName: '장애인/국가유공자 할인', discountRate: 50, actualPriceAmount: 40000 }
+            ]
+          }
         ]
       },
     });

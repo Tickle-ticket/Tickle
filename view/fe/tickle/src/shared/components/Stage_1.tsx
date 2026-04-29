@@ -3,7 +3,7 @@ import { Seat } from './Seat';
 import { Stage } from './Stage';
 import type { SeatColor, SeatStatus, CongestionLevel } from './types';
 
-export interface SSAFY_18_Props {
+export interface Stage_1_Props {
   seatsData?: Record<string, { color?: SeatColor; status?: SeatStatus; isSelected?: boolean }>;
   onSeatClick?: (seatId: string) => void;
   onSeatPointerDown?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
@@ -53,7 +53,7 @@ const lowerRight = [
 
 const seatSections = [upperLeft, upperRight, lowerLeft, lowerRight];
 
-export const SSAFY_18_SEAT_IDS = seatSections.flatMap((section) =>
+export const STAGE_1_SEAT_IDS = seatSections.flatMap((section) =>
   section.flatMap((row) => row.filter((seatId): seatId is string => seatId !== null)),
 );
 
@@ -102,7 +102,7 @@ const SeatWrapper = ({
   );
 };
 
-export const SSAFY_18 = ({
+export const Stage_1 = ({
   seatsData = {},
   onSeatClick,
   onSeatPointerDown,
@@ -110,7 +110,7 @@ export const SSAFY_18 = ({
   onSeatPointerUp,
   className = '',
   seatClassName = '',
-}: SSAFY_18_Props) => {
+}: Stage_1_Props) => {
   const isDefaultMode = Object.keys(seatsData).length === 0;
 
   const renderGrid = (grid: (string | null)[][]) => {
