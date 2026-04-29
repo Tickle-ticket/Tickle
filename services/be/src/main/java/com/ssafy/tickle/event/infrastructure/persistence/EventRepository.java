@@ -27,6 +27,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     Optional<Event> findWithDetailsById(Long eventId);
 
     /**
+     * 기획사에 속한 공연 목록을 페이지 단위로 조회합니다.
+     *
+     * @param organizerId 기획사 식별자
+     * @param pageable 페이징 정보
+     * @return 공연 페이지
+     */
+    @EntityGraph(attributePaths = {"venue"})
+    Page<Event> findByOrganizerId(Long organizerId, Pageable pageable);
+
+    /**
      * 제목 키워드와 카테고리 조건으로 이벤트 목록을 조회합니다.
      *
      * @param keyword 제목 검색어

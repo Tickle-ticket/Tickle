@@ -61,7 +61,42 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
             @Param("saleStatus") SessionSeat.SaleStatus saleStatus
     );
 
+    /**
+     * 공연별 예매 확정 좌석 수를 집계합니다.
+     *
+     * @param eventIds 공연 식별자 목록
+     * @param saleStatus 집계 대상 판매 상태
+     * @return 공연별 확정 좌석 수
+     */
+    @Query("""
+            select ss.session.event.id as eventId, count(ss.id) as confirmedSeatCount
+            from SessionSeat ss
+            where ss.session.event.id in :eventIds
+              and ss.saleStatus = :saleStatus
+            group by ss.session.event.id
+            """)
+    List<EventConfirmedSeatCountProjection> countConfirmedSeatsByEventIds(
+            @Param("eventIds") List<Long> eventIds,
+            @Param("saleStatus") SessionSeat.SaleStatus saleStatus
+    );
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from SessionSeat ss where ss.session.event.id = :eventId")
     void deleteByEventId(@Param("eventId") Long eventId);
+
+    /**
+     * 공연별 예매 확정 좌석 수 조회 결과입니다.
+     */
+    interface EventConfirmedSeatCountProjection {
+
+        /**
+         * @return 공연 식별자
+         */
+        Long getEventId();
+
+        /**
+         * @return 예매 확정 좌석 수
+         */
+        long getConfirmedSeatCount();
+    }
 }
