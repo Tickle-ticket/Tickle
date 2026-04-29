@@ -9,8 +9,10 @@ import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
@@ -52,6 +54,9 @@ class AgencyEventQueryServiceTest {
 
     @Autowired
     private EventPricePolicyRepository eventPricePolicyRepository;
+
+    @Autowired
+    private EventImageRepository eventImageRepository;
 
     @Autowired
     private EventSessionRepository eventSessionRepository;
@@ -111,6 +116,13 @@ class AgencyEventQueryServiceTest {
                 Event.Status.PENDING
         ));
 
+        eventImageRepository.saveAll(List.of(
+                createImage(detailEvent, EventImage.ImageType.POSTER, "https://cdn.test/poster.jpg", 0),
+                createImage(detailEvent, EventImage.ImageType.THUMBNAIL, "https://cdn.test/poster.jpg", 0),
+                createImage(detailEvent, EventImage.ImageType.DETAIL, "https://cdn.test/detail-1.jpg", 0),
+                createImage(detailEvent, EventImage.ImageType.DETAIL, "https://cdn.test/detail-2.jpg", 1)
+        ));
+
         vipPolicy = eventPricePolicyRepository.save(createPricePolicy(detailEvent, SeatGrade.VIP, 220000, 0));
         rPolicy = eventPricePolicyRepository.save(createPricePolicy(detailEvent, SeatGrade.R, 150000, 1));
         EventPricePolicy listPolicy = eventPricePolicyRepository.save(createPricePolicy(listEvent, SeatGrade.R, 132000, 0));
@@ -155,6 +167,7 @@ class AgencyEventQueryServiceTest {
         eventSeatRepository.deleteAllInBatch();
         eventSectionRepository.deleteAllInBatch();
         eventSessionRepository.deleteAllInBatch();
+        eventImageRepository.deleteAllInBatch();
         eventPricePolicyRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
@@ -197,6 +210,15 @@ class AgencyEventQueryServiceTest {
         assertThat(response.basicInfo().categoryId()).isEqualTo(category.getId());
         assertThat(response.basicInfo().title()).isEqualTo("상세 조회 공연");
         assertThat(response.basicInfo().tags()).containsExactly("detail", "seat");
+        assertThat(response.images()).hasSize(4);
+        assertThat(response.images())
+                .extracting(AgencyEventDetailResponse.ImageInfo::imageType, AgencyEventDetailResponse.ImageInfo::imageUrl)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.POSTER, "https://cdn.test/poster.jpg"),
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.THUMBNAIL, "https://cdn.test/poster.jpg"),
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.DETAIL, "https://cdn.test/detail-1.jpg"),
+                        org.assertj.core.groups.Tuple.tuple(EventImage.ImageType.DETAIL, "https://cdn.test/detail-2.jpg")
+                );
 
         assertThat(response.pricePolicies()).hasSize(2);
         assertThat(response.pricePolicies().get(0).priceGrade()).isEqualTo("VIP");
@@ -282,6 +304,15 @@ class AgencyEventQueryServiceTest {
                 .priceAmount(BigDecimal.valueOf(amount))
                 .discountInfo(List.of())
                 .currencyCode("KRW")
+                .displayOrder(displayOrder)
+                .build();
+    }
+
+    private EventImage createImage(Event event, EventImage.ImageType imageType, String imageUrl, int displayOrder) {
+        return EventImage.builder()
+                .event(event)
+                .imageType(imageType)
+                .imageUrl(imageUrl)
                 .displayOrder(displayOrder)
                 .build();
     }

@@ -81,5 +81,7 @@ public class EventImage {
         this.imageType = imageType;
         this.imageUrl = imageUrl;
         this.displayOrder = displayOrder;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
     }
 }
