@@ -2,6 +2,7 @@ package com.ssafy.tickle.event.infrastructure.persistence;
 
 import com.ssafy.tickle.event.domain.EventSession;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,6 +31,10 @@ public interface EventSessionRepository extends JpaRepository<EventSession, Long
      * @return 오픈 중이거나 곧 오픈할 회차 목록
      */
     List<EventSession> findBySalesCloseAtAfterAndSalesOpenAtBefore(Instant salesCloseAt, Instant salesOpenAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from EventSession s where s.event.id = :eventId")
+    void deleteByEventId(@Param("eventId") Long eventId);
 
     /**
      * 공연 ID와 회차 ID가 일치하는 회차를 조회합니다.

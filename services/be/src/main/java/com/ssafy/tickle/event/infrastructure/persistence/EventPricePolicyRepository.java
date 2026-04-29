@@ -2,6 +2,8 @@ package com.ssafy.tickle.event.infrastructure.persistence;
 
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -17,6 +19,9 @@ public interface EventPricePolicyRepository extends JpaRepository<EventPricePoli
      * @return 가격 정책 존재 여부
      */
     boolean existsByEventId(Long eventId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    void deleteByEventId(@Param("eventId") Long eventId);
 
     /**
      * 이벤트 가격 정책을 노출 순서대로 조회합니다.
