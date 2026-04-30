@@ -36,6 +36,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 
@@ -323,53 +324,54 @@ class EventServiceTest {
         @Test
         @DisplayName("기본 5개를 판매 시작 시각 오름차순으로 반환한다")
         void getOpeningSoonEvents_defaultSize_success() {
+            Instant now = Instant.now();
             Event first = saveOpeningSoonEvent(
                     "Opening Soon 1",
                     concertCategory,
-                    Instant.parse("2026-04-24T01:00:00Z"),
-                    Instant.parse("2026-05-01T10:00:00Z"),
+                    now.plus(1, ChronoUnit.HOURS),
+                    now.plus(7, ChronoUnit.DAYS),
                     List.of("A")
             );
             Event second = saveOpeningSoonEvent(
                     "Opening Soon 2",
                     concertCategory,
-                    Instant.parse("2026-04-24T02:00:00Z"),
-                    Instant.parse("2026-05-02T10:00:00Z"),
+                    now.plus(2, ChronoUnit.HOURS),
+                    now.plus(8, ChronoUnit.DAYS),
                     List.of("B")
             );
             Event third = saveOpeningSoonEvent(
                     "Opening Soon 3",
                     concertCategory,
-                    Instant.parse("2026-04-24T03:00:00Z"),
-                    Instant.parse("2026-05-03T10:00:00Z"),
+                    now.plus(3, ChronoUnit.HOURS),
+                    now.plus(9, ChronoUnit.DAYS),
                     List.of("C")
             );
             Event fourth = saveOpeningSoonEvent(
                     "Opening Soon 4",
                     concertCategory,
-                    Instant.parse("2026-04-24T04:00:00Z"),
-                    Instant.parse("2026-05-04T10:00:00Z"),
+                    now.plus(4, ChronoUnit.HOURS),
+                    now.plus(10, ChronoUnit.DAYS),
                     List.of("D")
             );
             Event fifth = saveOpeningSoonEvent(
                     "Opening Soon 5",
                     concertCategory,
-                    Instant.parse("2026-04-24T05:00:00Z"),
-                    Instant.parse("2026-05-05T10:00:00Z"),
+                    now.plus(5, ChronoUnit.HOURS),
+                    now.plus(11, ChronoUnit.DAYS),
                     List.of("E")
             );
             saveOpeningSoonEvent(
                     "Opening Soon 6",
                     concertCategory,
-                    Instant.parse("2026-04-24T06:00:00Z"),
-                    Instant.parse("2026-05-06T10:00:00Z"),
+                    now.plus(6, ChronoUnit.HOURS),
+                    now.plus(12, ChronoUnit.DAYS),
                     List.of("F")
             );
             saveOpeningSoonEvent(
                     "Past Pending",
                     concertCategory,
-                    Instant.parse("2026-04-23T23:00:00Z"),
-                    Instant.parse("2026-04-29T10:00:00Z"),
+                    now.minus(2, ChronoUnit.HOURS),
+                    now.plus(1, ChronoUnit.DAYS),
                     List.of("PAST")
             );
 
