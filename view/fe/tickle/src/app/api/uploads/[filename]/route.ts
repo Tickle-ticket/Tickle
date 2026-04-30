@@ -29,7 +29,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { status: 500, message: '?대?吏 ?뚯씪??遺덈윭?ㅼ? 紐삵뻽?듬땲??' },
+      { status: 500, message: '이미지 파일을 불러오지 못했습니다.' },
       { status: 500 },
     );
   }

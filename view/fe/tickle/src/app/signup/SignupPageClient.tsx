@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Badge } from '@/src/shared/components/Badge';
 import { UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
 import { getSignupFormHref, signupAccountTypes } from './signupAccountType';
 
@@ -7,8 +6,6 @@ export function SignupPageClient() {
   return (
     <UserAuthFrame
       activeTab="signup"
-      label="회원가입"
-      title="가입할 계정 유형을 선택하세요"
       size="wide"
       footer={
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -28,10 +25,6 @@ export function SignupPageClient() {
           >
             <div>
               <div className="flex items-center justify-between gap-3">
-                <Badge size="small" color={accountType.badgeColor}>
-                  {accountType.label}
-                </Badge>
-                <span className="text-sm font-black text-slate-300 transition group-hover:text-blue-500">선택</span>
               </div>
               <h2 className="mt-5 text-xl font-black text-slate-950">{accountType.label}</h2>
               <p className="mt-3 text-sm font-medium leading-6 text-slate-500">

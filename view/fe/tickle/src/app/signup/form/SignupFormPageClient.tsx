@@ -121,7 +121,7 @@ function AgencyDropdownField({
           </div>
         ) : null}
       </div>
-      <span className="text-xs font-medium text-slate-400">DB에 등록된 기획사만 선택할 수 있습니다.</span>
+      <span className="text-xs font-medium text-slate-400">등록된 기획사만 선택할 수 있습니다.</span>
     </div>
   );
 }
@@ -140,22 +140,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
   return (
     <UserAuthFrame
       activeTab="signup"
-      label="회원가입"
-      title={`${selectedTypeCopy.cardTitle} 정보 입력`}
       size="wide"
-      footer={
-        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/signup" className="font-bold text-slate-500 transition hover:text-slate-900">
-            계정 유형 다시 선택
-          </Link>
-          <div className="flex gap-2">
-            <span className="font-medium text-slate-500">이미 계정이 있나요?</span>
-            <Link href="/login" className="font-bold text-blue-600 transition hover:text-blue-700">
-              로그인
-            </Link>
-          </div>
-        </div>
-      }
     >
       <form className="space-y-6">
         <input type="hidden" name="accountType" value={initialAccountType} />
@@ -165,20 +150,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
             <input type="hidden" name="organization" value={selectedAgency?.name ?? ''} />
           </>
         ) : null}
-
-        <Box variant="gray" className="rounded-[24px] bg-slate-50">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-black text-slate-900">가입 유형</p>
-              <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
-                {selectedTypeCopy.cardDescription}
-              </p>
-            </div>
-            <Badge size="small" color={selectedTypeCopy.badgeColor}>
-              {selectedTypeCopy.label}
-            </Badge>
-          </div>
-        </Box>
 
         <div className="grid gap-5 sm:grid-cols-2">
           {isAgencySignup ? (
@@ -278,7 +249,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         </Box>
 
         <div className="grid gap-3">
-          <Button type="submit" display="block" size="xlarge" disabled={isSignupDisabled}>
+          <Button type="submit" display="block" size="xlarge" color="dark" disabled={isSignupDisabled}>
             회원가입
           </Button>
           <Button as="a" href="/login" color="dark" variant="weak" display="block" size="xlarge">
