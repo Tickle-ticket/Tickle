@@ -19,7 +19,9 @@ import type {
   WindowRow,
   ClickEventRow,
   MousemoveEventRow,
-} from './trialTypes';
+} from '../utils/schema';
+import { Schema } from 'effect';
+import { TrialJSONSchema } from '../utils/schema';
 
 // ─── Helper Utilities ───────────────────────────────────────
 
@@ -359,7 +361,7 @@ export class TrialCollector {
 
     const metrics = this.computeMetrics(durationMs);
 
-    return {
+    const rawTrial = {
       trialId: this.trialId,
       userId: this.userId,
       sessionId: this.sessionId,
@@ -369,6 +371,8 @@ export class TrialCollector {
       eventRows: this.eventRows,
       windowRows: this.windowRows,
     };
+
+    return Schema.decodeUnknownSync(TrialJSONSchema)(rawTrial);
   }
 
   /**
@@ -397,7 +401,7 @@ export class TrialCollector {
     // 해당 단계의 이벤트만으로 metrics 계산
     const metrics = this.computeMetricsFromEvents(stageEvents, durationMs);
 
-    return {
+    const rawTrial = {
       trialId: this.trialId,
       userId: this.userId,
       sessionId: currentStage,
@@ -407,6 +411,8 @@ export class TrialCollector {
       eventRows: stageEvents,
       windowRows: stageWindows,
     };
+
+    return Schema.decodeUnknownSync(TrialJSONSchema)(rawTrial);
   }
 
   destroy() {
@@ -507,8 +513,10 @@ export class TrialCollector {
         mouse_hover_dwell_time_ms: null,
         mouse_stop_segment_count: null,
         mousemove_event_rate: durationMs > 0 ? moves.length / (durationMs / 1000) : null,
-        pre_click_mouse_path_pattern_300ms: '0px | straight 0.00',
-        pre_click_mouse_path_pattern_500ms: '0px | straight 0.00',
+        pre_click_path_300ms_total_distance_px: 0,
+        pre_click_path_300ms_straightness: 0,
+        pre_click_path_500ms_total_distance_px: 0,
+        pre_click_path_500ms_straightness: 0,
         inter_element_move_interval_std_ms: null,
         edge_or_fixed_point_visit_rate: null,
       };
@@ -604,21 +612,23 @@ export class TrialCollector {
       mouse_hover_dwell_time_ms: null, // would need hover in/out tracking
       mouse_stop_segment_count: stopCount,
       mousemove_event_rate: durationMs > 0 ? moves.length / (durationMs / 1000) : null,
-      pre_click_mouse_path_pattern_300ms: preClick300,
-      pre_click_mouse_path_pattern_500ms: preClick500,
+      pre_click_path_300ms_total_distance_px: preClick300.distance,
+      pre_click_path_300ms_straightness: preClick300.straightness,
+      pre_click_path_500ms_total_distance_px: preClick500.distance,
+      pre_click_path_500ms_straightness: preClick500.straightness,
       inter_element_move_interval_std_ms: std(elementIntervals),
       edge_or_fixed_point_visit_rate: moves.length > 0 ? edgeVisits / moves.length : null,
     };
   }
 
-  private computePreClickPath(moves: MousemoveEventRow[], clicks: ClickEventRow[], windowMs: number): string {
-    if (clicks.length === 0 || moves.length === 0) return '0px | straight 0.00';
+  private computePreClickPath(moves: MousemoveEventRow[], clicks: ClickEventRow[], windowMs: number): { distance: number, straightness: number } {
+    if (clicks.length === 0 || moves.length === 0) return { distance: 0, straightness: 0 };
 
     const lastClick = clicks[clicks.length - 1];
     const windowStart = lastClick.relative_ms - windowMs;
     const windowMoves = moves.filter(m => m.relative_ms >= windowStart && m.relative_ms <= lastClick.relative_ms);
 
-    if (windowMoves.length < 2) return '0px | straight 0.00';
+    if (windowMoves.length < 2) return { distance: 0, straightness: 0 };
 
     let totalDist = 0;
     for (let i = 1; i < windowMoves.length; i++) {
@@ -631,7 +641,10 @@ export class TrialCollector {
     );
     const straightness = totalDist > 0 ? directDist / totalDist : 0;
 
-    return `${totalDist.toFixed(0)}px | straight ${straightness.toFixed(2)}`;
+    return { 
+      distance: Math.round(totalDist), 
+      straightness: Number(straightness.toFixed(2)) 
+    };
   }
 
   // ── Keyboard Metrics ────────────────────────────────────

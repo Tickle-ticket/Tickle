@@ -1,4 +1,5 @@
 import { ApiError, RequestOptions } from './types';
+import { Schema } from 'effect';
 import {
   getIsRefreshing,
   setIsRefreshing,
@@ -24,10 +25,11 @@ const buildUrl = (path: string, params?: RequestOptions['params']) => {
   return url.toString();
 };
 
-export const apiClient = async <T>(
+export const apiClient = async <T, A = any, I = any>(
   path: string,
   options: RequestOptions = {},
-  _isRetry = false
+  _isRetry = false,
+  schema?: Schema.Schema<A, I>
 ): Promise<T> => {
   const url = buildUrl(path, options.params);
   const { body, params, headers, ...restOptions } = options;
@@ -74,7 +76,19 @@ export const apiClient = async <T>(
       return {} as T;
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    // 만약 schema가 전달되었다면 파싱(유효성 검사) 수행
+    if (schema) {
+      try {
+        return Schema.decodeUnknownSync(schema)(data) as unknown as T;
+      } catch (parseError) {
+        console.error(`[API Schema Error] ${path} 응답 데이터가 스키마와 불일치합니다:`, parseError);
+        throw new ApiError('서버 응답 형식이 올바르지 않습니다.', response.status, data);
+      }
+    }
+
+    return data;
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
