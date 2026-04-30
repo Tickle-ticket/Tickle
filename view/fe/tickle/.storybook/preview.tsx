@@ -1,5 +1,7 @@
 import type { Preview } from '@storybook/nextjs-vite'
+import React from 'react'
 import '../src/app/globals.css'
+import { QueryProvider } from '../src/shared/providers/QueryProvider'
 
 const preview: Preview = {
   parameters: {
@@ -15,8 +17,18 @@ const preview: Preview = {
       // 'error' - fail CI on a11y violations
       // 'off' - skip a11y checks entirely
       test: 'todo'
-    }
+    },
+    nextjs: {
+      appDirectory: true,
+    },
   },
+  decorators: [
+    (Story) => (
+      <QueryProvider>
+        <Story />
+      </QueryProvider>
+    ),
+  ],
 };
 
 export default preview;

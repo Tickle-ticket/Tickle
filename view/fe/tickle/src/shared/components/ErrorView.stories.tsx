@@ -88,3 +88,20 @@ export const CustomContentOverride: Story = {
     },
   },
 };
+
+// 6. Bot Blocked (매크로 봇 차단 화면)
+export const BotBlocked: Story = {
+  args: {
+    type: '401',
+    title: '비정상적인 접근 차단',
+    description: '자동화된 도구(Bot, Macro)를 통한 비정상적인 클릭이나 접근이 감지되었습니다. 보안 정책에 따라 해당 기기의 접근이 일시적으로 차단되었습니다.',
+    actionText: '메인으로 돌아가기',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '매크로 봇(Bot) 감지 시 /blocked 페이지에서 나타나는 차단 화면입니다.',
+      },
+    },
+  },
+};

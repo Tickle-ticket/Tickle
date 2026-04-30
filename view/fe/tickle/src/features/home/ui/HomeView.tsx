@@ -24,43 +24,45 @@ import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { MyPageContent } from '@/src/features/mypage/ui/MyPageContent';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
-import { DetailContent } from '@/src/features/detail/ui/DetailContent';
+import { DetailView } from '@/src/features/detail/ui/DetailView';
 
 const TAB_ITEMS = ['전체', '뮤지컬', '콘서트', '연극', '전시/행사'];
 
-/** 스크롤 상태 관리 훅 (ResizeObserver 제거 — 카운트다운 깜빡임 방지) */
 const useCarouselScroll = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
   const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
-  }, []);
+    if (!node) return;
+    setCanScrollLeft(node.scrollLeft > 4);
+    const maxScroll = node.scrollWidth - node.clientWidth;
+    setCanScrollRight(maxScroll > 0 && node.scrollLeft < maxScroll - 4);
+  }, [node]);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    // 초기 체크 + 스크롤 이벤트만 리슨 (ResizeObserver 제거)
+    if (!node) return;
+    // 초기 체크 + 스크롤 및 리사이즈 이벤트 리슨
     const timer = setTimeout(checkScroll, 100);
-    el.addEventListener('scroll', checkScroll, { passive: true });
-    return () => { clearTimeout(timer); el.removeEventListener('scroll', checkScroll); };
-  }, [checkScroll]);
+    node.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll);
+    return () => { 
+      clearTimeout(timer); 
+      node.removeEventListener('scroll', checkScroll); 
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [node, checkScroll]);
 
   const scroll = useCallback((dir: 'left' | 'right') => {
-    const el = scrollRef.current;
-    if (!el) return;
+    if (!node) return;
 
     // scroll-snap이 걸려있을 때 100%를 이동하면 브라우저에 따라 제자리로 튕기는(snapping back) 버그가 있습니다.
     // 이를 방지하고 자연스럽게 이전/다음 카드로 넘어가도록 이동 거리를 80%로 조정합니다.
-    const amount = el.clientWidth * 0.8;
-    el.scrollBy({ left: dir === 'right' ? amount : -amount, behavior: 'smooth' });
-  }, []);
+    const amount = node.clientWidth * 0.8;
+    node.scrollBy({ left: dir === 'right' ? amount : -amount, behavior: 'smooth' });
+  }, [node]);
 
-  return { scrollRef, canScrollLeft, canScrollRight, scroll };
+  return { scrollRef: setNode, canScrollLeft, canScrollRight, scroll };
 };
 
 /** 타이틀 옆 네비게이션 화살표 */
@@ -171,10 +173,11 @@ export const HomeView = () => {
     });
   }, []);
 
+  const activeBannerId = banners?.[currentBanner]?.id;
   const totalBanners = banners?.length || 0;
   const activeBanner = selectedDetailId && isDetailBannerOpen 
-    ? { imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '' } 
-    : banners?.[currentBanner];
+    ? { id: selectedDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '' } 
+    : banners?.find(b => b.id === (activeBannerId || banners[0]?.id));
 
   const goNext = () => setCurrentBanner((prev) => (prev + 1) % (totalBanners || 1));
   const goPrev = () => setCurrentBanner((prev) => (prev - 1 + (totalBanners || 1)) % (totalBanners || 1));
@@ -219,12 +222,12 @@ export const HomeView = () => {
           }`}
       >
         <motion.div 
-          className={`w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner && 'id' in activeBanner ? 'cursor-pointer' : ''}`}
+          className={`w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
           layoutId={clickedLayoutId || "main-banner"}
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           onClick={() => {
-            if (!selectedDetailId && activeBanner && 'id' in activeBanner) {
-              handleCardClick(String(activeBanner.id), "main-banner");
+            if (!selectedDetailId && activeBanner?.id) {
+              handleCardClick(activeBanner.id, "main-banner");
             }
           }}
         >
@@ -303,7 +306,7 @@ export const HomeView = () => {
             </motion.div>
           ) : selectedDetailId ? (
             <motion.div key="detail" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0">
-              <DetailContent />
+              <DetailView isOverlay={true} />
             </motion.div>
           ) : (
             <motion.div key="home" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0 flex flex-col">
@@ -337,7 +340,7 @@ export const HomeView = () => {
               {/* 카드 */}
               <div
                 ref={rankingCarousel.scrollRef}
-                className="flex gap-5 overflow-x-auto pb-4"
+                className="flex gap-5 overflow-x-auto pb-4 pt-2 px-2 -mx-2"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {rankingLoading ? (
@@ -352,7 +355,7 @@ export const HomeView = () => {
                     return (
                       <div
                         key={item.id}
-                        className="shrink-0 cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                        className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
                         onClick={() => handleCardClick(item.id, `poster-ranking-${item.id}`)}
                       >
                         <InfoCard
@@ -413,7 +416,7 @@ export const HomeView = () => {
               {/* 카드 */}
               <div
                 ref={upcomingCarousel.scrollRef}
-                className="flex gap-5 overflow-x-auto pb-4 pt-5 px-1 -mx-1"
+                className="flex gap-5 overflow-x-auto pb-4 pt-5 px-2 -mx-2"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {upcomingLoading ? (
@@ -428,7 +431,7 @@ export const HomeView = () => {
                     return (
                       <div
                         key={item.id}
-                        className="shrink-0 relative cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                        className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
                         onClick={() => handleCardClick(item.id, `poster-upcoming-${item.id}`)}
                       >
                         <InfoCard

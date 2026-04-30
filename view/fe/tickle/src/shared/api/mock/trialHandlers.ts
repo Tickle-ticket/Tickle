@@ -1,13 +1,29 @@
 import { http, HttpResponse, delay } from 'msw';
+import { Schema } from 'effect';
+import { TrialJSONSchema } from '../../utils/schema';
+import type { TrialJSON } from '../../utils/schema';
 
 export const trialHandlers = [
   http.post('*/api/v1/trials', async ({ request }) => {
     await delay(200);
 
-    const trial = await request.json() as any;
+    const rawTrial = await request.json();
+    
+    let trial: TrialJSON;
+    try {
+      // 프론트엔드가 보낸 데이터가 API 스펙(스키마)과 일치하는지 엄격히 검사
+      trial = Schema.decodeUnknownSync(TrialJSONSchema)(rawTrial);
+    } catch (error) {
+      console.error('%c[MSW] Trial 데이터 검증 실패:', 'color: red;', error);
+      return HttpResponse.json({
+        status: 400,
+        message: 'Invalid Trial JSON payload',
+        data: null
+      }, { status: 400 });
+    }
 
     console.log(
-      `%c[MSW] Trial #${trial.trialId} received`,
+      `%c[MSW] Trial #${trial.trialId} received & validated`,
       'color: #10b981; font-weight: bold;',
     );
     console.log(`  userId: ${trial.userId}`);

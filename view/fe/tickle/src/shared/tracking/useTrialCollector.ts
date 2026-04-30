@@ -8,7 +8,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { TrialCollector } from './TrialCollector';
 import { submitTrial } from '@/src/shared/api/trialApi';
-import type { TrialStage, TrialJSON } from './trialTypes';
+import type { TrialStage, TrialJSON } from '../utils/schema';
 
 interface UseTrialCollectorOptions {
   /** 수집 활성화 여부 */
