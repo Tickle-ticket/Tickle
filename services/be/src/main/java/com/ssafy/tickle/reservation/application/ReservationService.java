@@ -4,8 +4,7 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
 import com.ssafy.tickle.reservation.domain.ReservationErrorCode;
-import com.ssafy.tickle.reservation.infrastructure.messaging.model.BookingCancelMessage;
-import com.ssafy.tickle.reservation.infrastructure.messaging.producer.BookingCancelProducer;
+import com.ssafy.tickle.reservation.infrastructure.messaging.model.BookingCancelledEvent;
 import com.ssafy.tickle.reservation.infrastructure.persistence.BookingRepository;
 import com.ssafy.tickle.reservation.infrastructure.persistence.BookingTicketRepository;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
@@ -36,6 +35,7 @@ import java.util.Set;
 public class ReservationService {
 
     private static final Set<Booking.Status> CANCELLABLE_STATUSES = Set.of(
+            Booking.Status.DRAFT,
             Booking.Status.CONFIRMED,
             Booking.Status.PENDING_PAYMENT
     );
@@ -43,7 +43,6 @@ public class ReservationService {
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final SessionSeatRepository sessionSeatRepository;
-    private final BookingCancelProducer bookingCancelProducer;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -84,10 +83,15 @@ public class ReservationService {
     /**
      * 예매를 취소합니다.
      *
-     * <p>CONFIRMED / PENDING_PAYMENT 상태만 취소 가능하다.
-     * 취소 시 티켓 → CANCELLED, 좌석 → REALLOCATING 으로 전환하고,
-     * WebSocket 이벤트로 다른 사용자에게 즉시 알린 뒤
-     * Kafka 이벤트로 환불 처리를 비동기 요청한다.</p>
+     * <p>취소 가능 상태: DRAFT / PENDING_PAYMENT / CONFIRMED</p>
+     * <ul>
+     *   <li>DRAFT: 결제 전 초안 — 좌석 AVAILABLE 복귀, Kafka 발행 생략 (환불 없음)</li>
+     *   <li>PENDING_PAYMENT / CONFIRMED: 좌석 REALLOCATING, Kafka로 환불 비동기 요청</li>
+     * </ul>
+     *
+     * <p>모든 상태 전환 후 WebSocket 이벤트(SeatStatusChangedEvent)와
+     * 취소 이벤트(BookingCancelledEvent)를 발행한다.
+     * Kafka 실제 전송은 트랜잭션 커밋 후 {@code BookingCancelEventListener}가 처리한다.</p>
      *
      * @param reservationId 예매 식별자
      * @param userId        사용자 식별자
@@ -100,7 +104,7 @@ public class ReservationService {
         Instant now = Instant.now();
         List<BookingTicket> tickets = bookingTicketRepository.findAllByBookingId(reservationId);
 
-        // 좌석 식별자 수집 후 DB에서 로딩 (정렬로 데드락 방지)
+        // 좌석 목록을 ID 오름차순으로 정렬해 데드락을 방지한다
         List<Long> sessionSeatIds = tickets.stream()
                 .map(ticket -> ticket.getSessionSeat().getId())
                 .sorted()
@@ -111,27 +115,39 @@ public class ReservationService {
                 .sorted(Comparator.comparing(SessionSeat::getId))
                 .toList();
 
-        // 티켓 → CANCELLED, 좌석 → REALLOCATING, 예매 → CANCELLED
-        tickets.forEach(ticket -> ticket.cancel(now));
-        seats.forEach(SessionSeat::cancelForReallocation);
-        booking.cancel(now);
+        boolean isDraft = booking.getBookingStatus() == Booking.Status.DRAFT;
+        SessionSeat.SaleStatus nextSeatStatus;
 
+        if (isDraft) {
+            // DRAFT: 결제 전이므로 좌석을 AVAILABLE로 즉시 복귀
+            seats.forEach(SessionSeat::release);
+            nextSeatStatus = SessionSeat.SaleStatus.AVAILABLE;
+        } else {
+            // PENDING_PAYMENT / CONFIRMED: 취소표 재배분 대기
+            seats.forEach(SessionSeat::cancelForReallocation);
+            nextSeatStatus = SessionSeat.SaleStatus.REALLOCATING;
+        }
+
+        tickets.forEach(ticket -> ticket.cancel(now));
+        booking.cancel(now);
         sessionSeatRepository.saveAll(seats);
 
-        // WebSocket 브로드캐스트 — 커밋 후 @TransactionalEventListener 가 처리
+        // WebSocket 브로드캐스트 — 커밋 후 @TransactionalEventListener 처리
         eventPublisher.publishEvent(new SeatStatusChangedEvent(
                 this,
                 booking.getSession().getId(),
                 sessionSeatIds,
-                SessionSeat.SaleStatus.REALLOCATING
+                nextSeatStatus
         ));
 
-        // Kafka — 환불 처리를 위한 비동기 이벤트 (ack 확인)
-        bookingCancelProducer.publish(new BookingCancelMessage(
+        // 취소 이벤트 — 커밋 후 BookingCancelEventListener 가 Kafka 발행 (DRAFT는 생략)
+        eventPublisher.publishEvent(new BookingCancelledEvent(
+                this,
                 reservationId,
                 userId,
                 sessionSeatIds,
-                now
+                now,
+                !isDraft
         ));
     }
 

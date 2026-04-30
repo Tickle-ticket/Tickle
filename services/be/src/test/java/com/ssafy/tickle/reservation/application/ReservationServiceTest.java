@@ -6,11 +6,12 @@ import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
 import com.ssafy.tickle.reservation.domain.ReservationErrorCode;
-import com.ssafy.tickle.reservation.infrastructure.messaging.producer.BookingCancelProducer;
+import com.ssafy.tickle.reservation.infrastructure.messaging.model.BookingCancelledEvent;
 import com.ssafy.tickle.reservation.infrastructure.persistence.BookingRepository;
 import com.ssafy.tickle.reservation.infrastructure.persistence.BookingTicketRepository;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
+import com.ssafy.tickle.seat.domain.SeatStatusChangedEvent;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.venue.domain.Venue;
@@ -53,7 +54,6 @@ class ReservationServiceTest {
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingTicketRepository bookingTicketRepository;
     @Mock private SessionSeatRepository sessionSeatRepository;
-    @Mock private BookingCancelProducer bookingCancelProducer;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private ReservationService reservationService;
@@ -199,28 +199,52 @@ class ReservationServiceTest {
     class CancelReservationTest {
 
         @Test
-        @DisplayName("CONFIRMED 예매 취소 시 티켓 CANCELLED, 좌석 REALLOCATING, Kafka + WebSocket 이벤트 발행")
+        @DisplayName("CONFIRMED 취소: 티켓 CANCELLED, 좌석 REALLOCATING, BookingCancelledEvent(requiresKafka=true) 발행")
         void cancelReservation_confirmed_success() {
             // given
             given(bookingRepository.findByIdAndUserId(BOOKING_ID, USER_ID))
                     .willReturn(Optional.of(confirmedBooking));
             given(bookingTicketRepository.findAllByBookingId(BOOKING_ID)).willReturn(List.of(ticket));
-            willDoNothing().given(bookingCancelProducer).publish(any());
 
             // when
             reservationService.cancelReservation(BOOKING_ID, USER_ID);
 
-            // then: 티켓 취소
+            // then
             verify(ticket).cancel(any(Instant.class));
-            // then: 예매 취소
             verify(confirmedBooking).cancel(any(Instant.class));
-            // then: 좌석 REALLOCATING 전환
             verify(ticket.getSessionSeat()).cancelForReallocation();
             verify(sessionSeatRepository).saveAll(any());
-            // then: WebSocket 이벤트 발행
-            verify(eventPublisher).publishEvent(any(com.ssafy.tickle.seat.domain.SeatStatusChangedEvent.class));
-            // then: Kafka 이벤트 발행
-            verify(bookingCancelProducer).publish(any());
+            verify(eventPublisher).publishEvent(any(SeatStatusChangedEvent.class));
+            verify(eventPublisher).publishEvent(
+                    argThat(e -> e instanceof BookingCancelledEvent
+                            && ((BookingCancelledEvent) e).isRequiresKafka()
+                            && ((BookingCancelledEvent) e).getBookingId().equals(BOOKING_ID))
+            );
+        }
+
+        @Test
+        @DisplayName("DRAFT 취소: 좌석 AVAILABLE 복귀, BookingCancelledEvent(requiresKafka=false) 발행")
+        void cancelReservation_draft_seatAvailable_noKafka() {
+            // given
+            Booking draftBooking = mock(Booking.class);
+            EventSession session = confirmedBooking.getSession();
+            given(draftBooking.getBookingStatus()).willReturn(Booking.Status.DRAFT);
+            given(draftBooking.getSession()).willReturn(session);
+            given(bookingRepository.findByIdAndUserId(BOOKING_ID, USER_ID))
+                    .willReturn(Optional.of(draftBooking));
+            given(bookingTicketRepository.findAllByBookingId(BOOKING_ID)).willReturn(List.of(ticket));
+
+            // when
+            reservationService.cancelReservation(BOOKING_ID, USER_ID);
+
+            // then: 좌석은 AVAILABLE 복귀 (cancelForReallocation 아님)
+            verify(ticket.getSessionSeat()).release();
+            verify(ticket.getSessionSeat(), never()).cancelForReallocation();
+            // then: Kafka 불필요 이벤트 발행
+            verify(eventPublisher).publishEvent(
+                    argThat(e -> e instanceof BookingCancelledEvent
+                            && !((BookingCancelledEvent) e).isRequiresKafka())
+            );
         }
 
         @Test
@@ -236,7 +260,7 @@ class ReservationServiceTest {
                     .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.BOOKING_ALREADY_CANCELLED));
 
-            verify(bookingCancelProducer, never()).publish(any());
+            verify(eventPublisher, never()).publishEvent(any(BookingCancelledEvent.class));
         }
 
         @Test
@@ -254,45 +278,32 @@ class ReservationServiceTest {
                     .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
                             .isEqualTo(ReservationErrorCode.BOOKING_NOT_CANCELLABLE));
 
-            verify(bookingCancelProducer, never()).publish(any());
+            verify(eventPublisher, never()).publishEvent(any(BookingCancelledEvent.class));
         }
 
         @Test
-        @DisplayName("Kafka 발행 실패 시 예외가 전파된다")
-        void cancelReservation_kafkaFails_propagatesException() {
+        @DisplayName("BookingCancelledEvent에 올바른 bookingId, userId, sessionSeatIds가 담긴다")
+        void cancelReservation_eventContainsCorrectData() {
             // given
             given(bookingRepository.findByIdAndUserId(BOOKING_ID, USER_ID))
                     .willReturn(Optional.of(confirmedBooking));
             given(bookingTicketRepository.findAllByBookingId(BOOKING_ID)).willReturn(List.of(ticket));
-            org.mockito.BDDMockito.willThrow(new IllegalStateException("Kafka 브로커 연결 실패"))
-                    .given(bookingCancelProducer).publish(any());
-
-            // when & then
-            assertThatThrownBy(() -> reservationService.cancelReservation(BOOKING_ID, USER_ID))
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Kafka");
-        }
-
-        @Test
-        @DisplayName("취소 Kafka 메시지에 sessionSeatId 목록이 올바르게 담긴다")
-        void cancelReservation_kafkaMessageContainsSeatIds() {
-            // given
-            given(bookingRepository.findByIdAndUserId(BOOKING_ID, USER_ID))
-                    .willReturn(Optional.of(confirmedBooking));
-            given(bookingTicketRepository.findAllByBookingId(BOOKING_ID)).willReturn(List.of(ticket));
-            willDoNothing().given(bookingCancelProducer).publish(
-                    org.mockito.ArgumentMatchers.argThat(msg ->
-                            msg.bookingId().equals(BOOKING_ID) &&
-                            msg.userId().equals(USER_ID) &&
-                            msg.sessionSeatIds().contains(SEAT_ID)
-                    )
-            );
 
             // when
             reservationService.cancelReservation(BOOKING_ID, USER_ID);
 
-            // then: argThat 검증이 통과했으면 성공
-            verify(bookingCancelProducer).publish(any());
+            // then
+            verify(eventPublisher).publishEvent(
+                    argThat(e -> e instanceof BookingCancelledEvent evt
+                            && evt.getBookingId().equals(BOOKING_ID)
+                            && evt.getUserId().equals(USER_ID)
+                            && evt.getSessionSeatIds().contains(SEAT_ID)
+                            && evt.isRequiresKafka())
+            );
         }
+    }
+
+    private static <T> T argThat(org.mockito.ArgumentMatcher<T> matcher) {
+        return org.mockito.ArgumentMatchers.argThat(matcher);
     }
 }
