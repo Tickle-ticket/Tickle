@@ -3,6 +3,31 @@ import { ApiResponse } from './types';
 
 export type AgencySeatGrade = 'VIP' | 'R' | 'S' | 'A' | 'B' | 'RESTRICTED_VIEW';
 
+export interface AgencySummary {
+  agencyId: number;
+  agencyName: string;
+}
+
+type AgencyLookupItem = {
+  id?: string | number;
+  agencyId?: string | number;
+  organizationId?: string | number;
+  organizerId?: string | number;
+  name?: string;
+  agencyName?: string;
+  organizationName?: string;
+  organizerName?: string;
+};
+
+type AgencyLookupResponseData =
+  | AgencyLookupItem[]
+  | {
+      agencies?: AgencyLookupItem[];
+      organizations?: AgencyLookupItem[];
+      organizers?: AgencyLookupItem[];
+      content?: AgencyLookupItem[];
+    };
+
 export interface AgencyCreateEventBasicRequest {
   organizerId: number;
   venueId: number;
@@ -70,6 +95,34 @@ export interface AgencyRegistrationFlowResult {
   eventId: number;
   title: string;
 }
+
+function normalizeAgencyList(data: AgencyLookupResponseData): AgencySummary[] {
+  const list = Array.isArray(data) ? data : data.agencies ?? data.organizations ?? data.organizers ?? data.content ?? [];
+
+  return list
+    .map((agency) => {
+      const agencyId = agency.agencyId ?? agency.organizationId ?? agency.organizerId ?? agency.id;
+      const agencyName = agency.agencyName ?? agency.organizationName ?? agency.organizerName ?? agency.name;
+
+      if (agencyId === undefined || !agencyName) {
+        return null;
+      }
+
+      return {
+        agencyId: Number(agencyId),
+        agencyName,
+      };
+    })
+    .filter((agency): agency is AgencySummary => agency !== null);
+}
+
+export const fetchAgencies = async (): Promise<AgencySummary[]> => {
+  const response = await apiClient<ApiResponse<AgencyLookupResponseData>>('/api/v1/organizers', {
+    method: 'GET',
+  });
+
+  return normalizeAgencyList(response.data);
+};
 
 export const createAgencyEvent = async (
   request: AgencyCreateEventBasicRequest,

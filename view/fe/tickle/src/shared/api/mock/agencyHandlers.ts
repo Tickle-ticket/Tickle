@@ -1,33 +1,33 @@
-import { http, HttpResponse, delay } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 
-const mockAgencies = [
+const mockOrganizers = [
   {
-    agencyId: 1,
-    agencyName: 'SSAFY 18기',
+    organizerId: 1,
+    organizerName: 'SSAFY 18',
   },
   {
-    agencyId: 2,
-    agencyName: 'Tikkle Stage',
+    organizerId: 2,
+    organizerName: 'Tikkle Stage',
   },
   {
-    agencyId: 3,
-    agencyName: 'Blue Square Partners',
+    organizerId: 3,
+    organizerName: 'Blue Square Partners',
   },
   {
-    agencyId: 4,
-    agencyName: 'Seoul Art Company',
+    organizerId: 4,
+    organizerName: 'Seoul Art Company',
   },
 ];
 
 export const agencyHandlers = [
-  http.get('*/api/v1/agencies', async () => {
+  http.get('*/api/v1/organizers', async () => {
     await delay(300);
 
     return HttpResponse.json({
       status: 200,
       message: 'success',
       data: {
-        agencies: mockAgencies,
+        organizers: mockOrganizers,
       },
     });
   }),
