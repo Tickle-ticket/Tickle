@@ -44,6 +44,26 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
     List<SessionSeat> findAllByIdIn(@Param("ids") List<Long> ids);
 
     /**
+     * 회차와 좌석 ID 목록으로 가격 정책까지 함께 조회합니다.
+     *
+     * @param sessionId 회차 식별자
+     * @param ids 좌석 식별자 목록
+     * @return 가격 정책을 포함한 좌석 목록
+     */
+    @Query("""
+            select ss from SessionSeat ss
+            join fetch ss.eventSeat es
+            join fetch es.eventPricePolicy pp
+            where ss.session.id = :sessionId
+              and ss.id in :ids
+            order by ss.id asc
+            """)
+    List<SessionSeat> findAllWithPricePolicyBySessionIdAndIdIn(
+            @Param("sessionId") Long sessionId,
+            @Param("ids") List<Long> ids
+    );
+
+    /**
      * TTL 만료 이벤트 처리 시 userId + sessionId 기준으로 HELD 좌석을 조회합니다.
      *
      * <p>Redis 키 만료 후에는 값을 읽을 수 없으므로, 키 이름에서 파싱한
@@ -59,6 +79,29 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
             @Param("sessionId") Long sessionId,
             @Param("heldByUserId") Long heldByUserId,
             @Param("saleStatus") SessionSeat.SaleStatus saleStatus
+    );
+
+    /**
+     * 사용자와 회차 기준으로 지정 좌석들이 HELD 상태인지 조회합니다.
+     *
+     * @param sessionId 회차 식별자
+     * @param heldByUserId 선점 사용자 식별자
+     * @param saleStatus 판매 상태
+     * @param seatIds 좌석 식별자 목록
+     * @return 조회된 좌석 목록
+     */
+    @Query("""
+            select ss from SessionSeat ss
+            where ss.session.id = :sessionId
+              and ss.heldByUserId = :heldByUserId
+              and ss.saleStatus = :saleStatus
+              and ss.id in :seatIds
+            """)
+    List<SessionSeat> findAllBySessionIdAndHeldByUserIdAndSaleStatusAndIdIn(
+            @Param("sessionId") Long sessionId,
+            @Param("heldByUserId") Long heldByUserId,
+            @Param("saleStatus") SessionSeat.SaleStatus saleStatus,
+            @Param("seatIds") List<Long> seatIds
     );
 
     /**

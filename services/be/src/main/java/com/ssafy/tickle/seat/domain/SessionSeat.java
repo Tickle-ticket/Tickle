@@ -74,10 +74,12 @@ public class SessionSeat {
         AVAILABLE,
         /** 선점 중. Redis 분산락 + 15분 TTL. 취소표 대기 신청 불가 */
         HELD,
-        /** 입금대기. 무통장 입금 클릭 후 입금 전 상태. 24시간 TTL. 취소표 대기 신청 가능 */
+        /** 입금대기. 무통장 입금 클릭 후 입금 전 상태. 확보 다음날 23:59:59까지 유지. 취소표 대기 신청 가능 */
         PENDING,
         /** 예매 확정. 결제 완료. 취소표 대기 신청 가능 */
         CONFIRMED,
+        /** 취소/만료 후 취소표 대기자에게 재배정 중인 좌석. 일반 판매로 바로 풀지 않음 */
+        REALLOCATING,
         /** 관리자 지정 차단 좌석 (VIP석, 스태프석 등) */
         BLOCKED,
         /** 물리적 사용 불가 좌석 (기둥 가림, 무대 인접 등) */
@@ -137,6 +139,34 @@ public class SessionSeat {
             return;
         }
         this.saleStatus = SaleStatus.AVAILABLE;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 무통장 입금 대기 상태로 좌석을 전환합니다.
+     *
+     * <p>HELD 상태에서만 PENDING으로 전환 가능합니다.</p>
+     */
+    public void markPendingPayment() {
+        if (this.saleStatus != SaleStatus.HELD) {
+            throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
+        }
+        this.saleStatus = SaleStatus.PENDING;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 입금 만료로 좌석을 취소표 재배정 상태로 전환합니다.
+     *
+     * <p>PENDING 상태가 아니면 조용히 무시합니다.</p>
+     */
+    public void expirePendingPayment() {
+        if (this.saleStatus != SaleStatus.PENDING) {
+            return;
+        }
+        this.saleStatus = SaleStatus.REALLOCATING;
         this.heldByUserId = null;
         this.updatedAt = Instant.now();
     }

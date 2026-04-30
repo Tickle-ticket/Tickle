@@ -182,5 +182,76 @@ public class PaymentTransaction {
         this.failureCode = failureCode;
         this.failureMessage = failureMessage;
         this.rawResponseJson = rawResponseJson;
+        this.createdAt = Instant.now();
+    }
+
+    /**
+     * 무통장 입금 대기 생성 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param requestId 요청 식별자
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction pendingSale(Payment payment, String requestId) {
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.SALE)
+                .transactionStatus(TransactionStatus.PENDING)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .requestId(requestId)
+                .transactedAt(Instant.now())
+                .build();
+    }
+
+    /**
+     * 무통장 입금 승인 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param providerEventId 외부 이벤트 식별자
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction succeededSale(Payment payment, String providerEventId) {
+        Instant now = Instant.now();
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.SALE)
+                .transactionStatus(TransactionStatus.SUCCEEDED)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .providerEventId(providerEventId)
+                .transactedAt(now)
+                .processedAt(now)
+                .build();
+    }
+
+    /**
+     * 무통장 입금 만료 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param failureCode 실패 코드
+     * @param failureMessage 실패 메시지
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction expiredCancel(
+            Payment payment,
+            String failureCode,
+            String failureMessage
+    ) {
+        Instant now = Instant.now();
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.CANCEL)
+                .transactionStatus(TransactionStatus.SUCCEEDED)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .transactedAt(now)
+                .processedAt(now)
+                .failureCode(failureCode)
+                .failureMessage(failureMessage)
+                .build();
     }
 }

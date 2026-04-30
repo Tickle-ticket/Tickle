@@ -64,5 +64,6 @@ public class BookingTicketStatusHistory {
         this.bookingTicket = bookingTicket;
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;
+        this.createdAt = Instant.now();
     }
 }

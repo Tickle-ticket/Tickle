@@ -34,8 +34,9 @@ public interface SeatApiDoc {
                     **saleStatus 종류**
                     - AVAILABLE: 빈 좌석 (선점 가능)
                     - HELD: 선점 중 (15분 TTL, 취소표 대기 신청 불가)
-                    - PENDING: 입금대기 (24시간 TTL, 취소표 대기 신청 가능)
+                    - PENDING: 입금대기 (티켓 확보 다음날 23:59:59까지, 취소표 대기 신청 가능)
                     - CONFIRMED: 예매 확정 (취소표 대기 신청 가능)
+                    - REALLOCATING: 취소/입금 만료 후 취소표 대기자에게 재배정 중인 상태
                     - BLOCKED: 관리자 지정 차단
                     - UNAVAILABLE: 물리적 사용 불가
                     """

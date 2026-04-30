@@ -59,9 +59,9 @@ public class Booking {
     @Column(name = "booking_status", nullable = false, length = 30)
     private Status bookingStatus;
 
-    // 결제금액
+    // 총 결제 금액
     @Column(name = "total_paid_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal totalPaidAmount;
+    private BigDecimal totalPaymentAmount;
 
     // 수량
     @Column(name = "ticket_count", nullable = false)
@@ -76,6 +76,7 @@ public class Booking {
     private Instant updatedAt;
 
     public enum Status {
+        DRAFT,
         PENDING_PAYMENT,
         PAYMENT_IN_PROGRESS,
         CONFIRMED,
@@ -93,7 +94,7 @@ public class Booking {
      * @param user 예매 사용자
      * @param session 예매 회차
      * @param bookingStatus 예매 상태
-     * @param totalPaidAmount 총 결제 금액
+     * @param totalPaymentAmount 총 결제 금액
      * @param ticketCount 티켓 수량
      */
     @Builder
@@ -102,14 +103,61 @@ public class Booking {
             User user,
             EventSession session,
             Status bookingStatus,
-            BigDecimal totalPaidAmount,
+            BigDecimal totalPaymentAmount,
             Integer ticketCount
     ) {
         this.bookingNo = bookingNo;
         this.user = user;
         this.session = session;
         this.bookingStatus = bookingStatus;
-        this.totalPaidAmount = totalPaidAmount;
+        this.totalPaymentAmount = totalPaymentAmount;
         this.ticketCount = ticketCount;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 예매 초안을 생성합니다.
+     *
+     * @param bookingNo 예매 번호
+     * @param user 예매 사용자
+     * @param session 예매 회차
+     * @param totalPaymentAmount 총 결제 금액
+     * @param ticketCount 티켓 수량
+     * @return 생성된 예매 엔티티
+     */
+    public static Booking draft(
+            String bookingNo,
+            User user,
+            EventSession session,
+            BigDecimal totalPaymentAmount,
+            Integer ticketCount
+    ) {
+        return Booking.builder()
+                .bookingNo(bookingNo)
+                .user(user)
+                .session(session)
+                .bookingStatus(Status.DRAFT)
+                .totalPaymentAmount(totalPaymentAmount)
+                .ticketCount(ticketCount)
+                .build();
+    }
+
+    /**
+     * 예매 초안을 무통장 입금 대기 상태로 전환합니다.
+     *
+     * <p>이 시점부터는 입금 완료 또는 만료 처리를 기다리는 상태로 본다.</p>
+     */
+    public void markPendingPayment() {
+        this.bookingStatus = Status.PENDING_PAYMENT;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 예매를 결제 만료 상태로 전환합니다.
+     */
+    public void expirePayment() {
+        this.bookingStatus = Status.PAYMENT_EXPIRED;
+        this.updatedAt = Instant.now();
     }
 }
