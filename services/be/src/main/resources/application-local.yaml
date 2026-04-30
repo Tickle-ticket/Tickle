@@ -46,6 +46,10 @@ spring:
     listener:
       # 토픽이 아직 없어도 애플리케이션 시작을 막지 않음
       missing-topics-fatal: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
 
 server:
   # 애플리케이션 HTTP 포트
@@ -88,12 +92,6 @@ cloud:
     credentials:
       access-key: ${AWS_ACCESS_KEY}
       secret-key: ${AWS_SECRET_KEY}
-
-spring:
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 30MB
 
 cors:
   # 배포 FE Origin
