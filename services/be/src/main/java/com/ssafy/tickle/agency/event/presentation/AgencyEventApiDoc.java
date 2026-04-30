@@ -19,6 +19,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
  * 기획사 공연 관리 API 문서 인터페이스입니다.
@@ -121,52 +124,22 @@ public interface AgencyEventApiDoc {
     /**
      * 공연 기본정보 등록 API를 문서화합니다.
      *
-     * @param request 공연 기본정보 등록 요청 DTO
-     * @return 생성된 공연 응답
+     * <p>multipart/form-data 형식. request 파트는 JSON, posterImage는 포스터 이미지 파일(필수),
+     * detailImages는 소개 이미지 파일 목록(선택, 최대 3개).</p>
      */
     @Operation(
             summary = "공연 기본정보 등록",
-            description = "기존 공연장과 카테고리를 기반으로 공연 기본정보만 먼저 등록합니다."
+            description = "multipart/form-data 형식. request(JSON) + posterImage(파일, 필수) + detailImages(파일 목록, 최대 3개, 선택)."
     )
     @ApiResponse(responseCode = "201", description = "공연 등록 성공")
-    @ApiResponse(
-            responseCode = "400",
-            description = "잘못된 요청값",
-            content = @Content(schema = @Schema(implementation = BaseResponse.class))
-    )
-    @ApiResponse(
-            responseCode = "404",
-            description = "기획사/공연장/카테고리/공연장 좌석을 찾을 수 없음",
-            content = @Content(schema = @Schema(implementation = BaseResponse.class))
-    )
+    @ApiResponse(responseCode = "400", description = "잘못된 요청값",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "404", description = "기획사/공연장/카테고리를 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     ResponseEntity<BaseResponse<AgencyCreateEventResponse>> createEvent(
-            @RequestBody(
-                    required = true,
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "공연 기본정보 등록 예시",
-                                    value = """
-                                            {
-                                              "organizerId": 2001,
-                                              "venueId": 2001,
-                                              "categoryId": 2001,
-                                              "title": "기획사 등록 샘플 공연",
-                                              "eventStartAt": "2026-07-01T19:00:00Z",
-                                              "eventEndAt": "2026-07-01T22:00:00Z",
-                                              "tags": ["admin", "sample"],
-                                              "notice": "기획사 API 샘플 공연입니다.",
-                                              "posterImageUrl": "https://cdn.example.com/events/poster.jpg",
-                                              "detailImageUrls": [
-                                                "https://cdn.example.com/events/detail-1.jpg",
-                                                "https://cdn.example.com/events/detail-2.jpg"
-                                              ]
-                                            }
-                                            """
-                            )
-                    )
-            )
-            AgencyCreateEventBasicRequest request
+            AgencyCreateEventBasicRequest request,
+            @Parameter(description = "포스터 이미지 파일 (필수)") MultipartFile posterImage,
+            @Parameter(description = "소개 이미지 파일 목록 (선택, 최대 3개)") List<MultipartFile> detailImages
     );
 
     /**

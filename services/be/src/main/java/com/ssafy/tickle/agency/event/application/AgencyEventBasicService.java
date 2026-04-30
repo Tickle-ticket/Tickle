@@ -1,6 +1,9 @@
 package com.ssafy.tickle.agency.event.application;
 
 import com.ssafy.tickle.common.domain.SeatGrade;
+import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.common.util.S3Uploader;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePolicyRequest;
@@ -22,6 +25,7 @@ import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -38,26 +42,46 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class AgencyEventBasicService {
 
+    private static final String EVENT_POSTER_DIR = "events/poster";
+    private static final String EVENT_DETAIL_DIR = "events/detail";
+    private static final int MAX_DETAIL_IMAGES = 3;
+
     private final EventRepository eventRepository;
     private final EventImageRepository eventImageRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final VenueRepository venueRepository;
+    private final S3Uploader s3Uploader;
 
     /**
      * 공연 기본정보를 등록합니다.
      *
-     * @param request 공연 기본정보 등록 요청 DTO
+     * <p>포스터 이미지는 필수, 소개 이미지는 최대 3개까지 허용합니다.
+     * 파일을 S3에 업로드한 후 URL을 DB에 저장합니다.</p>
+     *
+     * @param request      공연 기본정보 등록 요청 DTO
+     * @param posterImage  포스터 이미지 파일 (필수)
+     * @param detailImages 소개 이미지 파일 목록 (선택, 최대 3개)
      * @return 생성된 공연 응답 DTO
      */
     @Transactional
-    public AgencyCreateEventResponse createBasicEvent(AgencyCreateEventBasicRequest request) {
+    public AgencyCreateEventResponse createBasicEvent(
+            AgencyCreateEventBasicRequest request,
+            MultipartFile posterImage,
+            List<MultipartFile> detailImages
+    ) {
         validateEventTimeline(request.eventStartAt(), request.eventEndAt());
+        validatePosterImage(posterImage);
+        validateDetailImages(detailImages);
 
         Organizer organizer = getOrganizer(request.organizerId());
         Venue venue = getVenue(request.venueId());
         Category category = getCategory(request.categoryId());
+
+        // S3 업로드
+        String posterImageUrl = s3Uploader.upload(posterImage, EVENT_POSTER_DIR);
+        List<String> detailImageUrls = uploadDetailImages(detailImages);
 
         Event event = eventRepository.save(Event.builder()
                 .organizer(organizer)
@@ -71,7 +95,7 @@ public class AgencyEventBasicService {
                 .status(Event.Status.PENDING)
                 .build());
 
-        saveEventImages(event, request.posterImageUrl(), request.detailImageUrls());
+        saveEventImages(event, posterImageUrl, detailImageUrls);
 
         return AgencyCreateEventResponse.from(event);
     }
@@ -87,6 +111,45 @@ public class AgencyEventBasicService {
         Event event = getEvent(eventId);
         validatePricePoliciesNotRegistered(eventId);
         savePricePolicies(event, request.pricePolicies());
+    }
+
+    /**
+     * 소개 이미지 파일 목록을 S3에 업로드하고 URL 목록을 반환합니다.
+     *
+     * @param detailImages 업로드할 소개 이미지 파일 목록
+     * @return S3 URL 목록
+     */
+    private List<String> uploadDetailImages(List<MultipartFile> detailImages) {
+        if (detailImages == null || detailImages.isEmpty()) {
+            return List.of();
+        }
+        return detailImages.stream()
+                .filter(file -> file != null && !file.isEmpty())
+                .map(file -> s3Uploader.upload(file, EVENT_DETAIL_DIR))
+                .toList();
+    }
+
+    /**
+     * 포스터 이미지 파일을 검증합니다.
+     *
+     * @param posterImage 포스터 이미지 파일
+     */
+    private void validatePosterImage(MultipartFile posterImage) {
+        if (posterImage == null || posterImage.isEmpty()) {
+            throw new BaseException(GlobalErrorCode.INVALID_INPUT_VALUE, "포스터 이미지는 필수입니다.");
+        }
+    }
+
+    /**
+     * 소개 이미지 파일 목록을 검증합니다 (최대 3개).
+     *
+     * @param detailImages 소개 이미지 파일 목록
+     */
+    private void validateDetailImages(List<MultipartFile> detailImages) {
+        if (detailImages != null && detailImages.size() > MAX_DETAIL_IMAGES) {
+            throw new BaseException(GlobalErrorCode.INVALID_INPUT_VALUE,
+                    "소개 이미지는 최대 " + MAX_DETAIL_IMAGES + "개까지 등록 가능합니다.");
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.common.util.S3Uploader;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
@@ -25,7 +26,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -33,6 +37,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -41,6 +48,9 @@ class AgencyEventBasicServiceTest {
 
     @Autowired
     private AgencyEventBasicService agencyEventBasicService;
+
+    @MockBean
+    private S3Uploader s3Uploader;
 
     @Autowired
     private EventRepository eventRepository;
@@ -60,6 +70,13 @@ class AgencyEventBasicServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    private static final String MOCK_POSTER_URL = "https://cdn.test/poster.jpg";
+    private static final String MOCK_DETAIL_URL_1 = "https://cdn.test/detail-1.jpg";
+    private static final String MOCK_DETAIL_URL_2 = "https://cdn.test/detail-2.jpg";
+
+    private MultipartFile mockPosterImage;
+    private List<MultipartFile> mockDetailImages;
+
     private Organizer organizer;
     private Venue venue;
     private Category category;
@@ -69,6 +86,17 @@ class AgencyEventBasicServiceTest {
         organizer = organizerRepository.save(createOrganizer("테스트 기획사"));
         venue = venueRepository.save(createVenue("테스트 공연장"));
         category = categoryRepository.save(createCategory("콘서트"));
+
+        mockPosterImage = new MockMultipartFile("posterImage", "poster.jpg", "image/jpeg", "fake".getBytes());
+        mockDetailImages = List.of(
+                new MockMultipartFile("detailImages", "detail-1.jpg", "image/jpeg", "fake1".getBytes()),
+                new MockMultipartFile("detailImages", "detail-2.jpg", "image/jpeg", "fake2".getBytes())
+        );
+
+        given(s3Uploader.upload(any(), eq("events/poster"))).willReturn(MOCK_POSTER_URL);
+        given(s3Uploader.upload(any(), eq("events/detail")))
+                .willReturn(MOCK_DETAIL_URL_1)
+                .willReturn(MOCK_DETAIL_URL_2);
     }
 
     @AfterEach
@@ -92,15 +120,12 @@ class AgencyEventBasicServiceTest {
                 Instant.parse("2026-07-01T10:00:00Z"),
                 Instant.parse("2026-07-01T12:00:00Z"),
                 List.of("rock", "live"),
-                "공연 공지",
-                "https://cdn.test/poster.jpg",
-                List.of(
-                        "https://cdn.test/detail-1.jpg",
-                        "https://cdn.test/detail-2.jpg"
-                )
+                "공연 공지"
         );
 
-        AgencyCreateEventResponse response = agencyEventBasicService.createBasicEvent(request);
+        AgencyCreateEventResponse response = agencyEventBasicService.createBasicEvent(
+                request, mockPosterImage, mockDetailImages
+        );
 
         Event savedEvent = eventRepository.findById(response.eventId()).orElseThrow();
         List<EventImage> savedImages = eventImageRepository.findByEventIdOrderByDisplayOrderAsc(response.eventId());
@@ -136,12 +161,10 @@ class AgencyEventBasicServiceTest {
                 Instant.parse("2026-07-01T12:00:00Z"),
                 Instant.parse("2026-07-01T10:00:00Z"),
                 List.of(),
-                null,
-                "https://cdn.test/poster.jpg",
-                List.of()
+                null
         );
 
-        assertThatThrownBy(() -> agencyEventBasicService.createBasicEvent(request))
+        assertThatThrownBy(() -> agencyEventBasicService.createBasicEvent(request, mockPosterImage, List.of()))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(GlobalErrorCode.INVALID_REQUEST);

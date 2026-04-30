@@ -19,6 +19,7 @@ import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventS
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyVenueTemplateResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +28,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
  * 기획사 공연 등록과 삭제 API를 제공합니다.
@@ -103,15 +108,24 @@ public class AgencyEventController implements AgencyEventApiDoc {
     /**
      * 기획사 공연 기본정보를 등록합니다.
      *
-     * @param request 기획사 공연 기본정보 등록 요청 DTO
+     * <p>multipart/form-data 형식. request는 JSON 파트, posterImage는 필수 이미지 파일,
+     * detailImages는 소개 이미지 파일 목록(최대 3개, 선택).</p>
+     *
+     * @param request      공연 기본정보 JSON 파트
+     * @param posterImage  포스터 이미지 파일 (필수)
+     * @param detailImages 소개 이미지 파일 목록 (선택, 최대 3개)
      * @return 생성된 공연 응답
      */
     @Override
-    @PostMapping("/events")
+    @PostMapping(value = "/events", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BaseResponse<AgencyCreateEventResponse>> createEvent(
-            @Valid @RequestBody AgencyCreateEventBasicRequest request
+            @Valid @RequestPart AgencyCreateEventBasicRequest request,
+            @RequestPart MultipartFile posterImage,
+            @RequestPart(required = false) List<MultipartFile> detailImages
     ) {
-        AgencyCreateEventResponse response = agencyEventBasicService.createBasicEvent(request);
+        AgencyCreateEventResponse response = agencyEventBasicService.createBasicEvent(
+                request, posterImage, detailImages
+        );
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
                 .body(BaseResponse.success(SuccessCode.CREATED, response));
