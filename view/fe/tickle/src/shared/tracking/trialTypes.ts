@@ -20,7 +20,7 @@ export interface TrialSummary {
   label: TrialLabel;
 }
 
-// ─── Metrics (42 features) ──────────────────────────────────
+// ─── Metrics (34 features) ──────────────────────────────────
 export interface TrialMetrics {
   // Click/Timing (15)
   time_to_first_click_ms: number | null;
@@ -53,22 +53,13 @@ export interface TrialMetrics {
   mouse_hover_dwell_time_ms: number | null;
   mouse_stop_segment_count: number | null;
   mousemove_event_rate: number | null;
-  pre_click_mouse_path_pattern_300ms: string;
-  pre_click_mouse_path_pattern_500ms: string;
+  pre_click_path_300ms_total_distance_px: number;
+  pre_click_path_300ms_straightness: number;
+  pre_click_path_500ms_total_distance_px: number;
+  pre_click_path_500ms_straightness: number;
   inter_element_move_interval_std_ms: number | null;
   edge_or_fixed_point_visit_rate: number | null;
 
-  // Keyboard (10)
-  time_to_first_keydown_ms: number | null;
-  inter_key_interval_ms_mean: number | null;
-  inter_key_interval_ms_std: number | null;
-  keydown_to_keyup_ms_mean: number | null;
-  typing_total_duration_ms: number | null;
-  typing_speed_cps: number | null;
-  backspace_rate: number;
-  correction_count: number;
-  paste_flag: number;
-  focus_to_submit_ms: number | null;
 }
 
 // ─── EventRow Variants ──────────────────────────────────────

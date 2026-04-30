@@ -15,7 +15,7 @@ export const TrialSummarySchema = Schema.Struct({
   label: TrialLabelSchema,
 });
 
-// ─── Metrics (Flat Structure - 44 Features) ────────────────
+// ─── Metrics (Flat Structure - 34 Features) ────────────────
 export const TrialMetricsSchema = Schema.Struct({
   // Click/Timing (15)
   time_to_first_click_ms: Schema.Union(Schema.Number, Schema.Null),
@@ -55,17 +55,6 @@ export const TrialMetricsSchema = Schema.Struct({
   inter_element_move_interval_std_ms: Schema.Union(Schema.Number, Schema.Null),
   edge_or_fixed_point_visit_rate: Schema.Union(Schema.Number, Schema.Null),
 
-  // Keyboard (10)
-  time_to_first_keydown_ms: Schema.Union(Schema.Number, Schema.Null),
-  inter_key_interval_ms_mean: Schema.Union(Schema.Number, Schema.Null),
-  inter_key_interval_ms_std: Schema.Union(Schema.Number, Schema.Null),
-  keydown_to_keyup_ms_mean: Schema.Union(Schema.Number, Schema.Null),
-  typing_total_duration_ms: Schema.Union(Schema.Number, Schema.Null),
-  typing_speed_cps: Schema.Union(Schema.Number, Schema.Null),
-  backspace_rate: Schema.Number,
-  correction_count: Schema.Number,
-  paste_flag: Schema.Number,
-  focus_to_submit_ms: Schema.Union(Schema.Number, Schema.Null),
 });
 
 // ─── Base Event Row ─────────────────────────────────────────

@@ -463,8 +463,6 @@ export class TrialCollector {
       // ── Mouse (17) ────────────────────────────────────────
       ...this.computeMouseMetrics(moves, clicks, durationMs),
 
-      // ── Keyboard (10) ─────────────────────────────────────
-      ...this.computeKeyboardMetrics(keydowns, keyups, clicks),
     };
   }
 
@@ -647,64 +645,5 @@ export class TrialCollector {
     };
   }
 
-  // ── Keyboard Metrics ────────────────────────────────────
-  private computeKeyboardMetrics(keydowns: any[], keyups: any[], clicks: ClickEventRow[]) {
-    // Time to first keydown after captcha focus
-    let timeToFirstKeydown: number | null = null;
-    if (this.captchaFocusTs !== null && keydowns.length > 0) {
-      timeToFirstKeydown = (this.startTs + keydowns[0].relative_ms) - this.captchaFocusTs;
-    }
 
-    // Inter-key intervals
-    const keyIntervals: number[] = [];
-    for (let i = 1; i < keydowns.length; i++) {
-      keyIntervals.push(keydowns[i].relative_ms - keydowns[i - 1].relative_ms);
-    }
-
-    // Keydown-to-keyup hold times
-    const holdTimes = keyups
-      .map((ku: any) => ku.hold_ms)
-      .filter((v: number | null): v is number => v !== null);
-
-    // Typing duration
-    const typingDuration = keydowns.length >= 2
-      ? keydowns[keydowns.length - 1].relative_ms - keydowns[0].relative_ms
-      : null;
-
-    // Typing speed (characters per second)
-    const typingSpeed = typingDuration !== null && typingDuration > 0
-      ? keydowns.length / (typingDuration / 1000)
-      : null;
-
-    // Backspace
-    const backspaceCount = keydowns.filter((k: any) => k.key === 'Backspace').length;
-    const backspaceRate = keydowns.length > 0 ? backspaceCount / keydowns.length : 0;
-
-    // Focus to submit (captcha confirm click)
-    let focusToSubmit: number | null = null;
-    if (this.captchaFocusTs !== null) {
-      const confirmClick = clicks.find(c =>
-        c.track_id?.includes('captcha-key') || c.track_id?.includes('captcha')
-      );
-      if (confirmClick) {
-        const lastCaptchaClick = [...clicks].reverse().find(c => c.track_id?.includes('captcha'));
-        if (lastCaptchaClick) {
-          focusToSubmit = (this.startTs + lastCaptchaClick.relative_ms) - this.captchaFocusTs;
-        }
-      }
-    }
-
-    return {
-      time_to_first_keydown_ms: timeToFirstKeydown,
-      inter_key_interval_ms_mean: mean(keyIntervals),
-      inter_key_interval_ms_std: std(keyIntervals),
-      keydown_to_keyup_ms_mean: mean(holdTimes),
-      typing_total_duration_ms: typingDuration,
-      typing_speed_cps: typingSpeed,
-      backspace_rate: backspaceRate,
-      correction_count: backspaceCount,
-      paste_flag: this.pasteCount > 0 ? 1 : 0,
-      focus_to_submit_ms: focusToSubmit,
-    };
-  }
 }
