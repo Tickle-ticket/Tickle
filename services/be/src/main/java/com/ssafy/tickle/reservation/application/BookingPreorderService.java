@@ -195,7 +195,7 @@ public class BookingPreorderService {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석 ID 목록은 비어 있을 수 없습니다.");
         }
 
-        if (seatIds.contains(null)) {
+        if (seatIds.stream().anyMatch(Objects::isNull)) {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석 ID는 null일 수 없습니다.");
         }
 
@@ -218,14 +218,14 @@ public class BookingPreorderService {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석별 권종 선택 정보는 비어 있을 수 없습니다.");
         }
 
-        if (optionSelections.contains(null)) {
+        if (optionSelections.stream().anyMatch(Objects::isNull)) {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석별 권종 선택 정보가 누락되었습니다.");
         }
 
         List<Long> selectedSeatIds = optionSelections.stream()
                 .map(PaymentOptionSelectionRequest::sessionSeatId)
                 .toList();
-        if (selectedSeatIds.contains(null)) {
+        if (selectedSeatIds.stream().anyMatch(Objects::isNull)) {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "권종 선택의 좌석 ID는 null일 수 없습니다.");
         }
 
@@ -338,11 +338,9 @@ public class BookingPreorderService {
      * @return 좌석별 권종명 맵
      */
     private Map<Long, String> getDiscountNameBySeatId(Map<Long, PaymentOptionSelectionRequest> selectionBySeatId) {
-        return selectionBySeatId.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue().discountName()
-                ));
+        Map<Long, String> discountNameBySeatId = new LinkedHashMap<>();
+        selectionBySeatId.forEach((seatId, selection) -> discountNameBySeatId.put(seatId, selection.discountName()));
+        return discountNameBySeatId;
     }
 
     /**
@@ -352,11 +350,9 @@ public class BookingPreorderService {
      * @return 좌석별 권종명 맵
      */
     private Map<Long, String> getDiscountNameBySeatId(List<BookingTicket> tickets) {
-        return tickets.stream()
-                .collect(Collectors.toMap(
-                        ticket -> ticket.getSessionSeat().getId(),
-                        this::resolveDiscountName
-                ));
+        Map<Long, String> discountNameBySeatId = new LinkedHashMap<>();
+        tickets.forEach(ticket -> discountNameBySeatId.put(ticket.getSessionSeat().getId(), resolveDiscountName(ticket)));
+        return discountNameBySeatId;
     }
 
     /**
