@@ -2,16 +2,18 @@ package com.ssafy.tickle.user.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.common.util.S3Uploader;
 import com.ssafy.tickle.user.domain.User;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.user.presentation.dto.MyInfoResponse;
-import com.ssafy.tickle.user.presentation.dto.UpdateMyInfoRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
@@ -19,6 +21,9 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 
 /**
  * 사용자 조회 서비스 통합 테스트입니다.
@@ -33,6 +38,9 @@ class UserServiceTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @MockBean
+    private S3Uploader s3Uploader;
 
     @AfterEach
     void tearDown() {
@@ -85,17 +93,15 @@ class UserServiceTest {
     class UpdateMyInfoTest {
 
         @Test
-        @DisplayName("일부 필드를 수정하면 닉네임, 전화번호, 프로필 이미지만 반영된다")
+        @DisplayName("닉네임과 전화번호를 수정하면 해당 필드만 반영된다")
         void updateMyInfo_success() {
             User savedUser = userRepository.save(createUser());
 
             MyInfoResponse response = userService.updateMyInfo(
                     savedUser.getId(),
-                    new UpdateMyInfoRequest(
-                            "010-9999-9999",
-                            "김싸피",
-                            "https://cdn.tickle.local/profiles/updated-user1.png"
-                    )
+                    null,
+                    "김싸피",
+                    "010-9999-9999"
             );
 
             User updatedUser = userRepository.findById(savedUser.getId()).orElseThrow();
@@ -103,11 +109,25 @@ class UserServiceTest {
             assertThat(response.name()).isEqualTo("홍길동");
             assertThat(response.nickname()).isEqualTo("김싸피");
             assertThat(response.phoneNumber()).isEqualTo("010-9999-9999");
-            assertThat(response.profileImageUrl()).isEqualTo("https://cdn.tickle.local/profiles/updated-user1.png");
-            assertThat(updatedUser.getName()).isEqualTo("홍길동");
             assertThat(updatedUser.getNickname()).isEqualTo("김싸피");
             assertThat(updatedUser.getPhoneNumber()).isEqualTo("010-9999-9999");
-            assertThat(updatedUser.getProfileImageUrl()).isEqualTo("https://cdn.tickle.local/profiles/updated-user1.png");
+        }
+
+        @Test
+        @DisplayName("프로필 이미지 파일을 전달하면 S3에 업로드 후 URL이 반영된다")
+        void updateMyInfo_withImage_uploadsToS3() {
+            User savedUser = userRepository.save(createUser());
+            MockMultipartFile profileImage = new MockMultipartFile(
+                    "profileImage", "profile.jpg", "image/jpeg", "fake".getBytes()
+            );
+            String mockUrl = "https://s3.ap-northeast-2.amazonaws.com/tickle/profiles/uuid.jpg";
+            given(s3Uploader.upload(any(), eq("profiles"))).willReturn(mockUrl);
+
+            MyInfoResponse response = userService.updateMyInfo(
+                    savedUser.getId(), profileImage, null, null
+            );
+
+            assertThat(response.profileImageUrl()).isEqualTo(mockUrl);
         }
 
         @Test
@@ -116,8 +136,7 @@ class UserServiceTest {
             User savedUser = userRepository.save(createUser());
 
             assertThatThrownBy(() -> userService.updateMyInfo(
-                    savedUser.getId(),
-                    new UpdateMyInfoRequest(null, null, null)
+                    savedUser.getId(), null, null, null
             ))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")

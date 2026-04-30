@@ -2,7 +2,6 @@ package com.ssafy.tickle.user.presentation;
 
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.user.presentation.dto.MyInfoResponse;
-import com.ssafy.tickle.user.presentation.dto.UpdateMyInfoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 사용자 조회 API 문서 인터페이스입니다.
@@ -47,34 +47,28 @@ public interface UserApiDoc {
     );
 
     /**
-     * 회원 정보 수정 API 문서 정의입니다.
+     * 프로필 수정 API 문서 정의입니다.
      *
-     * @param userId 사용자 식별자 쿼리 파라미터
-     * @param request 수정 요청
-     * @return 수정된 내 정보 응답
+     * <p>multipart/form-data 형식. profileImage는 이미지 파일, nickname/phoneNumber는 form field.</p>
      */
     @Operation(
-            summary = "내 정보 수정",
-            description = "쿼리 파라미터의 userId를 기준으로 현재 사용자의 정보를 부분 수정합니다."
+            summary = "프로필 수정",
+            description = "프로필 이미지(파일), 닉네임, 전화번호를 수정합니다. multipart/form-data 형식. 하나 이상 필수."
     )
-    @ApiResponse(
-            responseCode = "200",
-            description = "내 정보 수정 성공"
-    )
-    @ApiResponse(
-            responseCode = "400",
-            description = "userId 누락 또는 잘못된 입력값",
-            content = @Content(schema = @Schema(implementation = BaseResponse.class))
-    )
-    @ApiResponse(
-            responseCode = "404",
-            description = "사용자를 찾을 수 없음",
-            content = @Content(schema = @Schema(implementation = BaseResponse.class))
-    )
+    @ApiResponse(responseCode = "200", description = "프로필 수정 성공")
+    @ApiResponse(responseCode = "400", description = "수정할 값 없음 또는 잘못된 입력",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     ResponseEntity<BaseResponse<MyInfoResponse>> updateMyInfo(
             @Parameter(description = "사용자 식별자", required = true, example = "1")
             Long userId,
-            UpdateMyInfoRequest request
+            @Parameter(description = "프로필 이미지 파일 (선택)")
+            MultipartFile profileImage,
+            @Parameter(description = "닉네임 (선택)")
+            String nickname,
+            @Parameter(description = "전화번호 (선택)")
+            String phoneNumber
     );
 
     /**

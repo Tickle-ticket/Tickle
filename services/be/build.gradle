@@ -43,6 +43,10 @@ dependencies {
     // kafka
     implementation 'org.springframework.kafka:spring-kafka'
 
+    // AWS S3
+    implementation platform('software.amazon.awssdk:bom:2.25.0')
+    implementation 'software.amazon.awssdk:s3'
+
     // Prometheus 메트릭 수집
     implementation 'io.micrometer:micrometer-registry-prometheus'
 

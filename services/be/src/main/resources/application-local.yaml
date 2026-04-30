@@ -46,6 +46,10 @@ spring:
     listener:
       # 토픽이 아직 없어도 애플리케이션 시작을 막지 않음
       missing-topics-fatal: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
 
 server:
   # 애플리케이션 HTTP 포트
@@ -78,6 +82,16 @@ springdoc:
 internal:
   # Auth 서버와 공유하는 내부 통신 시크릿 키
   secret: ${INTERNAL_SECRET}
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
 
 cors:
   # 배포 FE Origin

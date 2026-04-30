@@ -23,6 +23,10 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: tickle-test-group
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
 
 server:
   port: 0
@@ -33,3 +37,13 @@ internal:
 
 cors:
   fe-origin: http://localhost:3000
+
+cloud:
+  aws:
+    s3:
+      bucket: tickle-test-bucket
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
