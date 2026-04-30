@@ -12,11 +12,16 @@ import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationSummaryResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationTicketResponse;
+import com.ssafy.tickle.seat.domain.SeatStatusChangedEvent;
+import com.ssafy.tickle.seat.domain.SessionSeat;
+import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -37,7 +42,9 @@ public class ReservationService {
 
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
+    private final SessionSeatRepository sessionSeatRepository;
     private final BookingCancelProducer bookingCancelProducer;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 사용자의 전체 예매 목록을 최신순으로 조회합니다.
@@ -75,10 +82,12 @@ public class ReservationService {
     }
 
     /**
-     * 예매를 취소하고 Kafka로 취소 이벤트를 발행합니다.
+     * 예매를 취소합니다.
      *
      * <p>CONFIRMED / PENDING_PAYMENT 상태만 취소 가능하다.
-     * 취소 처리(상태 변경) 후 Kafka 이벤트를 발행하여 좌석 해제·환불이 비동기로 처리되도록 한다.</p>
+     * 취소 시 티켓 → CANCELLED, 좌석 → REALLOCATING 으로 전환하고,
+     * WebSocket 이벤트로 다른 사용자에게 즉시 알린 뒤
+     * Kafka 이벤트로 환불 처리를 비동기 요청한다.</p>
      *
      * @param reservationId 예매 식별자
      * @param userId        사용자 식별자
@@ -91,17 +100,33 @@ public class ReservationService {
         Instant now = Instant.now();
         List<BookingTicket> tickets = bookingTicketRepository.findAllByBookingId(reservationId);
 
-        // 티켓 상태 → CANCELLED
-        tickets.forEach(ticket -> ticket.cancel(now));
-
-        // 예매 상태 → CANCELLED
-        booking.cancel(now);
-
-        // 좌석 해제 / 환불 처리를 위한 Kafka 이벤트 발행
+        // 좌석 식별자 수집 후 DB에서 로딩 (정렬로 데드락 방지)
         List<Long> sessionSeatIds = tickets.stream()
                 .map(ticket -> ticket.getSessionSeat().getId())
+                .sorted()
                 .toList();
 
+        List<SessionSeat> seats = sessionSeatRepository.findAllByIdIn(sessionSeatIds)
+                .stream()
+                .sorted(Comparator.comparing(SessionSeat::getId))
+                .toList();
+
+        // 티켓 → CANCELLED, 좌석 → REALLOCATING, 예매 → CANCELLED
+        tickets.forEach(ticket -> ticket.cancel(now));
+        seats.forEach(SessionSeat::cancelForReallocation);
+        booking.cancel(now);
+
+        sessionSeatRepository.saveAll(seats);
+
+        // WebSocket 브로드캐스트 — 커밋 후 @TransactionalEventListener 가 처리
+        eventPublisher.publishEvent(new SeatStatusChangedEvent(
+                this,
+                booking.getSession().getId(),
+                sessionSeatIds,
+                SessionSeat.SaleStatus.REALLOCATING
+        ));
+
+        // Kafka — 환불 처리를 위한 비동기 이벤트 (ack 확인)
         bookingCancelProducer.publish(new BookingCancelMessage(
                 reservationId,
                 userId,
@@ -120,7 +145,6 @@ public class ReservationService {
     private Booking findBookingOwnedByUser(Long reservationId, Long userId) {
         return bookingRepository.findByIdAndUserId(reservationId, userId)
                 .orElseThrow(() -> {
-                    // 예매 존재 여부와 무관하게 소유권 미확인 시 403 반환 (정보 노출 방지)
                     boolean exists = bookingRepository.existsById(reservationId);
                     return exists
                             ? new BaseException(ReservationErrorCode.BOOKING_ACCESS_DENIED)

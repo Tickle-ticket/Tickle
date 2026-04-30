@@ -12,7 +12,9 @@ import com.ssafy.tickle.reservation.infrastructure.persistence.BookingTicketRepo
 import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
 import com.ssafy.tickle.seat.domain.SessionSeat;
+import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.venue.domain.Venue;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,7 +52,9 @@ class ReservationServiceTest {
 
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingTicketRepository bookingTicketRepository;
+    @Mock private SessionSeatRepository sessionSeatRepository;
     @Mock private BookingCancelProducer bookingCancelProducer;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private ReservationService reservationService;
 
@@ -91,12 +95,17 @@ class ReservationServiceTest {
         cancelledBooking = mock(Booking.class);
         given(cancelledBooking.getBookingStatus()).willReturn(Booking.Status.CANCELLED);
 
-        // 티켓
+        // 티켓 + 좌석
         SessionSeat sessionSeat = mock(SessionSeat.class);
         given(sessionSeat.getId()).willReturn(SEAT_ID);
 
         ticket = mock(BookingTicket.class);
         given(ticket.getSessionSeat()).willReturn(sessionSeat);
+
+        // 좌석 조회 기본 stub
+        given(sessionSeatRepository.findAllByIdIn(List.of(SEAT_ID))).willReturn(List.of(sessionSeat));
+        given(sessionSeatRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
+        willDoNothing().given(eventPublisher).publishEvent(any());
     }
 
     // ── getReservationList ────────────────────────────────────────
@@ -190,7 +199,7 @@ class ReservationServiceTest {
     class CancelReservationTest {
 
         @Test
-        @DisplayName("CONFIRMED 상태 예매를 정상 취소하고 Kafka 이벤트를 발행한다")
+        @DisplayName("CONFIRMED 예매 취소 시 티켓 CANCELLED, 좌석 REALLOCATING, Kafka + WebSocket 이벤트 발행")
         void cancelReservation_confirmed_success() {
             // given
             given(bookingRepository.findByIdAndUserId(BOOKING_ID, USER_ID))
@@ -201,9 +210,16 @@ class ReservationServiceTest {
             // when
             reservationService.cancelReservation(BOOKING_ID, USER_ID);
 
-            // then
-            verify(confirmedBooking).cancel(any(Instant.class));
+            // then: 티켓 취소
             verify(ticket).cancel(any(Instant.class));
+            // then: 예매 취소
+            verify(confirmedBooking).cancel(any(Instant.class));
+            // then: 좌석 REALLOCATING 전환
+            verify(ticket.getSessionSeat()).cancelForReallocation();
+            verify(sessionSeatRepository).saveAll(any());
+            // then: WebSocket 이벤트 발행
+            verify(eventPublisher).publishEvent(any(com.ssafy.tickle.seat.domain.SeatStatusChangedEvent.class));
+            // then: Kafka 이벤트 발행
             verify(bookingCancelProducer).publish(any());
         }
 
