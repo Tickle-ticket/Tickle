@@ -1,1 +1,5 @@
 node_modules/
+services/ai/train/model_joblib/
+
+# Local working notes (per-developer)
+tasks/

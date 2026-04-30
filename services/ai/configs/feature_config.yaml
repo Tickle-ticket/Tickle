@@ -107,6 +107,12 @@ exclude:
   - label
   - stage
   - selectedSeats
+  - collection_pipeline
+  - session_id
+  - source
+  - metrics_compatibility
+
+
 
 raw:
  - pre_click_mouse_path_pattern_300ms
@@ -123,4 +129,12 @@ input_features_chan:
   - time_from_element_clickable_to_click_ms
   - click_offset_from_element_center_px
   - inter_click_interval_ms
-  
+
+input_features_gyeom:
+  - inter_click_interval_ms
+  - mouse_speed_change_mean
+  - mouse_total_travel_distance_px
+  - mouse_path_curvature_mean
+  - mouse_avg_speed_px_per_ms
+  - mouse_acceleration_mean
+  - mouse_max_speed_px_per_ms
