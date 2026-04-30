@@ -60,14 +60,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * PaymentService 통합 테스트입니다.
+ * Payment 결제 유스케이스 통합 테스트입니다.
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@DisplayName("PaymentService 통합 테스트")
+@DisplayName("Payment 결제 유스케이스 통합 테스트")
 class PaymentServiceTest {
 
-    @Autowired private PaymentService paymentService;
+    @Autowired private BankTransferPaymentService bankTransferPaymentService;
+    @Autowired private BankTransferPaymentExpireService bankTransferPaymentExpireService;
     @Autowired private BookingPreorderService bookingPreorderService;
     @Autowired private SeatService seatService;
     @Autowired private SeatHoldKeyStore seatHoldKeyStore;
@@ -142,7 +143,7 @@ class PaymentServiceTest {
                     .isEqualTo(BookingTicket.Status.DRAFT);
 
             // when
-            BankTransferPrepareResponse response = paymentService.confirmBankTransferPayment(
+            BankTransferPrepareResponse response = bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -186,7 +187,7 @@ class PaymentServiceTest {
             SessionSeat seat = createAndHoldSeat("A", "1");
             BookingPreorderResponse preorder = createPreorder(seat, "일반예매");
 
-            BankTransferPrepareResponse first = paymentService.confirmBankTransferPayment(
+            BankTransferPrepareResponse first = bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -194,7 +195,7 @@ class PaymentServiceTest {
             );
 
             // when
-            BankTransferPrepareResponse second = paymentService.confirmBankTransferPayment(
+            BankTransferPrepareResponse second = bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -232,7 +233,7 @@ class PaymentServiceTest {
             );
 
             // when & then
-            assertThatThrownBy(() -> paymentService.confirmBankTransferPayment(
+            assertThatThrownBy(() -> bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -251,7 +252,7 @@ class PaymentServiceTest {
             // given
             SessionSeat seat = createAndHoldSeat("A", "1");
             BookingPreorderResponse preorder = createPreorder(seat, "일반예매");
-            BankTransferPrepareResponse prepared = paymentService.confirmBankTransferPayment(
+            BankTransferPrepareResponse prepared = bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -268,7 +269,7 @@ class PaymentServiceTest {
             paymentRepository.save(payment);
 
             // when
-            boolean expired = paymentService.expirePendingBankTransferPayment(payment.getId());
+            boolean expired = bankTransferPaymentService.expirePendingBankTransferPayment(payment.getId());
 
             // then
             Payment expiredPayment = paymentRepository.findDetailById(payment.getId()).orElseThrow();
@@ -289,7 +290,7 @@ class PaymentServiceTest {
             // given
             SessionSeat expiredSeat = createAndHoldSeat("A", "1");
             BookingPreorderResponse expiredPreorder = createPreorder(expiredSeat, "일반예매");
-            BankTransferPrepareResponse expiredPrepared = paymentService.confirmBankTransferPayment(
+            BankTransferPrepareResponse expiredPrepared = bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -298,7 +299,7 @@ class PaymentServiceTest {
 
             SessionSeat activeSeat = createAndHoldSeat("A", "2");
             BookingPreorderResponse activePreorder = createPreorder(activeSeat, "일반예매");
-            BankTransferPrepareResponse activePrepared = paymentService.confirmBankTransferPayment(
+            BankTransferPrepareResponse activePrepared = bankTransferPaymentService.confirmBankTransferPayment(
                     event.getId(),
                     session.getId(),
                     user.getId(),
@@ -317,7 +318,7 @@ class PaymentServiceTest {
             paymentRepository.save(expiredPayment);
 
             // when
-            int expiredCount = paymentService.expirePendingBankTransferPayments();
+            int expiredCount = bankTransferPaymentExpireService.expirePendingBankTransferPayments();
 
             // then
             Payment cancelledPayment = paymentRepository.findDetailById(expiredPayment.getId()).orElseThrow();

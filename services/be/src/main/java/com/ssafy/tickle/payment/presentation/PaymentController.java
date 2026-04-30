@@ -2,7 +2,8 @@ package com.ssafy.tickle.payment.presentation;
 
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
-import com.ssafy.tickle.payment.application.PaymentService;
+import com.ssafy.tickle.payment.application.BankTransferPaymentService;
+import com.ssafy.tickle.payment.application.PaymentQueryService;
 import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareRequest;
 import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareResponse;
 import com.ssafy.tickle.payment.presentation.dto.PaymentStatusResponse;
@@ -27,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Payment", description = "결제 API")
 public class PaymentController implements PaymentApiDoc {
 
-    private final PaymentService paymentService;
+    private final BankTransferPaymentService bankTransferPaymentService;
+    private final PaymentQueryService paymentQueryService;
 
     @Override
     @PostMapping("/events/{eventId}/schedules/{scheduleId}/payments/bank-transfer")
@@ -40,7 +42,7 @@ public class PaymentController implements PaymentApiDoc {
         return ResponseEntity.ok(
                 BaseResponse.success(
                         SuccessCode.OK,
-                        paymentService.confirmBankTransferPayment(eventId, scheduleId, userId, request)
+                        bankTransferPaymentService.confirmBankTransferPayment(eventId, scheduleId, userId, request)
                 )
         );
     }
@@ -49,7 +51,7 @@ public class PaymentController implements PaymentApiDoc {
     @GetMapping("/payments/{paymentId}")
     public ResponseEntity<BaseResponse<PaymentStatusResponse>> getPaymentStatus(@PathVariable Long paymentId) {
         return ResponseEntity.ok(
-                BaseResponse.success(SuccessCode.OK, paymentService.getPaymentStatus(paymentId))
+                BaseResponse.success(SuccessCode.OK, paymentQueryService.getPaymentStatus(paymentId))
         );
     }
 }
