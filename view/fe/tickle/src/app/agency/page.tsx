@@ -13,7 +13,6 @@ import {
   type AgencyRegistrationFlowRequest,
   type AgencySeatGrade,
 } from '@/src/shared/api/agencyApi';
-import { uploadImage, uploadImages } from '@/src/shared/api/uploadApi';
 import { ApiError } from '@/src/shared/api/types';
 import { useVenues } from '@/src/shared/api/useVenues';
 import { Badge } from '@/src/shared/components/Badge';
@@ -1338,8 +1337,6 @@ export default function AgencyRegistrationPage() {
     setIsSubmittingRegistration(true);
 
     try {
-      const posterImageUrl = await uploadImage(posterImage.file);
-      const detailImageUrls = await uploadImages(introImages.map((image) => image.file));
       const request: AgencyRegistrationFlowRequest = {
         basicEvent: {
           organizerId: FIXED_ORGANIZER_ID,
@@ -1350,9 +1347,9 @@ export default function AgencyRegistrationPage() {
           eventEndAt: latestTicketCloseAt.toISOString(),
           tags: performanceHashtags,
           notice: noticeText.trim(),
-          posterImageUrl,
-          detailImageUrls,
         },
+        posterImage: posterImage.file,
+        detailImages: introImages.map((image) => image.file),
         pricePolicies: {
           pricePolicies,
         },

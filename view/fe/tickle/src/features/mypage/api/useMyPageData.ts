@@ -3,7 +3,6 @@ import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
-import { normalizeImageUrl } from '@/src/shared/utils/imageUrl';
 
 export const useMyUpcomingWishlist = () => {
   return useQuery({
@@ -57,10 +56,7 @@ export const useMyBookings = () => {
     queryKey: ['myBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings');
-      return response.data.map((item) => ({
-        ...item,
-        imageUrl: normalizeImageUrl(item.imageUrl),
-      }));
+      return response.data;
     },
   });
 };
@@ -70,10 +66,7 @@ export const usePastBookings = () => {
     queryKey: ['pastBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
-      return response.data.map((item) => ({
-        ...item,
-        imageUrl: normalizeImageUrl(item.imageUrl),
-      }));
+      return response.data;
     },
   });
 };
@@ -83,10 +76,7 @@ export const useWaitlistBookings = () => {
     queryKey: ['waitlistBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<WaitlistBookingData[]>>('/api/v1/mypage/waitlist');
-      return response.data.map((item) => ({
-        ...item,
-        imageUrl: normalizeImageUrl(item.imageUrl),
-      }));
+      return response.data;
     },
   });
 };

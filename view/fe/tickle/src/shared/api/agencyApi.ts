@@ -37,8 +37,12 @@ export interface AgencyCreateEventBasicRequest {
   eventEndAt: string;
   tags: string[];
   notice: string;
-  posterImageUrl: string;
-  detailImageUrls: string[];
+}
+
+export interface AgencyCreateEventMultipartRequest {
+  request: AgencyCreateEventBasicRequest;
+  posterImage: File;
+  detailImages?: File[];
 }
 
 export interface AgencyCreateEventResponseData {
@@ -86,6 +90,8 @@ export interface AgencyCreateEventSeatsRequest {
 
 export interface AgencyRegistrationFlowRequest {
   basicEvent: AgencyCreateEventBasicRequest;
+  posterImage: File;
+  detailImages: File[];
   pricePolicies: AgencyCreateEventPricePoliciesRequest;
   sessions: AgencyCreateEventSessionsRequest;
   seats: AgencyCreateEventSeatsRequest;
@@ -125,11 +131,25 @@ export const fetchAgencies = async (): Promise<AgencySummary[]> => {
 };
 
 export const createAgencyEvent = async (
-  request: AgencyCreateEventBasicRequest,
+  request: AgencyCreateEventMultipartRequest,
 ): Promise<ApiResponse<AgencyCreateEventResponseData>> => {
+  const formData = new FormData();
+
+  formData.append(
+    'request',
+    new Blob([JSON.stringify(request.request)], {
+      type: 'application/json',
+    }),
+  );
+  formData.append('posterImage', request.posterImage);
+
+  request.detailImages?.forEach((image) => {
+    formData.append('detailImages', image);
+  });
+
   return apiClient<ApiResponse<AgencyCreateEventResponseData>>('/api/v1/agency/events', {
     method: 'POST',
-    body: request,
+    body: formData,
   });
 };
 
@@ -166,7 +186,11 @@ export const createAgencyEventSeats = async (
 export const submitAgencyEventRegistration = async (
   request: AgencyRegistrationFlowRequest,
 ): Promise<AgencyRegistrationFlowResult> => {
-  const eventResponse = await createAgencyEvent(request.basicEvent);
+  const eventResponse = await createAgencyEvent({
+    request: request.basicEvent,
+    posterImage: request.posterImage,
+    detailImages: request.detailImages,
+  });
   const eventId = eventResponse.data.eventId;
 
   await createAgencyEventPricePolicies(eventId, request.pricePolicies);
