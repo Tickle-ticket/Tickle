@@ -79,6 +79,22 @@ internal:
   # Auth 서버와 공유하는 내부 통신 시크릿 키
   secret: ${INTERNAL_SECRET}
 
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
+
 cors:
   # 배포 FE Origin
   fe-origin: ${CORS_FE_ORIGIN}
