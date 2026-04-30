@@ -88,6 +88,16 @@ public class Booking {
     }
 
     /**
+     * 예매를 취소 상태로 변경합니다.
+     *
+     * @param cancelledAt 취소 시각
+     */
+    public void cancel(java.time.Instant cancelledAt) {
+        this.bookingStatus = Status.CANCELLED;
+        this.updatedAt = cancelledAt;
+    }
+
+    /**
      * 예매 엔티티를 생성합니다.
      *
      * @param bookingNo 예매 번호
