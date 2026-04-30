@@ -81,6 +81,13 @@ class QueueAdmissionSchedulerTest {
             Thread.sleep(2L);
         }
 
+        // Kafka 비동기 처리 대기
+        int attempts = 0;
+        while (queueStatusStore.countWaiting(sessionId) < 101L && attempts < 50) {
+            Thread.sleep(100);
+            attempts++;
+        }
+
         queueAdmissionScheduler.admitWaitingUsers();
 
         long admittedCount = queueTokens.stream()

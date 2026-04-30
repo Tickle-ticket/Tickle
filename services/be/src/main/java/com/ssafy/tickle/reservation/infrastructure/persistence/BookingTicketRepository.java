@@ -1,7 +1,9 @@
 package com.ssafy.tickle.reservation.infrastructure.persistence;
 
 import com.ssafy.tickle.reservation.domain.BookingTicket;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -17,4 +19,15 @@ public interface BookingTicketRepository extends JpaRepository<BookingTicket, Lo
      * @return 티켓 목록
      */
     List<BookingTicket> findByBookingId(Long bookingId);
+
+    /**
+     * 예매 ID에 속한 모든 티켓을 조회합니다.
+     *
+     * <p>N+1 방지를 위해 sessionSeat → eventSeat → eventSection을 함께 로딩합니다.</p>
+     *
+     * @param bookingId 예매 식별자
+     * @return 티켓 목록
+     */
+    @EntityGraph(attributePaths = {"sessionSeat", "sessionSeat.eventSeat", "sessionSeat.eventSeat.eventSection"})
+    List<BookingTicket> findAllByBookingId(@Param("bookingId") Long bookingId);
 }

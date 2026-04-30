@@ -170,4 +170,19 @@ public class SessionSeat {
         this.heldByUserId = null;
         this.updatedAt = Instant.now();
     }
+
+    /**
+     * 예매 취소로 좌석을 취소표 재배정 상태로 전환합니다.
+     *
+     * <p>CONFIRMED(예매 확정) 또는 PENDING(입금 대기) 상태에서 전환 가능하며,
+     * 그 외 상태는 조용히 무시합니다.</p>
+     */
+    public void cancelForReallocation() {
+        if (this.saleStatus != SaleStatus.CONFIRMED && this.saleStatus != SaleStatus.PENDING) {
+            return;
+        }
+        this.saleStatus = SaleStatus.REALLOCATING;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
 }

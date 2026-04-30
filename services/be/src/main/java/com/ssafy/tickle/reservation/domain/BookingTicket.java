@@ -94,6 +94,17 @@ public class BookingTicket {
     }
 
     /**
+     * 티켓을 취소 상태로 변경합니다.
+     *
+     * @param cancelledAt 취소 시각
+     */
+    public void cancel(java.time.Instant cancelledAt) {
+        this.ticketStatus = Status.CANCELLED;
+        this.cancelledAt = cancelledAt;
+        this.updatedAt = cancelledAt;
+    }
+
+    /**
      * 예매 티켓 엔티티를 생성합니다.
      *
      * @param booking 상위 예매
