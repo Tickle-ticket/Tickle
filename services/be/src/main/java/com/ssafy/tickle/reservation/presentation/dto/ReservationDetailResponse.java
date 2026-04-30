@@ -17,7 +17,7 @@ import java.util.List;
  * @param sessionStartAt  회차 시작 시각
  * @param venueName       공연장명
  * @param ticketCount     티켓 수량
- * @param totalPaidAmount 총 결제 금액
+ * @param totalPaymentAmount 총 결제 금액
  * @param createdAt       예매 시각
  * @param tickets         티켓 목록
  */
@@ -30,7 +30,7 @@ public record ReservationDetailResponse(
         Instant sessionStartAt,
         String venueName,
         Integer ticketCount,
-        BigDecimal totalPaidAmount,
+        BigDecimal totalPaymentAmount,
         Instant createdAt,
         List<ReservationTicketResponse> tickets
 ) {
@@ -52,7 +52,7 @@ public record ReservationDetailResponse(
                 booking.getSession().getStartAt(),
                 booking.getSession().getEvent().getVenue().getVenueName(),
                 booking.getTicketCount(),
-                booking.getTotalPaidAmount(),
+                booking.getTotalPaymentAmount(),
                 booking.getCreatedAt(),
                 tickets
         );

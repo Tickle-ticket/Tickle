@@ -14,7 +14,7 @@ import java.math.BigDecimal;
  * @param rowLabel          열
  * @param seatNumber        번호
  * @param seatLabel         좌석 표시명
- * @param actualPriceAmount 실판매가
+ * @param ticketPriceAmount 티켓 가격
  * @param serviceFeeAmount  수수료
  * @param finalPriceAmount  최종 결제 금액
  */
@@ -26,7 +26,7 @@ public record ReservationTicketResponse(
         String rowLabel,
         String seatNumber,
         String seatLabel,
-        BigDecimal actualPriceAmount,
+        BigDecimal ticketPriceAmount,
         BigDecimal serviceFeeAmount,
         BigDecimal finalPriceAmount
 ) {
@@ -46,7 +46,7 @@ public record ReservationTicketResponse(
                 ticket.getSessionSeat().getEventSeat().getRowLabel(),
                 ticket.getSessionSeat().getEventSeat().getSeatNumber(),
                 ticket.getSessionSeat().getEventSeat().getSeatLabel(),
-                ticket.getActualPriceAmount(),
+                ticket.getTicketPriceAmount(),
                 ticket.getServiceFeeAmount(),
                 ticket.getFinalPriceAmount()
         );

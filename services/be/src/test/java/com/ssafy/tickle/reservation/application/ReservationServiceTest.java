@@ -84,7 +84,7 @@ class ReservationServiceTest {
         given(confirmedBooking.getBookingStatus()).willReturn(Booking.Status.CONFIRMED);
         given(confirmedBooking.getSession()).willReturn(session);
         given(confirmedBooking.getTicketCount()).willReturn(2);
-        given(confirmedBooking.getTotalPaidAmount()).willReturn(new BigDecimal("176000.00"));
+        given(confirmedBooking.getTotalPaymentAmount()).willReturn(new BigDecimal("176000.00"));
         given(confirmedBooking.getCreatedAt()).willReturn(Instant.now());
 
         // CANCELLED 예매
