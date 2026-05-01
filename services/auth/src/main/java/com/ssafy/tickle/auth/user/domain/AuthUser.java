@@ -44,6 +44,9 @@ public class AuthUser {
     @Column(name = "role", nullable = false, length = 30)
     private Role role;
 
+    @Column(name = "phone_number", nullable = false, unique = true, length = 30)
+    private String phoneNumber;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -60,17 +63,19 @@ public class AuthUser {
     /**
      * 신규 사용자를 생성합니다.
      *
-     * @param email     이메일 (중복 불가)
-     * @param password  BCrypt 해시된 비밀번호
-     * @param role      사용자 권한
-     * @param createdAt 생성 시각
-     * @param updatedAt 수정 시각
+     * @param email       이메일 (중복 불가)
+     * @param password    BCrypt 해시된 비밀번호
+     * @param role        사용자 권한
+     * @param phoneNumber 전화번호 (중복 불가)
+     * @param createdAt   생성 시각
+     * @param updatedAt   수정 시각
      */
     @Builder
-    public AuthUser(String email, String password, Role role, Instant createdAt, Instant updatedAt) {
+    public AuthUser(String email, String password, Role role, String phoneNumber, Instant createdAt, Instant updatedAt) {
         this.email = email;
         this.password = password;
         this.role = role;
+        this.phoneNumber = phoneNumber;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
