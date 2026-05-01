@@ -39,7 +39,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/signup",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/logout",
-                                "/api/v1/auth/reissue"
+                                "/api/v1/auth/reissue",
+                                "/api/v1/auth/phone/send",
+                                "/api/v1/auth/phone/verify"
                         ).permitAll()
                         // 모니터링 / 문서
                         .requestMatchers(
