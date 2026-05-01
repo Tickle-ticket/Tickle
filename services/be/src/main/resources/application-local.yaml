@@ -76,6 +76,12 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+    # Auth 서버 API 문서를 같은 Swagger UI에서 확인 가능
+    urls:
+      - name: BE API
+        url: /api-docs
+      - name: Auth API
+        url: /auth-api-docs
   api-docs:
     path: /api-docs
 
