@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useSeatData } from '@/src/features/book/api/useSeatData';
 import { seatApi } from '@/src/shared/api/seatApi';
+import { bookingApi } from '@/src/shared/api/bookingApi';
+import { paymentApi } from '@/src/shared/api/paymentApi';
 import { fetchVenues } from '@/src/shared/api/venueApi';
 
 import { PriceLegend } from '@/src/shared/components/PriceLegend';
@@ -1468,8 +1470,67 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                   <button
                     disabled={!selectedPayMethod}
                     onClick={async () => {
-                      // TODO: 실제 결제 처리 API 호출 등의 로직을 이곳에 추가하세요.
-                      console.log(`결제 수단: ${selectedPayMethod}, 결제 금액: ${finalPrice.toLocaleString()}원`);
+                      if (!scheduleId || !eventDetail) return;
+                      try {
+                        const tickets = [];
+                        for (const [grade, seats] of Object.entries(gradeSeats)) {
+                          const gradePriceInfo = eventDetail.zonePrices.find(p => p.grade === grade);
+                          const basePrice = gradePriceInfo?.price || 0;
+                          const counts = { ...(gradeTicketCounts[grade] || {}) };
+                          const types = gradePriceInfo?.discountInfo?.length ? gradePriceInfo.discountInfo : [{ discountName: '일반', actualPriceAmount: basePrice }];
+                          
+                          for (const seatId of seats) {
+                            const sessionSeatId = seatsData[seatId]?.sessionSeatId;
+                            if (!sessionSeatId) continue;
+                            
+                            let appliedPrice = basePrice;
+                            for (const [typeId, count] of Object.entries(counts)) {
+                              if (count > 0) {
+                                counts[typeId] = count - 1;
+                                const typeInfo = types.find(t => t.discountName === typeId);
+                                if (typeInfo) {
+                                  appliedPrice = typeInfo.actualPriceAmount;
+                                }
+                                break;
+                              }
+                            }
+                            
+                            tickets.push({
+                              sessionSeatId,
+                              ticketPriceAmount: appliedPrice
+                            });
+                          }
+                        }
+
+                        const preorderReq = {
+                          eventId: parseInt(eventDetail.eventId, 10),
+                          scheduleId: parseInt(scheduleId, 10),
+                          tickets
+                        };
+                        
+                        const preorderRes = await bookingApi.preorder(preorderReq);
+                        
+                        if (preorderRes.data?.bookingId) {
+                          if (selectedPayMethod === 'vbank') {
+                            const bankRes = await paymentApi.confirmBankTransferPayment(
+                              eventDetail.eventId,
+                              scheduleId,
+                              { bookingId: preorderRes.data.bookingId }
+                            );
+                            if (bankRes.data) {
+                              alert(`[무통장 입금 안내]\n계좌번호: ${bankRes.data.bankAccount}\n예금주: ${bankRes.data.accountHolder}\n입금 마감: ${new Date(bankRes.data.depositDeadline).toLocaleString()}\n\n입금 기한 내 미입금 시 예매가 자동 취소됩니다.`);
+                              onClose();
+                            }
+                          } else {
+                            console.log(`결제 수단: ${selectedPayMethod}, 결제 금액: ${finalPrice.toLocaleString()}원`);
+                            alert(`결제가 완료되었습니다.`);
+                            onClose();
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Payment failed', err);
+                        alert('결제 처리 중 오류가 발생했습니다.');
+                      }
                     }}
                     className={`w-full py-4 rounded-2xl font-extrabold text-lg transition-all ${selectedPayMethod
                       ? 'bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] shadow-lg shadow-red-500/25'
