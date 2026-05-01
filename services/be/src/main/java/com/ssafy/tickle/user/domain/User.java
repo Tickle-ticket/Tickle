@@ -49,7 +49,7 @@ public class User {
     private String name;
 
     // 닉네임
-    @Column(name = "nickname", nullable = false, length = 50)
+    @Column(name = "nickname", length = 50)
     private String nickname;
 
     // 프로필 이미지 URL
@@ -59,6 +59,15 @@ public class User {
     // 생년월일
     @Column(name = "birth_date")
     private LocalDate birthDate;
+
+    // 기획사명
+    @Column(name = "organizer_name", length = 200)
+    private String organizerName;
+
+    // 권한
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 30)
+    private UserRole role;
 
     // 상태
     @Enumerated(EnumType.STRING)
@@ -98,6 +107,8 @@ public class User {
      * @param nickname        닉네임
      * @param profileImageUrl 프로필 이미지 URL
      * @param birthDate       생년월일
+     * @param organizerName   기획사명
+     * @param role            사용자 권한
      * @param status          사용자 상태
      * @param lastLoginAt     마지막 로그인 시각
      * @param createdAt       생성 시각 (null 시 Instant.now())
@@ -113,6 +124,8 @@ public class User {
             String nickname,
             String profileImageUrl,
             LocalDate birthDate,
+            String organizerName,
+            UserRole role,
             Status status,
             Instant lastLoginAt,
             Instant createdAt,
@@ -126,6 +139,8 @@ public class User {
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.birthDate = birthDate;
+        this.organizerName = organizerName;
+        this.role = role;
         this.status = status;
         this.lastLoginAt = lastLoginAt;
         this.createdAt = (createdAt != null) ? createdAt : Instant.now();
