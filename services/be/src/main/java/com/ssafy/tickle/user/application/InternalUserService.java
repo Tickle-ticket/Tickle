@@ -39,6 +39,10 @@ public class InternalUserService {
                 .email(request.email())
                 .name(request.name())
                 .nickname(request.nickname())
+                .phoneNumber(request.phoneNumber())
+                .role(request.role())
+                .organizerName(request.organizerName())
+                .birthDate(request.birthDate())
                 .status(User.Status.ACTIVE)
                 .build();
 
