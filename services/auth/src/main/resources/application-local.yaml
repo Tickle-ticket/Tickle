@@ -54,6 +54,11 @@ internal:
     url: ${BE_INTERNAL_URL:http://localhost:8080}
     secret: ${INTERNAL_SECRET}
 
+coolsms:
+  api-key: ${COOLSMS_API_KEY}
+  api-secret: ${COOLSMS_API_SECRET}
+  sender-number: ${COOLSMS_SENDER_NUMBER}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
