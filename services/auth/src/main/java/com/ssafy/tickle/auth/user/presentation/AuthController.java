@@ -16,11 +16,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
 
 /**
  * 인증 API를 제공하는 컨트롤러입니다.
@@ -63,6 +67,41 @@ public class AuthController implements AuthApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(authService.login(request)));
+    }
+
+    /**
+     * Kakao OAuth 로그인 페이지로 리다이렉트합니다.
+     *
+     * @return Kakao authorize URL 302 redirect
+     */
+    @Override
+    @GetMapping("/kakao")
+    public ResponseEntity<Void> redirectToKakao() {
+        return ResponseEntity
+                .status(HttpStatus.FOUND)
+                .location(URI.create(authService.getKakaoAuthorizeUrl()))
+                .build();
+    }
+
+    /**
+     * Kakao OAuth 콜백을 처리합니다.
+     *
+     * @param code Kakao authorization code
+     * @param error Kakao authorization error
+     * @return 발급된 토큰 응답
+     */
+    @Override
+    @GetMapping("/kakao/callback")
+    public ResponseEntity<BaseResponse<TokenResponse>> kakaoCallback(
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String error
+    ) {
+        if (error != null && !error.isBlank()) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
+        }
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(authService.kakaoLogin(code)));
     }
 
     /**

@@ -14,7 +14,7 @@ import java.time.LocalDate;
  * @param email         이메일
  * @param name          이름
  * @param nickname      닉네임 (기획사는 null)
- * @param phoneNumber   휴대폰 번호
+ * @param phoneNumber   휴대폰 번호 (OAuth 사용자는 null 가능)
  * @param role          사용자 권한
  * @param organizerName 기획사명 (일반 회원은 null)
  * @param birthDate     생년월일 (기획사는 null)
