@@ -1,8 +1,8 @@
 package com.ssafy.tickle.auth.user.infrastructure.client;
 
 import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -16,13 +16,16 @@ import org.springframework.web.client.RestClient;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class BeInternalClient {
 
     @Value("${internal.be.secret}")
     private String internalSecret;
 
     private final RestClient beRestClient;
+
+    public BeInternalClient(@Qualifier("beRestClient") RestClient beRestClient) {
+        this.beRestClient = beRestClient;
+    }
 
     /**
      * BE 서버에 tickle_core.users 생성을 요청합니다.
