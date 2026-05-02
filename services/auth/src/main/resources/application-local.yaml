@@ -21,8 +21,9 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      sentinel:
+        master: mymaster
+        nodes: 172.31.52.183:26379,172.31.57.10:26379,172.31.62.10:26379
       password: ${REDIS_PASSWORD}
       timeout: 3s
 
