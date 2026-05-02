@@ -254,9 +254,8 @@ public class AuthService {
     private AuthUser createKakaoUser(KakaoUserInfoResponse userInfo, String providerUserId) {
         String email = userInfo.email();
         if (isBlank(email)) {
-            throw new BaseException(AuthErrorCode.KAKAO_EMAIL_REQUIRED);
-        }
-        if (authUserRepository.existsByEmail(email)) {
+            email = "kakao_" + providerUserId + "@oauth.kakao";
+        } else if (authUserRepository.existsByEmail(email)) {
             throw new BaseException(AuthErrorCode.DUPLICATE_EMAIL);
         }
 
