@@ -25,4 +25,12 @@ public interface AuthUserRepository extends JpaRepository<AuthUser, Long> {
      * @return 존재 여부
      */
     boolean existsByEmail(String email);
+
+    /**
+     * 전화번호 중복 여부를 확인합니다.
+     *
+     * @param phoneNumber 전화번호
+     * @return 존재 여부
+     */
+    boolean existsByPhoneNumber(String phoneNumber);
 }

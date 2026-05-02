@@ -4,6 +4,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import com.ssafy.tickle.user.domain.UserRole;
+import java.time.LocalDate;
 
 /**
  * Auth 서버에서 전달하는 내부 사용자 생성 요청 DTO입니다.
@@ -32,7 +34,16 @@ public record CreateUserRequest(
         @NotBlank(message = "이름은 필수입니다.")
         String name,
 
-        @NotBlank(message = "닉네임은 필수입니다.")
-        String nickname
+        String nickname,
+
+        @NotBlank(message = "전화번호는 필수입니다.")
+        String phoneNumber,
+
+        @NotNull(message = "권한은 필수입니다.")
+        UserRole role,
+
+        String organizerName,
+
+        LocalDate birthDate
 ) {
 }

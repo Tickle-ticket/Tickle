@@ -2,6 +2,8 @@ package com.ssafy.tickle.auth.user.presentation;
 
 import com.ssafy.tickle.auth.common.response.BaseResponse;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeSendRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeVerifyRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.TokenResponse;
@@ -21,15 +23,42 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface AuthApiDoc {
 
     /**
+     * 휴대폰 인증 코드 발송 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "휴대폰 인증 코드 발송",
+            description = "CoolSMS를 통해 6자리 인증 코드를 발송한다. 코드 유효 시간은 5분."
+    )
+    @ApiResponse(responseCode = "200", description = "발송 성공")
+    @ApiResponse(responseCode = "409", description = "이미 가입된 전화번호")
+    @ApiResponse(responseCode = "500", description = "SMS 발송 실패")
+    ResponseEntity<BaseResponse<Void>> sendPhoneCode(
+            @Valid @RequestBody PhoneCodeSendRequest request
+    );
+
+    /**
+     * 휴대폰 인증 코드 검증 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "휴대폰 인증 코드 검증",
+            description = "입력한 코드가 올바르면 인증 완료 상태를 Redis에 10분간 저장한다."
+    )
+    @ApiResponse(responseCode = "200", description = "인증 성공")
+    @ApiResponse(responseCode = "400", description = "코드 불일치 또는 만료")
+    ResponseEntity<BaseResponse<Void>> verifyPhoneCode(
+            @Valid @RequestBody PhoneCodeVerifyRequest request
+    );
+
+    /**
      * 자체 회원가입 API 문서 정의입니다.
      */
     @Operation(
             summary = "자체 회원가입",
-            description = "이메일·비밀번호 기반 회원가입. 가입 완료 시 Access Token / Refresh Token 즉시 발급."
+            description = "일반 회원(USER) 또는 기획사(ORGANIZER) 회원가입. 휴대폰 인증 완료 필수. 가입 완료 시 Token 즉시 발급."
     )
     @ApiResponse(responseCode = "201", description = "회원가입 성공")
-    @ApiResponse(responseCode = "400", description = "유효성 검증 실패")
-    @ApiResponse(responseCode = "409", description = "이메일 중복")
+    @ApiResponse(responseCode = "400", description = "유효성 검증 실패 또는 휴대폰 미인증")
+    @ApiResponse(responseCode = "409", description = "이메일 또는 전화번호 중복")
     ResponseEntity<BaseResponse<TokenResponse>> signUp(
             @Valid @RequestBody SignUpRequest request
     );

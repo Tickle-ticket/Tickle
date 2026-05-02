@@ -21,13 +21,15 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      sentinel:
+        master: mymaster
+        nodes: 172.31.52.183:26379,172.31.57.10:26379,172.31.62.10:26379
       password: ${REDIS_PASSWORD}
       timeout: 3s
 
 server:
   port: ${SERVER_PORT}
+  forward-headers-strategy: framework
 
 jwt:
   secret: ${JWT_SECRET}
@@ -53,6 +55,11 @@ internal:
   be:
     url: ${BE_INTERNAL_URL:http://localhost:8080}
     secret: ${INTERNAL_SECRET}
+
+coolsms:
+  api-key: ${COOLSMS_API_KEY}
+  api-secret: ${COOLSMS_API_SECRET}
+  sender-number: ${COOLSMS_SENDER_NUMBER}
 
 springdoc:
   swagger-ui:

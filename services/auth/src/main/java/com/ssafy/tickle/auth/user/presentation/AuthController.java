@@ -5,7 +5,10 @@ import com.ssafy.tickle.auth.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.auth.common.exception.code.SuccessCode;
 import com.ssafy.tickle.auth.common.response.BaseResponse;
 import com.ssafy.tickle.auth.user.application.AuthService;
+import com.ssafy.tickle.auth.user.application.PhoneVerificationService;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeSendRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeVerifyRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.TokenResponse;
@@ -28,11 +31,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController implements AuthApiDoc {
 
     private final AuthService authService;
+    private final PhoneVerificationService phoneVerificationService;
 
     /**
      * 자체 회원가입 API입니다.
      *
-     * @param request 회원가입 요청 (email, password, name, nickname)
+     * @param request 회원가입 요청
      * @return 발급된 토큰 응답 (201 Created)
      */
     @Override
@@ -75,8 +79,7 @@ public class AuthController implements AuthApiDoc {
         if (!authorization.startsWith("Bearer ")) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
         }
-        String accessToken = authorization.substring(7);
-        authService.logout(accessToken);
+        authService.logout(authorization.substring(7));
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(SuccessCode.OK));
@@ -96,5 +99,39 @@ public class AuthController implements AuthApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(authService.reissue(request)));
+    }
+
+    /**
+     * 휴대폰 인증 코드 발송 API입니다.
+     *
+     * @param request 발송 요청 (phoneNumber)
+     * @return 빈 응답
+     */
+    @Override
+    @PostMapping("/phone/send")
+    public ResponseEntity<BaseResponse<Void>> sendPhoneCode(
+            @Valid @RequestBody PhoneCodeSendRequest request
+    ) {
+        phoneVerificationService.sendCode(request.phoneNumber());
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK));
+    }
+
+    /**
+     * 휴대폰 인증 코드 검증 API입니다.
+     *
+     * @param request 검증 요청 (phoneNumber, code)
+     * @return 빈 응답
+     */
+    @Override
+    @PostMapping("/phone/verify")
+    public ResponseEntity<BaseResponse<Void>> verifyPhoneCode(
+            @Valid @RequestBody PhoneCodeVerifyRequest request
+    ) {
+        phoneVerificationService.verifyCode(request.phoneNumber(), request.code());
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK));
     }
 }

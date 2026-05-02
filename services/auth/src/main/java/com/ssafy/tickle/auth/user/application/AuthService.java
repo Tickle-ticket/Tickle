@@ -40,27 +40,32 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final RedisTokenStore redisTokenStore;
     private final BeInternalClient beInternalClient;
+    private final PhoneVerificationService phoneVerificationService;
 
     /**
      * 자체 회원가입을 처리합니다.
      *
-     * <p>tickle_auth.users 생성 후, BE 내부 API로 tickle_core.users를 생성한다.
-     * BE 호출 실패 시 @Transactional rollback이 save()를 자동으로 취소한다.</p>
+     * <p>일반 회원(USER)과 기획사(ORGANIZER) 모두 처리한다.</p>
+     * <ul>
+     *   <li>이메일·전화번호 중복 검사</li>
+     *   <li>휴대폰 인증 완료 여부 확인 (Redis)</li>
+     *   <li>role 기반 필수 필드 검증 (USER: nickname 필수, ORGANIZER: organizerName 필수)</li>
+     *   <li>tickle_auth.users 생성 후 BE 내부 API로 tickle_core.users 생성</li>
+     * </ul>
      *
-     * @param request 회원가입 요청 (email, password, name, nickname)
+     * @param request 회원가입 요청
      * @return 발급된 Access Token / Refresh Token / userId
      */
     @Transactional
     public TokenResponse signUp(SignUpRequest request) {
-        if (authUserRepository.existsByEmail(request.email())) {
-            throw new BaseException(AuthErrorCode.DUPLICATE_EMAIL);
-        }
+        validateSignUpRequest(request);
 
         Instant now = Instant.now();
         AuthUser authUser = AuthUser.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .role(AuthUser.Role.USER)
+                .role(request.role())
+                .phoneNumber(request.phoneNumber())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -74,13 +79,19 @@ public class AuthService {
                     userNo,
                     request.email(),
                     request.name(),
-                    request.nickname()
+                    request.nickname(),
+                    request.phoneNumber(),
+                    request.role(),
+                    request.organizerName(),
+                    request.birthDate()
             ));
         } catch (Exception e) {
-            // @Transactional rollback이 save()를 자동 취소하므로 명시적 delete 불필요
             log.error("BE 내부 사용자 생성 실패, 트랜잭션 롤백 예정: userId={}", saved.getId(), e);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
         }
+
+        // 회원가입 완료 후 인증 완료 상태 제거
+        phoneVerificationService.clearVerified(request.phoneNumber());
 
         return issueTokens(saved);
     }
@@ -105,8 +116,7 @@ public class AuthService {
     /**
      * 로그아웃을 처리합니다.
      *
-     * <p>Refresh Token을 Redis에서 삭제하고, 잔여 유효 시간이 남은 Access Token을 블랙리스트에 등록한다.
-     * 이미 만료된 토큰이어도 userId를 추출해 Refresh Token은 삭제한다.</p>
+     * <p>Refresh Token을 Redis에서 삭제하고, 잔여 유효 시간이 남은 Access Token을 블랙리스트에 등록한다.</p>
      *
      * @param accessToken Authorization 헤더에서 추출한 Access Token (Bearer 제거 후)
      */
@@ -119,7 +129,6 @@ public class AuthService {
             userId = Long.parseLong(claims.getSubject());
             remainingSeconds = jwtProvider.getRemainingExpirySeconds(accessToken);
         } catch (ExpiredJwtException e) {
-            // 만료된 토큰이어도 userId를 추출해 Refresh Token은 삭제한다
             userId = Long.parseLong(e.getClaims().getSubject());
             remainingSeconds = 0;
         } catch (Exception e) {
@@ -166,6 +175,31 @@ public class AuthService {
     }
 
     /**
+     * 회원가입 요청의 유효성을 검증합니다.
+     *
+     * <p>중복 검사, 휴대폰 인증 완료 여부, role 기반 필수 필드를 확인한다.</p>
+     *
+     * @param request 회원가입 요청
+     */
+    private void validateSignUpRequest(SignUpRequest request) {
+        if (authUserRepository.existsByEmail(request.email())) {
+            throw new BaseException(AuthErrorCode.DUPLICATE_EMAIL);
+        }
+        if (authUserRepository.existsByPhoneNumber(request.phoneNumber())) {
+            throw new BaseException(AuthErrorCode.DUPLICATE_PHONE);
+        }
+        if (!phoneVerificationService.isVerified(request.phoneNumber())) {
+            throw new BaseException(AuthErrorCode.PHONE_NOT_VERIFIED);
+        }
+        if (request.role() == AuthUser.Role.USER && isBlank(request.nickname())) {
+            throw new BaseException(AuthErrorCode.NICKNAME_REQUIRED);
+        }
+        if (request.role() == AuthUser.Role.ORGANIZER && isBlank(request.organizerName())) {
+            throw new BaseException(AuthErrorCode.ORGANIZER_NAME_REQUIRED);
+        }
+    }
+
+    /**
      * 토큰을 발급하고 Refresh Token을 Redis에 저장합니다.
      *
      * @param authUser 인증 사용자 엔티티
@@ -189,5 +223,9 @@ public class AuthService {
      */
     private String generateUserNo() {
         return "TK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
