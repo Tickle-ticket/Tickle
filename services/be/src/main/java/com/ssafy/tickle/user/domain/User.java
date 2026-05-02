@@ -26,9 +26,8 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "users")
 public class User {
 
-    // 사용자 PK
+    // 사용자 PK (Auth 서버가 발급한 ID를 그대로 사용 - AUTO_INCREMENT 없음)
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id", nullable = false, updatable = false)
     private Long id;
 
