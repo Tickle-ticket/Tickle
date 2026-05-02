@@ -70,6 +70,10 @@ public class Payment {
     @Column(name = "provider_name", nullable = false, length = 50)
     private String providerName;
 
+    // 현재 활성 PG 거래 ID
+    @Column(name = "provider_transaction_id", length = 255)
+    private String providerTransactionId;
+
     // 승인 시각
     @Column(name = "approved_at")
     private Instant approvedAt;
@@ -97,11 +101,8 @@ public class Payment {
     }
 
     public enum MethodType {
-        CREDIT_CARD,
         BANK_TRANSFER,
-        VBANK,
-        SIMPLE_PAY,
-        MOBILE
+        KAKAOPAY
     }
 
     /**
@@ -168,6 +169,31 @@ public class Payment {
     }
 
     /**
+     * 카카오페이 결제 준비 상태 결제를 생성합니다.
+     *
+     * @param booking 연결 예매
+     * @param orderAmount 주문 금액
+     * @param currencyCode 통화 코드
+     * @param providerName 제공사명
+     * @return 생성된 결제 엔티티
+     */
+    public static Payment readyKakaoPay(
+            Booking booking,
+            BigDecimal orderAmount,
+            String currencyCode,
+            String providerName
+    ) {
+        return Payment.builder()
+                .booking(booking)
+                .paymentStatus(Status.READY)
+                .paymentMethodType(MethodType.KAKAOPAY)
+                .orderAmount(orderAmount)
+                .currencyCode(currencyCode)
+                .providerName(providerName)
+                .build();
+    }
+
+    /**
      * 결제를 승인 상태로 전환합니다.
      *
      * @param approvedAmount 승인 금액
@@ -176,6 +202,19 @@ public class Payment {
         this.paymentStatus = Status.APPROVED;
         this.approvedAmount = approvedAmount;
         this.approvedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 현재 결제에 연결된 외부 PG 거래 ID를 기록합니다.
+     *
+     * <p>ready와 approve가 분리된 결제수단은 이후 승인/취소 요청에서
+     * 같은 외부 거래 ID를 다시 사용해야 하므로 Payment 수준에서도 보관합니다.</p>
+     *
+     * @param providerTransactionId 외부 PG 거래 ID
+     */
+    public void recordProviderTransactionId(String providerTransactionId) {
+        this.providerTransactionId = providerTransactionId;
         this.updatedAt = Instant.now();
     }
 

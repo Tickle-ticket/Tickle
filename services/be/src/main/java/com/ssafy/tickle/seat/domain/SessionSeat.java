@@ -185,4 +185,19 @@ public class SessionSeat {
         this.heldByUserId = null;
         this.updatedAt = Instant.now();
     }
+
+    /**
+     * 간편결제 승인 완료 시 좌석을 예매 확정 상태로 전환합니다.
+     *
+     * <p>간편결제는 사용자가 PG 화면으로 이동하는 동안 좌석을 HELD로 유지하므로
+     * HELD 상태에서만 CONFIRMED로 전이합니다.</p>
+     */
+    public void confirmBooking() {
+        if (this.saleStatus != SaleStatus.HELD) {
+            throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
+        }
+        this.saleStatus = SaleStatus.CONFIRMED;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
 }

@@ -188,7 +188,7 @@ public class BookingTicket {
      * <p>무통장 입금이 확인되면 최종 예매 티켓으로 본다.</p>
      */
     public void confirmBooking() {
-        if (this.ticketStatus != Status.PENDING_PAYMENT) {
+        if (this.ticketStatus != Status.DRAFT && this.ticketStatus != Status.PENDING_PAYMENT) {
             throw new BaseException(PaymentErrorCode.PAYMENT_INVALID_STATE);
         }
         this.ticketStatus = Status.BOOKED;

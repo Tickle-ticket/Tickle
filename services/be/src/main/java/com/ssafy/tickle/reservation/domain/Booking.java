@@ -170,4 +170,18 @@ public class Booking {
         this.bookingStatus = Status.PAYMENT_EXPIRED;
         this.updatedAt = Instant.now();
     }
+
+    /**
+     * 예매를 최종 확정 상태로 전환합니다.
+     *
+     * <p>간편결제처럼 초안에서 바로 결제 성공으로 이어지는 경우도 있으므로
+     * DRAFT와 PENDING_PAYMENT 모두 허용합니다.</p>
+     */
+    public void confirm() {
+        if (this.bookingStatus != Status.DRAFT && this.bookingStatus != Status.PENDING_PAYMENT) {
+            return;
+        }
+        this.bookingStatus = Status.CONFIRMED;
+        this.updatedAt = Instant.now();
+    }
 }
