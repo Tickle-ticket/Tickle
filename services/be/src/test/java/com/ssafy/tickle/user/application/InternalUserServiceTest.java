@@ -1,6 +1,7 @@
 package com.ssafy.tickle.user.application;
 
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.user.presentation.dto.CreateUserRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -46,7 +47,11 @@ class InternalUserServiceTest {
                     "TK-a1b2c3d4",
                     "user@example.com",
                     "홍길동",
-                    "길동이"
+                    "길동이",
+                    "01012345678",
+                    UserRole.USER,
+                    null,
+                    null
             );
 
             User savedUser = User.builder()
@@ -55,6 +60,8 @@ class InternalUserServiceTest {
                     .email("user@example.com")
                     .name("홍길동")
                     .nickname("길동이")
+                    .phoneNumber("01012345678")
+                    .role(UserRole.USER)
                     .status(User.Status.ACTIVE)
                     .build();
 
@@ -76,7 +83,11 @@ class InternalUserServiceTest {
                     "TK-deadbeef",
                     "test@tickle.com",
                     "김테스트",
-                    "테스터"
+                    "테스터",
+                    "01012345678",
+                    UserRole.USER,
+                    null,
+                    null
             );
 
             ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -92,6 +103,8 @@ class InternalUserServiceTest {
             assertThat(capturedUser.getEmail()).isEqualTo("test@tickle.com");
             assertThat(capturedUser.getName()).isEqualTo("김테스트");
             assertThat(capturedUser.getNickname()).isEqualTo("테스터");
+            assertThat(capturedUser.getPhoneNumber()).isEqualTo("01012345678");
+            assertThat(capturedUser.getRole()).isEqualTo(UserRole.USER);
             assertThat(capturedUser.getStatus()).isEqualTo(User.Status.ACTIVE);
         }
 
@@ -104,7 +117,11 @@ class InternalUserServiceTest {
                     "TK-ffffffff",
                     "ts@tickle.com",
                     "타임스탬프",
-                    "TS유저"
+                    "TS유저",
+                    "01012345678",
+                    UserRole.USER,
+                    null,
+                    null
             );
 
             ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -128,7 +145,11 @@ class InternalUserServiceTest {
                     "TK-errorcase",
                     "error@tickle.com",
                     "에러",
-                    "에러유저"
+                    "에러유저",
+                    "01012345678",
+                    UserRole.USER,
+                    null,
+                    null
             );
 
             given(userRepository.save(any(User.class)))

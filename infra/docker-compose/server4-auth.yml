@@ -1,6 +1,44 @@
 # infra/docker-compose/server4-auth.yml
 services:
 
+  # ─── Auth Server ──────────────────────────────────
+  auth:
+    build:
+      context: ../../services/auth
+      dockerfile: Dockerfile
+    container_name: tickle-auth
+    restart: always
+    mem_limit: 512m
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: ${SERVER1_PRIVATE_IP}
+      DB_PORT: 3306
+      DB_NAME: tickle_auth
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_SENTINEL_MASTER: mymaster
+      REDIS_SENTINEL_NODES: ${SERVER2_PRIVATE_IP}:26379,${SERVER3_PRIVATE_IP}:26379,${SERVER4_PRIVATE_IP}:26379
+      REDIS_PASSWORD: ""
+      SERVER_PORT: 8081
+      JPA_DDL_AUTO: update
+      JPA_SHOW_SQL: "false"
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      BE_INTERNAL_URL: http://${SERVER1_PRIVATE_IP}:8080
+      COOLSMS_API_KEY: ${COOLSMS_API_KEY}
+      COOLSMS_API_SECRET: ${COOLSMS_API_SECRET}
+      COOLSMS_SENDER_NUMBER: ${COOLSMS_SENDER_NUMBER}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI}
+      KAKAO_SCOPE: ${KAKAO_SCOPE}
+      SERVER1_PRIVATE_IP: ${SERVER1_PRIVATE_IP}
+      SERVER2_PRIVATE_IP: ${SERVER2_PRIVATE_IP}
+      SERVER3_PRIVATE_IP: ${SERVER3_PRIVATE_IP}
+      SERVER4_PRIVATE_IP: ${SERVER4_PRIVATE_IP}
+    ports:
+      - "8081:8081"
+
   # ─── Redis Replica 2 ──────────────────────────────
   redis-replica2:
     image: redis:7

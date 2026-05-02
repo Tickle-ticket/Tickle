@@ -37,6 +37,7 @@ import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.redis.SeatHoldKeyStore;
 import com.ssafy.tickle.seat.presentation.dto.SeatHoldRequest;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
@@ -365,12 +366,14 @@ class PaymentServiceTest {
 
     private User createUser() {
         return User.builder()
+                .id(1001L)
                 .userNo("USER-0001")
                 .email("pay-user@test.com")
                 .phoneNumber("010-1111-2222")
                 .name("테스트유저")
                 .nickname("결제테스터")
                 .birthDate(LocalDate.of(1998, 1, 1))
+                .role(UserRole.USER)
                 .status(User.Status.ACTIVE)
                 .build();
     }

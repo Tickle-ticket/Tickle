@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * 인증 API 문서 인터페이스입니다.
@@ -74,6 +75,35 @@ public interface AuthApiDoc {
     @ApiResponse(responseCode = "401", description = "이메일 또는 비밀번호 불일치")
     ResponseEntity<BaseResponse<TokenResponse>> login(
             @Valid @RequestBody LoginRequest request
+    );
+
+    /**
+     * Kakao OAuth 로그인 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "카카오 OAuth 로그인",
+            description = "Kakao authorization code 요청 URL로 리다이렉트한다."
+    )
+    @ApiResponse(responseCode = "302", description = "Kakao 로그인 페이지로 리다이렉트")
+    ResponseEntity<Void> redirectToKakao();
+
+    /**
+     * Kakao OAuth 콜백 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "카카오 OAuth 콜백",
+            description = "Kakao authorization code로 Kakao 사용자 정보를 조회하고 Tickle Access Token / Refresh Token을 발급한다."
+    )
+    @ApiResponse(responseCode = "200", description = "카카오 로그인 성공")
+    @ApiResponse(responseCode = "400", description = "잘못된 콜백 요청 또는 이메일 동의 누락")
+    @ApiResponse(responseCode = "401", description = "카카오 로그인 실패")
+    @ApiResponse(responseCode = "409", description = "동일 이메일 계정 존재")
+    ResponseEntity<BaseResponse<TokenResponse>> kakaoCallback(
+            @Parameter(description = "Kakao authorization code")
+            @RequestParam(required = false) String code,
+
+            @Parameter(description = "Kakao authorization error")
+            @RequestParam(required = false) String error
     );
 
     /**

@@ -23,6 +23,7 @@ import com.ssafy.tickle.seat.infrastructure.persistence.EventSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
@@ -198,6 +199,7 @@ class AgencyEventDeleteServiceTest {
 
     private User createUser(String userNo, String email) {
         return User.builder()
+                .id(1001L)
                 .userNo(userNo)
                 .email(email)
                 .phoneNumber("010-1234-5678")
@@ -205,6 +207,7 @@ class AgencyEventDeleteServiceTest {
                 .nickname("tester")
                 .profileImageUrl("https://example.com/profile.jpg")
                 .birthDate(LocalDate.of(1999, 1, 1))
+                .role(UserRole.USER)
                 .status(User.Status.ACTIVE)
                 .build();
     }

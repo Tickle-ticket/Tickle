@@ -56,6 +56,15 @@ internal:
     url: ${BE_INTERNAL_URL:http://localhost:8080}
     secret: ${INTERNAL_SECRET}
 
+kakao:
+  oauth:
+    client-id: ${KAKAO_REST_API_KEY}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8081/api/v1/auth/kakao/callback}
+    scope: ${KAKAO_SCOPE:account_email,profile_nickname,profile_image}
+    auth-base-url: ${KAKAO_AUTH_BASE_URL:https://kauth.kakao.com}
+    api-base-url: ${KAKAO_API_BASE_URL:https://kapi.kakao.com}
+
 coolsms:
   api-key: ${COOLSMS_API_KEY}
   api-secret: ${COOLSMS_API_SECRET}

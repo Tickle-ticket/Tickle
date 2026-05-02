@@ -24,6 +24,7 @@ import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.redis.SeatHoldKeyStore;
 import com.ssafy.tickle.seat.presentation.dto.SeatHoldRequest;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
@@ -170,12 +171,14 @@ class BookingOptionServiceTest {
 
     private User createUser() {
         return User.builder()
+                .id(1001L)
                 .userNo("USER-BOOKING-0001")
                 .email("booking-option@test.com")
                 .phoneNumber("010-1111-2222")
                 .name("권종선택유저")
                 .nickname("bookingOptionUser")
                 .birthDate(LocalDate.of(1998, 1, 1))
+                .role(UserRole.USER)
                 .status(User.Status.ACTIVE)
                 .build();
     }

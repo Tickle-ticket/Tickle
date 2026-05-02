@@ -23,6 +23,7 @@ public enum AuthErrorCode implements ErrorCode {
     PHONE_NOT_VERIFIED(400, "휴대폰 인증을 완료해주세요."),
     PHONE_VERIFICATION_FAILED(400, "인증 코드가 올바르지 않거나 만료되었습니다."),
     PHONE_SMS_SEND_FAILED(500, "인증 코드 발송에 실패했습니다."),
+    KAKAO_LOGIN_FAILED(401, "카카오 로그인에 실패했습니다."),
     NICKNAME_REQUIRED(400, "일반 회원은 닉네임이 필수입니다."),
     ORGANIZER_NAME_REQUIRED(400, "기획사 회원은 기획사명이 필수입니다.");
 

@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.S3Uploader;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.user.presentation.dto.MyInfoResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -188,6 +189,7 @@ class UserServiceTest {
 
     private User createUser(String userNo, String email, String name) {
         return User.builder()
+                .id(1001L)
                 .userNo(userNo)
                 .email(email)
                 .phoneNumber("010-1234-5678")
@@ -195,6 +197,7 @@ class UserServiceTest {
                 .nickname("길동이")
                 .profileImageUrl("https://cdn.tickle.local/profiles/user1.png")
                 .birthDate(LocalDate.of(1998, 4, 12))
+                .role(UserRole.USER)
                 .status(User.Status.ACTIVE)
                 .lastLoginAt(Instant.parse("2026-04-25T12:30:00Z"))
                 .createdAt(Instant.parse("2026-04-20T00:00:00Z"))

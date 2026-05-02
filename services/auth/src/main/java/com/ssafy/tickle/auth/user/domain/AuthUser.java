@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +26,15 @@ import static lombok.AccessLevel.PROTECTED;
 @Getter
 @NoArgsConstructor(access = PROTECTED)
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_auth_users_oauth_provider_user",
+                        columnNames = {"oauth_provider", "oauth_provider_user_id"}
+                )
+        }
+)
 public class AuthUser {
 
     @Id
@@ -36,16 +45,23 @@ public class AuthUser {
     @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
-    // BCrypt 해시값 저장
-    @Column(name = "password", nullable = false, length = 255)
+    // BCrypt 해시값 저장. OAuth 사용자는 비밀번호가 없다.
+    @Column(name = "password", length = 255)
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 30)
     private Role role;
 
-    @Column(name = "phone_number", nullable = false, unique = true, length = 30)
+    @Column(name = "phone_number", unique = true, length = 30)
     private String phoneNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "oauth_provider", nullable = false, length = 30)
+    private OAuthProvider oauthProvider;
+
+    @Column(name = "oauth_provider_user_id", length = 100)
+    private String oauthProviderUserId;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -61,21 +77,41 @@ public class AuthUser {
     }
 
     /**
+     * 인증 제공자 열거형입니다.
+     */
+    public enum OAuthProvider {
+        LOCAL, KAKAO
+    }
+
+    /**
      * 신규 사용자를 생성합니다.
      *
      * @param email       이메일 (중복 불가)
      * @param password    BCrypt 해시된 비밀번호
      * @param role        사용자 권한
-     * @param phoneNumber 전화번호 (중복 불가)
+     * @param phoneNumber 전화번호 (중복 불가, OAuth 사용자는 null 가능)
+     * @param oauthProvider OAuth 제공자
+     * @param oauthProviderUserId OAuth 제공자 사용자 식별자
      * @param createdAt   생성 시각
      * @param updatedAt   수정 시각
      */
     @Builder
-    public AuthUser(String email, String password, Role role, String phoneNumber, Instant createdAt, Instant updatedAt) {
+    public AuthUser(
+            String email,
+            String password,
+            Role role,
+            String phoneNumber,
+            OAuthProvider oauthProvider,
+            String oauthProviderUserId,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
         this.email = email;
         this.password = password;
         this.role = role;
         this.phoneNumber = phoneNumber;
+        this.oauthProvider = oauthProvider == null ? OAuthProvider.LOCAL : oauthProvider;
+        this.oauthProviderUserId = oauthProviderUserId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

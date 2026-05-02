@@ -8,6 +8,9 @@ import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.domain.AuthUser;
 import com.ssafy.tickle.auth.user.infrastructure.client.BeInternalClient;
 import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserRequest;
+import com.ssafy.tickle.auth.user.infrastructure.oauth.KakaoOAuthClient;
+import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
+import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
 import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
@@ -41,6 +44,7 @@ public class AuthService {
     private final RedisTokenStore redisTokenStore;
     private final BeInternalClient beInternalClient;
     private final PhoneVerificationService phoneVerificationService;
+    private final KakaoOAuthClient kakaoOAuthClient;
 
     /**
      * 자체 회원가입을 처리합니다.
@@ -109,6 +113,47 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), authUser.getPassword())) {
             throw new BaseException(AuthErrorCode.INVALID_PASSWORD);
         }
+
+        return issueTokens(authUser);
+    }
+
+    /**
+     * Kakao 인가 코드 요청 URL을 생성합니다.
+     *
+     * @return Kakao 로그인 페이지 URL
+     */
+    public String getKakaoAuthorizeUrl() {
+        return kakaoOAuthClient.buildAuthorizeUrl();
+    }
+
+    /**
+     * Kakao OAuth 콜백을 처리하고 Tickle JWT를 발급합니다.
+     *
+     * <p>Kakao 사용자 식별자로 기존 OAuth 가입자를 찾고, 없으면 USER 권한의 신규 회원을 생성한다.</p>
+     *
+     * @param code Kakao authorization code
+     * @return 발급된 Access Token / Refresh Token / userId
+     */
+    @Transactional
+    public TokenResponse kakaoLogin(String code) {
+        if (isBlank(code)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
+        }
+
+        KakaoTokenResponse tokenResponse = kakaoOAuthClient.requestToken(code);
+        if (tokenResponse == null || isBlank(tokenResponse.accessToken())) {
+            throw new BaseException(AuthErrorCode.KAKAO_LOGIN_FAILED);
+        }
+
+        KakaoUserInfoResponse userInfo = kakaoOAuthClient.requestUserInfo(tokenResponse.accessToken());
+        if (userInfo == null || userInfo.id() == null) {
+            throw new BaseException(AuthErrorCode.KAKAO_LOGIN_FAILED);
+        }
+
+        String providerUserId = userInfo.id().toString();
+        AuthUser authUser = authUserRepository
+                .findByOauthProviderAndOauthProviderUserId(AuthUser.OAuthProvider.KAKAO, providerUserId)
+                .orElseGet(() -> createKakaoUser(userInfo, providerUserId));
 
         return issueTokens(authUser);
     }
@@ -197,6 +242,67 @@ public class AuthService {
         if (request.role() == AuthUser.Role.ORGANIZER && isBlank(request.organizerName())) {
             throw new BaseException(AuthErrorCode.ORGANIZER_NAME_REQUIRED);
         }
+    }
+
+    /**
+     * Kakao 사용자 정보로 신규 회원을 생성합니다.
+     *
+     * @param userInfo Kakao 사용자 정보
+     * @param providerUserId Kakao 사용자 식별자
+     * @return 생성된 AuthUser
+     */
+    private AuthUser createKakaoUser(KakaoUserInfoResponse userInfo, String providerUserId) {
+        String email = userInfo.email();
+        if (isBlank(email)) {
+            email = "kakao_" + providerUserId + "@oauth.kakao";
+        } else if (authUserRepository.existsByEmail(email)) {
+            throw new BaseException(AuthErrorCode.DUPLICATE_EMAIL);
+        }
+
+        Instant now = Instant.now();
+        AuthUser saved = authUserRepository.save(AuthUser.builder()
+                .email(email)
+                .role(AuthUser.Role.USER)
+                .oauthProvider(AuthUser.OAuthProvider.KAKAO)
+                .oauthProviderUserId(providerUserId)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+
+        String nickname = resolveKakaoNickname(userInfo, providerUserId);
+        try {
+            beInternalClient.createUser(new CreateUserRequest(
+                    saved.getId(),
+                    generateUserNo(),
+                    email,
+                    nickname,
+                    nickname,
+                    null,
+                    saved.getRole(),
+                    null,
+                    null
+            ));
+        } catch (Exception e) {
+            log.error("BE 내부 Kakao 사용자 생성 실패, 트랜잭션 롤백 예정: userId={}", saved.getId(), e);
+            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        return saved;
+    }
+
+    /**
+     * Kakao 프로필 닉네임을 서비스 필수 프로필 값으로 변환합니다.
+     *
+     * @param userInfo Kakao 사용자 정보
+     * @param providerUserId Kakao 사용자 식별자
+     * @return 서비스 닉네임
+     */
+    private String resolveKakaoNickname(KakaoUserInfoResponse userInfo, String providerUserId) {
+        String nickname = userInfo.nickname();
+        if (!isBlank(nickname)) {
+            return nickname;
+        }
+        return "kakao_" + providerUserId;
     }
 
     /**

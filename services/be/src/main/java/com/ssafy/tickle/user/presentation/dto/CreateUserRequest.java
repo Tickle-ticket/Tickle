@@ -36,7 +36,6 @@ public record CreateUserRequest(
 
         String nickname,
 
-        @NotBlank(message = "전화번호는 필수입니다.")
         String phoneNumber,
 
         @NotNull(message = "권한은 필수입니다.")
