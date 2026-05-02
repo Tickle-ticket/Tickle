@@ -123,6 +123,38 @@ services:
     networks:
       - tickle-net
 
+  ai-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: tickle-ai-worker
+    restart: unless-stopped
+    mem_limit: 1024m
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_BEHAVIOR_EVENTS: ${KAFKA_TOPIC_BEHAVIOR_EVENTS}
+      KAFKA_CONSUMER_GROUP_ID: ${KAFKA_CONSUMER_GROUP_ID}
+
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      MODEL_PATH: ${MODEL_PATH}
+      INPUT_FEATURES_PATH: ${INPUT_FEATURES_PATH}
+      ALLOW_MAX_SCORE: ${ALLOW_MAX_SCORE}
+      BLOCK_MIN_SCORE: ${BLOCK_MIN_SCORE}
+      AI_WORKER_BATCH_SIZE: ${AI_WORKER_BATCH_SIZE}
+      AI_WORKER_FLUSH_INTERVAL_SEC: ${AI_WORKER_FLUSH_INTERVAL_SEC}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - tickle-net
+
 networks:
   tickle-net:
     name: tickle-net
