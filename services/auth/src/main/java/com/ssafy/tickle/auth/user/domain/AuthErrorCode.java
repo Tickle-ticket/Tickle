@@ -24,7 +24,6 @@ public enum AuthErrorCode implements ErrorCode {
     PHONE_VERIFICATION_FAILED(400, "인증 코드가 올바르지 않거나 만료되었습니다."),
     PHONE_SMS_SEND_FAILED(500, "인증 코드 발송에 실패했습니다."),
     KAKAO_LOGIN_FAILED(401, "카카오 로그인에 실패했습니다."),
-    KAKAO_EMAIL_REQUIRED(400, "카카오 계정 이메일 동의가 필요합니다."),
     NICKNAME_REQUIRED(400, "일반 회원은 닉네임이 필수입니다."),
     ORGANIZER_NAME_REQUIRED(400, "기획사 회원은 기획사명이 필수입니다.");
 

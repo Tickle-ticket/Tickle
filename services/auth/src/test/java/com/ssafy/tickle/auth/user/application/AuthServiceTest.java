@@ -385,19 +385,23 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("카카오 이메일 동의가 없으면 KAKAO_EMAIL_REQUIRED 예외를 던진다")
-        void kakaoLogin_emailMissing_throwsException() {
+        @DisplayName("카카오 이메일 동의가 없으면 placeholder 이메일로 신규 사용자를 생성한다")
+        void kakaoLogin_emailMissing_usesPlaceholderEmail() {
             given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
             given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(null, NICKNAME));
             given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
                     AuthUser.OAuthProvider.KAKAO,
                     KAKAO_ID.toString()
             )).willReturn(Optional.empty());
+            given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
+            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
+            given(jwtProvider.issueAccessToken(any(), any())).willReturn(ACCESS_TOKEN);
+            given(jwtProvider.issueRefreshToken(any())).willReturn(REFRESH_TOKEN);
 
-            assertThatThrownBy(() -> authService.kakaoLogin(KAKAO_CODE))
-                    .isInstanceOf(BaseException.class)
-                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
-                            .isEqualTo(AuthErrorCode.KAKAO_EMAIL_REQUIRED));
+            TokenResponse result = authService.kakaoLogin(KAKAO_CODE);
+
+            assertThat(result).isNotNull();
+            assertThat(result.accessToken()).isEqualTo(ACCESS_TOKEN);
         }
 
         @Test
