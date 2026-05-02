@@ -8,6 +8,9 @@ import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.domain.AuthUser;
 import com.ssafy.tickle.auth.user.infrastructure.client.BeInternalClient;
 import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserRequest;
+import com.ssafy.tickle.auth.user.infrastructure.oauth.KakaoOAuthClient;
+import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
+import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
 import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
@@ -56,6 +59,7 @@ class AuthServiceTest {
     @Mock private RedisTokenStore redisTokenStore;
     @Mock private BeInternalClient beInternalClient;
     @Mock private PhoneVerificationService phoneVerificationService;
+    @Mock private KakaoOAuthClient kakaoOAuthClient;
 
     @InjectMocks private AuthService authService;
 
@@ -71,10 +75,14 @@ class AuthServiceTest {
     private static final String NICKNAME       = "길동이";
     private static final String PHONE          = "01012345678";
     private static final String ORGANIZER_NAME = "티켓엔터테인먼트";
+    private static final String KAKAO_CODE     = "kakao-auth-code";
+    private static final String KAKAO_ACCESS   = "kakao-access-token";
+    private static final Long   KAKAO_ID       = 123456789L;
     private static final long   REFRESH_EXPIRY = 604800L;
 
     private AuthUser userAuthUser;
     private AuthUser organizerAuthUser;
+    private AuthUser kakaoAuthUser;
 
     @BeforeEach
     void setUp() {
@@ -97,6 +105,16 @@ class AuthServiceTest {
                 .updatedAt(Instant.now())
                 .build();
         ReflectionTestUtils.setField(organizerAuthUser, "id", USER_ID);
+
+        kakaoAuthUser = AuthUser.builder()
+                .email(EMAIL)
+                .role(AuthUser.Role.USER)
+                .oauthProvider(AuthUser.OAuthProvider.KAKAO)
+                .oauthProviderUserId(KAKAO_ID.toString())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        ReflectionTestUtils.setField(kakaoAuthUser, "id", USER_ID);
     }
 
     // ── signUp ───────────────────────────────────────────────────
@@ -286,6 +304,125 @@ class AuthServiceTest {
         }
     }
 
+    // ── kakaoLogin ───────────────────────────────────────────────
+    @Nested
+    @DisplayName("카카오 로그인 (kakaoLogin)")
+    class KakaoLoginTest {
+
+        @Test
+        @DisplayName("기존 카카오 사용자 로그인 시 토큰을 반환한다")
+        void kakaoLogin_existingUser_success() {
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
+            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
+                    AuthUser.OAuthProvider.KAKAO,
+                    KAKAO_ID.toString()
+            )).willReturn(Optional.of(kakaoAuthUser));
+            given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.USER)).willReturn(ACCESS_TOKEN);
+            given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
+            given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
+
+            TokenResponse response = authService.kakaoLogin(KAKAO_CODE);
+
+            assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
+            assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
+            verify(authUserRepository, never()).save(any());
+            verify(beInternalClient, never()).createUser(any());
+        }
+
+        @Test
+        @DisplayName("신규 카카오 사용자 로그인 시 Auth/BE 사용자를 생성하고 토큰을 반환한다")
+        void kakaoLogin_newUser_success() {
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
+            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
+                    AuthUser.OAuthProvider.KAKAO,
+                    KAKAO_ID.toString()
+            )).willReturn(Optional.empty());
+            given(authUserRepository.existsByEmail(EMAIL)).willReturn(false);
+            given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
+            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
+            given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.USER)).willReturn(ACCESS_TOKEN);
+            given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
+            given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
+
+            TokenResponse response = authService.kakaoLogin(KAKAO_CODE);
+
+            assertThat(response.userId()).isEqualTo(USER_ID);
+            verify(authUserRepository).save(argThat(user ->
+                    user.getEmail().equals(EMAIL) &&
+                    user.getRole() == AuthUser.Role.USER &&
+                    user.getOauthProvider() == AuthUser.OAuthProvider.KAKAO &&
+                    user.getOauthProviderUserId().equals(KAKAO_ID.toString())
+            ));
+            verify(beInternalClient).createUser(argThat(req ->
+                    req.userId().equals(USER_ID) &&
+                    req.email().equals(EMAIL) &&
+                    req.name().equals(NICKNAME) &&
+                    req.nickname().equals(NICKNAME) &&
+                    req.phoneNumber() == null &&
+                    req.role() == AuthUser.Role.USER
+            ));
+        }
+
+        @Test
+        @DisplayName("동일 이메일 계정이 이미 있으면 DUPLICATE_EMAIL 예외를 던진다")
+        void kakaoLogin_duplicateEmail_throwsException() {
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
+            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
+                    AuthUser.OAuthProvider.KAKAO,
+                    KAKAO_ID.toString()
+            )).willReturn(Optional.empty());
+            given(authUserRepository.existsByEmail(EMAIL)).willReturn(true);
+
+            assertThatThrownBy(() -> authService.kakaoLogin(KAKAO_CODE))
+                    .isInstanceOf(BaseException.class)
+                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                            .isEqualTo(AuthErrorCode.DUPLICATE_EMAIL));
+
+            verify(authUserRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("카카오 이메일 동의가 없으면 KAKAO_EMAIL_REQUIRED 예외를 던진다")
+        void kakaoLogin_emailMissing_throwsException() {
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(null, NICKNAME));
+            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
+                    AuthUser.OAuthProvider.KAKAO,
+                    KAKAO_ID.toString()
+            )).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.kakaoLogin(KAKAO_CODE))
+                    .isInstanceOf(BaseException.class)
+                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                            .isEqualTo(AuthErrorCode.KAKAO_EMAIL_REQUIRED));
+        }
+
+        @Test
+        @DisplayName("BE 내부 사용자 생성 실패 시 INTERNAL_SERVER_ERROR 예외를 던진다")
+        void kakaoLogin_beCallFails_throwsInternalServerError() {
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
+            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
+                    AuthUser.OAuthProvider.KAKAO,
+                    KAKAO_ID.toString()
+            )).willReturn(Optional.empty());
+            given(authUserRepository.existsByEmail(EMAIL)).willReturn(false);
+            given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
+            willThrow(new RuntimeException("BE 연결 실패"))
+                    .given(beInternalClient).createUser(any(CreateUserRequest.class));
+
+            assertThatThrownBy(() -> authService.kakaoLogin(KAKAO_CODE))
+                    .isInstanceOf(BaseException.class)
+                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                            .isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR));
+
+            verify(jwtProvider, never()).issueAccessToken(any(), any());
+        }
+    }
+
     // ── login ────────────────────────────────────────────────────
     @Nested
     @DisplayName("로그인 (login)")
@@ -451,6 +588,28 @@ class AuthServiceTest {
         Claims claims = mock(Claims.class);
         given(claims.getSubject()).willReturn(subject);
         return claims;
+    }
+
+    private KakaoTokenResponse kakaoTokenResponse() {
+        return new KakaoTokenResponse(
+                "bearer",
+                KAKAO_ACCESS,
+                43199,
+                "kakao-refresh-token",
+                5184000,
+                "account_email profile_nickname"
+        );
+    }
+
+    private KakaoUserInfoResponse kakaoUserInfoResponse(String email, String nickname) {
+        return new KakaoUserInfoResponse(
+                KAKAO_ID,
+                new KakaoUserInfoResponse.KakaoAccount(
+                        email,
+                        new KakaoUserInfoResponse.Profile(nickname, null)
+                ),
+                null
+        );
     }
 
     private static <T> T argThat(org.mockito.ArgumentMatcher<T> matcher) {

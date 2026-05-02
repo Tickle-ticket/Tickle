@@ -14,6 +14,7 @@ import com.ssafy.tickle.favorite.presentation.dto.FavoriteEventsResponse;
 import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
@@ -157,6 +158,7 @@ class FavoriteServiceTest {
 
     private User createUser() {
         User user = User.builder()
+                .id(1001L)
                 .userNo("USER-1001")
                 .email("favorite@test.com")
                 .phoneNumber("010-0000-0000")
@@ -164,6 +166,7 @@ class FavoriteServiceTest {
                 .nickname("찜쟁이")
                 .profileImageUrl("https://cdn.test/user.png")
                 .birthDate(LocalDate.of(1999, 1, 1))
+                .role(UserRole.USER)
                 .status(User.Status.ACTIVE)
                 .lastLoginAt(Instant.parse("2026-04-25T12:30:00Z"))
                 .build();
