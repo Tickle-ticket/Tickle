@@ -3,11 +3,11 @@ CREATE TABLE IF NOT EXISTS behavior_feature_records (
 
     record_id VARCHAR(64) NOT NULL UNIQUE,
 
-    session_type VARCHAR(32) NOT NULL,
+    type VARCHAR(32) NOT NULL,
     schedule_id VARCHAR(64),
-    schedule_name VARCHAR(255),
+    name VARCHAR(255),
     event_date DATE,
-    client_created_at TIMESTAMPTZ,
+    created_at_client TIMESTAMPTZ,
 
     label VARCHAR(16) NOT NULL,
     p_macro DOUBLE PRECISION NOT NULL,
@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS behavior_feature_records (
     CHECK (p_macro >= 0.0 AND p_macro <= 1.0)
 );
 
-CREATE INDEX IF NOT EXISTS idx_behavior_feature_records_session_type
-ON behavior_feature_records (session_type);
+CREATE INDEX IF NOT EXISTS idx_behavior_feature_records_type
+ON behavior_feature_records (type);
 
 CREATE INDEX IF NOT EXISTS idx_behavior_feature_records_schedule_id
 ON behavior_feature_records (schedule_id);
