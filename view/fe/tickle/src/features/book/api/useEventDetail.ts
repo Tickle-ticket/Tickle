@@ -5,7 +5,10 @@ import { fetchEventDetail } from '@/src/shared/api/eventApi';
 export interface EventSchedule {
   date: string;
   times: {
+    scheduleId: string;
+    sessionNo: number;
     time: string;
+    startAt: string;
     remainingSeats: { grade: string; count: number }[];
   }[];
 }
@@ -27,7 +30,7 @@ export const useEventDetail = (eventId: string) => {
       const response = await fetchEventDetail(eventId);
       const data = response.data;
 
-      const scheduleMap = new Map<string, { time: string, remainingSeats: any[] }[]>();
+      const scheduleMap = new Map<string, { scheduleId: string, sessionNo: number, time: string, startAt: string, remainingSeats: any[] }[]>();
       data.sessions.forEach(session => {
         const dateObj = new Date(session.startAt);
         const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
@@ -37,7 +40,10 @@ export const useEventDetail = (eventId: string) => {
           scheduleMap.set(date, []);
         }
         scheduleMap.get(date)!.push({
+          scheduleId: String(session.sessionId),
+          sessionNo: session.sessionNo,
           time,
+          startAt: session.startAt,
           remainingSeats: []
         });
       });
