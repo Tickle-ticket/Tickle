@@ -200,3 +200,15 @@
 | city_name | VARCHAR(100) | ✅ | |
 | isp | VARCHAR(100) | ❌ | |
 | created_at | TIMESTAMP | ✅ | |
+
+## blacklist
+| 컬럼 | 타입 | NOT NULL | 비고 |
+|------|------|----------|------|
+| blacklist_id | BIGINT | ✅ PK AUTO_INCREMENT | |
+| user_id | BIGINT | ✅ | users.user_id 참조 (FK 미적용) |
+| reason | VARCHAR(30) | ✅ | BOT_DETECTED, MACRO_DETECTED_FE, IP_RATE_LIMIT, SUSPICIOUS_PATTERN, MANUAL_BLOCK |
+| detail | TEXT | ❌ | 상세 사유 |
+| blocked_by | BIGINT | ❌ | 차단한 어드민 userId (자동 감지 시 NULL) |
+| created_at | DATETIME(6) | ✅ | 마이크로초 정밀도 (동시 등록 순서 보장) |
+
+> ⚠️ DATETIME(6): 취소표 대기열 등 동시 등록 상황에서 마이크로초 단위 정렬 보장
