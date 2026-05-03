@@ -35,4 +35,12 @@ public interface BlacklistRepository extends JpaRepository<Blacklist, Long> {
      * @return 블랙리스트 페이지
      */
     Page<Blacklist> findAll(Pageable pageable);
+
+    /**
+     * 특정 사유로 등록된 블랙리스트 수를 조회합니다.
+     *
+     * @param reason 블랙리스트 등록 사유
+     * @return 해당 사유로 등록된 블랙리스트 수
+     */
+    long countByReason(Blacklist.Reason reason);
 }

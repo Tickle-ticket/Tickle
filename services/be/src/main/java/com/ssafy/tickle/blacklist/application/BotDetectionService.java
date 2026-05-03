@@ -1,0 +1,52 @@
+package com.ssafy.tickle.blacklist.application;
+
+import com.ssafy.tickle.blacklist.domain.Blacklist;
+import com.ssafy.tickle.blacklist.infrastructure.persistence.BlacklistRepository;
+import com.ssafy.tickle.blacklist.presentation.dto.BlacklistResponse;
+import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse;
+import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse.ReasonStat;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Arrays;
+import java.util.List;
+
+import static org.springframework.data.domain.Sort.Direction.DESC;
+
+/**
+ * 봇 탐지 현황 조회 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class BotDetectionService {
+
+    private final BlacklistRepository blacklistRepository;
+
+    /**
+     * 봇 탐지 현황 통계를 조회합니다.
+     *
+     * <p>전체 블랙리스트 수, 사유별 통계, 최근 등록 10건을 포함합니다.</p>
+     *
+     * @return 봇 탐지 현황 통계 응답
+     */
+    public BotDetectionStatsResponse getStats() {
+        long total = blacklistRepository.count();
+
+        List<ReasonStat> byReason = Arrays.stream(Blacklist.Reason.values())
+                .map(reason -> new ReasonStat(reason.name(), blacklistRepository.countByReason(reason)))
+                .toList();
+
+        List<BlacklistResponse> recent = blacklistRepository
+                .findAll(PageRequest.of(0, 10, Sort.by(DESC, "createdAt")))
+                .getContent()
+                .stream()
+                .map(BlacklistResponse::from)
+                .toList();
+
+        return BotDetectionStatsResponse.from(total, byReason, recent);
+    }
+}
