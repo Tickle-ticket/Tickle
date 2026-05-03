@@ -3,6 +3,14 @@ import { http, HttpResponse, delay } from 'msw';
 // 배너 목 데이터 (BE에 전용 엔드포인트 없음 — MSW 전용)
 const banners = [
   {
+    id: '999',
+    title: '예매 대기 테스트 공연',
+    subtitle: 'Waitlist Pending Test',
+    imageUrl: 'https://picsum.photos/seed/poster999/800/1200',
+    venue: '테스트 공연장',
+    date: '2026.05.01 ~ 2026.05.31',
+  },
+  {
     id: '1',
     title: '오페라의 유령',
     subtitle: 'The Phantom of the Opera',

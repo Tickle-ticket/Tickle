@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 interface CountdownTimerProps {
   targetDate: string;
   onExpire?: () => void;
+  variant?: 'default' | 'compact';
 }
 
-export const CountdownTimer = ({ targetDate, onExpire }: CountdownTimerProps) => {
+export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -40,6 +41,15 @@ export const CountdownTimer = ({ targetDate, onExpire }: CountdownTimerProps) =>
   }, [targetDate, onExpire]);
 
   const pad = (num: number) => String(num).padStart(2, '0');
+
+  if (variant === 'compact') {
+    return (
+      <span className="font-mono font-bold tracking-normal text-[14px] whitespace-nowrap">
+        {timeLeft.days > 0 ? <span className="mr-1">{timeLeft.days}일</span> : null}
+        {pad(timeLeft.hours)} : {pad(timeLeft.minutes)} : {pad(timeLeft.seconds)}
+      </span>
+    );
+  }
 
   const TimeUnit = ({ value, label }: { value: number; label: string }) => {
     const padded = pad(value);
