@@ -10,7 +10,7 @@ PyAutoGUI / pynput 기반의 마우스·키보드 매크로와 데이터 수집�
 | `runner/` | 매크로 실행기 — `pyautogui_lv1`(즉시이동·기본), `pyautogui_lv2`(베지어+가우시안 노이즈+Fitts 타이밍), 통합 CLI(`run_macro`) |
 | `collector/` | 매크로 데이터 수집기 — yaml 없이 코드 내부 액션으로 풍부한 mouse_move 생성(`lv2_collector`) |
 | `recorder/` | 사람 행동 녹화기 — pynput 글로벌 캡처, 첫 클릭 자동 시작 / F10 종료(`human_recorder`) |
-| `analysis/` | 분석 도구 — 세션 jsonl 배치 단위 요약(`summarize_sessions`), 외부 데이터셋 변환(`balabit_to_trial`) |
+| `analysis/` | 분석 도구 — 세션 jsonl 배치 단위 요약(`summarize_sessions`), 외부 데이터셋 변환(`balabit_to_trial`), jsonl→trial.json 변환(`jsonl_to_trial`, chan/browser_automation core.js 정의 일치) |
 
 ## 실행
 
@@ -33,6 +33,10 @@ python -m macro.mouse_automation.analysis.summarize_sessions --label macro --bat
 # Balabit 외부 데이터셋 → trial.json 변환 (분포 다양성 보강용)
 python -m macro.mouse_automation.analysis.balabit_to_trial --dry-run
 python -m macro.mouse_automation.analysis.balabit_to_trial
+
+# jsonl → trial.json 변환 (mouse_automation_lv2 파이프라인, 보겸 trial_id 기본 900001)
+python -m macro.mouse_automation.analysis.jsonl_to_trial --start 900001 --dry-run
+python -m macro.mouse_automation.analysis.jsonl_to_trial --start 900001
 ```
 
 ## 산출물
@@ -40,4 +44,5 @@ python -m macro.mouse_automation.analysis.balabit_to_trial
 - `data/raw/macro/{session_id}.jsonl` — 매크로 세션 (lv1/lv2/lv2_collector)
 - `data/raw/human/{session_id}.jsonl` — 사람 녹화 세션
 - `data/behavior/trial_91xxxx.json` — Balabit 외부 데이터셋 변환 결과 (label=human)
+- `data/behavior/trial_{N}.json` — `jsonl_to_trial` 변환 결과 (lv2 = 900001~). chan EDA / HGBC 노트북 호환
 - 모두 gitignore 대상.

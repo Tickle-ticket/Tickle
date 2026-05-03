@@ -35,6 +35,11 @@ from statistics import mean
 import pandas as pd
 import yaml
 
+from macro.mouse_automation.analysis.jsonl_to_trial import (
+    _add_nx_ny,
+    validate_meta,
+)
+
 
 # === 7 feature 계산식 (vendored) ===
 # 출처: stash@{0}^3 services/ai/macro/mouse_automation/analysis/jsonl_to_trial.py
@@ -148,6 +153,10 @@ START_TRIAL_ID_DEFAULT = 910001
 CHUNK_SIZE_DEFAULT = 300
 MAX_CHUNKS_PER_USER_DEFAULT = 50
 RANDOM_SEED_DEFAULT = 42
+
+# === ADR-016 메타 backfill (Balabit 풀 일괄) ===
+ALGORITHM_TYPE = "human_balabit"
+COORD_DOMAIN = "os_screen"  # RDP 환경이지만 OS 좌표 수집이라는 점에서 os_screen 으로 분류 (ADR-016)
 
 KNOWN_BUTTONS = {"Left": "left", "Right": "right", "Middle": "middle"}
 DROP_STATES = {"Released", "Down", "Up"}
@@ -327,18 +336,35 @@ def build_trial(
     events: list[dict],
     trial_id: int,
     session_id: str,
+    user_name: str,
     all_features: list[str],
 ) -> dict:
-    """chunk events -> trial.json dict (lv2 스키마 호환, label='human')."""
+    """chunk events -> trial.json dict (lv2 스키마 호환, label='human').
+
+    ADR-016 메타 backfill:
+      - root: coord_domain, screen_width, screen_height, algorithm_type, user_id
+      - eventRows[*]: nx, ny (mouse_* 이벤트만, screen_width null 이므로 모두 null)
+    """
     metrics: dict = {f: None for f in all_features}
     metrics.update(extract_seven_features(events))
 
     duration_ms = (events[-1]["ts_ms"] - events[0]["ts_ms"]) if len(events) >= 2 else 0.0
     click_count = sum(1 for e in events if e.get("event") == "mouse_click")
 
-    return {
+    screen_width: int | None = None
+    screen_height: int | None = None
+    user_id = f"balabit_{user_name}"
+
+    event_rows = [_add_nx_ny(dict(e), screen_width, screen_height) for e in events]
+
+    trial = {
         "trialId": trial_id,
         "label": "human",
+        "coord_domain": COORD_DOMAIN,
+        "screen_width": screen_width,
+        "screen_height": screen_height,
+        "algorithm_type": ALGORITHM_TYPE,
+        "user_id": user_id,
         "summary": {
             "collection_pipeline": COLLECTION_PIPELINE,
             "session_id": session_id,
@@ -349,8 +375,13 @@ def build_trial(
             "metrics_compatibility": {},
         },
         "metrics": metrics,
-        "eventRows": events,
+        "eventRows": event_rows,
     }
+
+    for w in validate_meta(trial):
+        print(f"  [warn] trial_{trial_id}: {w}")
+
+    return trial
 
 
 def process_user(
@@ -418,7 +449,7 @@ def process_user(
         for ci in picked[sess_label]:
             chunk = rebase_chunk(per_session_chunks[sess_label][ci])
             session_id = f"balabit_{user_name}_{sess_label}_chunk_{ci:03d}"
-            trial = build_trial(chunk, trial_id, session_id, all_features)
+            trial = build_trial(chunk, trial_id, session_id, user_name, all_features)
 
             out_path = output_dir / f"trial_{trial_id}.json"
             if out_path.exists() and not overwrite:
