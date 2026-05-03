@@ -55,5 +55,9 @@ tmp/
 temp/
 *.tmp
 
-# --- automouse---
+# --- automouse ---
 automouse_data.json
+
+# --- ingest ---
+.gradle/
+build/
