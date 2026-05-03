@@ -622,7 +622,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         <div className="flex gap-3 pt-4">
           {currentStep > 1 && (
             <div className="flex-1">
-              <Button type="button" variant="outline" display="block" size="xlarge" onClick={handlePrev}>
+              <Button type="button" variant="weak" color="dark" display="block" size="xlarge" onClick={handlePrev}>
                 이전
               </Button>
             </div>

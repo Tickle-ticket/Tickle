@@ -336,8 +336,12 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   const handleNextStep = async () => {
     if (selectedSeats.size === 0) return;
 
-    // TODO: get actual userId from auth store. using '1' for now.
-    const userId = '1';
+    const userId = userProfile?.userId;
+    if (!userId) {
+      alert('로그인이 필요합니다.');
+      window.location.href = '/login';
+      return;
+    }
 
     try {
       const sessionSeatIds = Array.from(selectedSeats)
@@ -1530,7 +1534,14 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                         
                         if (preorderRes.data?.bookingId) {
                           const bookingId = preorderRes.data.bookingId;
-                          const userId = userProfile?.userId || 1;
+                          const userId = userProfile?.userId;
+                          
+                          if (!userId) {
+                            alert('로그인이 필요합니다.');
+                            window.location.href = '/login';
+                            return;
+                          }
+                          
                           const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
 
                           const selectRes = await paymentApi.selectPaymentMethod(

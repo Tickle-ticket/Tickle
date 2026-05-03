@@ -428,7 +428,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={activeEventId} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>

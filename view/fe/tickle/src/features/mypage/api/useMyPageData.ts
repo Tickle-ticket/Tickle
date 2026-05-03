@@ -26,6 +26,7 @@ export const useMyUpcomingWishlist = () => {
 };
 export interface BookingData {
   id: string;
+  eventId: string;
   imageUrl: string;
   title: string;
   venue: string;
@@ -42,6 +43,7 @@ export const useMyBookings = () => {
       const response = await reservationApi.fetchReservations();
       return response.data.items.map((r) => ({
         id: String(r.bookingId),
+        eventId: String(r.eventId),
         imageUrl: r.thumbnailUrl,
         title: r.eventName,
         venue: r.venueName,

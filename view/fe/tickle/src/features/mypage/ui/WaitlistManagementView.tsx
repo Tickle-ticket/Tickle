@@ -218,6 +218,7 @@ export const WaitlistManagementView = () => {
       {modifyFlowState === 'BOOK' && selectedWaitlistForModify && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <BookView 
+            eventId={selectedWaitlistForModify.eventId}
             mode="WAITLIST" 
             initialSchedule={{ date: selectedWaitlistForModify.date, time: selectedWaitlistForModify.time }}
             initialSeats={selectedWaitlistForModify.initialSeats}

@@ -91,7 +91,7 @@ export default function PaymentSuccessPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">입금 기한</span>
-                        <span className="font-bold text-red-500">{new Date(paymentData.depositDeadline).toLocaleString()}</span>
+                        <span className="font-bold text-red-500">{paymentData.depositDeadline ? new Date(paymentData.depositDeadline).toLocaleString() : '기한 없음'}</span>
                       </div>
                       <p className="text-xs text-gray-400 mt-2">
                         * 안내된 기한 내에 입금하지 않으시면 예매가 자동 취소됩니다.

@@ -18,6 +18,9 @@ interface UserAuthFrameProps {
   children: ReactNode;
   size?: FrameSize;
   compact?: boolean;
+  label?: string;
+  title?: string;
+  footer?: ReactNode;
 }
 
 export function UserAuthFrame({
