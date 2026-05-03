@@ -44,31 +44,31 @@ public class IpRateLimitInterceptor implements HandlerInterceptor {
         String ip = resolveClientIp(request);
         String key = RATE_KEY_PREFIX + ip;
 
-        Long count = stringRedisTemplate.opsForValue().increment(key);
-        if (count == null) {
-            return true;
-        }
+        try {
+            Long count = stringRedisTemplate.opsForValue().increment(key);
+            if (count == null) return true;
 
-        // 첫 번째 요청 시 TTL 설정
-        if (count == 1L) {
-            stringRedisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
-        }
+            if (count == 1L) {
+                stringRedisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
+            }
 
-        if (count > REQUEST_LIMIT) {
-            String userIdStr = request.getParameter("userId");
-            if (userIdStr != null && !userIdStr.isBlank()) {
-                try {
-                    Long userId = Long.parseLong(userIdStr);
-                    blacklistService.addBlacklistInternal(new InternalAddBlacklistRequest(
-                            userId,
-                            "IP_RATE_LIMIT",
-                            "10초 내 " + count + "회 요청 (IP: " + ip + ")"
-                    ));
-                } catch (NumberFormatException ignored) {
-                    // userId가 숫자가 아닌 경우 블랙리스트 등록 생략
+            if (count > REQUEST_LIMIT) {
+                log.warn("IP 속도 제한 초과: ip={}, count={}", ip, count);
+                String userIdStr = request.getParameter("userId");
+                if (userIdStr != null && !userIdStr.isBlank()) {
+                    try {
+                        Long userId = Long.parseLong(userIdStr);
+                        blacklistService.addBlacklistInternal(new InternalAddBlacklistRequest(
+                                userId,
+                                "IP_RATE_LIMIT",
+                                "10초 내 " + count + "회 요청 (IP: " + ip + ")"
+                        ));
+                    } catch (NumberFormatException ignored) {
+                    }
                 }
             }
-            log.warn("IP 속도 제한 초과: ip={}, count={}", ip, count);
+        } catch (org.springframework.dao.DataAccessException e) {
+            log.warn("IP Rate Limit 체크 중 Redis 오류 발생, 탐지 생략: ip={}", ip, e);
         }
 
         return true;

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
  *   <li>Multi-IP 탐지: 동일 사용자가 60초 내에 3개를 초과하는 IP에서 접근하는 경우</li>
  *   <li>좌석 선점 해제 반복 탐지: 60초 내에 좌석 선점 해제를 5회 이상 반복하는 경우</li>
  * </ul>
+ * <p>Redis 장애 시 탐지를 생략하고 요청을 정상 처리합니다 (graceful degradation).</p>
  */
 @Slf4j
 @Component
@@ -36,14 +38,6 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
     private final StringRedisTemplate stringRedisTemplate;
     private final BlacklistService blacklistService;
 
-    /**
-     * 의심스러운 접근 패턴을 검사하고, 탐지 시 블랙리스트에 등록합니다.
-     *
-     * @param request  HTTP 요청
-     * @param response HTTP 응답
-     * @param handler  핸들러
-     * @return 항상 true (요청 자체는 차단하지 않음)
-     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String userIdStr = request.getParameter("userId");
@@ -60,27 +54,22 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
 
         String ip = resolveClientIp(request);
 
-        detectMultiIp(userId, ip);
-        detectHoldReleaseRepeat(userId, request);
+        try {
+            detectMultiIp(userId, ip);
+            detectHoldReleaseRepeat(userId, request);
+        } catch (DataAccessException e) {
+            log.warn("패턴 탐지 중 Redis 오류 발생, 탐지 생략: userId={}", userId, e);
+        }
 
         return true;
     }
 
-    /**
-     * 동일 사용자가 여러 IP에서 동시 접근하는 패턴을 탐지합니다.
-     *
-     * @param userId 사용자 식별자
-     * @param ip     클라이언트 IP 주소
-     */
     private void detectMultiIp(Long userId, String ip) {
         String key = MULTI_IP_KEY_PREFIX + userId;
 
-        // 키가 존재하지 않을 때만 TTL 설정 (첫 번째 IP 추가 시)
-        Boolean isNew = stringRedisTemplate.opsForSet().add(key, ip) != null
-                && !stringRedisTemplate.hasKey(key + ":ttl-set");
+        stringRedisTemplate.opsForSet().add(key, ip);
         Long size = stringRedisTemplate.opsForSet().size(key);
 
-        // 첫 IP 추가 여부를 별도로 판단하기 위해 size==1 체크 사용
         if (size != null && size == 1L) {
             stringRedisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
         }
@@ -95,12 +84,6 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * 좌석 선점 해제(DELETE /seats/hold)를 반복적으로 수행하는 패턴을 탐지합니다.
-     *
-     * @param userId  사용자 식별자
-     * @param request HTTP 요청
-     */
     private void detectHoldReleaseRepeat(Long userId, HttpServletRequest request) {
         if (!"DELETE".equalsIgnoreCase(request.getMethod())
                 || !request.getRequestURI().contains("/seats/hold")) {
@@ -108,11 +91,8 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
         }
 
         String key = HOLD_RELEASE_KEY_PREFIX + userId;
-
         Long count = stringRedisTemplate.opsForValue().increment(key);
-        if (count == null) {
-            return;
-        }
+        if (count == null) return;
 
         if (count == 1L) {
             stringRedisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
@@ -128,12 +108,6 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * X-Real-IP 헤더를 우선 확인하고, 없으면 remoteAddr을 사용합니다.
-     *
-     * @param request HTTP 요청
-     * @return 클라이언트 IP 주소
-     */
     private String resolveClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Real-IP");
         if (ip != null && !ip.isBlank()) {

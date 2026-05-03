@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.springframework.data.domain.Sort.Direction.DESC;
 
@@ -36,8 +38,14 @@ public class BotDetectionService {
     public BotDetectionStatsResponse getStats() {
         long total = blacklistRepository.count();
 
+        // 단일 GROUP BY 쿼리로 사유별 카운트 일괄 조회 (N+1 방지)
+        Map<String, Long> reasonCountMap = blacklistRepository.countGroupByReason().stream()
+                .collect(Collectors.toMap(
+                        row -> ((Blacklist.Reason) row[0]).name(),
+                        row -> (Long) row[1]
+                ));
         List<ReasonStat> byReason = Arrays.stream(Blacklist.Reason.values())
-                .map(reason -> new ReasonStat(reason.name(), blacklistRepository.countByReason(reason)))
+                .map(reason -> new ReasonStat(reason.name(), reasonCountMap.getOrDefault(reason.name(), 0L)))
                 .toList();
 
         List<BlacklistResponse> recent = blacklistRepository
