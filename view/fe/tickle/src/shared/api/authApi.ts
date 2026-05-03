@@ -50,4 +50,10 @@ export const authApi = {
       body: request,
     });
   },
+
+  kakaoCallback: async (code: string): Promise<ApiResponse<TokenResponse>> => {
+    return apiClient<ApiResponse<TokenResponse>>(`/api/v1/auth/kakao/callback?code=${code}`, {
+      method: 'GET',
+    });
+  },
 };

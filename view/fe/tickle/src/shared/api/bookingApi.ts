@@ -32,7 +32,7 @@ export const bookingApi = {
       `/api/v1/bookings/preorder`,
       {
         method: 'POST',
-        data: request,
+        body: request,
       },
       true,
       createApiResponseSchema(BookingPreorderResponseSchema)

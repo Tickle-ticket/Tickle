@@ -8,7 +8,10 @@ import { searchHandlers } from './searchHandlers';
 import { favoriteHandlers } from './favoriteHandlers';
 import { trialHandlers } from './trialHandlers';
 import { agencyHandlers } from './agencyHandlers';
-
+import { authHandlers } from './authHandlers';
+import { reservationHandlers } from './reservationHandlers';
+import { bookingHandlers } from './bookingHandlers';
+import { paymentHandlers } from './paymentHandlers';
 export const handlers = [
   ...trialHandlers,
   ...homeHandlers,
@@ -20,4 +23,8 @@ export const handlers = [
   ...seatHandlers,
   ...queueHandlers,
   ...ticketTypeHandlers,
+  ...authHandlers,
+  ...reservationHandlers,
+  ...bookingHandlers,
+  ...paymentHandlers,
 ];

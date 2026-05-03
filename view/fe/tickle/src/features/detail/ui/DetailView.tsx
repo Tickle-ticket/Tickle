@@ -85,6 +85,8 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   useEffect(() => {
     if (flowState === 'NONE') return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // @ts-ignore
+      if (window.__isNavigatingToPayment__) return;
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);

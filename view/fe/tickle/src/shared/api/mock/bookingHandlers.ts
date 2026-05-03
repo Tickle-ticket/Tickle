@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = '*/api/v1';
 
 export const bookingHandlers = [
   // 1. 예약 옵션 조회

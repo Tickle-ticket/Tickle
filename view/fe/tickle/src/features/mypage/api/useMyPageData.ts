@@ -3,7 +3,7 @@ import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
-
+import { reservationApi } from '@/src/shared/api/reservationApi';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
@@ -39,8 +39,17 @@ export const useMyBookings = () => {
   return useQuery({
     queryKey: ['myBookings'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings');
-      return response.data;
+      const response = await reservationApi.fetchReservations();
+      return response.data.items.map((r) => ({
+        id: String(r.bookingId),
+        imageUrl: r.thumbnailUrl,
+        title: r.eventName,
+        venue: r.venueName,
+        performanceDate: r.eventStartAt,
+        bookingDate: r.createdAt,
+        seatInfo: r.seats.map((s) => s.seatLabel).join(', '),
+        ticketCount: r.seats.length,
+      })) as BookingData[];
     },
   });
 };
@@ -70,7 +79,7 @@ export const useCancelBooking = () => {
   
   return useMutation({
     mutationFn: async (bookingId: string) => {
-      const response = await http.delete<ApiResponse<null>>(`/api/v1/mypage/bookings/${bookingId}`);
+      const response = await reservationApi.cancelReservation(bookingId);
       return response.data;
     },
     onSuccess: () => {

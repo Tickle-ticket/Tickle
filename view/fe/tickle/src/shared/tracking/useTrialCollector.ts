@@ -67,6 +67,7 @@ export const useTrialCollector = ({ enabled, userId }: UseTrialCollectorOptions)
     const handleBeforeUnload = () => {
       if (collectorRef.current) {
         const trial = collectorRef.current.finalize();
+        if (!trial) return;
         // navigator.sendBeacon for reliability on page unload
         try {
           const blob = new Blob([JSON.stringify(trial)], { type: 'application/json' });

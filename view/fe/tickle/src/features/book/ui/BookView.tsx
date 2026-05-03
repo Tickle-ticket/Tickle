@@ -1106,25 +1106,29 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
             id: 'kakaopay',
             label: '카카오페이',
             selectedColor: 'border-[#FEE500] bg-[#FEE500] text-[#381E1F]',
-            icon: <Image src="/images/payment_icon_yellow_small.png" alt="카카오페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />
+            icon: <Image src="/images/payment_icon_yellow_small.png" alt="카카오페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />,
+            disabled: false
           },
           {
             id: 'naverpay',
             label: '네이버페이',
             selectedColor: 'border-[#03C75A] bg-[#03C75A] text-white',
-            icon: <Image src="/images/logo_npaybk_large.svg" alt="네이버페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />
+            icon: <Image src="/images/logo_npaybk_large.svg" alt="네이버페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />,
+            disabled: true
           },
           {
             id: 'tosspay',
             label: '토스페이',
             selectedColor: 'border-[#3182F6] bg-[#3182F6] text-white',
-            icon: <Image src="/images/Toss_Symbol_Primary.png" alt="토스페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />
+            icon: <Image src="/images/Toss_Symbol_Primary.png" alt="토스페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />,
+            disabled: true
           },
           {
             id: 'payco',
             label: 'PAYCO',
             selectedColor: 'border-[#E31C18] bg-[#E31C18] text-white',
-            icon: <span className="w-5 h-5 flex items-center justify-center bg-white text-[#E31C18] border border-[#E31C18] rounded-[4px] text-[13px] font-black mr-2 leading-none italic">P</span>
+            icon: <span className="w-5 h-5 flex items-center justify-center bg-white text-[#E31C18] border border-[#E31C18] rounded-[4px] text-[13px] font-black mr-2 leading-none italic">P</span>,
+            disabled: true
           },
         ];
         const otherMethods = [
@@ -1132,25 +1136,29 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
             id: 'credit',
             label: '신용카드',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-            icon: null
+            icon: null,
+            disabled: true
           },
           {
             id: 'bank',
             label: '계좌이체',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-            icon: null
+            icon: null,
+            disabled: true
           },
           {
             id: 'phone',
             label: '휴대폰 결제',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-            icon: null
+            icon: null,
+            disabled: true
           },
           {
             id: 'vbank',
             label: '무통장입금',
             selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-            icon: null
+            icon: null,
+            disabled: false
           },
         ];
 
@@ -1319,11 +1327,16 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                               {payMethods.map(m => (
                                 <button
                                   key={m.id}
+                                  disabled={m.disabled}
                                   onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
-                                  className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center hover:z-10 ${selectedPayMethod === m.id
-                                    ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                    : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
-                                    }`}
+                                  className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${
+                                    m.disabled 
+                                      ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500' 
+                                      : `hover:z-10 ${selectedPayMethod === m.id
+                                          ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
+                                          : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
+                                        }`
+                                  }`}
                                 >
                                   {m.icon}
                                   {m.label}
@@ -1356,11 +1369,16 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                               {otherMethods.map(m => (
                                 <button
                                   key={m.id}
+                                  disabled={m.disabled}
                                   onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
-                                  className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center hover:z-10 ${selectedPayMethod === m.id
-                                    ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                    : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
-                                    }`}
+                                  className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${
+                                    m.disabled 
+                                      ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500' 
+                                      : `hover:z-10 ${selectedPayMethod === m.id
+                                          ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
+                                          : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
+                                        }`
+                                  }`}
                                 >
                                   {m.icon}
                                   {m.label}
@@ -1511,20 +1529,43 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                         const preorderRes = await bookingApi.preorder(preorderReq);
                         
                         if (preorderRes.data?.bookingId) {
-                          if (selectedPayMethod === 'vbank') {
+                          const bookingId = preorderRes.data.bookingId;
+                          const userId = userProfile?.userId || 1;
+                          const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
+
+                          const selectRes = await paymentApi.selectPaymentMethod(
+                            eventDetail.eventId,
+                            scheduleId,
+                            userId,
+                            { bookingId, paymentMethod }
+                          );
+
+                          const nextAction = selectRes.data?.nextAction;
+
+                          if (nextAction === 'PREPARE_BANK_TRANSFER') {
                             const bankRes = await paymentApi.confirmBankTransferPayment(
                               eventDetail.eventId,
                               scheduleId,
-                              { bookingId: preorderRes.data.bookingId }
+                              userId,
+                              { bookingId }
                             );
                             if (bankRes.data) {
-                              alert(`[무통장 입금 안내]\n계좌번호: ${bankRes.data.bankAccount}\n예금주: ${bankRes.data.accountHolder}\n입금 마감: ${new Date(bankRes.data.depositDeadline).toLocaleString()}\n\n입금 기한 내 미입금 시 예매가 자동 취소됩니다.`);
-                              onClose();
+                              // @ts-ignore
+                              window.__isNavigatingToPayment__ = true;
+                              window.location.href = `/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`;
                             }
-                          } else {
-                            console.log(`결제 수단: ${selectedPayMethod}, 결제 금액: ${finalPrice.toLocaleString()}원`);
-                            alert(`결제가 완료되었습니다.`);
-                            onClose();
+                          } else if (nextAction === 'PREPARE_KAKAOPAY') {
+                            const kakaoRes = await paymentApi.readyKakaoPay(
+                              eventDetail.eventId,
+                              scheduleId,
+                              userId,
+                              { bookingId }
+                            );
+                            if (kakaoRes.data?.nextRedirectPcUrl) {
+                              // @ts-ignore
+                              window.__isNavigatingToPayment__ = true;
+                              window.location.href = kakaoRes.data.nextRedirectPcUrl;
+                            }
                           }
                         }
                       } catch (err) {

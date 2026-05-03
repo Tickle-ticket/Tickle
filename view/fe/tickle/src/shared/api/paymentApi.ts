@@ -23,6 +23,39 @@ export const PaymentSeatSummarySchema = Schema.Struct({
   finalPriceAmount: Schema.Number,
 });
 
+export interface PaymentMethodSelectionRequest {
+  bookingId: number;
+  paymentMethod: 'BANK_TRANSFER' | 'KAKAOPAY';
+}
+
+export interface PaymentMethodSelectionResponse {
+  bookingId: number;
+  paymentMethod: 'BANK_TRANSFER' | 'KAKAOPAY';
+  nextAction: 'PREPARE_BANK_TRANSFER' | 'PREPARE_KAKAOPAY';
+}
+
+export const PaymentMethodSelectionResponseSchema = Schema.Struct({
+  bookingId: Schema.Number,
+  paymentMethod: Schema.Literal('BANK_TRANSFER', 'KAKAOPAY'),
+  nextAction: Schema.Literal('PREPARE_BANK_TRANSFER', 'PREPARE_KAKAOPAY'),
+});
+
+export interface KakaoPayReadyRequest {
+  bookingId: number;
+}
+
+export interface KakaoPayReadyResponse {
+  tid: string;
+  nextRedirectPcUrl: string;
+  createdAt: string;
+}
+
+export const KakaoPayReadyResponseSchema = Schema.Struct({
+  tid: Schema.String,
+  nextRedirectPcUrl: Schema.String,
+  createdAt: Schema.String,
+});
+
 export interface BankTransferPrepareRequest {
   bookingId: number;
 }
@@ -64,9 +97,9 @@ export interface PaymentStatusResponse {
   bookingStatus: string;
   orderAmount: number;
   currencyCode: string;
-  depositDeadline: string;
-  bankAccount: string;
-  accountHolder: string;
+  depositDeadline: string | null;
+  bankAccount: string | null;
+  accountHolder: string | null;
   seats: PaymentSeatSummary[];
 }
 
@@ -79,26 +112,61 @@ export const PaymentStatusResponseSchema = Schema.Struct({
   bookingStatus: Schema.String,
   orderAmount: Schema.Number,
   currencyCode: Schema.String,
-  depositDeadline: Schema.String,
-  bankAccount: Schema.String,
-  accountHolder: Schema.String,
+  depositDeadline: Schema.NullOr(Schema.String),
+  bankAccount: Schema.NullOr(Schema.String),
+  accountHolder: Schema.NullOr(Schema.String),
   seats: Schema.Array(PaymentSeatSummarySchema),
 });
 
 export const paymentApi = {
+  selectPaymentMethod: async (
+    eventId: number | string,
+    scheduleId: number | string,
+    userId: number | string,
+    request: PaymentMethodSelectionRequest
+  ): Promise<ApiResponse<PaymentMethodSelectionResponse>> => {
+    return apiClient<ApiResponse<PaymentMethodSelectionResponse>>(
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/select-method?userId=${userId}`,
+      {
+        method: 'POST',
+        body: request,
+      },
+      true,
+      createApiResponseSchema(PaymentMethodSelectionResponseSchema)
+    );
+  },
+
   confirmBankTransferPayment: async (
     eventId: number | string,
     scheduleId: number | string,
+    userId: number | string,
     request: BankTransferPrepareRequest
   ): Promise<ApiResponse<BankTransferPrepareResponse>> => {
     return apiClient<ApiResponse<BankTransferPrepareResponse>>(
-      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/bank-transfer`,
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/bank-transfer?userId=${userId}`,
       {
         method: 'POST',
-        data: request,
+        body: request,
       },
       true,
       createApiResponseSchema(BankTransferPrepareResponseSchema)
+    );
+  },
+
+  readyKakaoPay: async (
+    eventId: number | string,
+    scheduleId: number | string,
+    userId: number | string,
+    request: KakaoPayReadyRequest
+  ): Promise<ApiResponse<KakaoPayReadyResponse>> => {
+    return apiClient<ApiResponse<KakaoPayReadyResponse>>(
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/kakaopay/ready?userId=${userId}`,
+      {
+        method: 'POST',
+        body: request,
+      },
+      true,
+      createApiResponseSchema(KakaoPayReadyResponseSchema)
     );
   },
 
