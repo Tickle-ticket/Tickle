@@ -102,3 +102,21 @@ cloud:
 cors:
   # 배포 FE Origin
   fe-origin: ${CORS_FE_ORIGIN}
+
+kakaopay:
+  # 카카오페이 단건 결제 API 기본 주소
+  base-url: ${KAKAOPAY_BASE_URL}
+  # 카카오페이 Open API 시크릿 키
+  secret-key: ${KAKAOPAY_SECRET_KEY}
+  # 테스트용 기본 CID
+  cid: ${KAKAOPAY_CID:TC0ONETIME}
+  # 카카오페이 결제 성공 후 백엔드 approve 콜백 URL
+  approval-url: ${KAKAOPAY_APPROVAL_URL}
+  # 카카오페이 결제 실패 후 백엔드 fail 콜백 URL
+  fail-url: ${KAKAOPAY_FAIL_URL}
+  # 카카오페이 결제 취소 후 백엔드 cancel 콜백 URL
+  cancel-url: ${KAKAOPAY_CANCEL_URL}
+  # approve 완료 후 FE 예매 확정 페이지
+  success-redirect-url: ${KAKAOPAY_SUCCESS_REDIRECT_URL}
+  # fail/cancel 후 FE 결제 수단 선택 페이지
+  method-selection-redirect-url: ${KAKAOPAY_METHOD_SELECTION_REDIRECT_URL}

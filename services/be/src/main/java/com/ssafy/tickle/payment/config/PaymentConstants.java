@@ -12,6 +12,9 @@ public final class PaymentConstants {
     // 은행사
     public static final String BANK_TRANSFER_PROVIDER = "INTERNAL_BANK_TRANSFER";
 
+    // 카카오페이 제공사명
+    public static final String KAKAOPAY_PROVIDER = "KAKAOPAY";
+
     // 대표 계좌번호
     public static final String BANK_TRANSFER_ACCOUNT = "110-482-129438";
 

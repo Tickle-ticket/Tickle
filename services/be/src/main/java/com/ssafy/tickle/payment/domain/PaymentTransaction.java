@@ -206,6 +206,32 @@ public class PaymentTransaction {
     }
 
     /**
+     * 카카오페이 ready 요청 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param requestId 요청 식별자
+     * @param providerTransactionId 카카오페이 tid
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction requestedReady(
+            Payment payment,
+            String requestId,
+            String providerTransactionId
+    ) {
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.AUTH)
+                .transactionStatus(TransactionStatus.REQUESTED)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .providerTransactionId(providerTransactionId)
+                .requestId(requestId)
+                .transactedAt(Instant.now())
+                .build();
+    }
+
+    /**
      * 무통장 입금 승인 이력을 남깁니다.
      *
      * @param payment 대상 결제
@@ -251,6 +277,91 @@ public class PaymentTransaction {
                 .transactedAt(now)
                 .processedAt(now)
                 .failureCode(failureCode)
+                .failureMessage(failureMessage)
+                .build();
+    }
+
+    /**
+     * 카카오페이 승인 성공 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param providerTransactionId 카카오페이 tid
+     * @param providerApprovalNo 카카오페이 승인번호
+     * @param rawResponseJson 카카오페이 원본 응답
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction succeededApprove(
+            Payment payment,
+            String providerTransactionId,
+            String providerApprovalNo,
+            String rawResponseJson
+    ) {
+        Instant now = Instant.now();
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.SALE)
+                .transactionStatus(TransactionStatus.SUCCEEDED)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .providerTransactionId(providerTransactionId)
+                .providerApprovalNo(providerApprovalNo)
+                .rawResponseJson(rawResponseJson)
+                .transactedAt(now)
+                .processedAt(now)
+                .build();
+    }
+
+    /**
+     * 카카오페이 결제 실패 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param failureCode 실패 코드
+     * @param failureMessage 실패 메시지
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction failedSale(
+            Payment payment,
+            String failureCode,
+            String failureMessage
+    ) {
+        Instant now = Instant.now();
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.SALE)
+                .transactionStatus(TransactionStatus.FAILED)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .transactedAt(now)
+                .processedAt(now)
+                .failureCode(failureCode)
+                .failureMessage(failureMessage)
+                .build();
+    }
+
+    /**
+     * 카카오페이 사용자 취소 이력을 남깁니다.
+     *
+     * @param payment 대상 결제
+     * @param failureMessage 취소 메시지
+     * @return 생성된 거래 이력
+     */
+    public static PaymentTransaction cancelledSale(
+            Payment payment,
+            String failureMessage
+    ) {
+        Instant now = Instant.now();
+        return PaymentTransaction.builder()
+                .payment(payment)
+                .transactionType(TransactionType.CANCEL)
+                .transactionStatus(TransactionStatus.SUCCEEDED)
+                .amount(payment.getOrderAmount())
+                .currencyCode(payment.getCurrencyCode())
+                .providerName(payment.getProviderName())
+                .transactedAt(now)
+                .processedAt(now)
+                .failureCode("USER_CANCELLED")
                 .failureMessage(failureMessage)
                 .build();
     }
