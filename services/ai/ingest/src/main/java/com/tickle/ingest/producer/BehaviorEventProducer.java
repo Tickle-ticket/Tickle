@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tickle.ingest.dto.BehaviorEventRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,16 +26,26 @@ public class BehaviorEventProducer {
         this.behaviorEventsTopic = behaviorEventsTopic;
     }
 
-    public String topic() {
-        return behaviorEventsTopic;
-    }
-
-    public void send(BehaviorEventRequest request) {
+    public void send(
+            BehaviorEventRequest request,
+            String accessToken,
+            String requestId
+    ) {
         try {
             String payload = objectMapper.writeValueAsString(request);
             String key = buildKey(request);
 
-            kafkaTemplate.send(behaviorEventsTopic, key, payload);
+            MessageBuilder<String> messageBuilder = MessageBuilder
+                    .withPayload(payload)
+                    .setHeader(KafkaHeaders.TOPIC, behaviorEventsTopic)
+                    .setHeader(KafkaHeaders.KEY, key)
+                    .setHeader("access-token", accessToken);
+
+            if (requestId != null && !requestId.isBlank()) {
+                messageBuilder.setHeader("X-Request-Id", requestId);
+            }
+
+            kafkaTemplate.send(messageBuilder.build());
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Failed to serialize behavior event request", e);
         }
