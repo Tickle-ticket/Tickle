@@ -26,11 +26,13 @@ interface BookViewProps {
   onClose: () => void;
   eventId?: string;
   mode?: 'BOOK' | 'CANCEL' | 'WAITLIST';
-  initialSchedule?: { date: string, time: string };
+  initialSchedule?: { date: string, time: string, scheduleId?: string };
   initialSeats?: string[];
   initialModifyModeActive?: boolean;
   initialModifyingSchedule?: boolean;
 }
+
+const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
 export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false }: BookViewProps) => {
   const isWaitlistMode = mode === 'WAITLIST';
@@ -55,6 +57,14 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   const isModifyModeActive = useBookStore(s => s.isModifyModeActive);
   const setIsModifyModeActive = useBookStore(s => s.setIsModifyModeActive);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  const scheduleId = confirmedSchedule
+    ? confirmedSchedule.scheduleId
+      ?? eventDetail?.schedules
+        .find(schedule => schedule.date === confirmedSchedule.date)
+        ?.times.find(time => time.time === confirmedSchedule.time)
+        ?.scheduleId
+      ?? `${confirmedSchedule.date}-${confirmedSchedule.time}`
+    : null;
 
   const enableWs = !isCancelMode || isModifyModeActive;
 
@@ -65,7 +75,14 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
 
   // ── Trial Collector (행동 데이터 수집) ──────────────────────
-  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({ enabled: mode === 'BOOK' || mode === 'WAITLIST' });
+  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({
+    enabled: mode === 'BOOK' || mode === 'WAITLIST',
+    behaviorEvent: {
+      scheduleId,
+      name: eventDetail?.title ?? eventId,
+      eventDate: toBehaviorEventDate(confirmedSchedule?.date),
+    },
+  });
 
   // Ticket type selection
   const bookingStep = useBookStore(s => s.bookingStep);
@@ -218,7 +235,6 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const scheduleId = confirmedSchedule ? `${confirmedSchedule.date}-${confirmedSchedule.time}` : null;
   const { data: seatAvailability, isLoading: isSeatsLoading } = useSeatData(eventDetail?.eventId || null, scheduleId, enableWs);
 
   if (isEventLoading || !eventDetail) {
@@ -583,7 +599,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
                           }
 
                           setSelectedTime(newTime);
-                          setConfirmedSchedule({ date: selectedDate!, time: newTime });
+                          setConfirmedSchedule({ date: selectedDate!, time: newTime, scheduleId: timeObj.scheduleId });
                           setIsModifyingSchedule(false);
                         }}
                         className={`w-[calc(50%-4px)] min-w-[125px] px-3 py-2.5 rounded-xl border-2 font-bold transition-all text-center flex flex-col items-center justify-center gap-0.5 ${selectedTime === timeObj.time
