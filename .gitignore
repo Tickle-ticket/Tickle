@@ -4,3 +4,5 @@ services/ai/train/model_joblib/
 
 # Local working notes (per-developer)
 tasks/
+
+.DS_Store
