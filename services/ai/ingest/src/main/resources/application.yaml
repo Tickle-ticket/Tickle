@@ -5,6 +5,17 @@ spring:
   application:
     name: ingest
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+app:
+  kafka:
+    topics:
+      behavior-events: ${KAFKA_TOPIC_BEHAVIOR_EVENTS:behavior-events-v1}
+
 management:
   endpoints:
     web:
