@@ -28,6 +28,24 @@ import yaml
 
 COLLECTION_PIPELINE = "mouse_automation_lv2"
 
+# === ADR-016 메타 backfill ===
+
+# label → algorithm_type 매핑 (lv2_collector / human_recorder 산출 풀 한정)
+ALGORITHM_TYPE_BY_LABEL = {
+    "human": "human_lv2_collector",
+    "macro": "lv2_bezier",
+}
+
+# 정합성 제약: macro 라벨은 이 algorithm_type 집합에만 속해야 함
+MACRO_ALGORITHM_TYPES = frozenset({"lv2_bezier", "lv3_random_walk"})
+
+# user_id prefix ↔ algorithm_type 매핑 (정합성 검증용)
+USER_PREFIX_BY_ALGORITHM = {
+    "human_lv2_collector": "lv2_",
+    "human_lv3_collector": "lv3_",
+    "human_balabit": "balabit_",
+}
+
 # === 추출 대상 feature ===
 
 # 1차 (확실, 트리비얼 위험 낮음): 8개
@@ -332,12 +350,68 @@ def build_summary(events: list[dict], session_id: str, source: str) -> dict:
     }
 
 
+def _add_nx_ny(
+    row: dict,
+    screen_width: int | None,
+    screen_height: int | None,
+) -> dict:
+    """mouse_* 이벤트에 nx, ny 키 부여. screen_* null 이면 null. key_* 이벤트는 좌표 없어 추가 안 함.
+
+    nx/ny 는 [0, 1] 범위 비보장 — 멀티모니터 음수 / viewport 외부 좌표는 그대로 정규화.
+    """
+    if not str(row.get("event", "")).startswith("mouse"):
+        return row
+
+    x = row.get("x")
+    y = row.get("y")
+    if x is None or y is None or not screen_width or not screen_height:
+        nx, ny = None, None
+    else:
+        nx = x / screen_width
+        ny = y / screen_height
+
+    out = dict(row)
+    out["nx"] = nx
+    out["ny"] = ny
+    return out
+
+
+def validate_meta(trial: dict) -> list[str]:
+    """ADR-016 정합성 제약 검증. 위반 시 warning 메시지 리스트 반환 (raise X)."""
+    warnings: list[str] = []
+    label = trial.get("label")
+    algo = trial.get("algorithm_type")
+    user_id = trial.get("user_id")
+
+    if label == "macro" and algo not in MACRO_ALGORITHM_TYPES:
+        warnings.append(
+            f"label=macro but algorithm_type={algo!r} not in {sorted(MACRO_ALGORITHM_TYPES)}"
+        )
+    if label == "human" and user_id is None:
+        warnings.append("label=human but user_id is null")
+
+    if user_id is not None:
+        expected_prefix = USER_PREFIX_BY_ALGORITHM.get(algo)
+        if expected_prefix and not str(user_id).startswith(expected_prefix):
+            warnings.append(
+                f"algorithm_type={algo!r} but user_id={user_id!r} (expected prefix {expected_prefix!r})"
+            )
+
+    return warnings
+
+
 def jsonl_to_trial(
     jsonl_path: Path,
     trial_id: int,
     all_features: list[str],
+    user_id_for_human: str = "lv2_001",
 ) -> dict | None:
-    """jsonl 1개 → trial dict. 빈 파일/라벨 없음 시 None."""
+    """jsonl 1개 → trial dict. 빈 파일/라벨 없음 시 None.
+
+    ADR-016 메타 backfill:
+      - root: coord_domain, screen_width, screen_height, algorithm_type, user_id
+      - eventRows[*]: nx, ny (mouse_* 이벤트만)
+    """
     events = load_jsonl(jsonl_path)
     if not events:
         return None
@@ -352,18 +426,40 @@ def jsonl_to_trial(
 
     # eventRows clean: label/session_id/source 는 summary 중복 → 제거
     drop_keys = ("label", "session_id", "source")
+
+    # 메타 (mouse_automation_lv2 풀 일괄)
+    coord_domain = "os_screen"
+    screen_width: int | None = None
+    screen_height: int | None = None
+    algorithm_type = ALGORITHM_TYPE_BY_LABEL.get(label)
+    user_id = user_id_for_human if label == "human" else None
+
     event_rows = [
-        {k: v for k, v in e.items() if k not in drop_keys}
+        _add_nx_ny(
+            {k: v for k, v in e.items() if k not in drop_keys},
+            screen_width,
+            screen_height,
+        )
         for e in events
     ]
 
-    return {
+    trial = {
         "trialId": trial_id,
         "label": label,
+        "coord_domain": coord_domain,
+        "screen_width": screen_width,
+        "screen_height": screen_height,
+        "algorithm_type": algorithm_type,
+        "user_id": user_id,
         "summary": build_summary(events, session_id, source),
         "metrics": extract_metrics(events, all_features),
         "eventRows": event_rows,
     }
+
+    for w in validate_meta(trial):
+        print(f"  [warn] trial_{trial_id}: {w}")
+
+    return trial
 
 
 def main():
@@ -384,6 +480,11 @@ def main():
     )
     parser.add_argument("--input-dir", type=Path, default=None, help="기본 data/raw/")
     parser.add_argument("--output-dir", type=Path, default=None, help="기본 data/behavior/")
+    parser.add_argument(
+        "--user-id",
+        default="lv2_001",
+        help="lv2_human (label=human) 의 user_id (기본 lv2_001, 보겸 단일 사용자 가정)",
+    )
     parser.add_argument("--config", type=Path, default=None, help="feature_config.yaml 경로")
     parser.add_argument("--dry-run", action="store_true", help="파일 안 쓰고 카운트만")
     parser.add_argument(
@@ -432,7 +533,7 @@ def main():
     next_id = args.start
 
     for path in jsonl_files:
-        trial = jsonl_to_trial(path, next_id, all_features)
+        trial = jsonl_to_trial(path, next_id, all_features, user_id_for_human=args.user_id)
         if trial is None:
             events = load_jsonl(path)
             if not events:
