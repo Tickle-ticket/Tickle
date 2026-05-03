@@ -2,6 +2,7 @@ import json
 import os
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 import psycopg2
@@ -18,11 +19,19 @@ KAFKA_CONSUMER_GROUP_ID = os.getenv("KAFKA_CONSUMER_GROUP_ID", "ai-worker-group-
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "behavior_features")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "chan")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "change-me")
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
 BATCH_SIZE = int(os.getenv("AI_WORKER_BATCH_SIZE", "16"))
 FLUSH_INTERVAL_SEC = float(os.getenv("AI_WORKER_FLUSH_INTERVAL_SEC", "0.2"))
+
+
+@dataclass
+class BatchItem:
+    message: Message
+    payload: dict[str, Any]
+    access_token: str | None
+    request_id: str | None
 
 
 def create_consumer() -> Consumer:
@@ -50,13 +59,40 @@ def make_record_id() -> str:
     return f"rec_{uuid.uuid4().hex[:16]}"
 
 
+def get_header_value(msg: Message, header_name: str) -> str | None:
+    headers = msg.headers() or []
+
+    for key, value in headers:
+        if key == header_name and value is not None:
+            return value.decode("utf-8")
+
+    return None
+
+
+def parse_message(msg: Message) -> dict[str, Any]:
+    return json.loads(msg.value().decode("utf-8"))
+
+
+def make_batch_item(msg: Message) -> BatchItem:
+    payload = parse_message(msg)
+
+    return BatchItem(
+        message=msg,
+        payload=payload,
+        access_token=get_header_value(msg, "access-token"),
+        request_id=get_header_value(msg, "X-Request-Id"),
+    )
+
+
 def build_insert_rows(
-    payloads: list[dict[str, Any]],
+    batch_items: list[BatchItem],
     predictions: list[tuple[str, float]],
 ) -> list[tuple[Any, ...]]:
     rows = []
 
-    for payload, (label, p_macro) in zip(payloads, predictions):
+    for item, (label, p_macro) in zip(batch_items, predictions):
+        payload = item.payload
+
         rows.append(
             (
                 make_record_id(),
@@ -105,18 +141,14 @@ def insert_behavior_feature_records(conn, rows: list[tuple[Any, ...]]) -> None:
     conn.commit()
 
 
-def parse_message(msg: Message) -> dict[str, Any]:
-    return json.loads(msg.value().decode("utf-8"))
-
-
 def should_flush(
-    batch_payloads: list[dict[str, Any]],
+    batch_items: list[BatchItem],
     last_flush_time: float,
 ) -> bool:
-    if not batch_payloads:
+    if not batch_items:
         return False
 
-    batch_full = len(batch_payloads) >= BATCH_SIZE
+    batch_full = len(batch_items) >= BATCH_SIZE
     timeout_reached = (time.monotonic() - last_flush_time) >= FLUSH_INTERVAL_SEC
 
     return batch_full or timeout_reached
@@ -125,27 +157,35 @@ def should_flush(
 def process_batch(
     conn,
     predictor,
-    batch_payloads: list[dict[str, Any]],
+    batch_items: list[BatchItem],
 ) -> int:
-    if not batch_payloads:
+    if not batch_items:
         return 0
 
-    features_list = [payload["features"] for payload in batch_payloads]
+    features_list = [item.payload["features"] for item in batch_items]
 
     predictions = predictor.predict_batch(features_list)
-    rows = build_insert_rows(batch_payloads, predictions)
+    rows = build_insert_rows(batch_items, predictions)
 
     insert_behavior_feature_records(conn, rows)
 
     return len(rows)
 
 
-def commit_batch(consumer: Consumer, batch_messages: list[Message]) -> None:
-    if not batch_messages:
+def commit_batch(consumer: Consumer, batch_items: list[BatchItem]) -> None:
+    if not batch_items:
         return
 
-    last_message = batch_messages[-1]
+    last_message = batch_items[-1].message
     consumer.commit(message=last_message, asynchronous=False)
+
+
+def count_access_token_headers(batch_items: list[BatchItem]) -> int:
+    return sum(1 for item in batch_items if item.access_token)
+
+
+def count_request_id_headers(batch_items: list[BatchItem]) -> int:
+    return sum(1 for item in batch_items if item.request_id)
 
 
 def main():
@@ -155,8 +195,7 @@ def main():
 
     consumer.subscribe([KAFKA_TOPIC])
 
-    batch_messages: list[Message] = []
-    batch_payloads: list[dict[str, Any]] = []
+    batch_items: list[BatchItem] = []
     last_flush_time = time.monotonic()
 
     print(
@@ -175,36 +214,38 @@ def main():
                     raise KafkaException(msg.error())
 
                 try:
-                    payload = parse_message(msg)
-                    batch_messages.append(msg)
-                    batch_payloads.append(payload)
+                    batch_items.append(make_batch_item(msg))
 
                 except Exception as e:
                     print(f"[ai-worker] failed to parse message: {e}")
                     consumer.commit(message=msg, asynchronous=False)
 
-            if should_flush(batch_payloads, last_flush_time):
+            if should_flush(batch_items, last_flush_time):
                 started_at = time.perf_counter()
 
                 try:
                     processed_count = process_batch(
                         conn=conn,
                         predictor=predictor,
-                        batch_payloads=batch_payloads,
+                        batch_items=batch_items,
                     )
 
-                    commit_batch(consumer, batch_messages)
+                    access_token_count = count_access_token_headers(batch_items)
+                    request_id_count = count_request_id_headers(batch_items)
+
+                    commit_batch(consumer, batch_items)
 
                     elapsed_ms = (time.perf_counter() - started_at) * 1000
 
                     print(
                         f"[ai-worker] processed batch, "
                         f"count={processed_count}, "
+                        f"access_token_headers={access_token_count}, "
+                        f"request_id_headers={request_id_count}, "
                         f"elapsed_ms={elapsed_ms:.2f}"
                     )
 
-                    batch_messages.clear()
-                    batch_payloads.clear()
+                    batch_items.clear()
                     last_flush_time = time.monotonic()
 
                 except Exception as e:
