@@ -8,9 +8,6 @@ import jakarta.validation.constraints.NotEmpty;
 import java.util.Map;
 
 public record BehaviorEventRequest(
-        @JsonProperty("access_token")
-        String accessToken,
-
         @NotBlank
         String type,
 

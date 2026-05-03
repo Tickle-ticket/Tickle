@@ -4,10 +4,13 @@ import com.tickle.ingest.dto.BehaviorEventRequest;
 import com.tickle.ingest.dto.IngestAcceptedResponse;
 import com.tickle.ingest.producer.BehaviorEventProducer;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequestMapping("/api/behavior")
 public class BehaviorEventController {
@@ -20,13 +23,17 @@ public class BehaviorEventController {
 
     @PostMapping("/events")
     public ResponseEntity<IngestAcceptedResponse> ingestBehaviorEvent(
+            @RequestHeader("access-token") @NotBlank String accessToken,
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "X-Request-Id", required = false) String requestId,
             @Valid @RequestBody BehaviorEventRequest request
     ) {
-        behaviorEventProducer.send(request);
+        behaviorEventProducer.send(request, accessToken, requestId);
 
         IngestAcceptedResponse response = new IngestAcceptedResponse(
-                true,
-                behaviorEventProducer.topic()
+                HttpStatus.ACCEPTED.value(),
+                "accepted",
+                null
         );
 
         return ResponseEntity
