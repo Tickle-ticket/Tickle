@@ -174,6 +174,7 @@ eventRows[:3]:
 4. **사이드카 jsonl (`data/raw/human/`, `data/raw/macro/`) 이 trial.json 보다 더 많은 세션을 보유** (human 55 vs trial 51, macro 163 vs trial 101). 변환 단계에서 누락된 세션이 있고, jsonl → trial 변환 스크립트가 mouse_automation 안에 부재한 사실과 정합. backfill 시 jsonl 원본도 함께 점검 권장.
 
 5. **eventRows 의 `button` 키는 lv2_human 만 보유, Balabit 부재** — Balabit 변환 (`balabit_to_trial.py`) 에서 button 정보 미보존. 마우스 click hold 분석 (mouse_down / mouse_up 분리) 으로 가는 길에 두 풀의 schema 통일 필요.
+   > **[정정 — ai-feat-294 작업군 A 진행 중 확인]** §5 의 button 키 비대칭 주장은 사실 아님 — 양쪽 풀 모두 mouse_click 이벤트에 button 키 보유 (Balabit 240/240, 모두 `'left'` 단일). 본 audit 의 첫 row 발췌가 mouse_move (button 없음 정상) 라 비대칭으로 오판한 것. 작업군 A 진행 중 정정 확인.
 
 6. **`screen_width` / `screen_height` 는 eventRows[*].x, y 의 max 로 사후 추정 가능**:
    - lv2_human max x ≈ 2700, max y ≈ 1900 → 듀얼 모니터 또는 고해상도
