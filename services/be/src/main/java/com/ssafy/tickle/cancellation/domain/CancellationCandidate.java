@@ -4,6 +4,8 @@ import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -51,6 +53,11 @@ public class CancellationCandidate {
     @Column(name = "waiting_rank", nullable = false)
     private Integer waitingRank;
 
+    // 상태
+    @Enumerated(EnumType.STRING)
+    @Column(name = "candidate_status", nullable = false, length = 30)
+    private Status status;
+
     // 대기 취소 시각
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
@@ -63,19 +70,45 @@ public class CancellationCandidate {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    public enum Status {
+        WAITING,
+        CANCELLED
+    }
+
+    /**
+     * 예매 대기 신청을 취소 상태로 전환합니다.
+     *
+     * @param cancelledAt 대기 신청 취소 시각
+     */
+    public void cancel(Instant cancelledAt) {
+        this.status = Status.CANCELLED;
+        this.cancelledAt = cancelledAt;
+        this.updatedAt = cancelledAt;
+    }
+
     /**
      * 취소 대기 후보 엔티티를 생성합니다.
      *
      * @param sessionSeat 취소된 회차 좌석
      * @param user 대기 사용자
      * @param waitingRank 대기 순번
+     * @param status 대기 후보 상태
      * @param cancelledAt 취소 발생 시각
      */
     @Builder
-    public CancellationCandidate(SessionSeat sessionSeat, User user, Integer waitingRank, Instant cancelledAt) {
+    public CancellationCandidate(
+            SessionSeat sessionSeat,
+            User user,
+            Integer waitingRank,
+            Status status,
+            Instant cancelledAt
+    ) {
         this.sessionSeat = sessionSeat;
         this.user = user;
         this.waitingRank = waitingRank;
+        this.status = status == null ? Status.WAITING : status;
         this.cancelledAt = cancelledAt;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
     }
 }
