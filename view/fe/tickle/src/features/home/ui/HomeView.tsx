@@ -5,7 +5,7 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useHomeBanners, useHomeRanking, useHomeUpcoming } from '@/src/features/home/api/useHomeData';
 import { http } from '@/src/shared/api/http';
-import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
+import { createFavorite, deleteFavorite, getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { BannerTitle } from '@/src/shared/components/BannerTitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
@@ -164,9 +164,11 @@ export const HomeView = () => {
 
   // 임시: 컴포넌트 마운트 시 전체 찜 목록 조회 (실제로는 API 혹은 Global State 연동 필요)
   useEffect(() => {
-    http.get<{ content: any[] }>('/api/v1/favorites').then(res => {
+    getFavoriteEvents().then(res => {
       const ids = new Set<string>();
-      res.content.forEach((item) => ids.add(String(item.eventId)));
+      if (res.data?.items) {
+        res.data.items.forEach((item) => ids.add(String(item.eventId)));
+      }
       setWishlistedIds(ids);
     }).catch(err => {
       // API 실패 시 무시
@@ -373,6 +375,7 @@ export const HomeView = () => {
                             color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
                             variant: 'fill' as const,
                           }))}
+                          priority={idx < 3}
                         />
                       </div>
                     );
@@ -450,6 +453,7 @@ export const HomeView = () => {
                             color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
                             variant: 'fill' as const,
                           }))}
+                          priority={idx < 3}
                         />
                       </div>
                     );

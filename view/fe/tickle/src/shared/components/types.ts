@@ -186,6 +186,7 @@ export interface InfoPosterProps {
   disabled?: boolean;
   className?: string;
   isLoading?: boolean;
+  priority?: boolean;
 }
 
 export interface InfoTitleProps {
@@ -236,6 +237,7 @@ export interface InfoCardProps {
   onWishlistToggle?: (e: React.MouseEvent) => void;
   wishlistVariant?: 'default' | 'greyPlus'; // default: 반투명 검정 배경, greyPlus: 불투명 회색 배경
   layoutId?: string;
+  priority?: boolean;
 }
 
 export interface LogoProps {

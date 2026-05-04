@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export const Footer = () => {
   return (
@@ -23,10 +24,10 @@ export const Footer = () => {
           {/* Service Links */}
           <div className="flex flex-col gap-3">
             <h3 className="text-gray-900 font-bold mb-1">서비스</h3>
-            <a href="#" className="hover:text-blue-600 transition-colors">공지사항</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">이용약관</a>
-            <a href="#" className="font-bold text-gray-700 hover:text-blue-600 transition-colors">개인정보처리방침</a>
-            <a href="#" className="hover:text-blue-600 transition-colors">FAQ</a>
+            <Link href="/support/notice" className="hover:text-blue-600 transition-colors">공지사항</Link>
+            <Link href="/support/terms" className="hover:text-blue-600 transition-colors">이용약관</Link>
+            <Link href="/support/privacy" className="font-bold text-gray-700 hover:text-blue-600 transition-colors">개인정보처리방침</Link>
+            <Link href="/support/faq" className="hover:text-blue-600 transition-colors">FAQ</Link>
           </div>
 
           {/* Social Links (Placeholders) */}

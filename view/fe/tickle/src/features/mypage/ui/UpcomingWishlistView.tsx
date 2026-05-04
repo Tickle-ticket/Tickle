@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useMyUpcomingWishlist } from '@/src/features/mypage/api/useMyPageData';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
+import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Text } from '@/src/shared/components/Text';
 
@@ -11,17 +12,32 @@ export const UpcomingWishlistView = () => {
   const { data: upcoming, isLoading } = useMyUpcomingWishlist();
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  const handleToggle = (e: React.MouseEvent, id: string) => {
+  const handleToggle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    setRemovedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+    try {
+      const isCurrentlyRemoved = removedIds.has(id);
+      
+      // 현재 제거된 상태(회색 +버튼)라면 -> 찜 추가 API 호출
+      // 현재 추가된 상태(빨간 하트)라면 -> 찜 해제 API 호출
+      if (isCurrentlyRemoved) {
+        await createFavorite(Number(id));
       } else {
-        next.add(id);
+        await deleteFavorite(Number(id));
       }
-      return next;
-    });
+
+      // API 호출이 성공하면 로컬 상태 업데이트 (카드를 제거하지 않고 UI 상태만 토글)
+      setRemovedIds(prev => {
+        const next = new Set(prev);
+        if (isCurrentlyRemoved) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    } catch (error) {
+      console.error('찜 상태 변경 실패:', error);
+    }
   };
 
   // 표시할 총 관심 공연 수 (제거되지 않은 것만 카운트)

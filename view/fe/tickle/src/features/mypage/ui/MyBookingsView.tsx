@@ -18,6 +18,26 @@ const isToday = (dateString: string) => {
          today.getDate() === targetDate.getDate();
 };
 
+const formatDateOnly = (dateString: string) => {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  } catch {
+    return dateString;
+  }
+};
+
+const formatTimeOnly = (dateString: string) => {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch {
+    return dateString;
+  }
+};
+
 export const MyBookingsView = () => {
   const { data: bookings, isLoading } = useMyBookings();
   const { mutate: cancelBooking, isPending: isCanceling } = useCancelBooking();
@@ -198,13 +218,13 @@ export const MyBookingsView = () => {
                     <div className="bg-[#f8fafc] rounded-xl overflow-hidden border border-[#e2e8f0] shadow-sm">
                       <Table 
                         columns={[
-                          { key: 'bookingDate', header: '예매일', align: 'center' },
-                          { key: 'performanceDate', header: '관람일', align: 'center' },
+                          { key: 'perfDate', header: '관람 일자', align: 'center' },
+                          { key: 'perfTime', header: '관람 시간', align: 'center' },
                           { key: 'seatInfo', header: '좌석', align: 'center' }
                         ]} 
                         data={[{
-                          bookingDate: item.bookingDate.replace('2025-', '').replace('-', '.'),
-                          performanceDate: item.performanceDate.split('T')[0].replace('2025-', '').replace('-', '.'),
+                          perfDate: formatDateOnly(item.performanceDate),
+                          perfTime: formatTimeOnly(item.performanceDate),
                           seatInfo: item.seatInfo.split(' ')[0]
                         }]} 
                         tableLayout="fixed"

@@ -4,6 +4,7 @@ import { Logo } from '@/src/shared/components/Logo';
 import { SearchBar } from '@/src/shared/components/SearchBar';
 import { Avatar } from '@/src/shared/components/Avatar';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
+import { authApi } from '@/src/shared/api/authApi';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useSearchData } from '@/src/features/search/api/useSearchData';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
@@ -71,6 +72,17 @@ export const Header = () => {
     closeMypage();
     // router.push(`/detail?id=${id}`);
     openDetail(id);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      setIsProfileOpen(false);
+      window.location.href = '/login'; // 완전히 상태를 비우고 로그인 화면으로 이동
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+      alert('로그아웃 중 오류가 발생했습니다.');
+    }
   };
 
   return (
@@ -166,7 +178,7 @@ export const Header = () => {
                   
                   <button 
                     className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-red-500 hover:bg-red-50/50 hover:text-red-600 rounded-xl transition-colors text-left"
-                    onClick={() => setIsProfileOpen(false)}
+                    onClick={handleLogout}
                   >
                     로그아웃
                   </button>

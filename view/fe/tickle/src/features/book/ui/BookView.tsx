@@ -36,10 +36,11 @@ interface BookViewProps {
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false }: BookViewProps) => {
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false }: BookViewProps) => {
   const isWaitlistMode = mode === 'WAITLIST';
   const isCancelMode = mode === 'CANCEL';
 
+  const { data: userProfile } = useUserProfile();
   const { data: eventDetail, isLoading: isEventLoading } = useEventDetail(eventId); // 이벤트 ID 연동
 
   const selectedDate = useBookStore(s => s.selectedDate);
@@ -79,6 +80,7 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   // ── Trial Collector (행동 데이터 수집) ──────────────────────
   const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({
     enabled: mode === 'BOOK' || mode === 'WAITLIST',
+    userId: userProfile?.userId,
     behaviorEvent: {
       scheduleId,
       name: eventDetail?.title ?? eventId,
@@ -122,7 +124,6 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
   const agreeTerm2 = useBookStore(s => s.agreeTerm2);
   const setAgreeTerm2 = useBookStore(s => s.setAgreeTerm2);
 
-  const { data: userProfile } = useUserProfile();
   const isProfileLoaded = useRef(false);
 
   useEffect(() => {
@@ -212,7 +213,9 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
     setIsExitModalOpen(false);
     if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
       try {
-        await seatApi.releaseSeat(eventDetail.eventId, scheduleId, '1');
+        if (userProfile?.userId) {
+          await seatApi.releaseSeat(eventDetail.eventId, scheduleId, userProfile.userId);
+        }
       } catch (err) {
         console.error('Failed to release seats on exit', err);
       }
@@ -1126,21 +1129,21 @@ export const BookView = ({ onClose, eventId = '1', mode = 'BOOK', initialSchedul
             id: 'kakaopay',
             label: '카카오페이',
             selectedColor: 'border-[#FEE500] bg-[#FEE500] text-[#381E1F]',
-            icon: <Image src="/images/payment_icon_yellow_small.png" alt="카카오페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />,
+            icon: <Image src="/images/payment_icon_yellow_small.png" alt="카카오페이" width={60} height={20} className="h-5 object-contain mr-2" style={{ width: 'auto' }} />,
             disabled: false
           },
           {
             id: 'naverpay',
             label: '네이버페이',
             selectedColor: 'border-[#03C75A] bg-[#03C75A] text-white',
-            icon: <Image src="/images/logo_npaybk_large.svg" alt="네이버페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />,
+            icon: <Image src="/images/logo_npaybk_large.svg" alt="네이버페이" width={60} height={20} className="h-5 object-contain mr-2" style={{ width: 'auto' }} />,
             disabled: true
           },
           {
             id: 'tosspay',
             label: '토스페이',
             selectedColor: 'border-[#3182F6] bg-[#3182F6] text-white',
-            icon: <Image src="/images/Toss_Symbol_Primary.png" alt="토스페이" width={60} height={20} className="h-5 w-auto object-contain mr-2" />,
+            icon: <Image src="/images/Toss_Symbol_Primary.png" alt="토스페이" width={60} height={20} className="h-5 object-contain mr-2" style={{ width: 'auto' }} />,
             disabled: true
           },
           {

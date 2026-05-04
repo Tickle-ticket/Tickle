@@ -45,4 +45,16 @@ export const trialHandlers = [
       },
     });
   }),
+
+  // AI Ingest Server 이벤트 수집 모킹 (CORS 에러 방지용)
+  http.post('*/api/behavior/events', async () => {
+    await delay(100);
+    console.log('%c[MSW] Behavior event sent to AI Ingest Server', 'color: #3b82f6; font-weight: bold;');
+    
+    return HttpResponse.json({
+      status: 200,
+      message: 'success',
+      data: null
+    });
+  }),
 ];

@@ -34,10 +34,11 @@ export interface EventDetailResponse {
   openDate?: string;
 }
 
-export const useEventDetail = (eventId: string) => {
+export const useEventDetail = (eventId?: string) => {
   return useQuery({
     queryKey: ['eventDetail', eventId],
     queryFn: async () => {
+      if (!eventId) throw new Error('No event ID');
       const response = await fetchEventDetail(eventId);
       const data = response.data;
 
@@ -82,6 +83,7 @@ export const useEventDetail = (eventId: string) => {
         openDate: data.salesStartAt,
       } as EventDetailResponse;
     },
+    enabled: !!eventId,
     staleTime: 5 * 60 * 1000,
   });
 };

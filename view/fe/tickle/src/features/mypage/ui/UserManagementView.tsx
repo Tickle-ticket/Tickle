@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import React, { useState } from 'react';
 import { Box } from '@/src/shared/components/Box';
 import { Title } from '@/src/shared/components/Title';
@@ -9,8 +11,11 @@ import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
 import { useUserProfile, useUpdateUserProfile, useWithdrawUser } from '@/src/shared/api/useUserProfile';
+import { useMypageStore } from '@/src/shared/store/useMypageStore';
 
 export const UserManagementView = () => {
+  const router = useRouter();
+  const { closeMypage } = useMypageStore();
   const { data, isLoading } = useUserProfile();
   const updateProfileMutation = useUpdateUserProfile();
   const withdrawMutation = useWithdrawUser();
@@ -152,7 +157,13 @@ export const UserManagementView = () => {
           <Text typography="t5" fontWeight="bold" color="primary">비밀번호 변경</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </button>
-        <button className="flex items-center justify-between w-full p-5 hover:bg-gray-50 transition-colors border-b border-gray-100">
+        <button 
+          onClick={() => {
+            closeMypage();
+            router.push('/support/faq');
+          }}
+          className="flex items-center justify-between w-full p-5 hover:bg-gray-50 transition-colors border-b border-gray-100"
+        >
           <Text typography="t5" fontWeight="bold" color="primary">고객 지원 (FAQ)</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </button>
