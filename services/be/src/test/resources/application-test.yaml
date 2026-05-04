@@ -38,6 +38,16 @@ internal:
 cors:
   fe-origin: http://localhost:3000
 
+kakaopay:
+  base-url: https://open-api.kakaopay.com
+  secret-key: test-secret-key
+  cid: TC0ONETIME
+  approval-url: http://localhost:8080/api/v1/payments/kakaopay/approve
+  fail-url: http://localhost:8080/api/v1/payments/kakaopay/fail
+  cancel-url: http://localhost:8080/api/v1/payments/kakaopay/cancel
+  success-redirect-url: http://localhost:3000/payment/success
+  method-selection-redirect-url: http://localhost:3000/payment
+
 cloud:
   aws:
     s3:
