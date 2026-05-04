@@ -19,7 +19,7 @@ export const useUserProfile = () => {
       const data = response.data;
       return {
         userId: data.userId,
-        avatarUrl: data.profileImageUrl,
+        avatarUrl: data.profileImageUrl ?? '',
         name: data.nickname || data.name,
         nickname: data.nickname,
         realName: data.name,

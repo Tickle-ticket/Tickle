@@ -1,4 +1,6 @@
 import { apiClient } from './client';
+import { getUserId } from './tokenManager';
+import { buildUserApiUrl } from './userConfig';
 import { ApiResponse } from './types';
 import { EventListResponseData, EventListResponseDataSchema } from './eventApi';
 import { Schema } from 'effect';
@@ -18,12 +20,15 @@ export const FavoriteCreateResponseDataSchema = Schema.Struct({
   createdAt: Schema.String,
 });
 
+const resolveUserId = (userId?: number) => userId ?? getUserId() ?? undefined;
+
 export const createFavorite = async (eventId: number | string, userId?: number): Promise<ApiResponse<FavoriteCreateResponseData>> => {
+  const resolvedUserId = resolveUserId(userId);
   return apiClient<ApiResponse<FavoriteCreateResponseData>>(
     `/api/v1/events/${eventId}/favorite`, 
     {
       method: 'POST',
-      ...(userId !== undefined && { params: { userId } }),
+      ...(resolvedUserId !== undefined && { params: { userId: resolvedUserId } }),
     },
     false,
     createApiResponseSchema(FavoriteCreateResponseDataSchema)
@@ -31,17 +36,19 @@ export const createFavorite = async (eventId: number | string, userId?: number):
 };
 
 export const deleteFavorite = async (eventId: number | string, userId?: number): Promise<ApiResponse<void>> => {
+  const resolvedUserId = resolveUserId(userId);
   return apiClient<ApiResponse<void>>(`/api/v1/events/${eventId}/favorite`, {
     method: 'DELETE',
-    ...(userId !== undefined && { params: { userId } }),
+    ...(resolvedUserId !== undefined && { params: { userId: resolvedUserId } }),
   });
 };
 
 export const getFavoriteEvents = async (page: number = 0, size: number = 20, userId?: number): Promise<ApiResponse<EventListResponseData>> => {
   const params: Record<string, string | number | boolean> = { page, size };
-  if (userId !== undefined) params.userId = userId;
+  const resolvedUserId = resolveUserId(userId);
+  if (resolvedUserId !== undefined) params.userId = resolvedUserId;
   return apiClient<ApiResponse<EventListResponseData>>(
-    '/api/v1/users/me/favorites', 
+    buildUserApiUrl('/api/v1/users/me/favorites'), 
     {
       method: 'GET',
       params,

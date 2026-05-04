@@ -5,6 +5,7 @@ import { SearchBar } from '@/src/shared/components/SearchBar';
 import { Avatar } from '@/src/shared/components/Avatar';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { authApi } from '@/src/shared/api/authApi';
+import { clearTokens } from '@/src/shared/api/tokenManager';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useSearchData } from '@/src/features/search/api/useSearchData';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
@@ -77,6 +78,7 @@ export const Header = () => {
   const handleLogout = async () => {
     try {
       await authApi.logout();
+      clearTokens();
       setIsProfileOpen(false);
       window.location.href = '/login'; // 완전히 상태를 비우고 로그인 화면으로 이동
     } catch (error) {

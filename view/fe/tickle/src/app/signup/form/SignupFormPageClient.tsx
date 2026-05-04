@@ -441,16 +441,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     setErrors((prev) => ({ ...prev, phone: '', verificationCode: '' }));
     setIsSendingCode(true);
 
-    const mockSms = true;
-
-    if (mockSms) {
-      window.setTimeout(() => {
-        setIsCodeSent(true);
-        setIsSendingCode(false);
-      }, 500);
-      return;
-    }
-
     try {
       await authApi.sendPhoneCode({ phoneNumber: formData.phone });
       setIsCodeSent(true);
@@ -470,16 +460,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
     setErrors((prev) => ({ ...prev, verificationCode: '' }));
     setIsVerifyingCode(true);
-
-    const mockSms = true;
-
-    if (mockSms) {
-      window.setTimeout(() => {
-        setIsPhoneVerified(true);
-        setIsVerifyingCode(false);
-      }, 500);
-      return;
-    }
 
     try {
       await authApi.verifyPhoneCode({ phoneNumber: formData.phone, code: verificationCode });
@@ -523,11 +503,12 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         birthDate: isAgencySignup ? undefined : formData.birthDate,
         phoneNumber: formData.phone,
         role: isAgencySignup ? 'ORGANIZER' : 'USER',
+        organizerId: isAgencySignup && selectedAgencyId ? Number(selectedAgencyId) : undefined,
         organizerName: isAgencySignup ? selectedAgency?.name : undefined,
       });
 
       if (response.data) {
-        setTokens(response.data.accessToken, response.data.refreshToken);
+        setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
         router.push('/');
       }
     } catch (error) {

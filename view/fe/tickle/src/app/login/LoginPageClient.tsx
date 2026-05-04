@@ -3,7 +3,9 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
+import { buildAuthApiUrl } from '@/src/shared/api/authConfig';
 import { setTokens } from '@/src/shared/api/tokenManager';
+import { ApiError } from '@/src/shared/api/types';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { KakaoLoginButton } from '@/src/shared/components/KakaoLoginButton';
@@ -57,15 +59,15 @@ export function LoginPageClient() {
     let hasError = false;
 
     if (!email) {
-      setEmailError('이메일을 입력해 주세요.');
+      setEmailError('이메일을 입력해주세요.');
       hasError = true;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('올바른 이메일 형식을 입력해 주세요.');
+      setEmailError('올바른 이메일 형식을 입력해주세요.');
       hasError = true;
     }
 
     if (!password) {
-      setPasswordError('비밀번호를 입력해 주세요.');
+      setPasswordError('비밀번호를 입력해주세요.');
       hasError = true;
     }
 
@@ -79,20 +81,23 @@ export function LoginPageClient() {
       const response = await authApi.login({ email, password });
 
       if (response.data) {
-        setTokens(response.data.accessToken, response.data.refreshToken);
+        setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
         router.push('/');
       }
     } catch (error) {
       console.error('Login failed', error);
-      setPasswordError('로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해 주세요.');
+      setPasswordError(
+        error instanceof ApiError && error.status === 404
+          ? '로그인 API가 연결되지 않았습니다. 인증 서버 주소와 라우트를 확인해주세요.'
+          : '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKakaoLogin = () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
-    window.location.href = `${apiUrl}/api/v1/auth/kakao`;
+    window.location.href = buildAuthApiUrl('/api/v1/auth/kakao');
   };
 
   return (
@@ -103,7 +108,7 @@ export function LoginPageClient() {
             label="이메일"
             type="email"
             name="email"
-            placeholder="이메일을 입력해 주세요."
+            placeholder="이메일을 입력해주세요."
             autoComplete="email"
             fullWidth
             value={email}
@@ -120,7 +125,7 @@ export function LoginPageClient() {
             label="비밀번호"
             type="password"
             name="password"
-            placeholder="비밀번호를 입력해 주세요."
+            placeholder="비밀번호를 입력해주세요."
             autoComplete="current-password"
             fullWidth
             value={password}
@@ -146,7 +151,7 @@ export function LoginPageClient() {
           </label>
         </div>
 
-        <div className="grid gap-4 mt-10">
+        <div className="mt-10 grid gap-4">
           <Button type="submit" display="block" size="xlarge" color="dark" isLoading={isLoading}>
             로그인
           </Button>
