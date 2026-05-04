@@ -102,6 +102,8 @@ cloud:
 cors:
   # 배포 FE Origin
   fe-origin: ${CORS_FE_ORIGIN}
+  # 로컬 테스트용 모든 출처(*) 허용 여부 (운영에서는 반드시 false)
+  allow-all-origins: ${ALLOW_ALL_ORIGINS:false}
 
 kakaopay:
   # 카카오페이 단건 결제 API 기본 주소
