@@ -15,6 +15,8 @@ type FrameSize = 'narrow' | 'wide';
 
 interface UserAuthFrameProps {
   activeTab: AuthTab;
+  label?: string;
+  title?: string;
   children: ReactNode;
   size?: FrameSize;
   compact?: boolean;
@@ -29,15 +31,7 @@ export function UserAuthFrame({
   size = 'narrow',
   compact = false,
 }: UserAuthFrameProps) {
-  const router = useRouter();
-
-  const handleTabChange = (index: number) => {
-    if (index === 0) {
-      router.push('/login');
-    } else {
-      router.push('/signup');
-    }
-  };
+  const hasHeading = Boolean(label || title);
 
   return (
     <div className="flex h-dvh w-full bg-white overflow-hidden">
@@ -60,17 +54,10 @@ export function UserAuthFrame({
         </div>
       </div>
 
-      {/* 우측 폼 영역 */}
-      <div className="flex flex-1 flex-col items-center px-4 py-8 sm:px-6 lg:px-12 xl:px-24 overflow-y-auto">
-        <div className="flex w-full justify-between items-center lg:justify-end mb-12 sm:mb-16 shrink-0">
-          <div className="lg:hidden">
-            <Logo variant="black" size="small" />
-          </div>
-          <Link
-            href="/"
-            className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
-          >
-            홈으로 돌아가기
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
+        <header className="flex items-center gap-4">
+          <Link href="/" aria-label="홈으로 이동" className="inline-flex items-center">
+            <Logo variant="black" size="small" className="!w-24 md:!w-28" />
           </Link>
         </div>
 
@@ -88,12 +75,30 @@ export function UserAuthFrame({
                     <Tab.Item selected={activeTab === 'signup'}>회원가입</Tab.Item>
                   </Tab>
                 </div>
-                <span className="hidden text-[11px] font-black tracking-[0.18em] text-slate-400 sm:inline-block pb-2">
-                  TICKLE ACCOUNT
-                </span>
               </div>
 
-              <div className={compact ? 'mt-5' : 'mt-8'}>{children}</div>
+              {hasHeading ? (
+                <div className={compact ? 'mt-4' : 'mt-8'}>
+                  {label ? <p className="text-sm font-bold text-blue-600">{label}</p> : null}
+                  {title ? (
+                    <h1
+                      className={`mt-2 font-black leading-[1.1] tracking-[-0.04em] text-slate-950 ${
+                        compact ? 'text-[26px] sm:text-[28px]' : 'text-[30px] sm:text-[34px]'
+                      }`}
+                    >
+                      {title}
+                    </h1>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className={hasHeading ? (compact ? 'mt-5' : 'mt-8') : 'mt-4'}>{children}</div>
+
+              {footer ? (
+                <div className={compact ? 'mt-5 border-t border-slate-200 pt-4' : 'mt-8 border-t border-slate-200 pt-6'}>
+                  {footer}
+                </div>
+              ) : null}
             </div>
           </Box>
         </main>

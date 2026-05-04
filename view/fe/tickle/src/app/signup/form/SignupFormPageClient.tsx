@@ -122,7 +122,7 @@ function AgencyDropdownField({
           </div>
         ) : null}
       </div>
-      <span className="text-xs font-medium text-slate-400 mt-1">등록된 기획사만 선택할 수 있습니다.</span>
+      <span className="text-xs font-medium text-slate-400">등록된 기획사만 선택할 수 있습니다.</span>
     </div>
   );
 }
@@ -347,7 +347,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
   return (
     <UserAuthFrame
       activeTab="signup"
-      size="narrow"
+      size="wide"
     >
       <form className="space-y-6" onSubmit={handleSubmit}>
         <input type="hidden" name="accountType" value={initialAccountType} />
@@ -358,57 +358,14 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
           </>
         ) : null}
 
-        <Box variant="gray" className="rounded-[24px] bg-slate-50 border border-black/5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-[15px] font-black text-slate-900">가입 유형</p>
-                <Badge size="small" color={selectedTypeCopy.badgeColor}>
-                  {selectedTypeCopy.label}
-                </Badge>
-              </div>
-              <p className="mt-1.5 text-sm font-medium leading-6 text-slate-500">
-                {selectedTypeCopy.cardDescription}
-              </p>
-            </div>
-            <Link
-              href="/signup"
-              className="shrink-0 text-[13px] font-bold text-slate-500 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
-            >
-              유형 변경
-            </Link>
-          </div>
-        </Box>
-
-        {/* Step Indicator */}
-        <div className="mb-8 mt-2">
-          <div className="flex justify-between mb-2 px-2 sm:px-6">
-            {[1, 2, 3, 4].map((step) => (
-              <div
-                key={step}
-                className={`flex flex-col items-center flex-1 ${
-                  currentStep >= step ? 'text-blue-600' : 'text-slate-300'
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mb-2 transition-colors ${
-                    currentStep >= step
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-400'
-                  }`}
-                >
-                  {step}
-                </div>
-                <span className="text-[11px] font-bold hidden sm:block">
-                  {step === 1 ? '계정 정보' : step === 2 ? '인적 사항' : step === 3 ? '본인 인증' : '약관 동의'}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="relative h-1.5 bg-slate-100 rounded-full overflow-hidden mx-6 sm:mx-14">
-            <div
-              className="absolute top-0 left-0 h-full bg-blue-600 transition-all duration-300 ease-in-out"
-              style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}
+        <div className="grid gap-5 sm:grid-cols-2">
+          {isAgencySignup ? (
+            <AgencyDropdownField
+              agencies={agencies}
+              isLoading={isAgenciesLoading}
+              isError={isAgenciesError}
+              selectedAgencyId={selectedAgencyId}
+              onSelect={setSelectedAgencyId}
             />
           </div>
         </div>
@@ -641,52 +598,13 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         </div>
       </form>
 
-      {/* 약관 보기 모달 */}
-      <Modal
-        isOpen={openModalType !== null}
-        onClose={() => setOpenModalType(null)}
-        title={openModalType === 'terms1' ? "이용약관 및 개인정보 처리방침" : "마케팅 정보 수신 동의"}
-        confirmText="확인"
-        showCancelButton={false}
-        onConfirm={() => setOpenModalType(null)}
-        className="!max-w-[480px]"
-      >
-        <div className="max-h-[50vh] overflow-y-auto text-sm text-slate-600 leading-relaxed text-left pr-2 mt-4 space-y-5">
-          {openModalType === 'terms1' ? (
-            <>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">제 1 조 (목적)</p>
-                <p>본 약관은 티클(Tickle)이 제공하는 예매 서비스의 이용조건 및 절차, 이용자와 당사의 권리, 의무, 책임사항을 규정함을 목적으로 합니다.</p>
-              </div>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">제 2 조 (이용약관의 효력 및 변경)</p>
-                <p>본 약관은 서비스를 신청한 고객에게 서비스 화면에 게시하거나 기타의 방법으로 공지함으로써 효력이 발생합니다.</p>
-              </div>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">제 3 조 (개인정보 수집 및 이용)</p>
-                <p>회사는 원활한 서비스 제공을 위해 최소한의 개인정보(이메일, 이름, 휴대전화 등)를 수집하며, 관계 법령에 따라 안전하게 관리합니다.</p>
-              </div>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">제 4 조 (매크로 및 부정 예매 금지)</p>
-                <p>본 플랫폼은 공정한 예매를 위해 비정상적인 접근(매크로 프로그램 등)을 엄격히 금지하며, 적발 시 계정 영구 정지 및 예매 취소 조치가 취해질 수 있습니다.</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">1. 수신 내용</p>
-                <p>관심 공연 오픈 알림, 이벤트, 프로모션 혜택, 플랫폼 주요 운영 공지 및 업데이트 소식</p>
-              </div>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">2. 수신 채널</p>
-                <p>이메일, 카카오톡 알림톡, SMS 등</p>
-              </div>
-              <div>
-                <p className="font-bold text-slate-800 mb-1">3. 동의 철회 안내</p>
-                <p>동의를 거부하실 권리가 있으며, 동의를 거부하셔도 기본 회원가입 및 예매 서비스는 이용하실 수 있습니다. 가입 후 [마이페이지 - 설정]에서 언제든지 수신 동의를 철회하실 수 있습니다.</p>
-              </div>
-            </>
-          )}
+        <div className="grid gap-3">
+          <Button type="submit" display="block" size="xlarge" color="dark" disabled={isSignupDisabled}>
+            회원가입
+          </Button>
+          <Button as="a" href="/login" color="dark" variant="weak" display="block" size="xlarge">
+            로그인으로 이동
+          </Button>
         </div>
       </Modal>
     </UserAuthFrame>

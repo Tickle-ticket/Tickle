@@ -128,6 +128,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const enabledDates = scheduleData.map((item: any) => item.date.split(' ')[0].replace(/\./g, '-'));
   const selectedDateStr = selectedDate ? formatDateToDot(selectedDate) : '';
   const selectedSchedule = scheduleData.find((item: any) => item.date.startsWith(selectedDateStr));
+  const detailImageSrc = resolveImageSrc(data?.detailImageUrl);
 
   // 스크롤 스파이 (Scroll Spy)
   useEffect(() => {
@@ -400,15 +401,16 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           {/* 4. 상세 정보 */}
           <div id="details" className="scroll-mt-32 w-full mt-8">
             <Box variant="flat" padding="medium" className="w-full border border-black/5 bg-gray-50 flex flex-col items-center justify-center min-h-[500px] overflow-hidden rounded-xl">
-              {data?.detailImageUrl ? (
+              {detailImageSrc && !detailImageFailed ? (
                 <Image
-                  src={data.detailImageUrl}
+                  src={detailImageSrc}
                   alt="상세 정보"
                   width={0}
                   height={0}
                   sizes="100vw"
                   style={{ width: '100%', height: 'auto' }}
                   className="w-full h-auto object-cover rounded-xl"
+                  onError={() => setDetailImageFailed(true)}
                 />
               ) : (
                 <div className="flex flex-col items-center gap-4 text-gray-400">
