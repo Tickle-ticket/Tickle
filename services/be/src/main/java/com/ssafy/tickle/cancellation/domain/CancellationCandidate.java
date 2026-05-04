@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -58,6 +59,11 @@ public class CancellationCandidate {
     @Column(name = "candidate_status", nullable = false, length = 30)
     private Status status;
 
+    // 버전
+    @Version
+    @Column(name = "version_no", nullable = false)
+    private Long versionNo;
+
     // 대기 취소 시각
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
@@ -93,6 +99,7 @@ public class CancellationCandidate {
      * @param user 대기 사용자
      * @param waitingRank 대기 순번
      * @param status 대기 후보 상태
+     * @param versionNo 낙관적 락 버전
      * @param cancelledAt 취소 발생 시각
      */
     @Builder
@@ -101,6 +108,7 @@ public class CancellationCandidate {
             User user,
             Integer waitingRank,
             Status status,
+            Long versionNo,
             Instant cancelledAt
     ) {
         Instant now = Instant.now();
@@ -108,6 +116,7 @@ public class CancellationCandidate {
         this.user = user;
         this.waitingRank = waitingRank;
         this.status = status == null ? Status.WAITING : status;
+        this.versionNo = versionNo == null ? 1L : versionNo;
         this.cancelledAt = cancelledAt;
         this.createdAt = now;
         this.updatedAt = now;

@@ -21,6 +21,7 @@ import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.user.domain.User;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +40,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CancellationWaitCandidateService {
 
-    private static final String LOCK_KEY_PREFIX = "cancellation-wait:";
+    private static final String SESSION_LOCK_KEY_PREFIX = "cancellation-wait:session:";
     private static final int MAX_BOOKING_AND_WAITING_COUNT = 4;
     private static final Set<SessionSeat.SaleStatus> WAITABLE_SEAT_STATUSES = EnumSet.of(
             SessionSeat.SaleStatus.PENDING,
@@ -86,8 +87,8 @@ public class CancellationWaitCandidateService {
         List<Long> requestedSeatIds = validateAndNormalizeSeatIds(request.sessionSeatIds());
 
         // 좌석 선점과 같은 회차 단위 락으로 동시에 들어온 신청의 4매 제한/순번 계산을 직렬화합니다.
-        String lockKey = LOCK_KEY_PREFIX + scheduleId;
-        if (!redisLockManager.tryLock(lockKey)) {
+        String sessionLockKey = SESSION_LOCK_KEY_PREFIX + scheduleId;
+        if (!redisLockManager.tryLock(sessionLockKey)) {
             throw new BaseException(CancellationErrorCode.CANDIDATE_LOCK_FAILED);
         }
 
@@ -107,7 +108,7 @@ public class CancellationWaitCandidateService {
                     .map(seat -> CancellationCandidate.builder()
                             .sessionSeat(seat)
                             .user(user)
-                            // 회차 단위 락 안에서 현재 최대 순번 뒤에 붙여 좌석별 순번 충돌을 막습니다.
+                            // 회차 단위 락 안에서 현재 최대 순번 뒤에 붙여 waitingRank 충돌을 막습니다.
                             .waitingRank(nextWaitingRank(seat.getId()))
                             .status(CancellationCandidate.Status.WAITING)
                             .build())
@@ -119,8 +120,11 @@ public class CancellationWaitCandidateService {
                     .toList();
 
             return new CancellationWaitCandidateCreateResponse(responses);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            // 회차 락 이후 커밋 전후의 낙관락 충돌은 좌석 선점과 동일하게 재시도 가능한 409로 변환합니다.
+            throw new BaseException(CancellationErrorCode.CANDIDATE_LOCK_FAILED);
         } finally {
-            redisLockManager.unlock(lockKey);
+            redisLockManager.unlock(sessionLockKey);
         }
     }
 
