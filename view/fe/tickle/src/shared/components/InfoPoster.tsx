@@ -11,6 +11,7 @@ export const InfoPoster = ({
   disabled = false,
   className = '',
   isLoading = false,
+  priority = false,
 }: InfoPosterProps) => {
   const [imgFailed, setImgFailed] = useState(false);
   const resolvedSrc = resolveImageSrc(src);
@@ -69,6 +70,7 @@ export const InfoPoster = ({
           src={resolvedSrc} 
           alt={alt} 
           fill
+          priority={priority}
           sizes="(max-width: 768px) 240px, 280px"
           className={`object-cover transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`} 
           onError={() => setImgFailed(true)}

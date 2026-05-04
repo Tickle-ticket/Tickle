@@ -34,16 +34,9 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
 
   const sendBehaviorEventFromTrial = useCallback((trial: TrialJSON) => {
     const metadata = behaviorEventRef.current;
-    const scheduleId = metadata?.scheduleId;
-    const name = metadata?.name;
-    const eventDate = metadata?.eventDate;
-
-    if (!scheduleId || !name || !eventDate) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[BehaviorEvent] skipped: missing schedule/event metadata');
-      }
-      return;
-    }
+    const scheduleId = metadata?.scheduleId || '';
+    const name = metadata?.name || '';
+    const eventDate = metadata?.eventDate || '';
 
     void sendBehaviorEvent({
       type: trial.summary.stage,

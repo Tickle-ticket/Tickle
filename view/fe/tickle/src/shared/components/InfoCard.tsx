@@ -27,6 +27,7 @@ export const InfoCard = ({
   onWishlistToggle,
   wishlistVariant = 'default',
   layoutId,
+  priority = false,
 }: InfoCardProps) => {
 
   // 요구사항에 맞춰 뱃지는 최대 3개까지만 렌더링되게 방어 설계
@@ -56,6 +57,7 @@ export const InfoCard = ({
             alt={alt} 
             disabled={disabled}
             isLoading={isLoading}
+            priority={priority}
           />
         </motion.div>
 

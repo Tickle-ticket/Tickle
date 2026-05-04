@@ -6,6 +6,26 @@ import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Table } from '@/src/shared/components/Table';
 
+const formatDateOnly = (dateString: string) => {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  } catch {
+    return dateString;
+  }
+};
+
+const formatTimeOnly = (dateString: string) => {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch {
+    return dateString;
+  }
+};
+
 export const PastBookingsView = () => {
   const { data: bookings, isLoading } = usePastBookings();
 
@@ -73,12 +93,14 @@ export const PastBookingsView = () => {
                     <div className="bg-[#f8fafc] rounded-xl overflow-hidden border border-[#e2e8f0] shadow-sm mb-3">
                       <Table 
                         columns={[
-                          { key: 'bookingDate', header: '예매일', align: 'center' },
+                          { key: 'perfDate', header: '관람 일자', align: 'center' },
+                          { key: 'perfTime', header: '관람 시간', align: 'center' },
                           { key: 'ticketCount', header: '매수', align: 'center' },
                           { key: 'seatInfo', header: '좌석', align: 'center' }
                         ]} 
                         data={[{
-                          bookingDate: item.bookingDate.replace('2025-', '').replace('2024-', '').replace('2023-', '').replace('-', '.'),
+                          perfDate: formatDateOnly(item.performanceDate),
+                          perfTime: formatTimeOnly(item.performanceDate),
                           ticketCount: `${item.ticketCount}매`,
                           seatInfo: item.seatInfo.split(' ')[0]
                         }]} 

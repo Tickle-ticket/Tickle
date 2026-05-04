@@ -39,7 +39,7 @@ export interface TrialMetrics {
   pre_click_scroll_flag: number;
   immediate_post_render_click_rate: number | null;
 
-  // Mouse (17)
+  // Mouse (19)
   mouse_total_travel_distance_px: number | null;
   mouse_avg_speed_px_per_ms: number | null;
   mouse_max_speed_px_per_ms: number | null;
