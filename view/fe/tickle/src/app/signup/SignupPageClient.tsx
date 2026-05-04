@@ -1,13 +1,21 @@
 import Link from 'next/link';
-import { UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
+import { type AuthNavigationItem, UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
 import { getSignupFormHref, signupAccountTypes } from './signupAccountType';
+
+const authTabs: AuthNavigationItem[] = [
+  { key: 'audience', label: '일반 회원', href: '/login' },
+  { key: 'agency', label: '기획사', href: '/login?mode=agency' },
+  { key: 'signup', label: '회원가입', href: '/signup', active: true },
+];
 
 export function SignupPageClient() {
   return (
     <UserAuthFrame
       activeTab="signup"
       size="wide"
-      title="가입할 계정 유형을 선택해 주세요"
+      authTabs={authTabs}
+      label="회원가입"
+      title="가입할 계정 유형을 선택해 주세요."
     >
       <div className="grid gap-4 sm:grid-cols-2">
         {signupAccountTypes.map((accountType) => (
@@ -19,9 +27,7 @@ export function SignupPageClient() {
             <div>
               <p className="text-sm font-bold text-blue-600">{accountType.label}</p>
               <h2 className="mt-5 text-xl font-black text-slate-950">{accountType.cardTitle}</h2>
-              <p className="mt-3 text-sm font-medium leading-6 text-slate-500">
-                {accountType.cardDescription}
-              </p>
+              <p className="mt-3 text-sm font-medium leading-6 text-slate-500">{accountType.cardDescription}</p>
             </div>
             <span className="mt-8 inline-flex text-sm font-black text-blue-600">정보 입력하기</span>
           </Link>

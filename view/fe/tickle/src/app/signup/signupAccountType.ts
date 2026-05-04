@@ -13,21 +13,21 @@ export interface SignupAccountTypeCopy {
 export const signupAccountTypes: SignupAccountTypeCopy[] = [
   {
     value: 'audience',
-    label: '관람객',
+    label: '일반 회원',
     badgeColor: 'blue',
-    cardTitle: '관람객 계정',
+    cardTitle: '일반 회원 계정',
     cardDescription: '공연을 찾고 예매하는 개인용 계정입니다.',
-    organizationLabel: '닉네임',
-    organizationPlaceholder: '닉네임을 입력하세요',
+    organizationLabel: '소속',
+    organizationPlaceholder: '소속을 입력해 주세요.',
   },
   {
     value: 'agency',
     label: '기획사',
     badgeColor: 'green',
     cardTitle: '기획사 계정',
-    cardDescription: '공연 등록, 일정 설정, 운영 점검 페이지로 연결되는 작업용 계정입니다.',
+    cardDescription: '공연 등록과 운영, 정산을 관리하는 운영자 계정입니다.',
     organizationLabel: '기획사명',
-    organizationPlaceholder: '기획사명을 입력하세요',
+    organizationPlaceholder: '기획사명을 입력해 주세요.',
   },
 ];
 
