@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { paymentApi, PaymentStatusResponse } from '@/src/shared/api/paymentApi';
+import { paymentApi } from '@/src/shared/api/paymentApi';
+import type { PaymentStatusResponse } from '@/src/shared/api/types/payment.types';
 import { Header } from '@/src/shared/components/Header';
+import { Modal } from '@/src/shared/components/Modal';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 
@@ -14,36 +16,75 @@ export default function PaymentSuccessPage() {
   
   const paymentId = searchParams.get('paymentId');
   const method = searchParams.get('method');
+  const pgToken = searchParams.get('pg_token');
 
   const [paymentData, setPaymentData] = useState<PaymentStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string; action?: () => void}>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
 
   useEffect(() => {
     if (!paymentId) {
-      setError('결제 정보가 없습니다.');
+      setErrorModalConfig({
+        isOpen: true,
+        title: '결제 정보 없음',
+        message: '결제 식별자가 올바르지 않습니다.',
+        action: () => router.push('/')
+      });
       setLoading(false);
       return;
     }
 
-    const fetchPaymentStatus = async () => {
+    const processPayment = async () => {
       try {
+        // 카카오페이 승인 콜백으로 진입한 경우 승인 API 먼저 호출
+        if (pgToken) {
+          try {
+            await paymentApi.approveKakaoPay(paymentId, pgToken);
+          } catch (approveErr: any) {
+            console.error('Failed to approve KakaoPay', approveErr);
+            setErrorModalConfig({
+              isOpen: true,
+              title: '결제 승인 오류',
+              message: approveErr.status === 404 ? '결제 정보를 찾을 수 없습니다.' : 
+                       approveErr.status === 409 ? '현재 결제 상태에서는 승인 처리를 할 수 없습니다.' : 
+                       '결제 승인 처리 중 오류가 발생했습니다.',
+              action: () => router.push('/')
+            });
+            setLoading(false);
+            return;
+          }
+        }
+
         const res = await paymentApi.getPaymentStatus(paymentId);
         if (res.data) {
           setPaymentData(res.data);
         } else {
-          setError('결제 상태를 불러오지 못했습니다.');
+          setErrorModalConfig({
+            isOpen: true,
+            title: '결제 상태 오류',
+            message: '결제 상태를 불러오지 못했습니다.',
+            action: () => router.push('/')
+          });
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch payment status', err);
-        setError('결제 정보를 불러오는 중 오류가 발생했습니다.');
+        setErrorModalConfig({
+          isOpen: true,
+          title: '결제 정보 조회 실패',
+          message: err.status === 404 ? '결제 정보를 찾을 수 없습니다.' : '결제 정보를 불러오는 중 오류가 발생했습니다.',
+          action: () => router.push('/')
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPaymentStatus();
-  }, [paymentId]);
+    processPayment();
+  }, [paymentId, pgToken, router]);
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] flex flex-col font-sans">
@@ -56,8 +97,6 @@ export default function PaymentSuccessPage() {
           <div className="flex flex-col items-center text-center space-y-4">
             {loading ? (
               <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            ) : error ? (
-              <div className="text-red-500 text-lg font-bold">{error}</div>
             ) : paymentData ? (
               <>
                 {paymentData.paymentMethodType === 'BANK_TRANSFER' ? (
@@ -124,6 +163,21 @@ export default function PaymentSuccessPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={errorModalConfig.isOpen}
+        onClose={() => {
+          setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
+          if (errorModalConfig.action) errorModalConfig.action();
+        }}
+        title={errorModalConfig.title}
+        description={errorModalConfig.message}
+        confirmText="확인"
+        onConfirm={() => {
+          setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
+          if (errorModalConfig.action) errorModalConfig.action();
+        }}
+      />
     </div>
   );
 }

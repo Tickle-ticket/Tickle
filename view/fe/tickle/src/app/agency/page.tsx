@@ -8,11 +8,8 @@ import {
   createDefaultAgencySeatPolicy,
   getAgencySeatPolicySummary,
 } from '@/src/shared/components/AgencySeatPolicyModal';
-import {
-  submitAgencyEventRegistration,
-  type AgencyRegistrationFlowRequest,
-  type AgencySeatGrade,
-} from '@/src/shared/api/agencyApi';
+import { submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
+import type { AgencyRegistrationFlowRequest, AgencySeatGrade } from '@/src/shared/api/types/agency.types';
 import { uploadImage, uploadImages } from '@/src/shared/api/uploadApi';
 import { ApiError } from '@/src/shared/api/types';
 import { useVenues } from '@/src/shared/api/useVenues';

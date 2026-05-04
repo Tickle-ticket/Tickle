@@ -24,6 +24,7 @@ import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
+import { Modal } from '@/src/shared/components/Modal';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -47,11 +48,11 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedDetailId, setDetailBannerOpen } = useDetailStore();
-  
+
   const urlId = searchParams?.get('id');
   const activeEventId = selectedDetailId || urlId;
-  
-  const { data, isLoading } = useDetailData(activeEventId);
+
+  const { data, isLoading, isError, error } = useDetailData(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
@@ -63,6 +64,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [detailImageFailed, setDetailImageFailed] = useState(false);
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: '' });
 
   useEffect(() => {
     if (data) {
@@ -79,8 +81,17 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         await createFavorite(activeEventId);
       }
       setIsFavorite(!isFavorite);
-    } catch (error) {
+    } catch (error: any) {
       console.error('찜 등록/취소 실패:', error);
+      if (error.status === 400) {
+        setModalConfig({ isOpen: true, title: '잘못된 요청', content: '요청이 올바르지 않습니다.' });
+      } else if (error.status === 404) {
+        setModalConfig({ isOpen: true, title: '정보 없음', content: '해당 공연이나 찜 내역을 찾을 수 없습니다.' });
+      } else if (error.status === 409) {
+        setModalConfig({ isOpen: true, title: '이미 등록됨', content: '이미 찜한 공연입니다.' });
+      } else {
+        setModalConfig({ isOpen: true, title: '오류 발생', content: '처리 중 알 수 없는 오류가 발생했습니다.' });
+      }
     }
   };
 
@@ -164,13 +175,18 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     }
   };
 
-  if (!activeEventId) {
+  if (!activeEventId || isError) {
     if (isOverlay) return null;
     return (
       <div className="flex w-full h-screen items-center justify-center bg-[#f8f8f8] font-sans">
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-gray-900">공연 정보가 없습니다</h1>
-          <p className="text-gray-500">올바르지 않은 접근이거나 존재하지 않는 공연입니다.</p>
+          <h1 className="text-2xl font-bold text-gray-900">공연 정보를 찾을 수 없습니다</h1>
+          <p className="text-gray-500">
+            {/* @ts-ignore */}
+            {isError && (error as any)?.status === 404
+              ? '존재하지 않거나 삭제된 공연입니다.'
+              : '올바르지 않은 접근이거나 존재하지 않는 공연입니다.'}
+          </p>
           <Button color="dark" size="medium" onClick={() => router.push('/')}>홈으로 돌아가기</Button>
         </div>
       </div>
@@ -200,13 +216,13 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           <div className="flex items-center gap-3 w-full">
             {/* 예약 버튼 묶음 */}
             <div className="flex items-center flex-1 gap-2">
-              
+
               {/* 예매하기 버튼 */}
-              <Button 
-                color="dark" 
-                size="large" 
-                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`} 
-                onClick={() => !isUpcoming && setFlowState('QUEUE')} 
+              <Button
+                color="dark"
+                size="large"
+                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`}
+                onClick={() => !isUpcoming && setFlowState('QUEUE')}
                 isLoading={isLoading}
               >
                 {isUpcoming && data?.openDate ? (
@@ -225,11 +241,11 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
               </Button>
 
               {/* 취소표 대기하기 버튼 */}
-              <Button 
-                color="light" 
-                size="large" 
-                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`} 
-                onClick={() => !isWaitlistUpcoming && setFlowState('WAITLIST_QUEUE')} 
+              <Button
+                color="light"
+                size="large"
+                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`}
+                onClick={() => !isWaitlistUpcoming && setFlowState('WAITLIST_QUEUE')}
                 isLoading={isLoading}
               >
                 {isWaitlistUpcoming && data?.openDate ? (
@@ -277,7 +293,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                 Test: Waitlist Book
               </Button>
             </div>
-            
+
             {/* 우측 찜하기 버튼과 동일한 크기의 투명 영역을 두어 정렬 맞춤 */}
             <div className="w-12 shrink-0 invisible pointer-events-none"></div>
           </div>
@@ -453,6 +469,25 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           <BookView eventId={activeEventId} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+      >
+        <p className="text-gray-600 mb-6 mt-2">{modalConfig.content}</p>
+        <div className="w-full">
+          <Button
+            color="dark"
+            size="large"
+            className="w-full font-bold"
+            onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
+          >
+            확인
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 
@@ -463,9 +498,8 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   return (
     <div className="flex w-full h-screen bg-[#f8f8f8] font-sans overflow-hidden relative">
       <aside
-        className={`hidden lg:block h-full relative transition-[width,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${
-          isBannerFolded ? 'w-0 min-w-0 opacity-0' : 'w-2/5 min-w-[40%] opacity-100'
-        }`}
+        className={`hidden lg:block h-full relative transition-[width,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded ? 'w-0 min-w-0 opacity-0' : 'w-2/5 min-w-[40%] opacity-100'
+          }`}
       >
         <div className="w-[40vw] h-full">
           <BannerPoster
@@ -482,17 +516,17 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         </div>
       </aside>
 
-      <PanelToggle 
-        isFolded={isBannerFolded} 
-        onToggle={() => setIsBannerFolded(!isBannerFolded)} 
+      <PanelToggle
+        isFolded={isBannerFolded}
+        onToggle={() => setIsBannerFolded(!isBannerFolded)}
       />
 
-      <main 
-        className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden" 
+      <main
+        className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <Header />
-        
+
         <div className="flex-1 w-full min-w-0">
           {renderContent()}
         </div>

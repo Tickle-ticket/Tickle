@@ -4,7 +4,7 @@ import { fetchMyInfo, updateMyInfo, withdrawMyInfo } from '@/src/shared/api/user
 export interface UserProfileData {
   userId: number;
   avatarUrl: string;
-  name: string; // Used for display, usually nickname or fallback to realName
+  name: string;
   nickname: string;
   realName: string;
   email?: string;
@@ -31,10 +31,12 @@ export const useUserProfile = () => {
   });
 };
 
+import { UpdateMyInfoRequest } from '@/src/shared/api/types/user.types';
+
 export const useUpdateUserProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (request: { nickname?: string; profileImageUrl?: string; phoneNumber?: string }) => {
+    mutationFn: async (request: UpdateMyInfoRequest) => {
       const response = await updateMyInfo(request);
       return response.data;
     },
@@ -47,8 +49,8 @@ export const useUpdateUserProfile = () => {
 export const useWithdrawUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      await withdrawMyInfo();
+    mutationFn: async (userId: number) => {
+      await withdrawMyInfo(userId);
     },
     onSuccess: () => {
       queryClient.clear();

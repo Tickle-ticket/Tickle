@@ -2,23 +2,9 @@ import { apiClient } from './client';
 import { getUserId } from './tokenManager';
 import { buildUserApiUrl } from './userConfig';
 import { ApiResponse } from './types';
-import { EventListResponseData, EventListResponseDataSchema } from './eventApi';
-import { Schema } from 'effect';
 import { createApiResponseSchema } from '../utils/schema';
-
-export interface FavoriteCreateResponseData {
-  favoriteId: number;
-  userId: number;
-  eventId: number;
-  createdAt: string;
-}
-
-export const FavoriteCreateResponseDataSchema = Schema.Struct({
-  favoriteId: Schema.Number,
-  userId: Schema.Number,
-  eventId: Schema.Number,
-  createdAt: Schema.String,
-});
+import { EventListResponseData, EventListResponseDataSchema } from './types/event.types';
+import { FavoriteCreateResponseData, FavoriteCreateResponseDataSchema } from './types/favorite.types';
 
 const resolveUserId = (userId?: number) => userId ?? getUserId() ?? undefined;
 

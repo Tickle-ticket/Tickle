@@ -1,15 +1,15 @@
 import { apiClient } from './client';
 import type { ApiResponse } from './types';
 
-type UploadResponsePayload =
-  | string
-  | {
-      imageUrl?: string;
-      url?: string;
-      fileUrl?: string;
-    };
+import type { UploadImageResponse } from './types/upload.types';
+import { UploadResponsePayloadSchema } from './types/upload.types';
+import { createApiResponseSchema } from '../utils/schema';
+import { Schema } from 'effect';
 
-type UploadImageResponse = ApiResponse<UploadResponsePayload> | UploadResponsePayload;
+const UploadImageResponseSchema = Schema.Union(
+  createApiResponseSchema(UploadResponsePayloadSchema),
+  UploadResponsePayloadSchema
+);
 
 const DEFAULT_UPLOAD_API_PATH = '/api/v1/uploads';
 const uploadApiPath = process.env.NEXT_PUBLIC_UPLOAD_API_PATH || DEFAULT_UPLOAD_API_PATH;
@@ -32,10 +32,15 @@ export const uploadImage = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await apiClient<UploadImageResponse>(uploadApiPath, {
-    method: 'POST',
-    body: formData,
-  });
+  const response = await apiClient<UploadImageResponse>(
+    uploadApiPath,
+    {
+      method: 'POST',
+      body: formData,
+    },
+    false,
+    UploadImageResponseSchema
+  );
   const imageUrl = resolveUploadedImageUrl(response);
 
   if (!imageUrl) {

@@ -8,9 +8,13 @@ import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Text } from '@/src/shared/components/Text';
 
+import { Modal } from '@/src/shared/components/Modal';
+import Button from '@/src/shared/components/Button';
+
 export const UpcomingWishlistView = () => {
-  const { data: upcoming, isLoading } = useMyUpcomingWishlist();
+  const { data: upcoming, isLoading, isError, error } = useMyUpcomingWishlist();
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: '' });
 
   const handleToggle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -35,13 +39,34 @@ export const UpcomingWishlistView = () => {
         }
         return next;
       });
-    } catch (error) {
-      console.error('찜 상태 변경 실패:', error);
+    } catch (err: any) {
+      console.error('찜 상태 변경 실패:', err);
+      if (err.status === 400) {
+        setModalConfig({ isOpen: true, title: '잘못된 요청', content: '요청이 올바르지 않습니다.' });
+      } else if (err.status === 404) {
+        setModalConfig({ isOpen: true, title: '정보 없음', content: '해당 공연이나 찜 내역을 찾을 수 없습니다.' });
+      } else if (err.status === 409) {
+        setModalConfig({ isOpen: true, title: '이미 등록됨', content: '이미 찜한 공연입니다.' });
+      } else {
+        setModalConfig({ isOpen: true, title: '오류 발생', content: '처리 중 알 수 없는 오류가 발생했습니다.' });
+      }
     }
   };
 
   // 표시할 총 관심 공연 수 (제거되지 않은 것만 카운트)
   const activeWishlistCount = upcoming?.filter(item => !removedIds.has(item.id)).length || 0;
+
+  if (isError) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+        <Text typography="t5" fontWeight="bold" color="secondary" className="mb-2">목록을 불러오는 중 오류가 발생했습니다.</Text>
+        <Text typography="t6" color="tertiary">
+          {/* @ts-ignore */}
+          {(error as any)?.status === 400 ? '잘못된 요청입니다.' : (error as any)?.status === 404 ? '사용자 정보를 찾을 수 없거나 로그인이 만료되었습니다.' : '잠시 후 다시 시도해주세요.'}
+        </Text>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full animate-fade-in">
@@ -103,6 +128,25 @@ export const UpcomingWishlistView = () => {
           </div>
         )}
       </div>
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+      >
+        <p className="text-gray-600 mb-6 mt-2">{modalConfig.content}</p>
+        <div className="w-full">
+          <Button
+            color="dark"
+            size="large"
+            className="w-full font-bold"
+            onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
+          >
+            확인
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

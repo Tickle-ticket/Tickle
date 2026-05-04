@@ -19,20 +19,35 @@ export const UserManagementView = () => {
   const { data, isLoading } = useUserProfile();
   const updateProfileMutation = useUpdateUserProfile();
   const withdrawMutation = useWithdrawUser();
-  
+
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [nickname, setNickname] = useState(data?.nickname || data?.name || '티클유저');
-  
+
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState(data?.phoneNumber || '010-0000-0000');
 
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [errorModalConfig, setErrorModalConfig] = useState({ isOpen: false, title: '', message: '' });
 
-  // 프로필 이미지 변경 모의 함수
-  const handleProfileImageChange = () => {
-    // 실제로는 파일 입력을 받거나 이미지 업로드 API를 타야 하지만, 임시로 랜덤 아바타 URL을 주입합니다.
-    const newRandomAvatar = `https://i.pravatar.cc/150?u=${Math.random().toString(36).substring(7)}`;
-    updateProfileMutation.mutate({ profileImageUrl: newRandomAvatar });
+  // 프로필 이미지 파일 업로드 핸들러
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && data?.userId) {
+      updateProfileMutation.mutate(
+        { userId: data.userId, profileImage: file },
+        {
+          onError: (err: any) => {
+            if (err.status === 400) {
+              setErrorModalConfig({ isOpen: true, title: '잘못된 입력', message: '지원하지 않는 이미지 형식이거나 용량이 초과되었습니다.' });
+            } else if (err.status === 404) {
+              setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
+            } else {
+              setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '프로필 이미지 변경 중 오류가 발생했습니다.' });
+            }
+          }
+        }
+      );
+    }
   };
 
   return (
@@ -42,23 +57,28 @@ export const UserManagementView = () => {
         <div className="flex flex-col md:flex-row items-center gap-10 w-full">
           {/* Avatar Section */}
           <div className="relative group shrink-0">
-            <Avatar 
-              size={100} 
-              src={data?.avatarUrl || ''} 
-              isLoading={isLoading} 
+            <Avatar
+              size={100}
+              src={data?.avatarUrl || ''}
+              isLoading={isLoading}
             />
-            {/* 사진 변경 버튼 */}
-            <button 
-              onClick={handleProfileImageChange}
-              disabled={updateProfileMutation.isPending}
-              className="absolute bottom-0 right-0 w-9 h-9 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center text-blue-500 hover:text-blue-600 hover:scale-105 transition-all"
+            {/* 사진 변경 버튼 (파일 업로드) */}
+            <label 
+              className={`absolute bottom-0 right-0 w-9 h-9 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center text-blue-500 hover:text-blue-600 hover:scale-105 transition-all cursor-pointer ${updateProfileMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}
             >
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleProfileImageChange}
+                disabled={updateProfileMutation.isPending}
+              />
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
-            </button>
+            </label>
           </div>
 
           {/* User Info Fields */}
@@ -70,9 +90,9 @@ export const UserManagementView = () => {
               </div>
               <div className="flex-1">
                 {isEditingNickname ? (
-                  <input 
-                    value={nickname} 
-                    onChange={(e) => setNickname(e.target.value)} 
+                  <input
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
                     className="w-full text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
                     autoFocus
                   />
@@ -80,18 +100,31 @@ export const UserManagementView = () => {
                   <Text typography="t4" fontWeight="bold" color="primary" className="!text-[18px]">{nickname}</Text>
                 )}
               </div>
-              <button 
+              <button
                 onClick={() => {
-                  if (isEditingNickname) {
-                    updateProfileMutation.mutate({ nickname });
+                  if (isEditingNickname && data?.userId) {
+                    updateProfileMutation.mutate(
+                      { userId: data.userId, nickname },
+                      {
+                        onError: (err: any) => {
+                          if (err.status === 400) {
+                            setErrorModalConfig({ isOpen: true, title: '잘못된 입력', message: '닉네임 형식이 올바르지 않습니다.' });
+                          } else if (err.status === 404) {
+                            setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
+                          } else {
+                            setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '닉네임 변경 중 오류가 발생했습니다.' });
+                          }
+                          setNickname(data.nickname || data.name || '티클유저'); // 실패 시 롤백
+                        }
+                      }
+                    );
                   }
                   setIsEditingNickname(!isEditingNickname);
                 }}
-                className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${
-                  isEditingNickname 
-                    ? "text-blue-600 bg-blue-50 hover:bg-blue-100" 
-                    : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${isEditingNickname
+                  ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                  : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="수정"
               >
                 {isEditingNickname ? (
@@ -112,9 +145,9 @@ export const UserManagementView = () => {
               </div>
               <div className="flex-1">
                 {isEditingPhone ? (
-                  <input 
-                    value={phoneNumber} 
-                    onChange={(e) => setPhoneNumber(e.target.value)} 
+                  <input
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                     className="w-full text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
                     autoFocus
                     placeholder="010-0000-0000"
@@ -123,18 +156,31 @@ export const UserManagementView = () => {
                   <Text typography="t4" fontWeight="bold" color="primary" className="!text-[18px]">{phoneNumber}</Text>
                 )}
               </div>
-              <button 
+              <button
                 onClick={() => {
-                  if (isEditingPhone) {
-                    updateProfileMutation.mutate({ phoneNumber });
+                  if (isEditingPhone && data?.userId) {
+                    updateProfileMutation.mutate(
+                      { userId: data.userId, phoneNumber },
+                      {
+                        onError: (err: any) => {
+                          if (err.status === 400) {
+                            setErrorModalConfig({ isOpen: true, title: '잘못된 입력', message: '전화번호 형식이 올바르지 않습니다.' });
+                          } else if (err.status === 404) {
+                            setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
+                          } else {
+                            setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '전화번호 변경 중 오류가 발생했습니다.' });
+                          }
+                          setPhoneNumber(data.phoneNumber || '010-0000-0000'); // 실패 시 롤백
+                        }
+                      }
+                    );
                   }
                   setIsEditingPhone(!isEditingPhone);
                 }}
-                className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${
-                  isEditingPhone 
-                    ? "text-blue-600 bg-blue-50 hover:bg-blue-100" 
-                    : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${isEditingPhone
+                  ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                  : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                  }`}
                 title="수정"
               >
                 {isEditingPhone ? (
@@ -157,7 +203,7 @@ export const UserManagementView = () => {
           <Text typography="t5" fontWeight="bold" color="primary">비밀번호 변경</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </button>
-        <button 
+        <button
           onClick={() => {
             closeMypage();
             router.push('/support/faq');
@@ -167,7 +213,7 @@ export const UserManagementView = () => {
           <Text typography="t5" fontWeight="bold" color="primary">고객 지원 (FAQ)</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </button>
-        <button 
+        <button
           onClick={() => setIsWithdrawModalOpen(true)}
           className="flex items-center justify-between w-full p-5 hover:bg-red-50 transition-colors group"
         >
@@ -177,7 +223,7 @@ export const UserManagementView = () => {
       </Box>
 
       {/* 회원 탈퇴 모달 */}
-      <Modal 
+      <Modal
         isOpen={isWithdrawModalOpen}
         onClose={() => setIsWithdrawModalOpen(false)}
         title="회원 탈퇴"
@@ -185,9 +231,39 @@ export const UserManagementView = () => {
         confirmText="탈퇴하기"
         cancelText="취소"
         onConfirm={() => {
-          withdrawMutation.mutate();
+          if (data?.userId) {
+            withdrawMutation.mutate(data.userId, {
+              onSuccess: () => {
+                setIsWithdrawModalOpen(false);
+              },
+              onError: (err: any) => {
+                setIsWithdrawModalOpen(false);
+                if (err.status === 400) {
+                  setErrorModalConfig({ isOpen: true, title: '잘못된 요청', message: '사용자 식별자가 누락되었습니다.' });
+                } else if (err.status === 404) {
+                  setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
+                } else {
+                  setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '회원 탈퇴 처리 중 오류가 발생했습니다.' });
+                }
+              }
+            });
+          } else {
+            setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '사용자 정보를 불러올 수 없습니다.' });
+            setIsWithdrawModalOpen(false);
+          }
         }}
         isLoading={withdrawMutation.isPending}
+      />
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={errorModalConfig.isOpen}
+        onClose={() => setErrorModalConfig({ ...errorModalConfig, isOpen: false })}
+        title={errorModalConfig.title}
+        description={errorModalConfig.message}
+        confirmText="확인"
+        showCancelButton={false}
+        onConfirm={() => setErrorModalConfig({ ...errorModalConfig, isOpen: false })}
       />
     </div>
   );

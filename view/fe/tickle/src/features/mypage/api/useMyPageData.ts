@@ -23,7 +23,7 @@ export const useMyUpcomingWishlist = () => {
         title: item.title,
         venue: item.venueLocation,
         date: `${new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '')} ~ ${new Date(item.eventEndAt).toLocaleDateString().replace(/\s/g, '')}`,
-        badges: item.metadata?.tags || [],
+        badges: item.metadata?.tags ? [...item.metadata.tags] : [],
         openDate: item.eventStartAt,
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
@@ -66,16 +66,28 @@ export const useMyBookings = () => {
       const response = await reservationApi.fetchReservations();
       return response.data.items.map((r) => ({
         id: String(r.bookingId),
-        eventId: String(r.eventId),
-        imageUrl: r.thumbnailUrl,
-        title: r.eventName,
+        eventId: '1', // 명세에 eventId가 없으므로 임의 처리 (상세조회 시 필요)
+        imageUrl: '/images/posters/poster1.png', // 명세에 썸네일 없음
+        title: r.eventTitle,
         venue: r.venueName,
-        performanceDate: r.eventStartAt,
+        performanceDate: r.sessionStartAt,
         bookingDate: r.createdAt,
-        seatInfo: r.seats.map((s) => s.seatLabel).join(', '),
-        ticketCount: r.seats.length,
+        seatInfo: `총 ${r.ticketCount}매`, // 명세에 좌석 배열이 없음
+        ticketCount: r.ticketCount,
       })) as BookingData[];
     },
+  });
+};
+
+export const useBookingDetail = (bookingId: string | null) => {
+  return useQuery({
+    queryKey: ['bookingDetail', bookingId],
+    queryFn: async () => {
+      if (!bookingId) return null;
+      const response = await reservationApi.getReservationDetail(bookingId);
+      return response.data;
+    },
+    enabled: !!bookingId,
   });
 };
 
