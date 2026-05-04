@@ -41,6 +41,17 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
     }
 
     /**
+     * 사용자와 회차 기준 활성 예매 대기 신청 수를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionId 회차 식별자
+     * @return 활성 예매 대기 신청 수
+     */
+    default long countActiveByUserIdAndSessionId(Long userId, Long sessionId) {
+        return countByUserIdAndSessionIdAndStatus(userId, sessionId, CancellationCandidate.Status.WAITING);
+    }
+
+    /**
      * 좌석별 특정 상태의 예매 대기 인원 수를 조회합니다.
      *
      * @param sessionSeatIds 회차 좌석 식별자 목록
@@ -56,6 +67,27 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
             """)
     List<WaitingCountProjection> countBySessionSeatIdsAndStatus(
             @Param("sessionSeatIds") List<Long> sessionSeatIds,
+            @Param("status") CancellationCandidate.Status status
+    );
+
+    /**
+     * 사용자와 회차 기준 특정 상태의 예매 대기 신청 수를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionId 회차 식별자
+     * @param status 조회할 대기 후보 상태
+     * @return 조건에 맞는 예매 대기 신청 수
+     */
+    @Query("""
+            select count(c.id)
+            from CancellationCandidate c
+            where c.user.id = :userId
+              and c.sessionSeat.session.id = :sessionId
+              and c.status = :status
+            """)
+    long countByUserIdAndSessionIdAndStatus(
+            @Param("userId") Long userId,
+            @Param("sessionId") Long sessionId,
             @Param("status") CancellationCandidate.Status status
     );
 
@@ -79,6 +111,19 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
             @Param("sessionSeatIds") List<Long> sessionSeatIds,
             @Param("status") CancellationCandidate.Status status
     );
+
+    /**
+     * 좌석별 마지막 대기 순번을 조회합니다.
+     *
+     * @param sessionSeatId 회차 좌석 식별자
+     * @return 마지막 대기 순번, 없으면 null
+     */
+    @Query("""
+            select max(c.waitingRank)
+            from CancellationCandidate c
+            where c.sessionSeat.id = :sessionSeatId
+            """)
+    Integer findMaxWaitingRankBySessionSeatId(@Param("sessionSeatId") Long sessionSeatId);
 
     /**
      * 좌석별 활성 예매 대기 인원 수 조회 결과입니다.

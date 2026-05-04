@@ -103,12 +103,13 @@ public class CancellationCandidate {
             Status status,
             Instant cancelledAt
     ) {
+        Instant now = Instant.now();
         this.sessionSeat = sessionSeat;
         this.user = user;
         this.waitingRank = waitingRank;
         this.status = status == null ? Status.WAITING : status;
         this.cancelledAt = cancelledAt;
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 }

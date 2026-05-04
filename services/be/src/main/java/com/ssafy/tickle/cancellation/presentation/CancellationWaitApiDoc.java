@@ -1,6 +1,8 @@
 package com.ssafy.tickle.cancellation.presentation;
 
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapResponse;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateRequest;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
 import com.ssafy.tickle.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -32,5 +34,28 @@ public interface CancellationWaitApiDoc {
             Long scheduleId,
             Long userId,
             String admitToken
+    );
+
+    /**
+     * 좌석 단위 예매 대기 신청을 생성합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param scheduleId 회차 식별자
+     * @param userId 사용자 식별자
+     * @param admitToken 예매 대기 큐 입장 토큰
+     * @param request 예매 대기 신청 요청
+     * @return 생성된 예매 대기 신청 정보
+     */
+    @Operation(
+            summary = "예매 대기 신청",
+            description = "예매 대기 큐 admitToken 검증 후 좌석 단위 예매 대기 신청을 생성합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "예매 대기 신청 성공")
+    ResponseEntity<BaseResponse<CancellationWaitCandidateCreateResponse>> createCandidates(
+            Long eventId,
+            Long scheduleId,
+            Long userId,
+            String admitToken,
+            CancellationWaitCandidateCreateRequest request
     );
 }

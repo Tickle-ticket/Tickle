@@ -51,6 +51,7 @@ public class CancellationWaitSeatService {
             String admitToken
     ) {
         validateSession(eventId, scheduleId);
+        // 예매 대기 좌석맵은 cancellation wait 큐를 통과한 사용자에게만 노출합니다.
         queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, scheduleId, userId, admitToken);
 
         List<SessionSeat> sessionSeats = sessionSeatRepository.findBySessionIdWithDetails(scheduleId);
@@ -58,6 +59,7 @@ public class CancellationWaitSeatService {
                 .map(SessionSeat::getId)
                 .toList();
 
+        // 기존 좌석맵 데이터에 예매 대기 전용 집계값만 덧붙이기 위해 별도 조회로 분리합니다.
         Map<Long, Long> waitingCounts = findWaitingCounts(sessionSeatIds);
         Set<Long> alreadyAppliedSeatIds = findAlreadyAppliedSeatIds(userId, sessionSeatIds);
 
