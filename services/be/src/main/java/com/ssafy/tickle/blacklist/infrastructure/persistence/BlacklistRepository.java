@@ -4,7 +4,9 @@ import com.ssafy.tickle.blacklist.domain.Blacklist;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -35,4 +37,12 @@ public interface BlacklistRepository extends JpaRepository<Blacklist, Long> {
      * @return 블랙리스트 페이지
      */
     Page<Blacklist> findAll(Pageable pageable);
+
+    /**
+     * 사유별 블랙리스트 수를 한 번의 쿼리로 조회합니다.
+     *
+     * @return [reason, count] 형태의 Object 배열 리스트
+     */
+    @Query("SELECT b.reason, COUNT(b) FROM Blacklist b GROUP BY b.reason")
+    List<Object[]> countGroupByReason();
 }
