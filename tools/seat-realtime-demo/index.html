@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tickle Seat Realtime Demo</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --line: #d9dee8;
+      --line-strong: #aeb7c7;
+      --text: #1e2430;
+      --muted: #667085;
+      --ok: #16825d;
+      --danger: #bc2f3f;
+      --brand: #2563eb;
+      --available: #ffffff;
+      --held: #8b95a5;
+      --pending: #f2c94c;
+      --confirmed: #e05252;
+      --reallocating: #8b5cf6;
+      --blocked: #3b82f6;
+      --unavailable: #4b5563;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr) 380px;
+    }
+
+    aside,
+    main {
+      min-width: 0;
+    }
+
+    .sidebar,
+    .inspector {
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 20px;
+      overflow: auto;
+      max-height: 100vh;
+    }
+
+    .inspector {
+      border-right: 0;
+      border-left: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      background: #fbfcfe;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--line-strong);
+    }
+
+    .status-pill.connected .status-dot {
+      background: var(--ok);
+    }
+
+    .status-pill.error .status-dot {
+      background: var(--danger);
+    }
+
+    .group {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .group-title {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: #344054;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .field input {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .field input:focus {
+      outline: 2px solid rgba(37, 99, 235, 0.16);
+      border-color: var(--brand);
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .buttons.single {
+      grid-template-columns: 1fr;
+    }
+
+    .btn {
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--text);
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--line-strong);
+      background: #f9fafb;
+    }
+
+    .btn.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn.danger {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: #fff;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      background: #fbfcfe;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      padding: 18px 22px;
+      gap: 16px;
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+    }
+
+    .stage-title h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .stage-title p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .selected-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .seat-canvas {
+      overflow: auto;
+      min-height: 0;
+      padding: 4px 2px 28px;
+    }
+
+    .screen {
+      height: 34px;
+      max-width: 560px;
+      margin: 0 auto 22px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .section-head h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .seat {
+      min-height: 56px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--available);
+      color: #111827;
+      cursor: pointer;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 2px;
+      padding: 6px 4px;
+      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      position: relative;
+    }
+
+    .seat:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    .seat:disabled {
+      cursor: not-allowed;
+    }
+
+    .seat.selected {
+      outline: 3px solid rgba(37, 99, 235, 0.28);
+      border-color: var(--brand);
+    }
+
+    .seat.flash {
+      animation: flash 850ms ease;
+    }
+
+    @keyframes flash {
+      0% { transform: scale(1); }
+      35% { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+
+    .seat .label {
+      font-size: 13px;
+      font-weight: 800;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      text-align: center;
+    }
+
+    .seat .meta {
+      color: rgba(17, 24, 39, 0.72);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .seat[data-status="HELD"],
+    .legend-swatch[data-status="HELD"] {
+      background: var(--held);
+      color: #fff;
+    }
+
+    .seat[data-status="HELD"] .meta {
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .seat[data-status="PENDING"],
+    .legend-swatch[data-status="PENDING"] {
+      background: var(--pending);
+    }
+
+    .seat[data-status="CONFIRMED"],
+    .legend-swatch[data-status="CONFIRMED"] {
+      background: var(--confirmed);
+      color: #fff;
+    }
+
+    .seat[data-status="CONFIRMED"] .meta,
+    .seat[data-status="REALLOCATING"] .meta,
+    .seat[data-status="BLOCKED"] .meta,
+    .seat[data-status="UNAVAILABLE"] .meta {
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .seat[data-status="REALLOCATING"],
+    .legend-swatch[data-status="REALLOCATING"] {
+      background: var(--reallocating);
+      color: #fff;
+    }
+
+    .seat[data-status="BLOCKED"],
+    .legend-swatch[data-status="BLOCKED"] {
+      background: var(--blocked);
+      color: #fff;
+    }
+
+    .seat[data-status="UNAVAILABLE"],
+    .legend-swatch[data-status="UNAVAILABLE"] {
+      background: var(--unavailable);
+      color: #fff;
+    }
+
+    .empty-state {
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      min-height: 280px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      background: #fff;
+      padding: 24px;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 9px;
+      align-items: center;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .legend-swatch {
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--line-strong);
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .log {
+      display: grid;
+      gap: 8px;
+      max-height: 42vh;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfe;
+      padding: 10px;
+    }
+
+    .log-line {
+      display: grid;
+      gap: 3px;
+      border-bottom: 1px solid #edf0f5;
+      padding-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .log-line:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .log-line time {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .log-line code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: #1f2937;
+    }
+
+    .error-text {
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1180px) {
+      .app {
+        grid-template-columns: 320px minmax(0, 1fr);
+      }
+
+      .inspector {
+        grid-column: 1 / -1;
+        max-height: none;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 780px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .inspector {
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .stage {
+        min-height: auto;
+      }
+
+      .stage-header {
+        display: grid;
+      }
+
+      .selected-bar {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Tickle Seat Demo</h1>
+        <span id="connectionStatus" class="status-pill">
+          <span class="status-dot"></span>
+          <span>disconnected</span>
+        </span>
+      </div>
+
+      <section class="group">
+        <p class="group-title">Connection</p>
+        <div class="field">
+          <label for="apiBaseUrl">API Base URL</label>
+          <input id="apiBaseUrl" value="http://localhost:8080" autocomplete="off">
+        </div>
+        <div class="buttons">
+          <div class="field">
+            <label for="eventId">eventId</label>
+            <input id="eventId" type="number" value="1" min="1">
+          </div>
+          <div class="field">
+            <label for="scheduleId">scheduleId</label>
+            <input id="scheduleId" type="number" value="10" min="1">
+          </div>
+        </div>
+        <div class="field">
+          <label for="userId">시연 userId</label>
+          <input id="userId" type="number" value="1" min="1">
+        </div>
+        <div class="buttons">
+          <button id="loadMapButton" class="btn primary" type="button">좌석 조회</button>
+          <button id="connectButton" class="btn" type="button">SSE 연결</button>
+        </div>
+        <div class="buttons">
+          <button id="disconnectButton" class="btn" type="button" disabled>연결 종료</button>
+          <button id="clearLogButton" class="btn" type="button">로그 비우기</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <p class="group-title">Actions</p>
+        <div class="buttons">
+          <button id="holdButton" class="btn primary" type="button" disabled>선택 좌석 선점</button>
+          <button id="releaseButton" class="btn danger" type="button">내 선점 해제</button>
+        </div>
+        <p class="note">AVAILABLE 좌석을 최대 4개 선택한 뒤 선점하세요. 다른 탭에서 같은 회차를 열면 SSE Push로 상태가 같이 바뀌는 것을 볼 수 있습니다.</p>
+      </section>
+
+      <section class="group">
+        <p class="group-title">Summary</p>
+        <div id="summary" class="summary"></div>
+      </section>
+    </aside>
+
+    <main class="stage">
+      <header class="stage-header">
+        <div class="stage-title">
+          <h2>실시간 좌석 점유 시각화</h2>
+          <p id="endpointText">좌석을 조회하면 SSE 스트림과 REST API 상태가 이 화면에 반영됩니다.</p>
+        </div>
+        <div id="selectedBar" class="selected-bar">
+          <span class="chip">선택 0/4</span>
+        </div>
+      </header>
+
+      <section class="seat-canvas">
+        <div class="screen">STAGE</div>
+        <div id="seatRoot" class="empty-state">
+          <div>
+            <strong>좌석 배치도를 아직 불러오지 않았습니다.</strong>
+            <p class="note">왼쪽에서 eventId, scheduleId를 확인한 뒤 좌석 조회를 누르세요.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="inspector">
+      <section class="group">
+        <p class="group-title">Legend</p>
+        <div id="legend" class="legend"></div>
+      </section>
+
+      <section class="group">
+        <p class="group-title">Demo Script</p>
+        <p class="note">1. 이 페이지를 두 탭에서 엽니다.<br>2. 탭마다 userId를 다르게 설정합니다.<br>3. 한 탭에서 좌석을 선점합니다.<br>4. 다른 탭에서 SSE 로그와 좌석 색상 변경을 확인합니다.</p>
+      </section>
+
+      <section class="group">
+        <p class="group-title">Event Log</p>
+        <div id="log" class="log"></div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const statuses = {
+      AVAILABLE: { label: "선점 가능", css: "AVAILABLE" },
+      HELD: { label: "선점 중", css: "HELD" },
+      PENDING: { label: "입금대기", css: "PENDING" },
+      CONFIRMED: { label: "예매 확정", css: "CONFIRMED" },
+      REALLOCATING: { label: "재배정 중", css: "REALLOCATING" },
+      BLOCKED: { label: "차단", css: "BLOCKED" },
+      UNAVAILABLE: { label: "사용 불가", css: "UNAVAILABLE" }
+    };
+
+    const state = {
+      sections: [],
+      seatsById: new Map(),
+      selectedIds: new Set(),
+      heldByMe: new Set(),
+      eventSource: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      apiBaseUrl: $("apiBaseUrl"),
+      eventId: $("eventId"),
+      scheduleId: $("scheduleId"),
+      userId: $("userId"),
+      connectionStatus: $("connectionStatus"),
+      loadMapButton: $("loadMapButton"),
+      connectButton: $("connectButton"),
+      disconnectButton: $("disconnectButton"),
+      holdButton: $("holdButton"),
+      releaseButton: $("releaseButton"),
+      clearLogButton: $("clearLogButton"),
+      summary: $("summary"),
+      seatRoot: $("seatRoot"),
+      selectedBar: $("selectedBar"),
+      endpointText: $("endpointText"),
+      legend: $("legend"),
+      log: $("log")
+    };
+
+    function apiBase() {
+      return els.apiBaseUrl.value.replace(/\/$/, "");
+    }
+
+    function ids() {
+      return {
+        eventId: els.eventId.value,
+        scheduleId: els.scheduleId.value,
+        userId: els.userId.value
+      };
+    }
+
+    function seatPath() {
+      const { eventId, scheduleId } = ids();
+      return `/api/v1/events/${eventId}/schedules/${scheduleId}/seats`;
+    }
+
+    function seatUrl() {
+      return `${apiBase()}${seatPath()}`;
+    }
+
+    function streamUrl() {
+      return `${seatUrl()}/stream`;
+    }
+
+    function holdUrl() {
+      return `${seatUrl()}/hold?userId=${encodeURIComponent(ids().userId)}`;
+    }
+
+    function setConnection(status, label) {
+      els.connectionStatus.className = `status-pill ${status}`;
+      els.connectionStatus.querySelector("span:last-child").textContent = label;
+    }
+
+    function log(type, payload) {
+      const line = document.createElement("div");
+      line.className = "log-line";
+      const time = document.createElement("time");
+      time.textContent = new Date().toLocaleTimeString();
+      const code = document.createElement("code");
+      code.textContent = `${type} ${typeof payload === "string" ? payload : JSON.stringify(payload, null, 2)}`;
+      line.append(time, code);
+      els.log.prepend(line);
+    }
+
+    function renderLegend() {
+      els.legend.innerHTML = "";
+      Object.entries(statuses).forEach(([status, meta]) => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="legend-swatch" data-status="${status}"></span><span>${status} · ${meta.label}</span>`;
+        els.legend.append(item);
+      });
+    }
+
+    function renderSummary() {
+      const counts = {};
+      Object.keys(statuses).forEach((status) => counts[status] = 0);
+      state.seatsById.forEach((seat) => {
+        counts[seat.saleStatus] = (counts[seat.saleStatus] || 0) + 1;
+      });
+
+      els.summary.innerHTML = "";
+      ["AVAILABLE", "HELD", "PENDING", "CONFIRMED"].forEach((status) => {
+        const metric = document.createElement("div");
+        metric.className = "metric";
+        metric.innerHTML = `<b>${counts[status] || 0}</b><span>${status}</span>`;
+        els.summary.append(metric);
+      });
+    }
+
+    function renderSelected() {
+      els.selectedBar.innerHTML = "";
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = `선택 ${state.selectedIds.size}/4`;
+      els.selectedBar.append(chip);
+      [...state.selectedIds].forEach((seatId) => {
+        const seat = state.seatsById.get(seatId);
+        const selected = document.createElement("span");
+        selected.className = "chip";
+        selected.textContent = seat ? seat.seatLabel : `#${seatId}`;
+        els.selectedBar.append(selected);
+      });
+      els.holdButton.disabled = state.selectedIds.size === 0;
+    }
+
+    function canSelect(seat) {
+      return seat.saleStatus === "AVAILABLE";
+    }
+
+    function toggleSeat(seatId) {
+      const seat = state.seatsById.get(seatId);
+      if (!seat || !canSelect(seat)) {
+        return;
+      }
+
+      if (state.selectedIds.has(seatId)) {
+        state.selectedIds.delete(seatId);
+      } else {
+        if (state.selectedIds.size >= 4) {
+          log("WARN", "한 번에 최대 4개까지 선택 가능합니다.");
+          return;
+        }
+        state.selectedIds.add(seatId);
+      }
+      renderSeats();
+    }
+
+    function renderSeats() {
+      if (state.sections.length === 0) {
+        els.seatRoot.className = "empty-state";
+        els.seatRoot.innerHTML = `<div><strong>좌석 데이터가 없습니다.</strong><p class="note">eventId/scheduleId 또는 서버 데이터를 확인하세요.</p></div>`;
+        renderSummary();
+        renderSelected();
+        return;
+      }
+
+      els.seatRoot.className = "";
+      els.seatRoot.innerHTML = "";
+
+      state.sections.forEach((section) => {
+        const wrap = document.createElement("section");
+        wrap.className = "section";
+
+        const head = document.createElement("div");
+        head.className = "section-head";
+        head.innerHTML = `<h3>${section.sectionName}</h3><span class="chip">${section.seats.length} seats</span>`;
+
+        const grid = document.createElement("div");
+        grid.className = "section-grid";
+
+        section.seats.forEach((seat) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `seat ${state.selectedIds.has(seat.sessionSeatId) ? "selected" : ""}`;
+          button.dataset.status = seat.saleStatus;
+          button.dataset.seatId = seat.sessionSeatId;
+          button.disabled = !canSelect(seat);
+          button.innerHTML = `<span class="label">${seat.seatLabel}</span><span class="meta">#${seat.sessionSeatId}</span>`;
+          button.addEventListener("click", () => toggleSeat(seat.sessionSeatId));
+          grid.append(button);
+        });
+
+        wrap.append(head, grid);
+        els.seatRoot.append(wrap);
+      });
+
+      renderSummary();
+      renderSelected();
+    }
+
+    function normalizeSeatMap(response) {
+      const data = response && response.data ? response.data : response;
+      return data && Array.isArray(data.sections) ? data.sections : [];
+    }
+
+    function indexSeats(sections) {
+      state.seatsById.clear();
+      sections.forEach((section) => {
+        section.seats.forEach((seat) => {
+          state.seatsById.set(seat.sessionSeatId, seat);
+        });
+      });
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      const text = await response.text();
+      const body = text ? JSON.parse(text) : null;
+      if (!response.ok) {
+        const message = body && body.message ? body.message : `${response.status} ${response.statusText}`;
+        throw new Error(message);
+      }
+      return body;
+    }
+
+    async function loadSeatMap() {
+      try {
+        els.loadMapButton.disabled = true;
+        const body = await requestJson(seatUrl());
+        state.sections = normalizeSeatMap(body);
+        state.selectedIds.clear();
+        indexSeats(state.sections);
+        renderSeats();
+        els.endpointText.textContent = `${seatPath()} · ${state.seatsById.size} seats loaded`;
+        log("GET", body);
+      } catch (error) {
+        log("ERROR", error.message);
+        els.seatRoot.className = "empty-state";
+        els.seatRoot.innerHTML = `<div><strong class="error-text">좌석 조회 실패</strong><p class="note">${error.message}</p></div>`;
+      } finally {
+        els.loadMapButton.disabled = false;
+      }
+    }
+
+    function applySeatMessage(message) {
+      const seat = state.seatsById.get(message.sessionSeatId);
+      if (!seat) {
+        log("SSE", message);
+        return;
+      }
+
+      seat.saleStatus = message.saleStatus;
+      if (message.saleStatus !== "AVAILABLE") {
+        state.selectedIds.delete(message.sessionSeatId);
+      }
+      if (message.saleStatus !== "HELD") {
+        state.heldByMe.delete(message.sessionSeatId);
+      }
+      renderSeats();
+      const seatEl = document.querySelector(`[data-seat-id="${message.sessionSeatId}"]`);
+      if (seatEl) {
+        seatEl.classList.add("flash");
+        setTimeout(() => seatEl.classList.remove("flash"), 900);
+      }
+      log("SSE", message);
+    }
+
+    function connectSse() {
+      disconnectSse();
+      const url = streamUrl();
+      state.eventSource = new EventSource(url);
+      setConnection("", "connecting");
+      log("SSE_CONNECT", url);
+
+      state.eventSource.onopen = () => {
+        setConnection("connected", "connected");
+        els.connectButton.disabled = true;
+        els.disconnectButton.disabled = false;
+      };
+
+      state.eventSource.onmessage = (event) => {
+        try {
+          applySeatMessage(JSON.parse(event.data));
+        } catch (error) {
+          log("SSE_PARSE_ERROR", event.data);
+        }
+      };
+
+      state.eventSource.onerror = () => {
+        setConnection("error", "reconnecting");
+        log("SSE_ERROR", "EventSource error. Browser may retry automatically.");
+      };
+    }
+
+    function disconnectSse() {
+      if (state.eventSource) {
+        state.eventSource.close();
+        state.eventSource = null;
+      }
+      setConnection("", "disconnected");
+      els.connectButton.disabled = false;
+      els.disconnectButton.disabled = true;
+    }
+
+    async function holdSelected() {
+      if (state.selectedIds.size === 0) {
+        return;
+      }
+
+      const seatIds = [...state.selectedIds];
+      try {
+        els.holdButton.disabled = true;
+        const body = await requestJson(holdUrl(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionSeatIds: seatIds })
+        });
+        const data = body.data || body;
+        (data.heldSessionSeatIds || seatIds).forEach((seatId) => state.heldByMe.add(seatId));
+        state.selectedIds.clear();
+        log("POST /hold", body);
+      } catch (error) {
+        log("ERROR", error.message);
+      } finally {
+        renderSeats();
+      }
+    }
+
+    async function releaseMine() {
+      try {
+        const body = await requestJson(holdUrl(), { method: "DELETE" });
+        state.heldByMe.clear();
+        log("DELETE /hold", body);
+      } catch (error) {
+        log("ERROR", error.message);
+      }
+    }
+
+    function bind() {
+      els.loadMapButton.addEventListener("click", loadSeatMap);
+      els.connectButton.addEventListener("click", connectSse);
+      els.disconnectButton.addEventListener("click", disconnectSse);
+      els.holdButton.addEventListener("click", holdSelected);
+      els.releaseButton.addEventListener("click", releaseMine);
+      els.clearLogButton.addEventListener("click", () => els.log.innerHTML = "");
+      [els.apiBaseUrl, els.eventId, els.scheduleId].forEach((input) => {
+        input.addEventListener("change", () => {
+          disconnectSse();
+          state.sections = [];
+          state.seatsById.clear();
+          state.selectedIds.clear();
+          renderSeats();
+        });
+      });
+    }
+
+    bind();
+    renderLegend();
+    renderSummary();
+    renderSelected();
+  </script>
+</body>
+</html>
