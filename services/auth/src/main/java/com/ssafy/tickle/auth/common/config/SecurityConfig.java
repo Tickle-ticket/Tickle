@@ -2,6 +2,7 @@ package com.ssafy.tickle.auth.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -9,7 +10,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -18,9 +18,6 @@ import java.util.List;
 
 /**
  * Spring Security 설정 클래스입니다.
- *
- * <p>인증 서버는 자체적으로 JWT를 발급하는 역할을 하므로,
- * stateless 세션 정책을 적용하고 CSRF를 비활성화한다.</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -28,14 +25,11 @@ public class SecurityConfig {
 
     /**
      * Security Filter Chain을 구성합니다.
-     *
-     * @param http HttpSecurity
-     * @return SecurityFilterChain
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(Customizer.withDefaults()) // Spring Security 6 표준 방식
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -66,16 +60,23 @@ public class SecurityConfig {
 
     /**
      * CORS 허용 설정을 정의합니다.
-     *
-     * @return CorsConfigurationSource
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        
+        // 운영 환경 및 로컬 개발 환경 허용
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://tickle-ticket.co.kr"
+        ));
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("*")); // 모든 헤더 노출 (JWT 등)
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -84,8 +85,6 @@ public class SecurityConfig {
 
     /**
      * 비밀번호 암호화에 사용할 PasswordEncoder를 등록합니다.
-     *
-     * @return BCryptPasswordEncoder
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
