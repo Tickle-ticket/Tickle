@@ -4,6 +4,7 @@ import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
+import { normalizeImageUrl } from '@/src/shared/utils/imageUrl';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],

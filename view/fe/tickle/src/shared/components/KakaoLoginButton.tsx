@@ -34,8 +34,7 @@ export function KakaoLoginButton({
         backgroundColor: '#FEE500',
         color: 'rgba(0, 0, 0, 0.85)',
         borderRadius: '12px',
-        fontFamily:
-          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         fontSize: size === 'large' ? '16px' : '18px',
         fontWeight: 700,
       }}

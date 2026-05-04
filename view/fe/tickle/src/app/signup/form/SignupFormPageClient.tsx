@@ -1,16 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Badge } from '@/src/shared/components/Badge';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { authApi } from '@/src/shared/api/authApi';
+import { setTokens } from '@/src/shared/api/tokenManager';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
 import { UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
-import { authApi } from '@/src/shared/api/authApi';
-import { setTokens } from '@/src/shared/api/tokenManager';
 import { signupAccountTypeCopy, type SignupAccountType } from '../signupAccountType';
 import { useAgencies, type AgencyOption } from './useAgencies';
 
@@ -18,13 +17,49 @@ interface SignupFormPageClientProps {
   initialAccountType: SignupAccountType;
 }
 
+type ErrorState = {
+  email: string;
+  password: string;
+  passwordConfirm: string;
+  name: string;
+  organization: string;
+  phone: string;
+  verificationCode: string;
+};
+
 interface AgencyDropdownFieldProps {
   agencies: AgencyOption[];
   isLoading: boolean;
   isError: boolean;
   selectedAgencyId: string;
   onSelect: (agencyId: string) => void;
+  error?: string;
 }
+
+const STEP_LABELS = ['계정 정보', '기본 정보', '휴대폰 인증', '약관 동의'] as const;
+
+const TERM_MODAL_CONTENT = {
+  terms1: {
+    title: '서비스 이용약관 및 개인정보 수집 동의',
+    description:
+      '티클 서비스 이용을 위해 필요한 기본 약관입니다.\n\n회원 식별, 예매 처리, 고객 문의 대응을 위한 범위에서 개인정보를 수집하고 이용합니다.',
+  },
+  terms2: {
+    title: '공연 소식 및 운영 공지 수신 동의',
+    description:
+      '신규 공연 오픈, 예매 일정 변경, 서비스 공지 메일을 수신합니다.\n\n선택 동의이며, 가입 후 마이페이지에서 언제든 변경할 수 있습니다.',
+  },
+} as const;
+
+const createEmptyErrors = (): ErrorState => ({
+  email: '',
+  password: '',
+  passwordConfirm: '',
+  name: '',
+  organization: '',
+  phone: '',
+  verificationCode: '',
+});
 
 function AgencyDropdownField({
   agencies,
@@ -32,13 +67,16 @@ function AgencyDropdownField({
   isError,
   selectedAgencyId,
   onSelect,
+  error,
 }: AgencyDropdownFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   const selectedAgency = useMemo(
     () => agencies.find((agency) => agency.id === selectedAgencyId),
     [agencies, selectedAgencyId]
   );
+
   const isDisabled = isLoading || isError || agencies.length === 0;
 
   useEffect(() => {
@@ -56,10 +94,10 @@ function AgencyDropdownField({
   }, []);
 
   const placeholderText = isLoading
-    ? '기획사 목록을 불러오는 중입니다'
+    ? '기획사 목록을 불러오는 중입니다.'
     : isError
-      ? '기획사 목록을 불러오지 못했습니다'
-      : '기획사를 선택하세요';
+      ? '기획사 목록을 불러오지 못했습니다.'
+      : '기획사를 선택해 주세요.';
 
   return (
     <div className="flex w-full flex-col gap-1">
@@ -67,8 +105,9 @@ function AgencyDropdownField({
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
-          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-2 text-[16px] text-gray-900 outline-none transition-colors disabled:cursor-not-allowed disabled:text-gray-400 ${isOpen ? 'border-blue-500' : 'border-gray-300'
-            }`}
+          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-2 text-[16px] text-gray-900 outline-none transition-colors disabled:cursor-not-allowed disabled:text-gray-400 ${
+            isOpen ? 'border-blue-500' : error ? 'border-red-500' : 'border-gray-300'
+          }`}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           disabled={isDisabled}
@@ -78,8 +117,7 @@ function AgencyDropdownField({
             {selectedAgency?.name ?? placeholderText}
           </span>
           <svg
-            className={`ml-3 h-5 w-5 shrink-0 transition-transform ${isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'
-              }`}
+            className={`ml-3 h-5 w-5 shrink-0 transition-transform ${isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'}`}
             viewBox="0 0 20 20"
             fill="currentColor"
             aria-hidden="true"
@@ -105,8 +143,9 @@ function AgencyDropdownField({
                   <button
                     key={agency.id}
                     type="button"
-                    className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
-                      }`}
+                    className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${
+                      isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
                     role="option"
                     aria-selected={isSelected}
                     onClick={() => {
@@ -122,22 +161,24 @@ function AgencyDropdownField({
           </div>
         ) : null}
       </div>
+      {error ? <span className="mt-1 text-[12px] text-red-500">{error}</span> : null}
       <span className="text-xs font-medium text-slate-400">등록된 기획사만 선택할 수 있습니다.</span>
     </div>
   );
 }
 
 export function SignupFormPageClient({ initialAccountType }: SignupFormPageClientProps) {
+  const router = useRouter();
   const selectedTypeCopy = signupAccountTypeCopy[initialAccountType];
   const isAgencySignup = initialAccountType === 'agency';
   const { data: agencies = [], isLoading: isAgenciesLoading, isError: isAgenciesError } = useAgencies(isAgencySignup);
+
   const [selectedAgencyId, setSelectedAgencyId] = useState('');
   const selectedAgency = useMemo(
     () => agencies.find((agency) => agency.id === selectedAgencyId),
     [agencies, selectedAgencyId]
   );
-  
-  const router = useRouter();
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -146,17 +187,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     password: '',
     passwordConfirm: '',
   });
-
-  const [errors, setErrors] = useState({
-    email: '',
-    password: '',
-    passwordConfirm: '',
-    name: '',
-    organization: '',
-    phone: '',
-    verificationCode: ''
-  });
-
+  const [errors, setErrors] = useState<ErrorState>(createEmptyErrors);
   const [verificationCode, setVerificationCode] = useState('');
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
@@ -164,52 +195,99 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTermsAgreed, setIsTermsAgreed] = useState(false);
-
+  const [receiveAnnouncements, setReceiveAnnouncements] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
+  const [openModalType, setOpenModalType] = useState<keyof typeof TERM_MODAL_CONTENT | null>(null);
 
-  const handleNext = () => {
+  const totalSteps = STEP_LABELS.length;
+  const activeModal = openModalType ? TERM_MODAL_CONTENT[openModalType] : null;
+
+  const clearFieldError = (field: keyof ErrorState) => {
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
+  };
+
+  const handleAgencySelect = (agencyId: string) => {
+    setSelectedAgencyId(agencyId);
+    clearFieldError('organization');
+  };
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name in createEmptyErrors()) {
+      clearFieldError(name as keyof ErrorState);
+    }
+
+    if (name === 'phone') {
+      setIsCodeSent(false);
+      setIsPhoneVerified(false);
+      setVerificationCode('');
+    }
+  };
+
+  const validateStep = (step: number) => {
+    const nextErrors = createEmptyErrors();
     let hasError = false;
-    const newErrors = { ...errors };
 
-    if (currentStep === 1) {
-      if (!formData.email) { newErrors.email = '이메일을 입력해주세요.'; hasError = true; }
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { newErrors.email = '유효한 이메일 주소를 입력하세요.'; hasError = true; }
-      
+    if (step === 1) {
+      if (!formData.email) {
+        nextErrors.email = '이메일을 입력해 주세요.';
+        hasError = true;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        nextErrors.email = '올바른 이메일 형식을 입력해 주세요.';
+        hasError = true;
+      }
+
       if (!formData.password) {
-        newErrors.password = '비밀번호를 입력해주세요.';
+        nextErrors.password = '비밀번호를 입력해 주세요.';
         hasError = true;
-      } else if (!/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,20}$/.test(formData.password)) {
-        newErrors.password = '영문, 숫자, 특수문자 포함 8~20자로 입력해주세요.';
+      } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,20}$/.test(formData.password)) {
+        nextErrors.password = '영문, 숫자, 특수문자를 포함해 8자 이상 20자 이하로 입력해 주세요.';
         hasError = true;
       }
 
-      if (!formData.passwordConfirm) { newErrors.passwordConfirm = '비밀번호 확인을 입력해주세요.'; hasError = true; }
-      
-      if (formData.password && formData.passwordConfirm && formData.password !== formData.passwordConfirm) {
-        newErrors.passwordConfirm = '비밀번호가 일치하지 않습니다.';
+      if (!formData.passwordConfirm) {
+        nextErrors.passwordConfirm = '비밀번호 확인을 입력해 주세요.';
         hasError = true;
-      }
-    } else if (currentStep === 2) {
-      if (!formData.name) {
-        newErrors.name = '이름을 입력해주세요.';
-        hasError = true;
-      } else if (!/^[가-힣a-zA-Z]{2,20}$/.test(formData.name)) {
-        newErrors.name = '한글 또는 영문 2~20자로 입력해주세요 (특수문자/숫자 제외).';
-        hasError = true;
-      }
-      
-      if (isAgencySignup && !selectedAgencyId) { newErrors.organization = '기획사를 선택해주세요.'; hasError = true; }
-      if (!isAgencySignup && !formData.organization) { newErrors.organization = '닉네임을 입력해주세요.'; hasError = true; }
-    } else if (currentStep === 3) {
-      if (!isPhoneVerified) {
-        newErrors.phone = '휴대폰 인증을 완료해주세요.';
+      } else if (formData.password !== formData.passwordConfirm) {
+        nextErrors.passwordConfirm = '비밀번호가 일치하지 않습니다.';
         hasError = true;
       }
     }
 
-    if (hasError) {
-      setErrors(newErrors);
+    if (step === 2) {
+      if (!formData.name) {
+        nextErrors.name = isAgencySignup ? '담당자명을 입력해 주세요.' : '이름을 입력해 주세요.';
+        hasError = true;
+      } else if (!/^[A-Za-z가-힣\s]{2,20}$/.test(formData.name)) {
+        nextErrors.name = '이름은 한글 또는 영문 2자 이상 20자 이하로 입력해 주세요.';
+        hasError = true;
+      }
+
+      if (isAgencySignup) {
+        if (!selectedAgencyId) {
+          nextErrors.organization = '기획사를 선택해 주세요.';
+          hasError = true;
+        }
+      } else if (!formData.organization) {
+        nextErrors.organization = `${selectedTypeCopy.organizationLabel}을 입력해 주세요.`;
+        hasError = true;
+      }
+    }
+
+    if (step === 3 && !isPhoneVerified) {
+      nextErrors.phone = '휴대폰 인증을 완료해 주세요.';
+      hasError = true;
+    }
+
+    setErrors(nextErrors);
+    return !hasError;
+  };
+
+  const handleNext = () => {
+    if (!validateStep(currentStep)) {
       return;
     }
 
@@ -220,27 +298,19 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const [openModalType, setOpenModalType] = useState<'terms1' | 'terms2' | null>(null);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    if (errors[e.target.name as keyof typeof errors]) {
-      setErrors((prev) => ({ ...prev, [e.target.name]: '' }));
-    }
-  };
-
   const handleSendCode = async () => {
     if (!/^010\d{8}$/.test(formData.phone)) {
-      setErrors((prev) => ({ ...prev, phone: '휴대폰 번호를 올바르게 입력해주세요. (010xxxxxxxx)' }));
+      setErrors((prev) => ({ ...prev, phone: '휴대폰 번호를 올바르게 입력해 주세요. 예: 01012345678' }));
       return;
     }
-    
+
+    setErrors((prev) => ({ ...prev, phone: '', verificationCode: '' }));
     setIsSendingCode(true);
 
-    const MOCK_SMS = true;
-    
-    if (MOCK_SMS) {
-      setTimeout(() => {
+    const mockSms = true;
+
+    if (mockSms) {
+      window.setTimeout(() => {
         setIsCodeSent(true);
         setIsSendingCode(false);
       }, 500);
@@ -250,10 +320,9 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     try {
       await authApi.sendPhoneCode({ phoneNumber: formData.phone });
       setIsCodeSent(true);
-      // alert('인증번호가 발송되었습니다. 5분 내에 입력해주세요.'); // 테스트를 위해 성공 alert도 임시 제거 가능 (요청시)
-    } catch (error: any) {
+    } catch (error) {
       console.error('sendPhoneCode failed', error);
-      setErrors((prev) => ({ ...prev, phone: error?.response?.data?.message || '인증번호 발송에 실패했습니다.' }));
+      setErrors((prev) => ({ ...prev, phone: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.' }));
     } finally {
       setIsSendingCode(false);
     }
@@ -261,16 +330,17 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
   const handleVerifyCode = async () => {
     if (!verificationCode) {
-      setErrors((prev) => ({ ...prev, verificationCode: '인증번호를 입력해주세요.' }));
+      setErrors((prev) => ({ ...prev, verificationCode: '인증번호를 입력해 주세요.' }));
       return;
     }
-    
+
+    setErrors((prev) => ({ ...prev, verificationCode: '' }));
     setIsVerifyingCode(true);
 
-    const MOCK_SMS = true;
+    const mockSms = true;
 
-    if (MOCK_SMS) {
-      setTimeout(() => {
+    if (mockSms) {
+      window.setTimeout(() => {
         setIsPhoneVerified(true);
         setIsVerifyingCode(false);
       }, 500);
@@ -280,334 +350,358 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     try {
       await authApi.verifyPhoneCode({ phoneNumber: formData.phone, code: verificationCode });
       setIsPhoneVerified(true);
-      alert('휴대폰 인증이 완료되었습니다.');
-    } catch (error: any) {
+    } catch (error) {
       console.error('verifyPhoneCode failed', error);
-      setErrors((prev) => ({ ...prev, verificationCode: error?.response?.data?.message || '인증번호가 일치하지 않거나 만료되었습니다.' }));
+      setErrors((prev) => ({ ...prev, verificationCode: '인증번호가 일치하지 않거나 만료되었습니다.' }));
     } finally {
       setIsVerifyingCode(false);
     }
   };
 
-  const isSignupDisabled = (isAgencySignup && selectedAgencyId.length === 0) || !isPhoneVerified || isSubmitting || !isTermsAgreed;
-  
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    let hasError = false;
-    const newErrors = { ...errors };
+  const isSignupDisabled =
+    (isAgencySignup && !selectedAgencyId) ||
+    !isPhoneVerified ||
+    isSubmitting ||
+    !isTermsAgreed;
 
-    if (isAgencySignup && !selectedAgencyId) {
-      alert('기획사를 선택해주세요.'); // Keep as alert for agency dropdown if no error prop is supported, or map to organization
-      hasError = true;
-    }
-    
-    if (formData.password !== formData.passwordConfirm) {
-      newErrors.passwordConfirm = '비밀번호가 일치하지 않습니다.';
-      hasError = true;
-    }
-    
-    if (!isPhoneVerified) {
-      newErrors.phone = '휴대폰 인증을 완료해주세요.';
-      hasError = true;
-    }
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-    if (hasError) {
-      setErrors(newErrors);
+    const stepOneValid = validateStep(1);
+    const stepTwoValid = validateStep(2);
+    const stepThreeValid = validateStep(3);
+
+    if (!stepOneValid || !stepTwoValid || !stepThreeValid || !isTermsAgreed) {
       return;
     }
-    
+
     setIsSubmitting(true);
+
     try {
-      const role = initialAccountType === 'agency' ? 'ORGANIZER' : 'USER';
-      const request = {
+      const response = await authApi.signup({
         email: formData.email,
         password: formData.password,
         name: formData.name,
         phoneNumber: formData.phone,
-        role: role as 'ORGANIZER' | 'USER',
+        role: isAgencySignup ? 'ORGANIZER' : 'USER',
         organizerName: isAgencySignup ? selectedAgency?.name : formData.organization,
-      };
-      
-      const response = await authApi.signup(request);
+      });
+
       if (response.data) {
         setTokens(response.data.accessToken, response.data.refreshToken);
-        alert('회원가입이 완료되었습니다!');
         router.push('/');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Signup failed', error);
-      // alert(error?.response?.data?.message || '회원가입에 실패했습니다.');
-      router.push('/');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <UserAuthFrame
-      activeTab="signup"
-      size="wide"
-    >
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <input type="hidden" name="accountType" value={initialAccountType} />
-        {isAgencySignup ? (
-          <>
-            <input type="hidden" name="agencyId" value={selectedAgencyId} />
-            <input type="hidden" name="organization" value={selectedAgency?.name ?? ''} />
-          </>
-        ) : null}
+    <>
+      <UserAuthFrame
+        activeTab="signup"
+        size="wide"
+        label={isAgencySignup ? '기획사 회원가입' : '관객 회원가입'}
+        title={isAgencySignup ? '운영에 사용할 계정을 설정해 주세요' : '예매에 사용할 계정을 설정해 주세요'}
+      >
+        <div className="mb-6 grid grid-cols-4 gap-2">
+          {STEP_LABELS.map((stepLabel, index) => {
+            const stepNo = index + 1;
+            const isActive = currentStep === stepNo;
+            const isCompleted = currentStep > stepNo;
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          {isAgencySignup ? (
-            <AgencyDropdownField
-              agencies={agencies}
-              isLoading={isAgenciesLoading}
-              isError={isAgenciesError}
-              selectedAgencyId={selectedAgencyId}
-              onSelect={setSelectedAgencyId}
-            />
-          </div>
+            return (
+              <div key={stepLabel} className="space-y-2">
+                <div className={`h-1.5 rounded-full ${isCompleted || isActive ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                <p className={`text-xs font-bold ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>{stepLabel}</p>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="min-h-[260px]">
-          {currentStep === 1 && (
-            <div className="flex flex-col gap-5 animate-in fade-in duration-300">
-              <Input
-                label="아이디"
-                type="email"
-                name="email"
-                placeholder="이메일을 입력하세요"
-                autoComplete="email"
-                fullWidth
-                required
-                value={formData.email}
-                onChange={handleChange}
-                error={errors.email}
-                style={{ letterSpacing: '-0.02em' }}
-                className="[&_input]:text-[20px]"
-              />
-              <Input
-                label="비밀번호"
-                type="password"
-                name="password"
-                placeholder="8자 이상 입력하세요"
-                autoComplete="new-password"
-                fullWidth
-                required
-                value={formData.password}
-                onChange={handleChange}
-                error={errors.password}
-                style={{ letterSpacing: '-0.02em' }}
-                className="[&_input]:text-[20px]"
-              />
-              <Input
-                label="비밀번호 확인"
-                type="password"
-                name="passwordConfirm"
-                placeholder="비밀번호를 다시 입력하세요"
-                autoComplete="new-password"
-                fullWidth
-                required
-                value={formData.passwordConfirm}
-                onChange={handleChange}
-                error={errors.passwordConfirm}
-                style={{ letterSpacing: '-0.02em' }}
-                className="[&_input]:text-[20px]"
-              />
-            </div>
-          )}
+        <p className="mb-6 text-sm leading-6 text-slate-500">{selectedTypeCopy.cardDescription}</p>
 
-          {currentStep === 2 && (
-            <div className="flex flex-col gap-5 animate-in fade-in duration-300">
-              <Input
-                label={isAgencySignup ? '담당자명' : '이름'}
-                name="name"
-                placeholder={isAgencySignup ? '담당자명을 입력하세요' : '이름을 입력하세요'}
-                autoComplete="name"
-                fullWidth
-                required
-                value={formData.name}
-                onChange={handleChange}
-                error={errors.name}
-                style={{ letterSpacing: '-0.02em' }}
-                className="[&_input]:text-[20px]"
-              />
-              {!isAgencySignup ? (
+        <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+          <input type="hidden" name="accountType" value={initialAccountType} />
+          {isAgencySignup ? (
+            <>
+              <input type="hidden" name="agencyId" value={selectedAgencyId} />
+              <input type="hidden" name="organization" value={selectedAgency?.name ?? ''} />
+            </>
+          ) : null}
+
+          <div className="min-h-[280px]">
+            {currentStep === 1 ? (
+              <div className="flex flex-col gap-5 animate-in fade-in duration-300">
                 <Input
-                  label={selectedTypeCopy.organizationLabel}
-                  name="organization"
-                  placeholder={selectedTypeCopy.organizationPlaceholder}
-                  autoComplete="organization"
+                  label="이메일"
+                  type="email"
+                  name="email"
+                  placeholder="이메일을 입력해 주세요."
+                  autoComplete="email"
                   fullWidth
-                  value={formData.organization}
+                  required
+                  value={formData.email}
                   onChange={handleChange}
-                  error={errors.organization}
+                  error={errors.email}
                   style={{ letterSpacing: '-0.02em' }}
                   className="[&_input]:text-[20px]"
                 />
-              ) : (
-                <AgencyDropdownField
-                  agencies={agencies}
-                  isLoading={isAgenciesLoading}
-                  isError={isAgenciesError}
-                  selectedAgencyId={selectedAgencyId}
-                  onSelect={setSelectedAgencyId}
+                <Input
+                  label="비밀번호"
+                  type="password"
+                  name="password"
+                  placeholder="8자 이상 입력해 주세요."
+                  autoComplete="new-password"
+                  fullWidth
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  error={errors.password}
+                  style={{ letterSpacing: '-0.02em' }}
+                  className="[&_input]:text-[20px]"
                 />
-              )}
-            </div>
-          )}
+                <Input
+                  label="비밀번호 확인"
+                  type="password"
+                  name="passwordConfirm"
+                  placeholder="비밀번호를 다시 입력해 주세요."
+                  autoComplete="new-password"
+                  fullWidth
+                  required
+                  value={formData.passwordConfirm}
+                  onChange={handleChange}
+                  error={errors.passwordConfirm}
+                  style={{ letterSpacing: '-0.02em' }}
+                  className="[&_input]:text-[20px]"
+                />
+              </div>
+            ) : null}
 
-          {currentStep === 3 && (
-            <div className="flex flex-col gap-5 animate-in fade-in duration-300">
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
+            {currentStep === 2 ? (
+              <div className="flex flex-col gap-5 animate-in fade-in duration-300">
+                <Input
+                  label={isAgencySignup ? '담당자명' : '이름'}
+                  name="name"
+                  placeholder={isAgencySignup ? '담당자명을 입력해 주세요.' : '이름을 입력해 주세요.'}
+                  autoComplete="name"
+                  fullWidth
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  error={errors.name}
+                  style={{ letterSpacing: '-0.02em' }}
+                  className="[&_input]:text-[20px]"
+                />
+
+                {isAgencySignup ? (
+                  <AgencyDropdownField
+                    agencies={agencies}
+                    isLoading={isAgenciesLoading}
+                    isError={isAgenciesError}
+                    selectedAgencyId={selectedAgencyId}
+                    onSelect={handleAgencySelect}
+                    error={errors.organization}
+                  />
+                ) : (
                   <Input
-                    label="휴대전화"
-                    type="tel"
-                    name="phone"
-                    placeholder="01012345678"
-                    autoComplete="tel"
+                    label={selectedTypeCopy.organizationLabel}
+                    name="organization"
+                    placeholder={selectedTypeCopy.organizationPlaceholder}
+                    autoComplete="organization"
                     fullWidth
-                    required
-                    value={formData.phone}
+                    value={formData.organization}
                     onChange={handleChange}
-                    disabled={isPhoneVerified}
-                    error={errors.phone}
+                    error={errors.organization}
                     style={{ letterSpacing: '-0.02em' }}
                     className="[&_input]:text-[20px]"
                   />
-                </div>
-                <Button 
-                  type="button" 
-                  size="large"
-                  className="h-[43px] px-4 whitespace-nowrap mb-[2px]"
-                  onClick={handleSendCode}
-                  disabled={isPhoneVerified || isSendingCode || !formData.phone}
-                  isLoading={isSendingCode}
-                >
-                  {isPhoneVerified ? '인증완료' : isCodeSent ? '재전송' : '인증번호 받기'}
-                </Button>
+                )}
               </div>
-              
-              {isCodeSent && !isPhoneVerified && (
+            ) : null}
+
+            {currentStep === 3 ? (
+              <div className="flex flex-col gap-5 animate-in fade-in duration-300">
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <Input
-                      label="인증번호"
-                      type="text"
-                      name="verificationCode"
-                      placeholder="6자리 숫자"
+                      label="휴대폰"
+                      type="tel"
+                      name="phone"
+                      placeholder="01012345678"
+                      autoComplete="tel"
                       fullWidth
-                      value={verificationCode}
-                      onChange={(e) => {
-                        setVerificationCode(e.target.value);
-                        if (errors.verificationCode) setErrors(prev => ({ ...prev, verificationCode: '' }));
-                      }}
-                      error={errors.verificationCode}
+                      required
+                      value={formData.phone}
+                      onChange={handleChange}
+                      disabled={isPhoneVerified}
+                      error={errors.phone}
                       style={{ letterSpacing: '-0.02em' }}
                       className="[&_input]:text-[20px]"
                     />
                   </div>
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     size="large"
-                    className="h-[43px] px-4 whitespace-nowrap mb-[2px]"
-                    onClick={handleVerifyCode}
-                    disabled={isVerifyingCode || !verificationCode}
-                    isLoading={isVerifyingCode}
+                    className="mb-[2px] h-[43px] px-4 whitespace-nowrap"
+                    onClick={handleSendCode}
+                    disabled={isPhoneVerified || isSendingCode || !formData.phone}
+                    isLoading={isSendingCode}
                   >
-                    확인
+                    {isPhoneVerified ? '인증완료' : isCodeSent ? '재전송' : '인증번호 받기'}
                   </Button>
                 </div>
+
+                {isCodeSent && !isPhoneVerified ? (
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1">
+                      <Input
+                        label="인증번호"
+                        type="text"
+                        name="verificationCode"
+                        placeholder="6자리 숫자"
+                        fullWidth
+                        value={verificationCode}
+                        onChange={(event) => {
+                          setVerificationCode(event.target.value);
+                          clearFieldError('verificationCode');
+                        }}
+                        error={errors.verificationCode}
+                        style={{ letterSpacing: '-0.02em' }}
+                        className="[&_input]:text-[20px]"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="large"
+                      className="mb-[2px] h-[43px] px-4 whitespace-nowrap"
+                      onClick={handleVerifyCode}
+                      disabled={isVerifyingCode || !verificationCode}
+                      isLoading={isVerifyingCode}
+                    >
+                      확인
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {currentStep === 4 ? (
+              <div className="space-y-5 animate-in fade-in duration-300">
+                <Box variant="gray" className="rounded-[24px] bg-slate-50">
+                  <p className="text-sm font-black text-slate-900">입력 정보 확인</p>
+                  <dl className="mt-4 grid gap-3 text-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="font-medium text-slate-500">계정 유형</dt>
+                      <dd className="font-bold text-slate-900">{selectedTypeCopy.label}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="font-medium text-slate-500">이메일</dt>
+                      <dd className="font-bold text-slate-900">{formData.email}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="font-medium text-slate-500">{isAgencySignup ? '담당자명' : '이름'}</dt>
+                      <dd className="font-bold text-slate-900">{formData.name}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="font-medium text-slate-500">{selectedTypeCopy.organizationLabel}</dt>
+                      <dd className="font-bold text-slate-900">
+                        {isAgencySignup ? selectedAgency?.name ?? '-' : formData.organization || '-'}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="font-medium text-slate-500">휴대폰</dt>
+                      <dd className="font-bold text-slate-900">{formData.phone}</dd>
+                    </div>
+                  </dl>
+                </Box>
+
+                <Box variant="gray" className="rounded-[24px] bg-slate-50">
+                  <p className="text-sm font-black text-slate-900">약관 동의</p>
+                  <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                    회원가입을 완료하려면 필수 약관에 동의해 주세요.
+                  </p>
+
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between rounded-[18px] border border-white bg-white px-4 py-3">
+                      <label className="inline-flex flex-1 cursor-pointer items-center gap-3 pr-2 text-sm font-medium text-slate-600">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={isTermsAgreed}
+                          onChange={(event) => setIsTermsAgreed(event.target.checked)}
+                        />
+                        <span className="leading-tight">서비스 이용약관 및 개인정보 수집·이용에 동의합니다.</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setOpenModalType('terms1')}
+                        className="ml-2 shrink-0 text-xs font-bold text-blue-500 underline transition-colors hover:text-blue-700"
+                      >
+                        약관 보기
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-[18px] border border-white bg-white px-4 py-3">
+                      <label className="inline-flex flex-1 cursor-pointer items-center gap-3 pr-2 text-sm font-medium text-slate-600">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={receiveAnnouncements}
+                          onChange={(event) => setReceiveAnnouncements(event.target.checked)}
+                        />
+                        <span className="leading-tight">공연 소식 및 운영 공지 메일을 수신합니다.</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setOpenModalType('terms2')}
+                        className="ml-2 shrink-0 text-xs font-bold text-blue-500 underline transition-colors hover:text-blue-700"
+                      >
+                        약관 보기
+                      </button>
+                    </div>
+                  </div>
+                </Box>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            {currentStep > 1 ? (
+              <div className="flex-1">
+                <Button type="button" variant="weak" color="dark" display="block" size="xlarge" onClick={handlePrev}>
+                  이전
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="flex-1">
+              {currentStep < totalSteps ? (
+                <Button type="button" display="block" size="xlarge" color="dark" onClick={handleNext}>
+                  다음
+                </Button>
+              ) : (
+                <Button type="submit" display="block" size="xlarge" disabled={isSignupDisabled} isLoading={isSubmitting}>
+                  회원가입 완료
+                </Button>
               )}
             </div>
-          )}
-
-          {currentStep === 4 && (
-            <div className="animate-in fade-in duration-300">
-              <Box variant="gray" className="rounded-[24px] bg-slate-50">
-                <p className="text-sm font-black text-slate-900">약관 및 운영 안내</p>
-                <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
-                  운영 페이지 진입 가능 여부와 알림 수신 동의는 가입 후에도 변경할 수 있습니다.
-                </p>
-
-                <div className="mt-4 flex flex-col gap-3">
-                  {/* 첫 번째 약관 */}
-                  <div className="flex items-center justify-between rounded-[18px] border border-white bg-white px-4 py-3">
-                    <label className="inline-flex items-center gap-3 text-sm font-medium text-slate-600 flex-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 shrink-0"
-                        checked={isTermsAgreed}
-                        onChange={(e) => setIsTermsAgreed(e.target.checked)}
-                      />
-                      <span className="leading-tight break-keep pr-2">서비스 이용약관과 개인정보 수집 및 이용에 동의합니다.</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setOpenModalType('terms1')}
-                      className="shrink-0 text-xs font-bold text-blue-500 underline ml-2 transition-colors hover:text-blue-700"
-                    >
-                      약관 보기
-                    </button>
-                  </div>
-
-                  {/* 두 번째 약관 */}
-                  <div className="flex items-center justify-between rounded-[18px] border border-white bg-white px-4 py-3">
-                    <label className="inline-flex items-center gap-3 text-sm font-medium text-slate-600 flex-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="truncate">공연 오픈 알림과 운영 공지 메일을 수신합니다.</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setOpenModalType('terms2')}
-                      className="shrink-0 text-xs font-bold text-blue-500 underline ml-2 transition-colors hover:text-blue-700"
-                    >
-                      약관 보기
-                    </button>
-                  </div>
-                </div>
-              </Box>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3 pt-4">
-          {currentStep > 1 && (
-            <div className="flex-1">
-              <Button type="button" variant="weak" color="dark" display="block" size="xlarge" onClick={handlePrev}>
-                이전
-              </Button>
-            </div>
-          )}
-          <div className="flex-1">
-            {currentStep < totalSteps ? (
-              <Button type="button" display="block" size="xlarge" onClick={handleNext}>
-                다음
-              </Button>
-            ) : (
-              <Button type="submit" display="block" size="xlarge" disabled={isSignupDisabled} isLoading={isSubmitting}>
-                회원가입 완료
-              </Button>
-            )}
           </div>
-        </div>
-      </form>
+        </form>
+      </UserAuthFrame>
 
-        <div className="grid gap-3">
-          <Button type="submit" display="block" size="xlarge" color="dark" disabled={isSignupDisabled}>
-            회원가입
-          </Button>
-          <Button as="a" href="/login" color="dark" variant="weak" display="block" size="xlarge">
-            로그인으로 이동
-          </Button>
-        </div>
-      </Modal>
-    </UserAuthFrame>
+      <Modal
+        isOpen={activeModal !== null}
+        onClose={() => setOpenModalType(null)}
+        onConfirm={() => setOpenModalType(null)}
+        title={activeModal?.title}
+        description={activeModal?.description}
+        confirmText="닫기"
+        showCancelButton={false}
+      />
+    </>
   );
 }
 
