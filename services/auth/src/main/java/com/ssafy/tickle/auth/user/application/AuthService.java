@@ -131,16 +131,16 @@ public class AuthService {
      *
      * <p>Kakao 사용자 식별자로 기존 OAuth 가입자를 찾고, 없으면 USER 권한의 신규 회원을 생성한다.</p>
      *
-     * @param code Kakao authorization code
+     * @param request 프론트엔드가 전달한 Kakao 로그인 요청 (code, redirectUri)
      * @return 발급된 Access Token / Refresh Token / userId
      */
     @Transactional
-    public TokenResponse kakaoLogin(String code) {
-        if (isBlank(code)) {
+    public TokenResponse kakaoLogin(com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request) {
+        if (request == null || isBlank(request.code()) || isBlank(request.redirectUri())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
         }
 
-        KakaoTokenResponse tokenResponse = kakaoOAuthClient.requestToken(code);
+        KakaoTokenResponse tokenResponse = kakaoOAuthClient.requestToken(request.code(), request.redirectUri());
         if (tokenResponse == null || isBlank(tokenResponse.accessToken())) {
             throw new BaseException(AuthErrorCode.KAKAO_LOGIN_FAILED);
         }

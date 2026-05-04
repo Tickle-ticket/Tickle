@@ -67,13 +67,14 @@ public class KakaoOAuthClient {
      * Kakao 인가 코드로 Kakao Access Token을 요청합니다.
      *
      * @param code Kakao authorization code
+     * @param redirectUri 프론트엔드가 카카오 인증을 요청할 때 사용한 Redirect URI
      * @return Kakao token response
      */
-    public KakaoTokenResponse requestToken(String code) {
+    public KakaoTokenResponse requestToken(String code, String redirectUri) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", AUTHORIZATION_CODE);
         form.add("client_id", properties.clientId());
-        form.add("redirect_uri", properties.redirectUri());
+        form.add("redirect_uri", redirectUri);
         form.add("code", code);
         if (properties.hasClientSecret()) {
             form.add("client_secret", properties.clientSecret());

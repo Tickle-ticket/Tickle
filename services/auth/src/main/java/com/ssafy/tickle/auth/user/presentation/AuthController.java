@@ -14,6 +14,7 @@ import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.TokenResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -84,24 +85,19 @@ public class AuthController implements AuthApiDoc {
     }
 
     /**
-     * Kakao OAuth 콜백을 처리합니다.
+     * Kakao OAuth 로그인(토큰 발급) API입니다.
      *
-     * @param code Kakao authorization code
-     * @param error Kakao authorization error
+     * @param request 프론트엔드가 전달한 인가 코드와 리다이렉트 URI
      * @return 발급된 토큰 응답
      */
     @Override
-    @GetMapping("/kakao/callback")
-    public ResponseEntity<BaseResponse<TokenResponse>> kakaoCallback(
-            @RequestParam(required = false) String code,
-            @RequestParam(required = false) String error
+    @PostMapping("/kakao/login")
+    public ResponseEntity<BaseResponse<TokenResponse>> kakaoLogin(
+            @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request
     ) {
-        if (error != null && !error.isBlank()) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
-        }
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(authService.kakaoLogin(code)));
+                .body(BaseResponse.success(authService.kakaoLogin(request)));
     }
 
     /**

@@ -88,22 +88,18 @@ public interface AuthApiDoc {
     ResponseEntity<Void> redirectToKakao();
 
     /**
-     * Kakao OAuth 콜백 API 문서 정의입니다.
+     * Kakao OAuth 로그인(토큰 발급) API 문서 정의입니다.
      */
     @Operation(
-            summary = "카카오 OAuth 콜백",
-            description = "Kakao authorization code로 Kakao 사용자 정보를 조회하고 Tickle Access Token / Refresh Token을 발급한다."
+            summary = "카카오 OAuth 로그인 (토큰 교환)",
+            description = "프론트엔드가 카카오로부터 받은 Authorization Code로 백엔드에 토큰을 요청합니다."
     )
-    @ApiResponse(responseCode = "200", description = "카카오 로그인 성공")
-    @ApiResponse(responseCode = "400", description = "잘못된 콜백 요청 또는 이메일 동의 누락")
+    @ApiResponse(responseCode = "200", description = "카카오 로그인 성공 (Tickle 토큰 발급)")
+    @ApiResponse(responseCode = "400", description = "잘못된 로그인 요청 (코드 또는 리다이렉트 URI 누락)")
     @ApiResponse(responseCode = "401", description = "카카오 로그인 실패")
     @ApiResponse(responseCode = "409", description = "동일 이메일 계정 존재")
-    ResponseEntity<BaseResponse<TokenResponse>> kakaoCallback(
-            @Parameter(description = "Kakao authorization code")
-            @RequestParam(required = false) String code,
-
-            @Parameter(description = "Kakao authorization error")
-            @RequestParam(required = false) String error
+    ResponseEntity<BaseResponse<TokenResponse>> kakaoLogin(
+            @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request
     );
 
     /**
