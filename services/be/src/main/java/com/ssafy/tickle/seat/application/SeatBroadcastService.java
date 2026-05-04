@@ -39,17 +39,23 @@ public class SeatBroadcastService {
     public void onSeatStatusChanged(SeatStatusChangedEvent event) {
         Long scheduleId = event.getScheduleId();
         List<SseEmitter> emitters = sseEmitterRepository.findByScheduleId(scheduleId);
+        log.info("[SSE] Attempting to push to {} emitters for scheduleId={}", emitters.size(), scheduleId);
 
-        event.getSessionSeatIds().forEach(seatId -> {
-            SeatStatusMessage message = new SeatStatusMessage(seatId, event.getNewStatus());
-            for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send(SseEmitter.event().data(message, MediaType.APPLICATION_JSON));
-                    log.debug("[SSE] Push → scheduleId={} | seatId={} status={}", scheduleId, seatId, event.getNewStatus());
-                } catch (IOException e) {
-                    sseEmitterRepository.remove(scheduleId, emitter);
-                }
+        if (emitters.isEmpty()) {
+            return;
+        }
+
+        // 일괄 전송으로 변경 (개별 루프 제거)
+        SeatStatusMessage message = new SeatStatusMessage(event.getSessionSeatIds(), event.getNewStatus());
+        
+        for (SseEmitter emitter : emitters) {
+            try {
+                emitter.send(SseEmitter.event().data(message, MediaType.APPLICATION_JSON));
+                log.info("[SSE] Push Success → count={} status={}", event.getSessionSeatIds().size(), event.getNewStatus());
+            } catch (IOException e) {
+                log.warn("[SSE] Push Failed (Removing) → error={}", e.getMessage());
+                sseEmitterRepository.remove(scheduleId, emitter);
             }
-        });
+        }
     }
 }
