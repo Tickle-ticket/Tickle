@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueEnterRequestStore;
@@ -44,6 +45,7 @@ public class QueueStatusService {
                 queueToken,
                 requestId,
                 reference.userId(),
+                reference.scope(),
                 reference.sessionId(),
                 Instant.now()
         );
@@ -52,10 +54,14 @@ public class QueueStatusService {
     }
 
     public QueueTokenResponse getQueueToken(Long sessionId, String requestId) {
+        return getQueueToken(QueueScope.BOOKING, sessionId, requestId);
+    }
+
+    public QueueTokenResponse getQueueToken(QueueScope scope, Long sessionId, String requestId) {
         QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
-        if (!reference.sessionId().equals(sessionId)) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 회차와 대기열 진입 요청의 회차가 일치하지 않습니다.");
+        if (!reference.sessionId().equals(sessionId) || reference.scope() != scope) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 진입 요청 정보가 일치하지 않습니다.");
         }
         return getQueueToken(requestId);
     }
@@ -79,9 +85,9 @@ public class QueueStatusService {
         }
 
         // 순번과 ETA는 조회 시점의 redis 상태를 읽어 계산.
-        Long rank = queueStatusStore.findRank(snapshot.sessionId(), queueToken);
-        long waitingCount = queueStatusStore.countWaiting(snapshot.sessionId());
-        long estimatedWaitSeconds = estimateWaitSeconds(snapshot.sessionId(), rank);
+        Long rank = queueStatusStore.findRank(snapshot.scope(), snapshot.sessionId(), queueToken);
+        long waitingCount = queueStatusStore.countWaiting(snapshot.scope(), snapshot.sessionId());
+        long estimatedWaitSeconds = estimateWaitSeconds(snapshot.scope(), snapshot.sessionId(), rank);
         Instant estimatedEntryAt = Instant.now().plusSeconds(estimatedWaitSeconds);
 
         return QueueStatusResponse.waiting(
@@ -94,10 +100,14 @@ public class QueueStatusService {
     }
 
     public QueueStatusResponse getStatusByQueueToken(Long sessionId, String queueToken) {
+        return getStatusByQueueToken(QueueScope.BOOKING, sessionId, queueToken);
+    }
+
+    public QueueStatusResponse getStatusByQueueToken(QueueScope scope, Long sessionId, String queueToken) {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
-        if (!snapshot.sessionId().equals(sessionId)) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 회차와 대기열 토큰의 회차가 일치하지 않습니다.");
+        if (!snapshot.sessionId().equals(sessionId) || snapshot.scope() != scope) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
         }
         return getStatusByQueueToken(queueToken);
     }
@@ -130,10 +140,14 @@ public class QueueStatusService {
     }
 
     public void leave(Long sessionId, String queueToken) {
+        leave(QueueScope.BOOKING, sessionId, queueToken);
+    }
+
+    public void leave(QueueScope scope, Long sessionId, String queueToken) {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
-        if (!snapshot.sessionId().equals(sessionId)) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 회차와 대기열 토큰의 회차가 일치하지 않습니다.");
+        if (!snapshot.sessionId().equals(sessionId) || snapshot.scope() != scope) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
         }
         leave(queueToken);
     }
@@ -177,16 +191,21 @@ public class QueueStatusService {
 
     private void deleteRelatedTokens(QueueStatusSnapshot snapshot) {
         stringRedisTemplate.delete(QueueConstants.QUEUE_TOKEN_REQUEST_KEY_PREFIX + snapshot.requestId());
-        queueEnterRequestStore.delete(snapshot.userId(), snapshot.sessionId(), snapshot.requestId());
+        queueEnterRequestStore.delete(snapshot.scope(), snapshot.userId(), snapshot.sessionId(), snapshot.requestId());
     }
 
     private long estimateWaitSeconds(Long sessionId, Long rank) {
+        return estimateWaitSeconds(QueueScope.BOOKING, sessionId, rank);
+    }
+
+    private long estimateWaitSeconds(QueueScope scope, Long sessionId, Long rank) {
         if (rank == null || rank <= 1L) {
             return 0L;
         }
 
         Instant now = Instant.now();
         long recentAdmissionCount = queueStatusStore.countRecentAdmissions(
+                scope,
                 sessionId,
                 now.minus(QueueConstants.ETA_WINDOW),
                 now

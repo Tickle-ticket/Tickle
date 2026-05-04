@@ -4,6 +4,8 @@ import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueStatusHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueScope;
+import com.ssafy.tickle.queue.domain.QueueTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -38,6 +40,17 @@ public class QueueStatusStore {
             Long sessionId,
             Instant registeredAt
     ) {
+        registerWaitingIfAbsent(queueToken, requestId, userId, QueueScope.BOOKING, sessionId, registeredAt);
+    }
+
+    public void registerWaitingIfAbsent(
+            String queueToken,
+            String requestId,
+            Long userId,
+            QueueScope scope,
+            Long sessionId,
+            Instant registeredAt
+    ) {
         String statusKey = statusKey(queueToken);
         if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(statusKey))) {
             return;
@@ -46,12 +59,12 @@ public class QueueStatusStore {
         // 개별 사용자 상태를 조회할 때 사용
         stringRedisTemplate.opsForHash().putAll(
                 statusKey,
-                queueStatusHashMapper.toHash(requestId, userId, sessionId, QueueRequestStatus.WAITING, registeredAt)
+                queueStatusHashMapper.toHash(requestId, userId, scope, sessionId, QueueRequestStatus.WAITING, registeredAt)
         );
         stringRedisTemplate.expire(statusKey, QueueConstants.QUEUE_TOKEN_TTL);
 
         // 해당 회차에서 현재 순번을 계산할 때 사용
-        stringRedisTemplate.opsForZSet().add(waitingKey(sessionId), queueToken, registeredAt.toEpochMilli());
+        stringRedisTemplate.opsForZSet().add(waitingKey(scope, sessionId), queueToken, registeredAt.toEpochMilli());
     }
 
     /**
@@ -76,7 +89,11 @@ public class QueueStatusStore {
      * @return 1-based 순번
      */
     public Long findRank(Long sessionId, String queueToken) {
-        Long rank = stringRedisTemplate.opsForZSet().rank(waitingKey(sessionId), queueToken);
+        return findRank(QueueScope.BOOKING, sessionId, queueToken);
+    }
+
+    public Long findRank(QueueScope scope, Long sessionId, String queueToken) {
+        Long rank = stringRedisTemplate.opsForZSet().rank(waitingKey(scope, sessionId), queueToken);
         return rank == null ? null : rank + 1;
     }
 
@@ -87,7 +104,11 @@ public class QueueStatusStore {
      * @return waiting 인원 수
      */
     public long countWaiting(Long sessionId) {
-        Long waitingCount = stringRedisTemplate.opsForZSet().zCard(waitingKey(sessionId));
+        return countWaiting(QueueScope.BOOKING, sessionId);
+    }
+
+    public long countWaiting(QueueScope scope, Long sessionId) {
+        Long waitingCount = stringRedisTemplate.opsForZSet().zCard(waitingKey(scope, sessionId));
         return waitingCount == null ? 0L : waitingCount;
     }
 
@@ -98,42 +119,72 @@ public class QueueStatusStore {
      * @return 입장 허용 인원 수
      */
     public long countAdmitted(Long sessionId) {
-        Long admittedCount = stringRedisTemplate.opsForZSet().zCard(admittedKey(sessionId));
+        return countAdmitted(QueueScope.BOOKING, sessionId);
+    }
+
+    public long countAdmitted(QueueScope scope, Long sessionId) {
+        Long admittedCount = stringRedisTemplate.opsForZSet().zCard(admittedKey(scope, sessionId));
         return admittedCount == null ? 0L : admittedCount;
     }
 
     /**
      * 현재 ADMITTED 사용자가 존재하는 회차 목록을 조회합니다.
      */
-    public Set<Long> findAdmittedSessionIds() {
+    public Set<QueueTarget> findAdmittedTargets() {
         Set<String> keys = stringRedisTemplate.keys(QueueConstants.ADMITTED_KEY_PREFIX + "*");
         if (keys == null || keys.isEmpty()) {
             return Set.of();
         }
 
-        Set<Long> sessionIds = new java.util.HashSet<>();
+        Set<QueueTarget> targets = new java.util.HashSet<>();
         for (String key : keys) {
-            sessionIds.add(Long.parseLong(key.substring(QueueConstants.ADMITTED_KEY_PREFIX.length())));
+            parseTarget(key, QueueConstants.ADMITTED_KEY_PREFIX).ifPresent(targets::add);
+        }
+        return targets;
+    }
+
+    public Set<Long> findAdmittedSessionIds() {
+        Set<Long> sessionIds = new java.util.HashSet<>();
+        for (QueueTarget target : findAdmittedTargets()) {
+            if (target.scope() == QueueScope.BOOKING) {
+                sessionIds.add(target.sessionId());
+            }
         }
         return sessionIds;
     }
 
     public Set<String> findWaitingQueueTokens(Long sessionId) {
-        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(sessionId), 0, -1);
+        return findWaitingQueueTokens(QueueScope.BOOKING, sessionId);
+    }
+
+    public Set<String> findWaitingQueueTokens(QueueScope scope, Long sessionId) {
+        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(scope, sessionId), 0, -1);
         return queueTokens == null ? Set.of() : queueTokens;
     }
 
     public Set<String> findAdmittedQueueTokens(Long sessionId) {
-        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(admittedKey(sessionId), 0, -1);
+        return findAdmittedQueueTokens(QueueScope.BOOKING, sessionId);
+    }
+
+    public Set<String> findAdmittedQueueTokens(QueueScope scope, Long sessionId) {
+        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(admittedKey(scope, sessionId), 0, -1);
         return queueTokens == null ? Set.of() : queueTokens;
     }
 
     public void removeWaitingQueueToken(Long sessionId, String queueToken) {
-        stringRedisTemplate.opsForZSet().remove(waitingKey(sessionId), queueToken);
+        removeWaitingQueueToken(QueueScope.BOOKING, sessionId, queueToken);
+    }
+
+    public void removeWaitingQueueToken(QueueScope scope, Long sessionId, String queueToken) {
+        stringRedisTemplate.opsForZSet().remove(waitingKey(scope, sessionId), queueToken);
     }
 
     public void removeAdmittedQueueToken(Long sessionId, String queueToken) {
-        stringRedisTemplate.opsForZSet().remove(admittedKey(sessionId), queueToken);
+        removeAdmittedQueueToken(QueueScope.BOOKING, sessionId, queueToken);
+    }
+
+    public void removeAdmittedQueueToken(QueueScope scope, Long sessionId, String queueToken) {
+        stringRedisTemplate.opsForZSet().remove(admittedKey(scope, sessionId), queueToken);
     }
 
     /**
@@ -144,11 +195,15 @@ public class QueueStatusStore {
      * @param admittedAt 입장 처리 시각
      */
     public void admitWaitingUsers(Long sessionId, long limit, Instant admittedAt) {
+        admitWaitingUsers(QueueScope.BOOKING, sessionId, limit, admittedAt);
+    }
+
+    public void admitWaitingUsers(QueueScope scope, Long sessionId, long limit, Instant admittedAt) {
         if (limit <= 0) {
             return;
         }
 
-        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(sessionId), 0, limit - 1);
+        Set<String> queueTokens = stringRedisTemplate.opsForZSet().range(waitingKey(scope, sessionId), 0, limit - 1);
         if (queueTokens == null || queueTokens.isEmpty()) {
             return;
         }
@@ -168,9 +223,9 @@ public class QueueStatusStore {
             );
             // admitToken은 좌석/결제 단계에서 유효성 확인에 쓸 수 있도록 별도 TTL 키로도 보관한다.
             stringRedisTemplate.opsForValue().set(admitTokenKey(admitToken), queueToken, QueueConstants.ADMIT_TOKEN_TTL);
-            stringRedisTemplate.opsForZSet().remove(waitingKey(sessionId), queueToken);
-            stringRedisTemplate.opsForZSet().add(admittedKey(sessionId), queueToken, admittedAt.toEpochMilli());
-            stringRedisTemplate.opsForZSet().add(admissionHistoryKey(sessionId), queueToken, admittedAt.toEpochMilli());
+            stringRedisTemplate.opsForZSet().remove(waitingKey(scope, sessionId), queueToken);
+            stringRedisTemplate.opsForZSet().add(admittedKey(scope, sessionId), queueToken, admittedAt.toEpochMilli());
+            stringRedisTemplate.opsForZSet().add(admissionHistoryKey(scope, sessionId), queueToken, admittedAt.toEpochMilli());
         }
     }
 
@@ -179,15 +234,25 @@ public class QueueStatusStore {
      *
      * @return waiting zset이 존재하는 회차 식별자 목록
      */
-    public Set<Long> findWaitingSessionIds() {
+    public Set<QueueTarget> findWaitingTargets() {
         Set<String> keys = stringRedisTemplate.keys(QueueConstants.WAITING_KEY_PREFIX + "*");
         if (keys == null || keys.isEmpty()) {
             return Set.of();
         }
 
-        Set<Long> sessionIds = new java.util.HashSet<>();
+        Set<QueueTarget> targets = new java.util.HashSet<>();
         for (String key : keys) {
-            sessionIds.add(Long.parseLong(key.substring(QueueConstants.WAITING_KEY_PREFIX.length())));
+            parseTarget(key, QueueConstants.WAITING_KEY_PREFIX).ifPresent(targets::add);
+        }
+        return targets;
+    }
+
+    public Set<Long> findWaitingSessionIds() {
+        Set<Long> sessionIds = new java.util.HashSet<>();
+        for (QueueTarget target : findWaitingTargets()) {
+            if (target.scope() == QueueScope.BOOKING) {
+                sessionIds.add(target.sessionId());
+            }
         }
         return sessionIds;
     }
@@ -201,8 +266,12 @@ public class QueueStatusStore {
      * @return 최근 admission 수
      */
     public long countRecentAdmissions(Long sessionId, Instant from, Instant to) {
+        return countRecentAdmissions(QueueScope.BOOKING, sessionId, from, to);
+    }
+
+    public long countRecentAdmissions(QueueScope scope, Long sessionId, Instant from, Instant to) {
         Long admittedCount = stringRedisTemplate.opsForZSet().count(
-                admissionHistoryKey(sessionId),
+                admissionHistoryKey(scope, sessionId),
                 from.toEpochMilli(),
                 to.toEpochMilli()
         );
@@ -240,16 +309,16 @@ public class QueueStatusStore {
         return QueueConstants.STATUS_KEY_PREFIX + queueToken;
     }
 
-    private String waitingKey(Long sessionId) {
-        return QueueConstants.WAITING_KEY_PREFIX + sessionId;
+    private String waitingKey(QueueScope scope, Long sessionId) {
+        return QueueConstants.WAITING_KEY_PREFIX + scope.name() + ":" + sessionId;
     }
 
-    private String admittedKey(Long sessionId) {
-        return QueueConstants.ADMITTED_KEY_PREFIX + sessionId;
+    private String admittedKey(QueueScope scope, Long sessionId) {
+        return QueueConstants.ADMITTED_KEY_PREFIX + scope.name() + ":" + sessionId;
     }
 
-    private String admissionHistoryKey(Long sessionId) {
-        return QueueConstants.ADMISSION_HISTORY_KEY_PREFIX + sessionId;
+    private String admissionHistoryKey(QueueScope scope, Long sessionId) {
+        return QueueConstants.ADMISSION_HISTORY_KEY_PREFIX + scope.name() + ":" + sessionId;
     }
 
     private String admitTokenKey(String admitToken) {
@@ -258,13 +327,23 @@ public class QueueStatusStore {
 
     private void removeFromActiveSet(QueueStatusSnapshot snapshot) {
         if (snapshot.status() == QueueRequestStatus.WAITING) {
-            stringRedisTemplate.opsForZSet().remove(waitingKey(snapshot.sessionId()), snapshot.queueToken());
+            stringRedisTemplate.opsForZSet().remove(waitingKey(snapshot.scope(), snapshot.sessionId()), snapshot.queueToken());
             return;
         }
 
         if (snapshot.status() == QueueRequestStatus.ADMITTED) {
-            stringRedisTemplate.opsForZSet().remove(admittedKey(snapshot.sessionId()), snapshot.queueToken());
+            stringRedisTemplate.opsForZSet().remove(admittedKey(snapshot.scope(), snapshot.sessionId()), snapshot.queueToken());
         }
+    }
+
+    private Optional<QueueTarget> parseTarget(String key, String prefix) {
+        String raw = key.substring(prefix.length());
+        String[] parts = raw.split(":");
+        if (parts.length == 1) {
+            return Optional.of(new QueueTarget(QueueScope.BOOKING, Long.parseLong(parts[0])));
+        }
+
+        return Optional.of(new QueueTarget(QueueScope.valueOf(parts[0]), Long.parseLong(parts[1])));
     }
 
     private void deleteAdmitToken(String admitToken) {

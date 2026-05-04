@@ -2,6 +2,7 @@ package com.ssafy.tickle.queue.application.scheduler;
 
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueTarget;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import lombok.RequiredArgsConstructor;
@@ -24,11 +25,11 @@ public class QueueStatusCleanupScheduler {
     public void cleanupWaitingUsers() {
         Instant now = Instant.now();
 
-        for (Long sessionId : queueStatusStore.findWaitingSessionIds()) {
-            for (String queueToken : queueStatusStore.findWaitingQueueTokens(sessionId)) {
+        for (QueueTarget target : queueStatusStore.findWaitingTargets()) {
+            for (String queueToken : queueStatusStore.findWaitingQueueTokens(target.scope(), target.sessionId())) {
                 QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken).orElse(null);
                 if (snapshot == null) {
-                    queueStatusStore.removeWaitingQueueToken(sessionId, queueToken);
+                    queueStatusStore.removeWaitingQueueToken(target.scope(), target.sessionId(), queueToken);
                     continue;
                 }
 
@@ -47,11 +48,11 @@ public class QueueStatusCleanupScheduler {
     public void cleanupAdmittedUsers() {
         Instant now = Instant.now();
 
-        for (Long sessionId : queueStatusStore.findAdmittedSessionIds()) {
-            for (String queueToken : queueStatusStore.findAdmittedQueueTokens(sessionId)) {
+        for (QueueTarget target : queueStatusStore.findAdmittedTargets()) {
+            for (String queueToken : queueStatusStore.findAdmittedQueueTokens(target.scope(), target.sessionId())) {
                 QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken).orElse(null);
                 if (snapshot == null) {
-                    queueStatusStore.removeAdmittedQueueToken(sessionId, queueToken);
+                    queueStatusStore.removeAdmittedQueueToken(target.scope(), target.sessionId(), queueToken);
                     continue;
                 }
 
