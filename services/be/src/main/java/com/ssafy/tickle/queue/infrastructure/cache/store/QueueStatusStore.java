@@ -82,6 +82,16 @@ public class QueueStatusStore {
     }
 
     /**
+     * admitToken에 연결된 queueToken을 조회합니다.
+     *
+     * @param admitToken 입장 허용 토큰
+     * @return queueToken
+     */
+    public Optional<String> findQueueTokenByAdmitToken(String admitToken) {
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(admitTokenKey(admitToken)));
+    }
+
+    /**
      * 현재 waiting 순번을 조회합니다.
      *
      * @param sessionId 회차 식별자

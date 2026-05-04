@@ -125,6 +125,38 @@ public class QueueStatusService {
     }
 
     /**
+     * admitToken이 특정 대기열 입장 권한을 나타내는지 검증합니다.
+     *
+     * @param scope 대기열 목적
+     * @param sessionId 회차 식별자
+     * @param userId 사용자 식별자
+     * @param admitToken 입장 허용 토큰
+     * @return 검증된 대기열 스냅샷
+     */
+    public QueueStatusSnapshot validateAdmitToken(
+            QueueScope scope,
+            Long sessionId,
+            Long userId,
+            String admitToken
+    ) {
+        String queueToken = queueStatusStore.findQueueTokenByAdmitToken(admitToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.INVALID_REQUEST, "유효하지 않은 입장 토큰입니다."));
+
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.INVALID_REQUEST, "유효하지 않은 입장 토큰입니다."));
+
+        if (snapshot.status() != QueueRequestStatus.ADMITTED
+                || snapshot.scope() != scope
+                || !snapshot.sessionId().equals(sessionId)
+                || !snapshot.userId().equals(userId)
+                || !admitToken.equals(snapshot.admitToken())) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 입장 토큰 정보가 일치하지 않습니다.");
+        }
+
+        return snapshot;
+    }
+
+    /**
      * 대기열 사용자의 명시적 이탈을 처리합니다.
      */
     public void leave(String queueToken) {
