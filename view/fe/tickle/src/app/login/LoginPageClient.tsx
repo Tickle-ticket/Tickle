@@ -94,7 +94,7 @@ export function LoginPageClient() {
             label="비밀번호"
             type="password"
             name="password"
-            placeholder="비밀번호를 입력해 주세요."
+            placeholder="비밀번호를 입력하세요."
             autoComplete="current-password"
             fullWidth
             value={password}
