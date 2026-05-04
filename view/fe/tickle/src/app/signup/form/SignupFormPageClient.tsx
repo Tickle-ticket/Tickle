@@ -122,7 +122,6 @@ function AgencyDropdownField({
           </div>
         ) : null}
       </div>
-      <span className="text-xs font-medium text-slate-400 mt-1">등록된 기획사만 선택할 수 있습니다.</span>
       <span className="text-xs font-medium text-slate-400">등록된 기획사만 선택할 수 있습니다.</span>
     </div>
   );
