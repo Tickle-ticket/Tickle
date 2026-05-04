@@ -38,6 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
@@ -60,6 +62,8 @@ class AuthServiceTest {
     @Mock private BeInternalClient beInternalClient;
     @Mock private PhoneVerificationService phoneVerificationService;
     @Mock private KakaoOAuthClient kakaoOAuthClient;
+    @Mock private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+    @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @InjectMocks private AuthService authService;
 
@@ -79,6 +83,9 @@ class AuthServiceTest {
     private static final String KAKAO_ACCESS   = "kakao-access-token";
     private static final Long   KAKAO_ID       = 123456789L;
     private static final long   REFRESH_EXPIRY = 604800L;
+    private static final String REDIRECT_URI   = "https://tickle-ticket.co.kr/oauth/callback";
+    private static final String SIGN_UP_TOKEN  = "uuid-signup-token";
+    private static final String SIGNUP_JSON    = "{\"id\":123456789}";
 
     private AuthUser userAuthUser;
     private AuthUser organizerAuthUser;
@@ -309,10 +316,17 @@ class AuthServiceTest {
     @DisplayName("카카오 로그인 (kakaoLogin)")
     class KakaoLoginTest {
 
+        private com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest loginRequest;
+
+        @BeforeEach
+        void setUp() {
+            loginRequest = new com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest(KAKAO_CODE, REDIRECT_URI);
+        }
+
         @Test
         @DisplayName("기존 카카오 사용자 로그인 시 토큰을 반환한다")
         void kakaoLogin_existingUser_success() {
-            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE, REDIRECT_URI)).willReturn(kakaoTokenResponse());
             given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
             given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
                     AuthUser.OAuthProvider.KAKAO,
@@ -322,8 +336,9 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.kakaoLogin(KAKAO_CODE);
+            com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse response = authService.kakaoLogin(loginRequest);
 
+            assertThat(response.isNewUser()).isFalse();
             assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
             assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
             verify(authUserRepository, never()).save(any());
@@ -331,14 +346,51 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("신규 카카오 사용자 로그인 시 Auth/BE 사용자를 생성하고 토큰을 반환한다")
-        void kakaoLogin_newUser_success() {
-            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
+        @DisplayName("신규 카카오 사용자 로그인 시 Redis에 정보를 저장하고 isNewUser=true를 반환한다")
+        void kakaoLogin_newUser_returnsSignUpToken() throws Exception {
+            given(kakaoOAuthClient.requestToken(KAKAO_CODE, REDIRECT_URI)).willReturn(kakaoTokenResponse());
             given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
             given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
                     AuthUser.OAuthProvider.KAKAO,
                     KAKAO_ID.toString()
             )).willReturn(Optional.empty());
+            
+            given(objectMapper.writeValueAsString(any())).willReturn(SIGNUP_JSON);
+            org.springframework.data.redis.core.ValueOperations valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
+            given(stringRedisTemplate.opsForValue()).willReturn(valueOps);
+
+            com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse response = authService.kakaoLogin(loginRequest);
+
+            assertThat(response.isNewUser()).isTrue();
+            assertThat(response.signUpToken()).isNotNull();
+            assertThat(response.accessToken()).isNull();
+            verify(stringRedisTemplate.opsForValue()).set(anyString(), eq(SIGNUP_JSON), any(java.time.Duration.class));
+        }
+    }
+
+    // ── kakaoSignUp ──────────────────────────────────────────────
+    @Nested
+    @DisplayName("카카오 회원가입 마무리 (kakaoSignUp)")
+    class KakaoSignUpTest {
+
+        private com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest signUpRequest;
+
+        @BeforeEach
+        void setUp() {
+            signUpRequest = new com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest(
+                    SIGN_UP_TOKEN, PHONE, NAME, java.time.LocalDate.of(1990, 1, 1));
+        }
+
+        @Test
+        @DisplayName("정상적으로 정보를 입력하면 가입을 완료하고 토큰을 반환한다")
+        void kakaoSignUp_success() throws Exception {
+            given(phoneVerificationService.isVerified(PHONE)).willReturn(true);
+            org.springframework.data.redis.core.ValueOperations valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
+            given(stringRedisTemplate.opsForValue()).willReturn(valueOps);
+            given(valueOps.get("kakao:signup:" + SIGN_UP_TOKEN)).willReturn(SIGNUP_JSON);
+            given(objectMapper.readValue(eq(SIGNUP_JSON), eq(KakaoUserInfoResponse.class)))
+                    .willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
+            
             given(authUserRepository.existsByEmail(EMAIL)).willReturn(false);
             given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
             willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
@@ -346,84 +398,23 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.kakaoLogin(KAKAO_CODE);
+            TokenResponse response = authService.kakaoSignUp(signUpRequest);
 
-            assertThat(response.userId()).isEqualTo(USER_ID);
-            verify(authUserRepository).save(argThat(user ->
-                    user.getEmail().equals(EMAIL) &&
-                    user.getRole() == AuthUser.Role.USER &&
-                    user.getOauthProvider() == AuthUser.OAuthProvider.KAKAO &&
-                    user.getOauthProviderUserId().equals(KAKAO_ID.toString())
-            ));
-            verify(beInternalClient).createUser(argThat(req ->
-                    req.userId().equals(USER_ID) &&
-                    req.email().equals(EMAIL) &&
-                    req.name().equals(NICKNAME) &&
-                    req.nickname().equals(NICKNAME) &&
-                    req.phoneNumber() == null &&
-                    req.role() == AuthUser.Role.USER
-            ));
+            assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
+            verify(authUserRepository).save(any());
+            verify(stringRedisTemplate).delete("kakao:signup:" + SIGN_UP_TOKEN);
+            verify(phoneVerificationService).clearVerified(PHONE);
         }
 
         @Test
-        @DisplayName("동일 이메일 계정이 이미 있으면 DUPLICATE_EMAIL 예외를 던진다")
-        void kakaoLogin_duplicateEmail_throwsException() {
-            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
-            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
-            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
-                    AuthUser.OAuthProvider.KAKAO,
-                    KAKAO_ID.toString()
-            )).willReturn(Optional.empty());
-            given(authUserRepository.existsByEmail(EMAIL)).willReturn(true);
+        @DisplayName("전화번호 인증이 안 되어 있으면 예외를 던진다")
+        void kakaoSignUp_phoneNotVerified_throwsException() {
+            given(phoneVerificationService.isVerified(PHONE)).willReturn(false);
 
-            assertThatThrownBy(() -> authService.kakaoLogin(KAKAO_CODE))
+            assertThatThrownBy(() -> authService.kakaoSignUp(signUpRequest))
                     .isInstanceOf(BaseException.class)
                     .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
-                            .isEqualTo(AuthErrorCode.DUPLICATE_EMAIL));
-
-            verify(authUserRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("카카오 이메일 동의가 없으면 placeholder 이메일로 신규 사용자를 생성한다")
-        void kakaoLogin_emailMissing_usesPlaceholderEmail() {
-            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
-            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(null, NICKNAME));
-            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
-                    AuthUser.OAuthProvider.KAKAO,
-                    KAKAO_ID.toString()
-            )).willReturn(Optional.empty());
-            given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
-            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
-            given(jwtProvider.issueAccessToken(any(), any())).willReturn(ACCESS_TOKEN);
-            given(jwtProvider.issueRefreshToken(any())).willReturn(REFRESH_TOKEN);
-
-            TokenResponse result = authService.kakaoLogin(KAKAO_CODE);
-
-            assertThat(result).isNotNull();
-            assertThat(result.accessToken()).isEqualTo(ACCESS_TOKEN);
-        }
-
-        @Test
-        @DisplayName("BE 내부 사용자 생성 실패 시 INTERNAL_SERVER_ERROR 예외를 던진다")
-        void kakaoLogin_beCallFails_throwsInternalServerError() {
-            given(kakaoOAuthClient.requestToken(KAKAO_CODE)).willReturn(kakaoTokenResponse());
-            given(kakaoOAuthClient.requestUserInfo(KAKAO_ACCESS)).willReturn(kakaoUserInfoResponse(EMAIL, NICKNAME));
-            given(authUserRepository.findByOauthProviderAndOauthProviderUserId(
-                    AuthUser.OAuthProvider.KAKAO,
-                    KAKAO_ID.toString()
-            )).willReturn(Optional.empty());
-            given(authUserRepository.existsByEmail(EMAIL)).willReturn(false);
-            given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
-            willThrow(new RuntimeException("BE 연결 실패"))
-                    .given(beInternalClient).createUser(any(CreateUserRequest.class));
-
-            assertThatThrownBy(() -> authService.kakaoLogin(KAKAO_CODE))
-                    .isInstanceOf(BaseException.class)
-                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
-                            .isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR));
-
-            verify(jwtProvider, never()).issueAccessToken(any(), any());
+                            .isEqualTo(AuthErrorCode.PHONE_VERIFICATION_FAILED));
         }
     }
 
