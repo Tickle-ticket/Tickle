@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { AvatarProps } from './types';
+import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 
 const SIZE_MAP = {
   small: 32,
@@ -17,6 +18,11 @@ export const Avatar = ({
   className = '',
 }: AvatarProps) => {
   const [imgFailed, setImgFailed] = useState(false);
+  const resolvedSrc = resolveImageSrc(src);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [resolvedSrc]);
 
   // size가 문자열(s, m, l)이면 지정된 픽셀로 변환하고, 숫자면 그대로 사용
   const numericSize = typeof size === 'number' ? size : SIZE_MAP[size];
@@ -33,7 +39,7 @@ export const Avatar = ({
   }
 
   // 넘겨받은 src가 아예 없거나, src 이미지를 로드하다 실패(404 등)하면 기본 아이콘 노출
-  const showFallback = !src || imgFailed;
+  const showFallback = !resolvedSrc || imgFailed;
 
   return (
     <div
@@ -62,7 +68,7 @@ export const Avatar = ({
         </svg>
       ) : (
         <Image
-          src={src}
+          src={resolvedSrc}
           alt={alt}
           fill
           sizes={`${numericSize}px`}

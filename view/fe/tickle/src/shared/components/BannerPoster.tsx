@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { BannerPosterProps } from './types';
+import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 
 export const BannerPoster = ({
   src,
@@ -13,6 +14,11 @@ export const BannerPoster = ({
   showGradient = true,
 }: BannerPosterProps) => {
   const [imgFailed, setImgFailed] = useState(false);
+  const resolvedSrc = resolveImageSrc(src);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [resolvedSrc]);
   
   // 수직 배너 형태 (사진과 같은 포스터 느낌을 위해 가로폭을 제한하고 세로를 길게)
   const defaultDimensions = (!width && !height) ? 'w-full max-w-[340px] md:max-w-[400px] h-[500px] md:h-[600px] mx-auto' : '';
@@ -36,7 +42,7 @@ export const BannerPoster = ({
       className={`relative overflow-hidden shadow-lg ${defaultDimensions} ${className}`}
       style={inlineStyle}
     >
-      {(!src || imgFailed) ? (
+      {(!resolvedSrc || imgFailed) ? (
         <div className="w-full h-full bg-[#f2f4f6] flex flex-col items-center justify-center text-[#8B95A1]">
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-semibold tracking-tight">준비중 입니다</span>
@@ -59,7 +65,7 @@ export const BannerPoster = ({
         </div>
       ) : (
         <Image
-          src={src}
+          src={resolvedSrc}
           alt={alt}
           fill
           priority
