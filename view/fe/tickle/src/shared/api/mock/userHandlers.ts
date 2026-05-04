@@ -1,8 +1,14 @@
 import { http, HttpResponse, delay } from 'msw';
 
 export const userHandlers = [
-  http.get('*/api/v1/users/me', async () => {
+  http.get('*/api/v1/users/me', async ({ request }) => {
     await delay(300);
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader) {
+      return new HttpResponse(null, { status: 401 });
+    }
+
     return HttpResponse.json({
       status: 200,
       message: 'success',

@@ -22,6 +22,7 @@ import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { Header } from '@/src/shared/components/Header';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { Footer } from '@/src/shared/components/Footer';
+import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -47,20 +48,46 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const { selectedDetailId, setDetailBannerOpen } = useDetailStore();
   
   const urlId = searchParams?.get('id');
-  const activeEventId = selectedDetailId || urlId || '1';
+  const activeEventId = selectedDetailId || urlId;
   
   const { data, isLoading } = useDetailData(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
+  const [isWaitlistUpcoming, setIsWaitlistUpcoming] = useState(false);
+  const [isMoreThanOneDayLeft, setIsMoreThanOneDayLeft] = useState(false);
+  const [isWaitlistMoreThanOneDayLeft, setIsWaitlistMoreThanOneDayLeft] = useState(false);
   const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
   const [isBannerFolded, setIsBannerFolded] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    if (data) {
+      setIsFavorite(data.isFavorite);
+    }
+  }, [data?.isFavorite]);
+
+  const handleFavoriteToggle = async () => {
+    if (!activeEventId) return;
+    try {
+      if (isFavorite) {
+        await deleteFavorite(activeEventId);
+      } else {
+        await createFavorite(activeEventId);
+      }
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('찜 등록/취소 실패:', error);
+    }
+  };
 
   // 예매 플로우 진행 중 새로고침/탭 닫기 방지
   useEffect(() => {
     if (flowState === 'NONE') return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // @ts-ignore
+      if (window.__isNavigatingToPayment__) return;
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -70,11 +97,32 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   useEffect(() => {
     if (data?.openDate) {
       const openTime = new Date(data.openDate).getTime();
-      if (openTime > Date.now()) {
-        setIsUpcoming(true);
-      }
+      const waitlistOpenTime = openTime + 24 * 60 * 60 * 1000;
+
+      const checkTime = () => {
+        const now = Date.now();
+        setIsUpcoming(openTime > now);
+        setIsWaitlistUpcoming(waitlistOpenTime > now);
+        setIsMoreThanOneDayLeft(openTime - now > 24 * 60 * 60 * 1000);
+        setIsWaitlistMoreThanOneDayLeft(waitlistOpenTime - now > 24 * 60 * 60 * 1000);
+      };
+
+      checkTime();
+      const timer = setInterval(checkTime, 1000);
+      return () => clearInterval(timer);
     }
   }, [data?.openDate]);
+
+  const formatOpenDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayOfWeek = days[date.getDay()];
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${month}.${day}(${dayOfWeek}) ${hours}:${minutes}`;
+  };
 
   const scheduleData = data?.schedules || [];
   const enabledDates = scheduleData.map((item: any) => item.date.split(' ')[0].replace(/\./g, '-'));
@@ -109,6 +157,19 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     }
   };
 
+  if (!activeEventId) {
+    if (isOverlay) return null;
+    return (
+      <div className="flex w-full h-screen items-center justify-center bg-[#f8f8f8] font-sans">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">공연 정보가 없습니다</h1>
+          <p className="text-gray-500">올바르지 않은 접근이거나 존재하지 않는 공연입니다.</p>
+          <Button color="dark" size="medium" onClick={() => router.push('/')}>홈으로 돌아가기</Button>
+        </div>
+      </div>
+    );
+  }
+
   const renderContent = () => (
     <div className="flex flex-col w-full h-full pb-32 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Hero Section */}
@@ -118,51 +179,101 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           textColor="black"
           className="!bg-transparent [&>div]:!p-0 !text-5xl md:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.1] [&_h1]:whitespace-pre-line"
           bottomBorder={false}
+          isLoading={isLoading}
         />
 
         <div className="flex flex-col gap-1 mt-4">
-          <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-base md:!text-[17px]" />
-          <BannerPlace place={data?.venue || ''} color="black" className="!text-base md:!text-[17px] font-bold" />
-          <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-base md:!text-[17px]" />
+          <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-base md:!text-[17px]" isLoading={isLoading} />
+          <BannerPlace place={data?.venue || ''} color="black" className="!text-base md:!text-[17px] font-bold" isLoading={isLoading} />
+          <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-base md:!text-[17px]" isLoading={isLoading} />
         </div>
 
-        <div className="flex flex-col items-start gap-3 mt-6">
-          {isUpcoming && data?.openDate ? (
-            <div className="flex flex-col items-start gap-4">
-              <Text typography="t5" fontWeight="bold" className="text-[#ef4444] animate-pulse">
-                예매 오픈까지 남은 시간
-              </Text>
-              <CountdownTimer
-                targetDate={data.openDate}
-                onExpire={() => setIsUpcoming(false)}
-              />
-              <div className="flex items-center gap-3 mt-2 opacity-50 grayscale pointer-events-none">
-                <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold">
-                  예매하기
-                </Button>
-                <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10">
-                  취소표 대기하기
-                </Button>
-              </div>
-              <div className="flex items-center gap-3 mt-2">
-                <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-red-500/30 text-red-500 bg-red-50/50" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')}>
-                  Test
-                </Button>
-              </div>
+        <div className="flex flex-col gap-3 mt-6 w-full max-w-[540px]">
+          {/* 예약 버튼 그룹 + 찜하기 버튼 */}
+          <div className="flex items-center gap-3 w-full">
+            {/* 예약 버튼 묶음 */}
+            <div className="flex items-center flex-1 gap-2">
+              
+              {/* 예매하기 버튼 */}
+              <Button 
+                color="dark" 
+                size="large" 
+                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`} 
+                onClick={() => !isUpcoming && setFlowState('QUEUE')} 
+                isLoading={isLoading}
+              >
+                {isUpcoming && data?.openDate ? (
+                  isMoreThanOneDayLeft ? (
+                    <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(data.openDate)}</span>
+                  ) : (
+                    <div className="flex items-center justify-center whitespace-nowrap">
+                      <div className="flex items-center bg-white/10 rounded-md px-2.5 py-1 border border-white/5 shadow-inner text-white">
+                        <CountdownTimer targetDate={data.openDate} onExpire={() => setIsUpcoming(false)} variant="compact" />
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <span className="font-bold tracking-wider text-[15px]">예매하기</span>
+                )}
+              </Button>
+
+              {/* 취소표 대기하기 버튼 */}
+              <Button 
+                color="light" 
+                size="large" 
+                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`} 
+                onClick={() => !isWaitlistUpcoming && setFlowState('WAITLIST_QUEUE')} 
+                isLoading={isLoading}
+              >
+                {isWaitlistUpcoming && data?.openDate ? (
+                  isWaitlistMoreThanOneDayLeft ? (
+                    <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 24 * 60 * 60 * 1000).toISOString())}</span>
+                  ) : (
+                    <div className="flex items-center justify-center whitespace-nowrap">
+                      <div className="flex items-center bg-slate-200/60 rounded-md px-2.5 py-1 border border-slate-300 shadow-inner text-slate-800">
+                        <CountdownTimer targetDate={new Date(new Date(data.openDate).getTime() + 24 * 60 * 60 * 1000).toISOString()} onExpire={() => setIsWaitlistUpcoming(false)} variant="compact" />
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <span className="font-bold tracking-wider text-[15px]">취소표 대기하기</span>
+                )}
+              </Button>
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Button color="dark" size="large" className="tracking-wider !rounded-none !px-8 font-bold" onClick={() => setFlowState('QUEUE')}>
-                예매하기
+
+            {/* 찜하기 버튼 */}
+            <button
+              onClick={handleFavoriteToggle}
+              className={`w-14 h-14 flex items-center justify-center rounded-full border transition-colors shadow-sm shrink-0 ${isFavorite ? 'border-red-100 bg-red-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+              aria-label={isFavorite ? '찜 해제' : '찜 추가'}
+            >
+              {isFavorite ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Test Buttons - 개발용 */}
+          <div className="flex items-center gap-3 w-full mt-2">
+            {/* 위쪽 버튼 그룹과 정확히 동일한 너비를 가지도록 flex-1 설정 */}
+            <div className="flex items-center flex-1 gap-2">
+              <Button color="dark" size="small" className="flex-1 opacity-50 !bg-gray-500 hover:!bg-gray-600 !rounded-md" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')}>
+                Test: Waitlist Queue
               </Button>
-              <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-black/10" onClick={() => setFlowState('WAITLIST_QUEUE')}>
-                취소표 대기하기
-              </Button>
-              <Button color="light" size="large" className="tracking-wider !rounded-none !px-6 font-bold border border-red-500/30 text-red-500 bg-red-50/50" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')}>
-                Test
+              <Button color="light" size="small" className="flex-1 opacity-50 border border-gray-300 !rounded-md hover:bg-gray-100" onClick={() => setFlowState('TEST_WAITLIST_BOOK')}>
+                Test: Waitlist Book
               </Button>
             </div>
-          )}
+            
+            {/* 우측 찜하기 버튼과 동일한 크기의 투명 영역을 두어 정렬 맞춤 */}
+            <div className="w-12 shrink-0 invisible pointer-events-none"></div>
+          </div>
         </div>
       </section>
 
@@ -331,18 +442,14 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={activeEventId} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
         </div>
       )}
     </div>
   );
 
-  if (isLoading && !isOverlay) {
-    return <div className="p-10 animate-pulse text-gray-500">상세 정보를 불러오는 중입니다...</div>;
-  }
-
   if (isOverlay) {
-    return isLoading ? <div className="p-10 animate-pulse text-gray-500">상세 정보를 불러오는 중입니다...</div> : renderContent();
+    return renderContent();
   }
 
   return (

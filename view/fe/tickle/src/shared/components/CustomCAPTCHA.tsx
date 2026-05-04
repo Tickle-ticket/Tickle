@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Lottie from 'lottie-react';
 import checkedAnimation from '@/src/shared/lottle/Checked.json';
 
@@ -11,15 +10,29 @@ export interface CustomCAPTCHAProps {
 }
 
 export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [keypad, setKeypad] = useState<number[]>([]);
   const [targetSequence, setTargetSequence] = useState<number[]>([]);
   const [currentInput, setCurrentInput] = useState<number[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [hoveredKey, setHoveredKey] = useState<number | 'delete' | null>(null);
 
-  // 파생 상태: 입력한 숫자 중 하나라도 정답과 틀리면 에러
   const isError = currentInput.some((num, idx) => num !== targetSequence[idx]);
 
-  // Lottie 애니메이션 onComplete가 간헐적으로 동작하지 않는 경우를 대비한 폴백
+  const generateMission = useCallback(() => {
+    const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+    setKeypad(nums);
+
+    const availableMissions = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+    setTargetSequence(availableMissions.slice(0, 3));
+    setCurrentInput([]);
+    setIsSuccess(false);
+  }, []);
+
+  useEffect(() => {
+    generateMission();
+  }, [generateMission]);
+
   useEffect(() => {
     if (isSuccess) {
       const timer = setTimeout(() => {
@@ -29,64 +42,282 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
     }
   }, [isSuccess, onSuccess]);
 
-  // 미션 생성 및 키패드 섞기
-  const generateMission = useCallback(() => {
-    // 1. 1~9 무작위 셔플 배열 생성 (봇이 좌표를 외우지 못하도록)
-    const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    for (let i = nums.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [nums[i], nums[j]] = [nums[j], nums[i]];
-    }
-    setKeypad(nums);
+  // Layout constants
+  const CANVAS_W = 320;
+  const CANVAS_H = 560;
+  const PAD_X = 24;
+  const GRID_Y = 215;
+  const BTN_SIZE = 78;
+  const GAP = 19;
 
-    // 2. 미션으로 제시할 3개의 숫자 무작위 추출
-    const availableMissions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    for (let i = availableMissions.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [availableMissions[i], availableMissions[j]] = [availableMissions[j], availableMissions[i]];
-    }
-    
-    // 단순하게 3개 숫자 순서대로 누르기
-    const seq = availableMissions.slice(0, 3);
-
-    setTargetSequence(seq);
-    setCurrentInput([]);
-    setIsSuccess(false);
-  }, []);
-
+  // Draw loop
   useEffect(() => {
-    generateMission();
-  }, [generateMission]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const handleKeyPress = (num: number) => {
-    if (isSuccess || isError || currentInput.length >= targetSequence.length) return;
+    // Set resolution for retina displays
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = CANVAS_W * dpr;
+    canvas.height = CANVAS_H * dpr;
+    canvas.style.width = `${CANVAS_W}px`;
+    canvas.style.height = `${CANVAS_H}px`;
+    ctx.scale(dpr, dpr);
 
-    const nextInput = [...currentInput, num];
-    setCurrentInput(nextInput);
+    // Clear
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // 3개를 모두 입력했을 때 정답인지 확인
-    if (nextInput.length === targetSequence.length) {
-      const isWrong = nextInput.some((val, idx) => val !== targetSequence[idx]);
-      if (!isWrong) {
-        setIsSuccess(true);
+    // Title
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillStyle = isError ? '#dc2626' : '#111827';
+    ctx.textAlign = 'center';
+    ctx.fillText(isSuccess ? '인증 완료' : isError ? '잘못된 입력입니다' : '보안 인증', CANVAS_W / 2, 30);
+
+    // Instruction Box
+    ctx.fillStyle = '#f9fafb';
+    ctx.beginPath();
+    ctx.roundRect(PAD_X, 50, CANVAS_W - PAD_X * 2, 145, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#f3f4f6';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = '#1f2937';
+    ctx.fillText('다음 숫자를 순서대로 누르세요', CANVAS_W / 2, 80);
+
+    // Target sequence boxes
+    const boxW = 64;
+    const boxGap = 28;
+    const startX = CANVAS_W / 2 - boxW - boxGap;
+    
+    targetSequence.forEach((num, idx) => {
+      const isCompleted = currentInput.length > idx && currentInput[idx] === num;
+      const isWrongSpot = currentInput.length > idx && currentInput[idx] !== num;
+
+      const x = startX + idx * (boxW + boxGap);
+      const y = 102;
+
+      ctx.beginPath();
+      ctx.roundRect(x - boxW/2, y, boxW, boxW, 12);
+      
+      if (isCompleted) {
+        ctx.fillStyle = '#3b82f6';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+      } else if (isWrongSpot) {
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#d1d5db';
+        ctx.stroke();
+        ctx.fillStyle = '#2563eb';
+      }
+
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(num.toString(), x, y + 42);
+
+      // Draw arrow
+      if (idx < 2) {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('➡', x + boxW/2 + boxGap/2, y + 36);
+      }
+    });
+
+    // Progress bar
+    const progress = targetSequence.length > 0 ? (currentInput.length / targetSequence.length) * 100 : 0;
+    ctx.fillStyle = '#e5e7eb';
+    ctx.beginPath();
+    ctx.roundRect(PAD_X * 2, 178, CANVAS_W - PAD_X * 4, 6, 3);
+    ctx.fill();
+
+    if (progress > 0) {
+      ctx.fillStyle = isError ? '#ef4444' : '#3b82f6';
+      ctx.beginPath();
+      ctx.roundRect(PAD_X * 2, 178, (CANVAS_W - PAD_X * 4) * (progress / 100), 6, 3);
+      ctx.fill();
+    }
+
+    // Keypad
+    keypad.forEach((num, idx) => {
+      const row = Math.floor(idx / 3);
+      const col = idx % 3;
+      const x = PAD_X + col * (BTN_SIZE + GAP);
+      const y = GRID_Y + row * (BTN_SIZE + GAP);
+
+      const isPressed = currentInput.includes(num);
+      const isHovered = hoveredKey === num && !isPressed && !isSuccess && !isError;
+
+      ctx.beginPath();
+      ctx.roundRect(x, y, BTN_SIZE, BTN_SIZE, 12);
+
+      if (isPressed) {
+        ctx.fillStyle = '#eff6ff';
+        ctx.fill();
+      } else if (isHovered) {
+        ctx.fillStyle = '#eff6ff';
+        ctx.fill();
+        ctx.strokeStyle = '#bfdbfe';
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.stroke();
+      }
+
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillStyle = isPressed ? '#93c5fd' : '#374151';
+      ctx.fillText(num.toString(), x + BTN_SIZE / 2, y + BTN_SIZE / 2 + 8);
+    });
+
+    // Delete Button
+    const delY = GRID_Y + 3 * (BTN_SIZE + GAP);
+    const delW = CANVAS_W - PAD_X * 2;
+    const delH = 48;
+    const isDelHovered = hoveredKey === 'delete' && !isSuccess && currentInput.length > 0;
+    const isDelDisabled = isSuccess || currentInput.length === 0;
+
+    ctx.beginPath();
+    ctx.roundRect(PAD_X, delY, delW, delH, 12);
+    ctx.fillStyle = isDelDisabled ? '#f3f4f6' : (isDelHovered ? '#e5e7eb' : '#f3f4f6');
+    ctx.fill();
+
+    // Delete icon (SVG-like drawing)
+    const iconX = CANVAS_W / 2 - 25; // Base offset for icon
+    
+    ctx.strokeStyle = isDelDisabled ? '#9ca3af' : (isDelHovered ? '#111827' : '#4b5563');
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(iconX - 20, delY + 24);
+    ctx.lineTo(iconX - 10, delY + 16);
+    ctx.lineTo(iconX + 2, delY + 16);
+    ctx.arc(iconX + 4, delY + 18, 2, 1.5 * Math.PI, 2 * Math.PI);
+    ctx.lineTo(iconX + 6, delY + 30);
+    ctx.arc(iconX + 4, delY + 30, 2, 0, 0.5 * Math.PI);
+    ctx.lineTo(iconX - 10, delY + 32);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(iconX - 6, delY + 20);
+    ctx.lineTo(iconX, delY + 28);
+    ctx.moveTo(iconX, delY + 20);
+    ctx.lineTo(iconX - 6, delY + 28);
+    ctx.stroke();
+
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillStyle = isDelDisabled ? '#9ca3af' : (isDelHovered ? '#111827' : '#4b5563');
+    ctx.fillText('지우기', CANVAS_W / 2 + 18, delY + 30);
+
+  }, [keypad, targetSequence, currentInput, isSuccess, isError, hoveredKey]);
+
+  const getEventPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
+    const pos = getEventPos(e);
+    if (!pos) return;
+    const { x, y } = pos;
+
+    if (isSuccess || isError || currentInput.length >= targetSequence.length) {
+      if (isError) {
+        const delY = GRID_Y + 3 * (BTN_SIZE + GAP);
+        if (y >= delY && y <= delY + 48 && x >= PAD_X && x <= CANVAS_W - PAD_X) {
+          setCurrentInput((prev) => prev.slice(0, -1));
+        }
+      }
+      return;
+    }
+
+    for (let idx = 0; idx < 9; idx++) {
+      const row = Math.floor(idx / 3);
+      const col = idx % 3;
+      const bx = PAD_X + col * (BTN_SIZE + GAP);
+      const by = GRID_Y + row * (BTN_SIZE + GAP);
+
+      if (x >= bx && x <= bx + BTN_SIZE && y >= by && y <= by + BTN_SIZE) {
+        const num = keypad[idx];
+        if (!currentInput.includes(num)) {
+          const nextInput = [...currentInput, num];
+          setCurrentInput(nextInput);
+          if (nextInput.length === targetSequence.length) {
+            const isWrong = nextInput.some((val, i) => val !== targetSequence[i]);
+            if (!isWrong) setIsSuccess(true);
+          }
+        }
+        return;
+      }
+    }
+
+    const delY = GRID_Y + 3 * (BTN_SIZE + GAP);
+    if (y >= delY && y <= delY + 48 && x >= PAD_X && x <= CANVAS_W - PAD_X) {
+      if (currentInput.length > 0) {
+        setCurrentInput((prev) => prev.slice(0, -1));
       }
     }
   };
 
-  const handleDelete = () => {
-    if (isSuccess || currentInput.length === 0) return;
-    setCurrentInput((prev) => prev.slice(0, -1));
+  const handlePointerMove = (e: React.MouseEvent) => {
+    const pos = getEventPos(e);
+    if (!pos) return;
+    const { x, y } = pos;
+
+    let found: number | 'delete' | null = null;
+    
+    for (let idx = 0; idx < 9; idx++) {
+      const row = Math.floor(idx / 3);
+      const col = idx % 3;
+      const bx = PAD_X + col * (BTN_SIZE + GAP);
+      const by = GRID_Y + row * (BTN_SIZE + GAP);
+
+      if (x >= bx && x <= bx + BTN_SIZE && y >= by && y <= by + BTN_SIZE) {
+        found = keypad[idx];
+        break;
+      }
+    }
+
+    if (!found) {
+      const delY = GRID_Y + 3 * (BTN_SIZE + GAP);
+      if (y >= delY && y <= delY + 48 && x >= PAD_X && x <= CANVAS_W - PAD_X) {
+        found = 'delete';
+      }
+    }
+
+    setHoveredKey(found);
   };
 
-  // 진행률 계산
-  const progress = targetSequence.length > 0 ? (currentInput.length / targetSequence.length) * 100 : 0;
+  const handlePointerLeave = () => {
+    setHoveredKey(null);
+  };
 
   if (keypad.length === 0) return null;
 
   return (
-    <div className={`relative flex flex-col items-center bg-white p-6 rounded-2xl shadow-xl border w-full max-w-sm transition-colors duration-300 min-h-[440px] ${isError ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
+    <div className={`relative flex flex-col items-center bg-white p-6 rounded-2xl shadow-xl border w-full max-w-sm transition-colors duration-300 min-h-[560px] ${isError ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
       
-      {/* 닫기 버튼 */}
       {onClose && (
         <button
           onClick={onClose}
@@ -100,95 +331,19 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
         </button>
       )}
 
-      {/* 상태 아이콘 & 타이틀 */}
-      <div className="flex flex-col items-center mb-4 z-10">
-        <h2 className={`text-xl font-bold ${isError ? 'text-red-600' : 'text-gray-900'}`}>
-          {isSuccess ? '인증 완료' : isError ? '잘못된 입력입니다' : '보안 인증'}
-        </h2>
+      <div className={`w-full flex flex-col items-center transition-opacity duration-300 ${isSuccess ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <canvas
+          ref={canvasRef}
+          onMouseDown={handlePointerDown}
+          onTouchStart={handlePointerDown}
+          onMouseMove={handlePointerMove}
+          onMouseLeave={handlePointerLeave}
+          className="touch-none select-none cursor-pointer"
+        />
       </div>
 
-      {/* 내부 콘텐츠 (성공 시 투명해지되 공간 유지) */}
-      <div className={`w-full flex flex-col transition-opacity duration-300 ${isSuccess ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        {/* 미션 지시문 */}
-        <div className="w-full bg-gray-50 rounded-xl p-5 mb-5 text-center border border-gray-100 flex flex-col gap-4">
-          <p className="text-sm font-bold text-gray-800">다음 숫자를 순서대로 누르세요</p>
-          
-          <div className="flex items-center justify-center gap-3">
-            {targetSequence.map((num, idx) => {
-              const isCompleted = currentInput.length > idx && currentInput[idx] === num;
-              const isWrongSpot = currentInput.length > idx && currentInput[idx] !== num;
-
-              return (
-                <React.Fragment key={`${num}-${idx}`}>
-                  <span className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-lg transition-colors ${
-                    isCompleted 
-                      ? 'bg-blue-500 text-white shadow-inner border-transparent' 
-                      : isWrongSpot
-                        ? 'bg-red-500 text-white shadow-inner border-transparent'
-                        : 'bg-white text-blue-600 shadow-sm border border-blue-100'
-                  }`}>
-                    {num}
-                  </span>
-                  {idx < targetSequence.length - 1 && <span className="text-gray-300">➡</span>}
-                </React.Fragment>
-              );
-            })}
-          </div>
-          
-          {/* 진행 상황 바 */}
-          <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1">
-            <div 
-              className={`h-full transition-all duration-300 ${isError ? 'bg-red-500' : 'bg-blue-500'}`} 
-              style={{ width: `${progress}%` }} 
-            />
-          </div>
-        </div>
-
-        {/* 3x3 키패드 + 지우기 버튼 */}
-        <div className="grid grid-cols-3 gap-3 w-full">
-          {keypad.map((num) => {
-            const isPressed = currentInput.includes(num);
-
-            return (
-              <button
-                key={num}
-                data-track-id={`captcha-key-${num}`}
-                onClick={() => handleKeyPress(num)}
-                disabled={isPressed || isSuccess || isError || currentInput.length >= targetSequence.length}
-                className={`
-                  aspect-square rounded-xl text-2xl font-bold transition-all duration-200
-                  ${isPressed
-                    ? 'bg-blue-50 text-blue-300 shadow-none border border-transparent scale-95' 
-                    : 'bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-blue-50 hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
-                  }
-                  disabled:opacity-50 disabled:pointer-events-none
-                `}
-              >
-                {num}
-              </button>
-            );
-          })}
-          
-          <button
-            onClick={handleDelete}
-            data-track-id="captcha-delete"
-            disabled={isSuccess || currentInput.length === 0}
-            className="col-span-3 mt-2 py-3.5 rounded-xl text-base font-bold transition-all duration-200 bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none"
-            aria-label="지우기"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
-              <line x1="18" y1="9" x2="12" y2="15"></line>
-              <line x1="12" y1="9" x2="18" y2="15"></line>
-            </svg>
-            <span>지우기</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 성공 시 로티 애니메이션 오버레이 */}
       {isSuccess && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-20">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none mt-10">
           <div className="w-48 h-48">
             <Lottie 
               animationData={checkedAnimation} 

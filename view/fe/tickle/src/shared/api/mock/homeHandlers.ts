@@ -3,6 +3,14 @@ import { http, HttpResponse, delay } from 'msw';
 // 배너 목 데이터 (BE에 전용 엔드포인트 없음 — MSW 전용)
 const banners = [
   {
+    id: '999',
+    title: '예매 대기 테스트 공연',
+    subtitle: 'Waitlist Pending Test',
+    imageUrl: 'https://picsum.photos/seed/poster999/800/1200',
+    venue: '테스트 공연장',
+    date: '2026.05.01 ~ 2026.05.31',
+  },
+  {
     id: '1',
     title: '오페라의 유령',
     subtitle: 'The Phantom of the Opera',
@@ -210,30 +218,7 @@ const mockPastBookings = [
   }
 ];
 
-// 마이페이지: 내 예매 내역 상태 관리 (모의 데이터)
-// eslint-disable-next-line prefer-const
-let mockBookings = [
-  {
-    id: 'booking-1',
-    imageUrl: 'https://picsum.photos/seed/poster45/800/1200',
-    title: '맘마미아',
-    venue: 'LG아트센터 서울',
-    performanceDate: '2025-09-15T19:30:00Z',
-    bookingDate: '2025-03-20',
-    seatInfo: 'VIP석 1층 B구역 12열 14번',
-    ticketCount: 2,
-  },
-  {
-    id: 'booking-2',
-    imageUrl: 'https://picsum.photos/seed/poster46/800/1200',
-    title: '오페라의 유령',
-    venue: '샤롯데씨어터',
-    performanceDate: '2025-08-20T14:00:00Z',
-    bookingDate: '2025-04-01',
-    seatInfo: 'R석 2층 A구역 5열 2번',
-    ticketCount: 1,
-  }
-];
+
 export const homeHandlers = [
   // 홈 배너 목록 API (BE에 전용 엔드포인트 없음)
   http.get('*/api/v1/home/banners', async () => {
@@ -275,14 +260,6 @@ export const homeHandlers = [
     });
   }),
 
-  // 마이페이지: 내 예매 내역 조회 API (BE 미구현 — MSW 전용)
-  http.get('*/api/v1/mypage/bookings', () => {
-    return HttpResponse.json({
-      status: 200,
-      message: 'success',
-      data: mockBookings,
-    });
-  }),
 
   // 마이페이지: 과거 예매 내역 조회 API (BE 미구현 — MSW 전용)
   http.get('*/api/v1/mypage/bookings/past', () => {
@@ -302,14 +279,4 @@ export const homeHandlers = [
     });
   }),
 
-  // 마이페이지: 내 예매 내역 취소 API (BE 미구현 — MSW 전용)
-  http.delete('*/api/v1/mypage/bookings/:id', ({ params }) => {
-    const { id } = params;
-    mockBookings = mockBookings.filter((b) => b.id !== id);
-    return HttpResponse.json({
-      status: 200,
-      message: 'success',
-      data: null,
-    });
-  }),
 ];

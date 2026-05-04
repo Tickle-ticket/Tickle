@@ -11,7 +11,10 @@ export interface SignUpRequest {
   email: string;
   password?: string;
   name: string;
-  nickname: string;
+  nickname?: string;
+  phoneNumber?: string;
+  role?: 'USER' | 'ORGANIZER';
+  organizerName?: string;
 }
 
 export interface LoginRequest {
@@ -46,6 +49,26 @@ export const authApi = {
 
   reissue: async (request: ReissueRequest): Promise<ApiResponse<TokenResponse>> => {
     return apiClient<ApiResponse<TokenResponse>>('/api/v1/auth/reissue', {
+      method: 'POST',
+      body: request,
+    });
+  },
+
+  kakaoCallback: async (code: string): Promise<ApiResponse<TokenResponse>> => {
+    return apiClient<ApiResponse<TokenResponse>>(`/api/v1/auth/kakao/callback?code=${code}`, {
+      method: 'GET',
+    });
+  },
+
+  sendPhoneCode: async (request: { phoneNumber: string }): Promise<ApiResponse<void>> => {
+    return apiClient<ApiResponse<void>>('/api/v1/auth/phone/send', {
+      method: 'POST',
+      body: request,
+    });
+  },
+
+  verifyPhoneCode: async (request: { phoneNumber: string; code: string }): Promise<ApiResponse<void>> => {
+    return apiClient<ApiResponse<void>>('/api/v1/auth/phone/verify', {
       method: 'POST',
       body: request,
     });

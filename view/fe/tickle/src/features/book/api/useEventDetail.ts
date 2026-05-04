@@ -18,6 +18,7 @@ export interface EventDetailResponse {
   zonePrices: GradePrice[];
   schedules: EventSchedule[];
   notice: string;
+  openDate?: string;
 }
 
 export const useEventDetail = (eventId: string) => {
@@ -62,6 +63,7 @@ export const useEventDetail = (eventId: string) => {
         })),
         schedules,
         notice: data.notice || '',
+        openDate: data.salesStartAt,
       } as EventDetailResponse;
     },
     staleTime: 5 * 60 * 1000,

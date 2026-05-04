@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMyInfo, updateMyInfo, withdrawMyInfo } from '@/src/shared/api/userApi';
 
 export interface UserProfileData {
+  userId: number;
   avatarUrl: string;
   name: string; // Used for display, usually nickname or fallback to realName
   nickname: string;
@@ -17,6 +18,7 @@ export const useUserProfile = () => {
       const response = await fetchMyInfo();
       const data = response.data;
       return {
+        userId: data.userId,
         avatarUrl: data.profileImageUrl,
         name: data.nickname || data.name,
         nickname: data.nickname,
