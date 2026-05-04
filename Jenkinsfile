@@ -27,8 +27,8 @@ pipeline {
 
                     echo "변경된 파일 목록:\n${changes}"
 
-                    def isBe = changes.contains('services/be/')
-                    def isAuth = changes.contains('services/auth/')
+                    def isBe = changes.contains('services/be/') || changes.contains('infra/docker-compose/server1-main.yml')
+                    def isAuth = changes.contains('services/auth/') || changes.contains('infra/docker-compose/server4-auth.yml')
         
                     if (changes.contains('Jenkinsfile') || changes.isEmpty()) {
                         echo "Jenkinsfile 변경 또는 변경사항 없음 → 강제 BE 배포"
