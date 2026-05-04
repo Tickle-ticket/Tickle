@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
 import { setTokens } from '@/src/shared/api/tokenManager';
 import { Box } from '@/src/shared/components/Box';
@@ -68,7 +68,7 @@ const ERROR_FIELDS: readonly ErrorField[] = [
   'submit',
 ];
 
-const NAME_PATTERN = /^[A-Za-z가-힣\s]+$/;
+const NAME_PATTERN = /^[A-Za-z가-힣]+$/;
 const NICKNAME_PATTERN = /^[A-Za-z가-힣0-9]+$/;
 const SPECIAL_CHARACTER_PATTERN = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
 
@@ -92,9 +92,9 @@ const isErrorField = (value: string): value is ErrorField => ERROR_FIELDS.includ
 const sanitizeInputValue = (name: string, value: string) => {
   switch (name) {
     case 'name':
-      return value.replace(/[^A-Za-z가-힣\s]/g, '').slice(0, 12);
+      return value.replace(/\s+/g, '').slice(0, 12);
     case 'nickname':
-      return value.replace(/[^A-Za-z가-힣0-9]/g, '').slice(0, 20);
+      return value.replace(/\s+/g, '').slice(0, 20);
     case 'phone':
       return value.replace(/\D/g, '').slice(0, 11);
     case 'verificationCode':
@@ -130,6 +130,42 @@ const isValidBirthDate = (value: string) => {
   }
 
   return value <= getTodayDate();
+};
+
+const getNameError = (value: string, isAgencySignup: boolean) => {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return isAgencySignup ? '담당자명을 입력해 주세요.' : '이름을 입력해 주세요.';
+  }
+
+  if (countCharacters(trimmedValue) > 12) {
+    return '이름은 12자 이하로 입력해 주세요.';
+  }
+
+  if (!NAME_PATTERN.test(trimmedValue)) {
+    return '이름에는 한글과 영문만 사용할 수 있습니다.';
+  }
+
+  return '';
+};
+
+const getNicknameError = (value: string) => {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return '닉네임을 입력해 주세요.';
+  }
+
+  if (countCharacters(trimmedValue) > 20) {
+    return '닉네임은 20자 이하로 입력해 주세요.';
+  }
+
+  if (!NICKNAME_PATTERN.test(trimmedValue)) {
+    return '닉네임에는 한글, 영문, 숫자만 사용할 수 있습니다.';
+  }
+
+  return '';
 };
 
 function AgencyDropdownField({
@@ -292,7 +328,8 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    const nextValue = sanitizeInputValue(name, value);
+    const nextValue =
+      name === 'phone' || name === 'verificationCode' ? sanitizeInputValue(name, value) : value;
 
     if (name === 'verificationCode') {
       setVerificationCode(nextValue);
@@ -317,10 +354,21 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     }
   };
 
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    if (name === 'name') {
+      setErrors((prev) => ({ ...prev, name: getNameError(value, isAgencySignup) }));
+      return;
+    }
+
+    if (!isAgencySignup && name === 'nickname') {
+      setErrors((prev) => ({ ...prev, nickname: getNicknameError(value) }));
+    }
+  };
+
   const getStepErrors = (step: number): ErrorState => {
     const nextErrors = createEmptyErrors();
-    const trimmedName = formData.name.trim();
-    const trimmedNickname = formData.nickname.trim();
 
     if (step === 1) {
       if (!formData.email) {
@@ -343,24 +391,12 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     }
 
     if (step === 2) {
-      if (!trimmedName) {
-        nextErrors.name = isAgencySignup ? '담당자명을 입력해 주세요.' : '이름을 입력해 주세요.';
-      } else if (countCharacters(trimmedName) > 12) {
-        nextErrors.name = '이름은 12자 이하로 입력해 주세요.';
-      } else if (!NAME_PATTERN.test(trimmedName)) {
-        nextErrors.name = '이름에는 한글, 영문, 공백만 사용할 수 있습니다.';
-      }
+      nextErrors.name = getNameError(formData.name, isAgencySignup);
 
       if (isAgencySignup && !selectedAgencyId) {
         nextErrors.organization = '기획사를 선택해 주세요.';
       } else if (!isAgencySignup) {
-        if (!trimmedNickname) {
-          nextErrors.nickname = '닉네임을 입력해 주세요.';
-        } else if (countCharacters(trimmedNickname) > 20) {
-          nextErrors.nickname = '닉네임은 20자 이하로 입력해 주세요.';
-        } else if (!NICKNAME_PATTERN.test(trimmedNickname)) {
-          nextErrors.nickname = '닉네임에는 한글, 영문, 숫자만 사용할 수 있습니다.';
-        }
+        nextErrors.nickname = getNicknameError(formData.nickname);
 
         if (!formData.birthDate) {
           nextErrors.birthDate = '생년월일을 입력해 주세요.';
@@ -590,10 +626,12 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                     name="name"
                     placeholder={isAgencySignup ? '담당자명을 입력해 주세요.' : '이름을 입력해 주세요.'}
                     autoComplete="name"
+                    maxLength={12}
                     fullWidth
                     required
                     value={formData.name}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     error={errors.name}
                     style={{ letterSpacing: '-0.02em' }}
                     className="[&_input]:text-[20px]"
@@ -605,10 +643,12 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                         name="nickname"
                         placeholder="닉네임을 입력해 주세요."
                         autoComplete="nickname"
+                        maxLength={20}
                         fullWidth
                         required
                         value={formData.nickname}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         error={errors.nickname}
                         style={{ letterSpacing: '-0.02em' }}
                         className="[&_input]:text-[20px]"
@@ -806,7 +846,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
           <div className="flex gap-3 pt-1">
             {currentStep > 1 ? (
-              <div className="flex-1">
+              <div className="flex-1 -mt-17.5">
                 <Button type="button" variant="weak" color="dark" display="block" size="xlarge" onClick={handlePrev}>
                   이전
                 </Button>
