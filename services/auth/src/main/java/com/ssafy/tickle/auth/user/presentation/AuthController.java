@@ -70,19 +70,7 @@ public class AuthController implements AuthApiDoc {
                 .body(BaseResponse.success(authService.login(request)));
     }
 
-    /**
-     * Kakao OAuth 로그인 페이지로 리다이렉트합니다.
-     *
-     * @return Kakao authorize URL 302 redirect
-     */
-    @Override
-    @GetMapping("/kakao")
-    public ResponseEntity<Void> redirectToKakao() {
-        return ResponseEntity
-                .status(HttpStatus.FOUND)
-                .location(URI.create(authService.getKakaoAuthorizeUrl()))
-                .build();
-    }
+
 
     /**
      * Kakao OAuth 로그인(토큰 발급 또는 회원가입 유도) API입니다.

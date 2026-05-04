@@ -125,14 +125,7 @@ public class AuthService {
         return issueTokens(authUser);
     }
 
-    /**
-     * Kakao 인가 코드 요청 URL을 생성합니다.
-     *
-     * @return Kakao 로그인 페이지 URL
-     */
-    public String getKakaoAuthorizeUrl() {
-        return kakaoOAuthClient.buildAuthorizeUrl();
-    }
+
 
     /**
      * Kakao OAuth 콜백을 처리하고 Tickle JWT를 발급하거나 회원가입을 유도합니다.

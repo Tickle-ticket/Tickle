@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 /**
  * 인증 API 문서 인터페이스입니다.
  */
-@Tag(name = "Auth", description = "자체 인증 API (회원가입, 로그인, 로그아웃, 토큰 재발급)")
+@Tag(name = "Auth", description = "인증 및 카카오 OAuth API (회원가입, 로그인, 로그아웃, 토큰 재발급)")
 public interface AuthApiDoc {
 
     /**
@@ -77,15 +77,7 @@ public interface AuthApiDoc {
             @Valid @RequestBody LoginRequest request
     );
 
-    /**
-     * Kakao OAuth 로그인 API 문서 정의입니다.
-     */
-    @Operation(
-            summary = "카카오 OAuth 로그인",
-            description = "Kakao authorization code 요청 URL로 리다이렉트한다."
-    )
-    @ApiResponse(responseCode = "302", description = "Kakao 로그인 페이지로 리다이렉트")
-    ResponseEntity<Void> redirectToKakao();
+
 
     /**
      * Kakao OAuth 로그인(토큰 발급) API 문서 정의입니다.
