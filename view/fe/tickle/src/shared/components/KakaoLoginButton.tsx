@@ -33,7 +33,7 @@ export function KakaoLoginButton({
       htmlStyle={{
         backgroundColor: '#FEE500',
         color: 'rgba(0, 0, 0, 0.85)',
-        borderRadius: '12px',
+        borderRadius: '16px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         fontSize: size === 'large' ? '16px' : '18px',
         fontWeight: 700,
@@ -41,7 +41,7 @@ export function KakaoLoginButton({
     >
       <span className="flex items-center justify-center gap-2.5">
         <KakaoSymbol />
-        <span className="tracking-[-0.02em]">카카오 로그인</span>
+        <span>카카오 로그인</span>
       </span>
     </Button>
   );

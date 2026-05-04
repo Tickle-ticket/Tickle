@@ -1,22 +1,53 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useMemo, useState, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
 import { setTokens } from '@/src/shared/api/tokenManager';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { KakaoLoginButton } from '@/src/shared/components/KakaoLoginButton';
-import { UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
+import { type AuthNavigationItem, UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
+
+type LoginMode = 'audience' | 'agency';
+
+const resolveLoginMode = (value: string | null): LoginMode => (value === 'agency' ? 'agency' : 'audience');
 
 export function LoginPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const loginMode = resolveLoginMode(searchParams.get('mode'));
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const authTabs = useMemo<AuthNavigationItem[]>(
+    () => [
+      {
+        key: 'audience',
+        label: '일반 회원',
+        active: loginMode === 'audience',
+        href: '/login',
+      },
+      {
+        key: 'agency',
+        label: '기획사',
+        active: loginMode === 'agency',
+        href: '/login?mode=agency',
+      },
+      {
+        key: 'signup',
+        label: '회원가입',
+        href: '/signup',
+        active: false,
+      },
+    ],
+    [loginMode]
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,17 +96,14 @@ export function LoginPageClient() {
   };
 
   return (
-    <UserAuthFrame
-      activeTab="login"
-      compact
-    >
-      <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-        <div className="grid gap-4">
+    <UserAuthFrame activeTab="login" size="wide" compact authTabs={authTabs}>
+      <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+        <div className="grid gap-5">
           <Input
             label="이메일"
             type="email"
             name="email"
-            placeholder="이메일을 입력하세요."
+            placeholder="이메일을 입력해 주세요."
             autoComplete="email"
             fullWidth
             value={email}
@@ -86,15 +114,13 @@ export function LoginPageClient() {
               }
             }}
             error={emailError}
-            style={{ letterSpacing: '-0.02em' }}
-            className="[&_input]:text-[20px]"
           />
 
           <Input
             label="비밀번호"
             type="password"
             name="password"
-            placeholder="비밀번호를 입력하세요."
+            placeholder="비밀번호를 입력해 주세요."
             autoComplete="current-password"
             fullWidth
             value={password}
@@ -105,33 +131,46 @@ export function LoginPageClient() {
               }
             }}
             error={passwordError}
-            style={{ letterSpacing: '-0.02em' }}
-            className="[&_input]:text-[20px]"
           />
         </div>
 
         <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <label className="inline-flex cursor-pointer items-center gap-3 font-medium text-slate-600">
-            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
             <span className="select-none">로그인 상태 유지</span>
           </label>
         </div>
 
-        <div className="grid gap-3">
-          <Button type="submit" display="block" size="large" color="dark" isLoading={isLoading}>
+        <div className="grid gap-4 mt-10">
+          <Button type="submit" display="block" size="xlarge" color="dark" isLoading={isLoading}>
             로그인
           </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-sm font-medium leading-6">
-              <span className="bg-white px-4 text-slate-500">또는</span>
-            </div>
-          </div>
+          <div className="min-h-[116px]">
+            {loginMode === 'audience' ? (
+              <div className="grid gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm font-medium leading-6">
+                    <span className="bg-white px-4 text-slate-500">또는</span>
+                  </div>
+                </div>
 
-          <KakaoLoginButton onClick={handleKakaoLogin} />
+                <KakaoLoginButton onClick={handleKakaoLogin} />
+              </div>
+            ) : (
+              <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-medium leading-6 text-slate-500">
+                기획사 계정은 이메일 로그인만 지원합니다. 카카오 로그인은 일반 회원 탭에서만 사용할 수 있습니다.
+              </div>
+            )}
+          </div>
         </div>
       </form>
     </UserAuthFrame>

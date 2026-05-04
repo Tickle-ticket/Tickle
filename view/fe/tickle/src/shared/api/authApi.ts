@@ -12,6 +12,7 @@ export interface SignUpRequest {
   password?: string;
   name: string;
   nickname?: string;
+  birthDate?: string;
   phoneNumber?: string;
   role?: 'USER' | 'ORGANIZER';
   organizerName?: string;

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Box } from './Box';
 import { Button } from './Button';
-import { Input } from './Input';
 import { UserAuthFrame } from './UserAuthFrame';
 
 const meta = {
@@ -14,6 +13,7 @@ const meta = {
   argTypes: {
     children: { control: false },
     footer: { control: false },
+    authTabs: { control: false },
   },
 } satisfies Meta<typeof UserAuthFrame>;
 
@@ -23,34 +23,37 @@ type Story = StoryObj<typeof meta>;
 export const LoginLayout: Story = {
   args: {
     activeTab: 'login',
-    label: '로그인',
-    title: '실제 서비스처럼 바로 로그인할 수 있는 인증 화면',
+    label: '관람객 로그인',
+    title: '예매에 사용할 계정으로 로그인해 주세요',
+    authTabs: [
+      { key: 'audience', label: '관람객', active: true },
+      { key: 'agency', label: '기획사' },
+      { key: 'signup', label: '회원가입' },
+    ],
     children: (
-      <form className="space-y-6">
-        <div className="grid gap-5">
-          <Input label="이메일" type="email" placeholder="you@tickle.kr" fullWidth />
-          <Input label="비밀번호" type="password" placeholder="비밀번호를 입력하세요" fullWidth />
-        </div>
-
-        <div className="grid gap-3">
-          <Button type="submit" display="block">
-            로그인
-          </Button>
-          <Box variant="gray" className="rounded-[24px] bg-slate-50">
-            <p className="text-sm font-black text-slate-900">서비스 연결 안내</p>
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
-              같은 계정으로 예매, 공연 운영, 관리자 모니터링 메뉴에 접근할 수 있습니다.
-            </p>
-          </Box>
-        </div>
-      </form>
+      <div className="space-y-5">
+        <Box variant="outline" className="rounded-[24px] p-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-slate-500">이메일</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">you@tickle.kr</p>
+            </div>
+            <div className="border-t border-slate-200 pt-4">
+              <p className="text-sm font-medium text-slate-500">비밀번호</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">••••••••</p>
+            </div>
+          </div>
+        </Box>
+        <Button type="button" display="block" size="xlarge">
+          로그인
+        </Button>
+      </div>
     ),
     footer: (
-      <div className="flex items-center justify-between gap-4 text-sm">
-        <span className="font-medium text-slate-500">아직 계정이 없나요?</span>
-        <a href="/signup" className="font-bold text-blue-600">
-          회원가입
-        </a>
+      <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+        <span>비밀번호 찾기</span>
+        <span>|</span>
+        <span>회원가입</span>
       </div>
     ),
   },
