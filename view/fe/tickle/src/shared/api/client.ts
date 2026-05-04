@@ -65,6 +65,14 @@ export const apiClient = async <T, A = any, I = any>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
+      
+      // 403 Forbidden (블랙리스트 등) 처리
+      if (response.status === 403) {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/blocked?reason=blacklist';
+        }
+      }
+      
       throw new ApiError(
         errorData?.message || 'API 요청 중 오류가 발생했습니다.',
         response.status,

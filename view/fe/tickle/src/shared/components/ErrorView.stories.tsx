@@ -100,7 +100,24 @@ export const BotBlocked: Story = {
   parameters: {
     docs: {
       description: {
-        story: '매크로 봇(Bot) 감지 시 /blocked 페이지에서 나타나는 차단 화면입니다.',
+        story: '매크로 봇(Bot) 감지 시 /blocked 페이지에서 나타나는 기본 차단 화면입니다.',
+      },
+    },
+  },
+};
+
+// 7. Blacklist Blocked (블랙리스트 사용자 차단 화면)
+export const BlacklistBlocked: Story = {
+  args: {
+    type: '401',
+    title: '비정상적인 접근 차단',
+    description: '차단된 사용자입니다. 혹은 부정 이용 사용자입니다.',
+    actionText: '메인으로 돌아가기',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '백엔드에서 블랙리스트로 지정된 사용자가 접근했을 때 보여지는 차단 화면입니다.',
       },
     },
   },
