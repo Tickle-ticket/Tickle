@@ -23,8 +23,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -45,6 +51,8 @@ public class AuthService {
     private final BeInternalClient beInternalClient;
     private final PhoneVerificationService phoneVerificationService;
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
 
     /**
      * 자체 회원가입을 처리합니다.
@@ -127,15 +135,13 @@ public class AuthService {
     }
 
     /**
-     * Kakao OAuth 콜백을 처리하고 Tickle JWT를 발급합니다.
-     *
-     * <p>Kakao 사용자 식별자로 기존 OAuth 가입자를 찾고, 없으면 USER 권한의 신규 회원을 생성한다.</p>
+     * Kakao OAuth 콜백을 처리하고 Tickle JWT를 발급하거나 회원가입을 유도합니다.
      *
      * @param request 프론트엔드가 전달한 Kakao 로그인 요청 (code, redirectUri)
-     * @return 발급된 Access Token / Refresh Token / userId
+     * @return 카카오 로그인 응답 (신규 유저 여부 포함)
      */
     @Transactional
-    public TokenResponse kakaoLogin(com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request) {
+    public KakaoLoginResponse kakaoLogin(com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request) {
         if (request == null || isBlank(request.code()) || isBlank(request.redirectUri())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
         }
@@ -151,9 +157,58 @@ public class AuthService {
         }
 
         String providerUserId = userInfo.id().toString();
-        AuthUser authUser = authUserRepository
-                .findByOauthProviderAndOauthProviderUserId(AuthUser.OAuthProvider.KAKAO, providerUserId)
-                .orElseGet(() -> createKakaoUser(userInfo, providerUserId));
+        Optional<AuthUser> existingUser = authUserRepository
+                .findByOauthProviderAndOauthProviderUserId(AuthUser.OAuthProvider.KAKAO, providerUserId);
+
+        if (existingUser.isPresent()) {
+            TokenResponse tokens = issueTokens(existingUser.get());
+            return new KakaoLoginResponse(false, null, tokens.accessToken(), tokens.refreshToken(), tokens.userId());
+        }
+
+        // 신규 카카오 유저: 정보 임시 저장 후 가입 유도
+        String signUpToken = UUID.randomUUID().toString();
+        try {
+            String userInfoJson = objectMapper.writeValueAsString(userInfo);
+            stringRedisTemplate.opsForValue().set("kakao:signup:" + signUpToken, userInfoJson, Duration.ofMinutes(15));
+        } catch (Exception e) {
+            log.error("Kakao 사용자 정보 직렬화 실패", e);
+            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        return new KakaoLoginResponse(true, signUpToken, null, null, null);
+    }
+
+    /**
+     * 신규 카카오 유저의 전화번호, 이름, 생년월일을 인증받아 가입을 완료합니다.
+     *
+     * @param request 카카오 가입 마무리 요청
+     * @return 발급된 Access Token / Refresh Token / userId
+     */
+    @Transactional
+    public TokenResponse kakaoSignUp(com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request) {
+        if (!phoneVerificationService.isVerified(request.phoneNumber())) {
+            throw new BaseException(AuthErrorCode.PHONE_VERIFICATION_FAILED);
+        }
+
+        String redisKey = "kakao:signup:" + request.signUpToken();
+        String userInfoJson = stringRedisTemplate.opsForValue().get(redisKey);
+        if (isBlank(userInfoJson)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
+        }
+
+        KakaoUserInfoResponse userInfo;
+        try {
+            userInfo = objectMapper.readValue(userInfoJson, KakaoUserInfoResponse.class);
+        } catch (Exception e) {
+            log.error("Kakao 사용자 정보 역직렬화 실패", e);
+            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        String providerUserId = userInfo.id().toString();
+        AuthUser authUser = createKakaoUser(userInfo, providerUserId, request.phoneNumber(), request.name(), request.birthDate());
+
+        stringRedisTemplate.delete(redisKey);
+        phoneVerificationService.clearVerified(request.phoneNumber());
 
         return issueTokens(authUser);
     }
@@ -249,9 +304,12 @@ public class AuthService {
      *
      * @param userInfo Kakao 사용자 정보
      * @param providerUserId Kakao 사용자 식별자
+     * @param phoneNumber 사용자 휴대폰 번호
+     * @param name 사용자 실명
+     * @param birthDate 생년월일
      * @return 생성된 AuthUser
      */
-    private AuthUser createKakaoUser(KakaoUserInfoResponse userInfo, String providerUserId) {
+    private AuthUser createKakaoUser(KakaoUserInfoResponse userInfo, String providerUserId, String phoneNumber, String name, LocalDate birthDate) {
         String email = userInfo.email();
         if (isBlank(email)) {
             email = "kakao_" + providerUserId + "@oauth.kakao";
@@ -265,6 +323,7 @@ public class AuthService {
                 .role(AuthUser.Role.USER)
                 .oauthProvider(AuthUser.OAuthProvider.KAKAO)
                 .oauthProviderUserId(providerUserId)
+                .phoneNumber(phoneNumber)
                 .createdAt(now)
                 .updatedAt(now)
                 .build());
@@ -275,12 +334,12 @@ public class AuthService {
                     saved.getId(),
                     generateUserNo(),
                     email,
+                    name,
                     nickname,
-                    nickname,
-                    null,
+                    phoneNumber,
                     saved.getRole(),
                     null,
-                    null
+                    birthDate
             ));
         } catch (Exception e) {
             log.error("BE 내부 Kakao 사용자 생성 실패, 트랜잭션 롤백 예정: userId={}", saved.getId(), e);

@@ -85,19 +85,34 @@ public class AuthController implements AuthApiDoc {
     }
 
     /**
-     * Kakao OAuth 로그인(토큰 발급) API입니다.
+     * Kakao OAuth 로그인(토큰 발급 또는 회원가입 유도) API입니다.
      *
      * @param request 프론트엔드가 전달한 인가 코드와 리다이렉트 URI
-     * @return 발급된 토큰 응답
+     * @return 카카오 로그인 응답 (신규 유저 여부 포함)
      */
     @Override
     @PostMapping("/kakao/login")
-    public ResponseEntity<BaseResponse<TokenResponse>> kakaoLogin(
+    public ResponseEntity<BaseResponse<com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse>> kakaoLogin(
             @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request
     ) {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(authService.kakaoLogin(request)));
+    }
+
+    /**
+     * Kakao 신규 유저 회원가입 마무리 API입니다.
+     *
+     * @param request 프론트엔드가 전달한 가입 토큰, 전화번호, 이름, 생년월일
+     * @return 발급된 토큰 응답
+     */
+    @PostMapping("/kakao/signup")
+    public ResponseEntity<BaseResponse<TokenResponse>> kakaoSignUp(
+            @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(BaseResponse.success(SuccessCode.CREATED, authService.kakaoSignUp(request)));
     }
 
     /**

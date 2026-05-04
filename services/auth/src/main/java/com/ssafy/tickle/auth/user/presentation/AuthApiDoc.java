@@ -91,15 +91,29 @@ public interface AuthApiDoc {
      * Kakao OAuth 로그인(토큰 발급) API 문서 정의입니다.
      */
     @Operation(
-            summary = "카카오 OAuth 로그인 (토큰 교환)",
-            description = "프론트엔드가 카카오로부터 받은 Authorization Code로 백엔드에 토큰을 요청합니다."
+            summary = "카카오 OAuth 로그인 (토큰 교환 및 가입 유도)",
+            description = "프론트엔드가 카카오로부터 받은 Authorization Code로 백엔드에 토큰을 요청합니다. 기존 회원이면 토큰을 발급하고, 신규 회원이면 isNewUser=true와 signUpToken을 반환하여 추가 정보 입력(전화번호 등)을 유도합니다."
     )
-    @ApiResponse(responseCode = "200", description = "카카오 로그인 성공 (Tickle 토큰 발급)")
+    @ApiResponse(responseCode = "200", description = "카카오 로그인 성공 (기존 회원: 토큰 발급, 신규 회원: signUpToken 반환)")
     @ApiResponse(responseCode = "400", description = "잘못된 로그인 요청 (코드 또는 리다이렉트 URI 누락)")
     @ApiResponse(responseCode = "401", description = "카카오 로그인 실패")
     @ApiResponse(responseCode = "409", description = "동일 이메일 계정 존재")
-    ResponseEntity<BaseResponse<TokenResponse>> kakaoLogin(
+    ResponseEntity<BaseResponse<com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse>> kakaoLogin(
             @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request
+    );
+
+    /**
+     * Kakao 신규 유저 가입 마무리 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "카카오 신규 가입 마무리 (전화번호 등 입력)",
+            description = "카카오 로그인 시 발급받은 signUpToken과 함께 전화번호, 이름, 생년월일을 전송하여 회원가입을 완료합니다."
+    )
+    @ApiResponse(responseCode = "201", description = "카카오 회원가입 완료 및 토큰 발급 성공")
+    @ApiResponse(responseCode = "400", description = "입력값 검증 실패 또는 전화번호 미인증")
+    @ApiResponse(responseCode = "401", description = "signUpToken 만료 또는 유효하지 않음")
+    ResponseEntity<BaseResponse<TokenResponse>> kakaoSignUp(
+            @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request
     );
 
     /**
