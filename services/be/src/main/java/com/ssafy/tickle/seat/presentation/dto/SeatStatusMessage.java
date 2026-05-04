@@ -1,5 +1,6 @@
 package com.ssafy.tickle.seat.presentation.dto;
 
+import com.ssafy.tickle.seat.domain.SessionSeat;
 import java.util.List;
 
 /**
