@@ -27,16 +27,12 @@ public record AiInferenceCallbackRequest(
         @NotNull(message = "type은 필수입니다.")
         InferenceType type,
 
-        @JsonProperty("schedule_id")
         Long scheduleId,
 
-        @JsonProperty("event_id")
         Long eventId,
 
-        @JsonProperty("event_date")
         LocalDate eventDate,
 
-        @JsonProperty("p_macro")
         @NotNull(message = "p_macro는 필수입니다.")
         @DecimalMin(value = "0.00", inclusive = true, message = "p_macro는 0.00 이상이어야 합니다.")
         @DecimalMax(value = "1.00", inclusive = true, message = "p_macro는 1.00 이하여야 합니다.")

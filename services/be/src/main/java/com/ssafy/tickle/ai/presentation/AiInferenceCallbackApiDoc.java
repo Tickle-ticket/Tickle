@@ -34,7 +34,7 @@ public interface AiInferenceCallbackApiDoc {
 
                     - 내부 API 인증을 위해 `X-Internal-Secret` 헤더가 필요합니다.
                     - 판정 대상 사용자는 `userId` query parameter로 전달합니다.
-                    - `result`는 `BLOCK`, `type`은 `BOOKING`으로 전달합니다.
+                    - `BLOCK` 판정만 블랙리스트 등록 대상이며, 그 외 판정은 조용히 무시합니다.
                     - 성공 시 결과를 수신했음을 알리고, 실패 시 잘못된 입력값을 반환합니다.
                     """
     )
