@@ -6,6 +6,7 @@ export type PayCategory = 'pay' | 'other' | null;
 export interface Schedule {
   date: string;
   time: string;
+  scheduleId?: string;
 }
 
 interface BookingState {

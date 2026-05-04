@@ -8,6 +8,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { TrialCollector } from './TrialCollector';
 import { submitTrial } from '@/src/shared/api/trialApi';
+import { sendBehaviorEvent } from '@/src/shared/api/behaviorApi';
 import type { TrialStage, TrialJSON } from '../utils/schema';
 
 interface UseTrialCollectorOptions {
@@ -15,10 +16,43 @@ interface UseTrialCollectorOptions {
   enabled: boolean;
   /** 사용자 ID */
   userId?: number | null;
+  /** AI Ingest Server 행동 이벤트 전송용 메타데이터 */
+  behaviorEvent?: {
+    scheduleId?: string | null;
+    name?: string | null;
+    eventDate?: string | null;
+  };
 }
 
-export const useTrialCollector = ({ enabled, userId }: UseTrialCollectorOptions) => {
+export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCollectorOptions) => {
   const collectorRef = useRef<TrialCollector | null>(null);
+  const behaviorEventRef = useRef(behaviorEvent);
+
+  useEffect(() => {
+    behaviorEventRef.current = behaviorEvent;
+  }, [behaviorEvent]);
+
+  const sendBehaviorEventFromTrial = useCallback((trial: TrialJSON) => {
+    const metadata = behaviorEventRef.current;
+    const scheduleId = metadata?.scheduleId;
+    const name = metadata?.name;
+    const eventDate = metadata?.eventDate;
+
+    if (!scheduleId || !name || !eventDate) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[BehaviorEvent] skipped: missing schedule/event metadata');
+      }
+      return;
+    }
+
+    void sendBehaviorEvent({
+      type: trial.summary.stage,
+      schedule_id: scheduleId,
+      name,
+      event_date: eventDate,
+      features: trial.metrics,
+    });
+  }, []);
 
   // 컬렉터 인스턴스 초기화
   useEffect(() => {
@@ -118,8 +152,10 @@ export const useTrialCollector = ({ enabled, userId }: UseTrialCollectorOptions)
       } catch (err) {
         console.error(`[TrialCollector] Stage "${flushed.sessionId}" submit failed:`, err);
       }
+
+      sendBehaviorEventFromTrial(flushed);
     }
-  }, []);
+  }, [sendBehaviorEventFromTrial]);
 
   // ── 선택 좌석 업데이트 ────────────────────────────────────
   const setSelectedSeats = useCallback((seats: string[]) => {
@@ -144,8 +180,10 @@ export const useTrialCollector = ({ enabled, userId }: UseTrialCollectorOptions)
       console.error('[TrialCollector] Trial submit failed:', err);
     }
 
+    sendBehaviorEventFromTrial(trial);
+
     return trial;
-  }, []);
+  }, [sendBehaviorEventFromTrial]);
 
   return { setStage, setSelectedSeats, finalize };
 };
