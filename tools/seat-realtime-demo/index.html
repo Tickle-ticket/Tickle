@@ -3,112 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tickle Realtime Seat Monitor v2.1</title>
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap" rel="stylesheet">
+    <title>티클 도메인 아레나 v9.1 (UI 복구)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&family=Pretendard:wght@700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --border-color: #334155;
-            --text-main: #f8fafc;
+            --bg-deep: #020617;
+            --card-bg: rgba(15, 23, 42, 0.9);
+            --brand-primary: #7dd3fc;
+            --brand-indigo: #6366f1;
+            
+            /* 공식 SaleStatus 도메인 컬러 */
+            --status-available: #34d399;   /* AVAILABLE: 판매 가능 */
+            --status-held-mine: #7dd3fc;    /* HELD: 내 선점 */
+            --status-held-others: #fbbf24;  /* HELD: 타인 선점 */
+            --status-pending: #f59e0b;     /* PENDING: 결제 대기 */
+            --status-confirmed: #64748b;   /* CONFIRMED: 예매 확정 */
+            --status-reallocating: #c084fc; /* REALLOCATING: 재배정중 */
+            --status-blocked: #334155;     /* BLOCKED: 판매 제한 */
+            --status-unavailable: #1e293b; /* UNAVAILABLE: 관람 불가 */
+            --status-selecting: #6366f1;   /* SELECTING: 선택중 (FE 전용) */
+            
+            --text-main: #f1f5f9;
             --text-muted: #94a3b8;
-            --brand-primary: #38bdf8;
-            --status-available: #22c55e;
-            --status-held: #eab308;
-            --status-confirmed: #ef4444;
-            --status-unavailable: #64748b;
+            --border-soft: rgba(255, 255, 255, 0.08);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-color); color: var(--text-main); overflow-x: hidden; }
-        .container { display: grid; grid-template-columns: 350px 1fr 300px; height: 100vh; }
-
-        .sidebar { background-color: var(--card-bg); border-right: 1px solid var(--border-color); padding: 2rem; display: flex; flex-direction: column; gap: 1.2rem; overflow-y: auto; }
-        .brand { font-size: 1.5rem; font-weight: 800; color: var(--brand-primary); letter-spacing: -0.05rem; }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-deep); color: var(--text-main); overflow: hidden; }
         
-        .guide-box { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 1rem; font-size: 0.85rem; line-height: 1.6; }
-        .guide-box h4 { margin-bottom: 0.5rem; color: var(--brand-primary); }
+        .app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
 
-        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-        .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
-        .form-group input { background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.6rem; color: white; font-size: 0.95rem; }
+        .panel { 
+            position: absolute; top: 0; height: 100%;
+            background: var(--card-bg); border-right: 1px solid var(--border-soft); 
+            padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); z-index: 500;
+            backdrop-filter: blur(30px); box-shadow: 20px 0 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .sidebar { left: 0; width: 360px; border-radius: 0 24px 24px 0; }
+        .log-panel { right: 0; width: 340px; border-radius: 24px 0 0 24px; }
+        .hidden { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+        .log-panel.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
 
-        .btn { background: var(--brand-primary); color: #000; border: none; border-radius: 8px; padding: 0.8rem; font-weight: 800; cursor: pointer; transition: all 0.2s; }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn.secondary { background: var(--border-color); color: white; }
+        .toggle-btn { 
+            position: absolute; top: 25px; width: 42px; height: 58px; 
+            background: var(--card-bg); color: var(--brand-primary); border: 1.5px solid var(--border-soft);
+            cursor: pointer; z-index: 600; font-weight: 900; font-size: 1.4rem;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 0 12px 12px 0;
+        }
+        #leftBtn { left: 360px; }
+        .sidebar.hidden + #leftBtn { left: 0; }
+        #rightBtn { right: 340px; border-radius: 12px 0 0 12px; }
+        .log-panel.hidden + #rightBtn { right: 0; }
 
-        .main-content { padding: 2rem; display: flex; flex-direction: column; gap: 2rem; align-items: center; overflow-y: auto; }
-        .stage-banner { width: 80%; background: #334155; padding: 0.8rem; text-align: center; border-radius: 4px 4px 40px 40px; font-weight: 800; color: var(--text-muted); }
+        .viewport { 
+            flex: 1; width: 100%; position: relative; overflow-x: hidden; overflow-y: auto;
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 2.5rem 1rem; background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); z-index: 100;
+        }
 
-        .seat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; width: 100%; max-width: 900px; }
-        .section-card { background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; border: 1px solid var(--border-color); }
-        .section-name { font-size: 0.8rem; font-weight: 800; color: var(--brand-primary); margin-bottom: 1rem; text-align: center; }
-        .seats-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+        /* [UI 복구] 상태 현황판 */
+        .stat-dash {
+            display: flex; align-items: center; gap: 3rem; margin-bottom: 3rem; 
+            background: rgba(255,255,255,0.03); backdrop-filter: blur(10px);
+            padding: 1rem 4rem; border-radius: 100px; border: 1px solid var(--border-soft);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+        .stat-item { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+        .stat-v { font-family: 'Outfit'; font-size: 2rem; font-weight: 900; color: var(--brand-primary); line-height: 1; }
+        .stat-l { font-size: 0.75rem; color: var(--text-muted); font-weight: 900; letter-spacing: 0.1rem; }
+
+        .stage-box { 
+            width: 80%; max-width: 600px; height: 80px; flex-shrink: 0;
+            background: #1e293b; border-bottom: 4px solid var(--brand-primary); 
+            border-radius: 0 0 160px 160px; display: flex; align-items: center; justify-content: center;
+            font-family: 'Outfit'; font-size: 2rem; font-weight: 900; letter-spacing: 1.5rem;
+            color: var(--brand-primary); margin-bottom: 6rem;
+            box-shadow: 0 20px 40px -10px rgba(125, 211, 252, 0.2);
+        }
+
+        .arena-container { display: flex; flex-direction: column; align-items: center; gap: 5rem; width: 100%; max-width: 1200px; padding-bottom: 20rem; }
+        .grid-row { display: flex; gap: 2.5rem; justify-content: center; flex-wrap: wrap; width: 100%; }
+
+        .section-box { 
+            background: rgba(30, 41, 59, 0.4); border: 2px solid var(--border-soft); 
+            border-radius: 28px; padding: 1.8rem; min-width: 250px;
+            backdrop-filter: blur(5px);
+        }
+        .sec-head { margin-bottom: 1.2rem; text-align: center; }
+        .sec-name { font-weight: 900; color: var(--brand-primary); font-size: 1.1rem; letter-spacing: 0.1rem; }
+
+        .seats-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; }
         
-        .seat { aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 800; color: white; transition: all 0.3s; border: 1px solid rgba(255,255,255,0.1); }
-        .seat[data-status="AVAILABLE"] { background-color: var(--status-available); }
-        .seat[data-status="HELD"] { background-color: var(--status-held); }
-        .seat[data-status="CONFIRMED"] { background-color: var(--status-confirmed); }
-        .seat[data-status="UNAVAILABLE"] { background-color: var(--status-unavailable); opacity: 0.3; }
-        .seat.changed { transform: scale(1.3); z-index: 10; border: 2px solid white; }
+        .p-seat { 
+            width: 44px; height: 44px; border-radius: 10px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: 900; cursor: pointer; 
+            background: #1e293b; border: 1.5px solid var(--border-soft);
+            color: rgba(255,255,255,0.7); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 도메인 상태별 색상 */
+        .p-seat[data-status="AVAILABLE"] { background: var(--status-available); color: #064e3b; }
+        .p-seat[data-status="HELD"] { background: var(--status-held-others); color: #78350f; }
+        .p-seat[data-status="PENDING"] { background: var(--status-pending); color: #fff; animation: blink 2s infinite; }
+        .p-seat[data-status="CONFIRMED"] { background: var(--status-confirmed); color: rgba(255,255,255,0.4); cursor: not-allowed; }
+        .p-seat[data-status="REALLOCATING"] { background: var(--status-reallocating); color: #fff; }
+        .p-seat[data-status="BLOCKED"] { background: var(--status-blocked); color: #94a3b8; cursor: not-allowed; }
+        .p-seat[data-status="UNAVAILABLE"] { background: var(--status-unavailable); color: #475569; cursor: not-allowed; opacity: 0.4; }
+        
+        .p-seat.selecting { background: var(--status-selecting) !important; color: #fff !important; transform: scale(1.15); box-shadow: 0 0 20px var(--status-selecting); }
+        .p-seat.mine {
+            background: var(--status-held-mine) !important; color: #0c4a6e !important;
+            box-shadow: 0 0 20px var(--brand-primary); animation: pulse-soft 1s infinite alternate;
+        }
 
-        .inspector { background-color: var(--card-bg); border-left: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
-        .legend-item { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; margin-bottom: 0.5rem; }
-        .dot { width: 10px; height: 10px; border-radius: 2px; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes pulse-soft { from { transform: scale(1); } to { transform: scale(1.08); } }
 
-        .log-container { flex: 1; background: #0f172a; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.8rem; font-family: monospace; font-size: 0.75rem; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.4rem; }
-        .log-entry { border-bottom: 1px solid #1e293b; padding-bottom: 0.3rem; color: #10b981; }
-        .log-entry.error { color: #f43f5e; }
-        .log-entry.info { color: #38bdf8; }
-        .log-time { color: var(--text-muted); margin-right: 0.4rem; }
+        .brand-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-shrink: 0; }
+        .brand-title { font-family: 'Outfit'; font-weight: 900; font-size: 1.8rem; color: var(--brand-primary); }
+        .id-badge { background: var(--brand-primary); color: #000; padding: 0.3rem 0.8rem; border-radius: 40px; font-weight: 900; font-size: 1rem; }
 
-        .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: var(--text-muted); text-align: center; }
+        .group-box { 
+            background: rgba(0,0,0,0.3); border: 1px solid var(--border-soft); 
+            padding: 1.2rem; border-radius: 20px; display: flex; flex-direction: column; gap: 0.8rem; flex-shrink: 0;
+        }
+        .group-header { font-size: 0.75rem; font-weight: 900; color: var(--brand-primary); text-transform: uppercase; border-bottom: 1px solid rgba(56, 189, 248, 0.1); padding-bottom: 0.4rem; }
+
+        .form-unit { display: flex; flex-direction: column; gap: 0.3rem; }
+        .form-unit label { font-size: 0.8rem; font-weight: 900; color: var(--text-muted); }
+        .form-unit input { 
+            background: #000; border: 1.5px solid rgba(255,255,255,0.1); 
+            border-radius: 10px; padding: 0.7rem; color: #fff; font-size: 1.1rem; width: 100%; outline: none; font-weight: 900;
+        }
+        
+        .btn-xl { padding: 1rem; border: none; border-radius: 14px; font-weight: 900; cursor: pointer; transition: 0.2s; font-size: 1rem; width: 100%; }
+        .btn-xl:active:not(:disabled) { transform: scale(0.96); }
+        .btn-p { background: var(--brand-primary); color: #0c4a6e; }
+        .btn-s { background: var(--brand-indigo); color: white; }
+        .btn-d { background: #ef4444; color: white; }
+        .btn-o { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.2); }
+        .btn-xl:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .live-dot { display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; margin-right: 8px; animation: blink 1s infinite; }
+
+        .log-scroll { flex: 1; background: rgba(0,0,0,0.4); border-radius: 24px; padding: 1.2rem; font-size: 0.9rem; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.6rem; border: 1px solid var(--border-soft); }
+        .log-entry { border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.5rem; color: var(--brand-primary); font-weight: 800; }
+
+        .legend-grid { 
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; 
+            padding-top: 1rem; border-top: 1px solid var(--border-soft); flex-shrink: 0;
+        }
+        .legend-unit { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 900; color: var(--text-muted); }
+        .tag-sq { width: 12px; height: 12px; border-radius: 3px; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <aside class="sidebar">
-            <div class="brand">TICKLE MONITOR</div>
-            <div class="guide-box">
-                <h4>🛠️ 테스트 가이드</h4>
-                <ol style="padding-left: 1rem;">
-                    <li><b>Server URL</b>과 <b>IDs</b>를 확인하세요.</li>
-                    <li><b>[1. LOAD DATA]</b>로 좌석을 불러옵니다.</li>
-                    <li><b>[2. SSE CONNECT]</b>로 스트림을 엽니다.</li>
-                    <li>DB 수정 시 실시간 변화를 감상하세요!</li>
-                </ol>
+    <div class="app-container">
+        <aside id="sidebar" class="panel sidebar">
+            <div class="brand-header">
+                <div class="brand-title">TICKLE</div>
+                <div class="id-badge">ID <span id="idBadge">...</span></div>
             </div>
-            <div class="form-group"><label>Server URL</label><input id="baseUrl" type="text" value="http://localhost:8080"></div>
-            <div class="form-group"><label>Event ID</label><input id="eventId" type="number" value="1"></div>
-            <div class="form-group"><label>Schedule ID</label><input id="scheduleId" type="number" value="1"></div>
-            <button id="loadBtn" class="btn secondary">1. LOAD SEAT DATA</button>
-            <button id="connectBtn" class="btn" disabled>2. SSE CONNECT</button>
-            <button id="disconnectBtn" class="btn secondary" style="display: none;">DISCONNECT</button>
-        </aside>
 
-        <main class="main-content">
-            <div class="stage-banner">STAGE</div>
-            <div id="seatRoot" class="seat-grid">
-                <div class="empty-state">먼저 좌석 데이터를 불러와주세요.</div>
+            <div class="group-box">
+                <div class="group-header">서버 접속 설정</div>
+                <div class="form-unit"><label>서버 주소</label><input id="baseUrl" type="text" value="http://localhost:8080"></div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-unit" style="flex: 1;"><label>공연 번호</label><input id="eventId" type="number" value="1"></div>
+                    <div class="form-unit" style="flex: 1;"><label>회차 번호</label><input id="scheduleId" type="number" value="1"></div>
+                </div>
+                <div class="form-unit"><label>사용자 ID</label><input id="userId" type="number"></div>
+            </div>
+
+            <div class="group-box">
+                <div class="group-header">좌석 예약 제어</div>
+                <button id="loadBtn" class="btn-xl btn-o">1. 좌석 배치도 불러오기</button>
+                <button id="connectBtn" class="btn-xl btn-p" disabled>2. 실시간 동기화 시작 (SSE)</button>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="confirmBtn" class="btn-xl btn-s" disabled>좌석 점유 확정 (Hold)</button>
+                    <button id="releaseBtn" class="btn-xl btn-d" disabled>모든 점유 해제 (Release)</button>
+                </div>
+            </div>
+
+            <div class="legend-grid">
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-available);"></div> 판매 가능</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-held-mine); border: 1px solid #fff;"></div> 내 선점</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-held-others);"></div> 타인 선점</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-pending);"></div> 결제 대기</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-confirmed);"></div> 예매 확정</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-reallocating);"></div> 재배정중</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-blocked);"></div> 판매 제한</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-unavailable);"></div> 관람 불가</div>
+            </div>
+        </aside>
+        <button id="leftBtn" class="toggle-btn">&lt;</button>
+
+        <main class="viewport">
+            <div class="stat-dash">
+                <div class="stat-item"><div class="stat-v" id="statTotal">0</div><div class="stat-l">TOTAL</div></div>
+                <div style="width: 1px; height: 24px; background: var(--border-soft);"></div>
+                <div class="stat-item"><div class="stat-v" id="statAvail" style="color: var(--status-available);">0</div><div class="stat-l">AVAILABLE</div></div>
+                <div style="width: 1px; height: 24px; background: var(--border-soft);"></div>
+                <div class="stat-item"><div class="stat-v" id="statSelected" style="color: var(--brand-indigo);">0</div><div class="stat-l">SELECTED</div></div>
+            </div>
+            <div class="stage-box">STAGE</div>
+            <div class="arena-container">
+                <div id="floorLevel" class="grid-row"></div>
+                <div id="standLevel" class="grid-row"></div>
             </div>
         </main>
 
-        <aside class="inspector">
-            <div>
-                <h3 style="margin-bottom: 0.8rem; font-size: 0.9rem; color: var(--brand-primary);">LEGEND</h3>
-                <div class="legend">
-                    <div class="legend-item"><div class="dot" style="background: var(--status-available);"></div> AVAILABLE</div>
-                    <div class="legend-item"><div class="dot" style="background: var(--status-held);"></div> HELD</div>
-                    <div class="legend-item"><div class="dot" style="background: var(--status-confirmed);"></div> CONFIRMED</div>
-                    <div class="legend-item"><div class="dot" style="background: var(--status-unavailable);"></div> UNAVAILABLE</div>
-                </div>
-            </div>
-            <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <h3 style="margin-bottom: 0.8rem; font-size: 0.9rem; color: var(--brand-primary);">LIVE LOGS</h3>
-                <div id="log" class="log-container"></div>
-            </div>
+        <aside id="logPanel" class="panel log-panel">
+            <h3 style="font-family: 'Outfit'; font-size: 1.2rem; color: var(--brand-primary); margin-bottom: 1rem; letter-spacing: 0.1rem;">LIVE MONITOR</h3>
+            <div id="log" class="log-scroll"></div>
         </aside>
+        <button id="rightBtn" class="toggle-btn">&gt;</button>
     </div>
 
     <script>
@@ -116,113 +232,202 @@
             baseUrl: document.getElementById('baseUrl'),
             eventId: document.getElementById('eventId'),
             scheduleId: document.getElementById('scheduleId'),
+            userId: document.getElementById('userId'),
+            idBadge: document.getElementById('idBadge'),
             loadBtn: document.getElementById('loadBtn'),
             connectBtn: document.getElementById('connectBtn'),
-            disconnectBtn: document.getElementById('disconnectBtn'),
-            seatRoot: document.getElementById('seatRoot'),
-            log: document.getElementById('log')
+            confirmBtn: document.getElementById('confirmBtn'),
+            releaseBtn: document.getElementById('releaseBtn'),
+            floorLevel: document.getElementById('floorLevel'),
+            standLevel: document.getElementById('standLevel'),
+            log: document.getElementById('log'),
+            sidebar: document.getElementById('sidebar'),
+            logPanel: document.getElementById('logPanel'),
+            leftBtn: document.getElementById('leftBtn'),
+            rightBtn: document.getElementById('rightBtn'),
+            statTotal: document.getElementById('statTotal'),
+            statAvail: document.getElementById('statAvail'),
+            statSelected: document.getElementById('statSelected')
         };
 
-        let eventSource = null;
-        let seatData = new Map();
+        const selecting = new Set();
+        const myHeld = new Set();
+        const randomId = Math.floor(Math.random() * 999) + 1;
+        els.userId.value = randomId;
+        els.idBadge.textContent = randomId;
 
-        function addLog(message, type = 'success') {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            entry.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> ${message}`;
-            els.log.prepend(entry);
+        els.leftBtn.onclick = () => {
+            const isH = els.sidebar.classList.toggle('hidden');
+            els.leftBtn.textContent = isH ? '>' : '<';
+        };
+        els.rightBtn.onclick = () => {
+            const isH = els.logPanel.classList.toggle('hidden');
+            els.rightBtn.textContent = isH ? '<' : '>';
+        };
+        els.userId.oninput = () => { els.idBadge.textContent = els.userId.value; };
+
+        function addLog(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            div.innerHTML = `<span style="font-family: 'Outfit'; opacity: 0.6; margin-right: 8px;">${new Date().toLocaleTimeString()}</span> ${msg}`;
+            els.log.prepend(div);
         }
 
-        els.loadBtn.onclick = async () => {
-            const url = `${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats`;
-            addLog(`Fetching initial seats from: ${url}`, 'info');
-            
-            try {
-                const resp = await fetch(url);
-                const result = await resp.json();
-                
-                if (result.data && result.data.sections) {
-                    seatData.clear();
-                    renderSeatMap(result.data.sections);
-                    addLog(`Successfully loaded ${result.data.sections.length} sections.`);
-                    els.connectBtn.disabled = false;
-                } else {
-                    addLog('Invalid data format received.', 'error');
+        function updateUI() {
+            els.statTotal.textContent = document.querySelectorAll('.p-seat').length;
+            els.statAvail.textContent = document.querySelectorAll('.p-seat[data-status="AVAILABLE"]').length;
+            els.statSelected.textContent = selecting.size;
+            els.confirmBtn.disabled = selecting.size === 0;
+            els.releaseBtn.disabled = myHeld.size === 0;
+        }
+
+        function handleSeatClick(seatId, status) {
+            if (status !== 'AVAILABLE') return;
+
+            if (selecting.has(seatId)) {
+                selecting.delete(seatId);
+                document.getElementById(`s-${seatId}`).classList.remove('selecting');
+            } else {
+                if (selecting.size + myHeld.size >= 4) {
+                    addLog(`🚫 도메인 정책: 최대 4매까지 선택 가능합니다.`, 'warn');
+                    return;
                 }
-            } catch (e) {
-                addLog(`Fetch failed: ${e.message}. Is backend running?`, 'error');
+                selecting.add(seatId);
+                document.getElementById(`s-${seatId}`).classList.add('selecting');
             }
+            updateUI();
+        }
+
+        els.confirmBtn.onclick = async () => {
+            const ids = Array.from(selecting);
+            try {
+                const r = await fetch(`${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/hold?userId=${els.userId.value}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionSeatIds: ids })
+                });
+                if (!r.ok) throw new Error('선점 실패');
+                
+                ids.forEach(id => {
+                    myHeld.add(id);
+                    const el = document.getElementById(`s-${id}`);
+                    if (el) {
+                        el.classList.remove('selecting');
+                        el.classList.add('mine');
+                        el.dataset.status = 'HELD';
+                    }
+                });
+                selecting.clear();
+                addLog(`🎉 [HELD] 좌석 선점 성공 (${ids.length}석)`, 'success');
+                updateUI();
+            } catch (e) { addLog(`에러: ${e.message}`, 'error'); }
         };
 
-        function renderSeatMap(sections) {
-            els.seatRoot.innerHTML = '';
-            sections.forEach(section => {
-                const card = document.createElement('div');
-                card.className = 'section-card';
-                card.innerHTML = `<div class="section-name">${section.sectionName}</div>`;
-                
-                const grid = document.createElement('div');
-                grid.className = 'seats-container';
-                
-                section.seats.forEach(seat => {
-                    seatData.set(seat.sessionSeatId, seat);
-                    const seatEl = document.createElement('div');
-                    seatEl.className = 'seat';
-                    seatEl.id = `seat-${seat.sessionSeatId}`;
-                    seatEl.dataset.status = seat.saleStatus;
-                    seatEl.textContent = seat.seatLabel.split('-').pop();
-                    seatEl.title = `${seat.seatLabel} (${seat.saleStatus})`;
-                    grid.appendChild(seatEl);
+        els.releaseBtn.onclick = async () => {
+            try {
+                const r = await fetch(`${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/hold?userId=${els.userId.value}`, {
+                    method: 'DELETE'
                 });
-                card.appendChild(grid);
-                els.seatRoot.appendChild(card);
+                if (!r.ok) throw new Error('해제 실패');
+
+                document.querySelectorAll('.p-seat.mine').forEach(el => {
+                    el.classList.remove('mine');
+                    el.dataset.status = 'AVAILABLE';
+                });
+                myHeld.clear();
+                
+                addLog(`🎉 [AVAILABLE] 모든 선점 해제 완료`, 'success');
+                updateUI();
+            } catch (e) { addLog(`에러: ${e.message}`, 'error'); }
+        };
+
+        els.loadBtn.onclick = async () => {
+            try {
+                const r = await fetch(`${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats`);
+                const res = await r.json();
+                if (res.data?.sections) {
+                    renderArena(res.data.sections);
+                    addLog('✅ 공식 도메인 배치도 로드 완료.', 'success');
+                    els.connectBtn.disabled = false;
+                }
+            } catch (e) { addLog(`에러: ${e.message}`, 'error'); }
+        };
+
+        function renderArena(sections) {
+            els.floorLevel.innerHTML = '';
+            els.standLevel.innerHTML = '';
+            sections.forEach(sec => {
+                const card = document.createElement('div');
+                card.className = 'section-box';
+                card.innerHTML = `<div class="sec-head"><span class="sec-name">${sec.sectionName}</span></div><div class="seats-container"></div>`;
+                const grid = card.querySelector('.seats-container');
+                sec.seats.forEach(seat => {
+                    const s = document.createElement('div');
+                    s.className = 'p-seat';
+                    s.id = `s-${seat.sessionSeatId}`;
+                    s.dataset.status = seat.saleStatus;
+                    s.textContent = seat.seatLabel.split('-').pop();
+                    s.onclick = () => handleSeatClick(seat.sessionSeatId, s.dataset.status);
+                    grid.appendChild(s);
+                });
+                if (sec.sectionName.toUpperCase().includes('FLOOR')) els.floorLevel.appendChild(card);
+                else els.standLevel.appendChild(card);
             });
+            setTimeout(updateUI, 100);
+        }
+
+        let eventSource = null;
+
+        function handleRealtimeUpdate(rawData) {
+            try {
+                const d = JSON.parse(rawData);
+                const ids = d.sessionSeatIds || [];
+                const status = d.saleStatus;
+
+                if (!ids.length || !status) return;
+
+                addLog(`📡 리얼타임 푸시: ${ids.length}석 → ${status}`);
+                
+                ids.forEach(sid => {
+                    const el = document.getElementById(`s-${sid}`);
+                    if (el) {
+                        el.dataset.status = status;
+                        if (status === 'HELD') {
+                            if (myHeld.has(sid)) el.classList.add('mine');
+                            else el.classList.remove('mine');
+                        } else {
+                            el.classList.remove('mine');
+                            if (status === 'AVAILABLE') myHeld.delete(sid);
+                        }
+                    }
+                });
+                updateUI();
+            } catch (e) { 
+                if (rawData !== 'connected') console.error('SSE Error:', e);
+            }
         }
 
         els.connectBtn.onclick = () => {
-            const streamUrl = `${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/stream`;
-            
             if (eventSource) eventSource.close();
-            addLog(`Connecting SSE: ${streamUrl}`, 'info');
-            eventSource = new EventSource(streamUrl);
-
+            const url = `${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/stream`;
+            eventSource = new EventSource(url);
+            
+            els.connectBtn.innerHTML = '연결 시도 중...';
+            
             eventSource.onopen = () => {
-                addLog('✅ SSE Stream Connected.');
-                els.connectBtn.style.display = 'none';
-                els.disconnectBtn.style.display = 'block';
-            };
-
-            eventSource.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    addLog(`Update: Seat ${data.sessionSeatId} -> ${data.newStatus}`);
-                    
-                    const seatEl = document.getElementById(`seat-${data.sessionSeatId}`);
-                    if (seatEl) {
-                        seatEl.dataset.status = data.newStatus;
-                        seatEl.classList.add('changed');
-                        setTimeout(() => seatEl.classList.remove('changed'), 1000);
-                    }
-                } catch (e) {
-                    if (event.data !== 'connected') addLog(`Parse error: ${e.message}`, 'error');
-                }
+                addLog('📡 실시간 도메인 채널 가동 중', 'success');
+                els.connectBtn.innerHTML = '<span class="live-dot"></span> 연결됨 (LIVE)';
+                els.connectBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+                els.connectBtn.style.color = '#10b981';
             };
 
             eventSource.onerror = () => {
-                addLog('❌ SSE Connection failed.', 'error');
-                eventSource.close();
-                els.connectBtn.style.display = 'block';
-                els.disconnectBtn.style.display = 'none';
+                addLog('❌ 연결 끊김 (자동 재연결 대기)', 'error');
+                els.connectBtn.innerHTML = '연결 실패';
             };
-        };
 
-        els.disconnectBtn.onclick = () => {
-            if (eventSource) {
-                eventSource.close();
-                addLog('Disconnected.');
-                els.connectBtn.style.display = 'block';
-                els.disconnectBtn.style.display = 'none';
-            }
+            eventSource.onmessage = (e) => handleRealtimeUpdate(e.data);
+            eventSource.addEventListener('message', (e) => handleRealtimeUpdate(e.data));
         };
     </script>
 </body>
