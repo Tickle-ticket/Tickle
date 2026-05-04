@@ -1,9 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Button } from '@/src/shared/components/Button';
-import { Input } from '@/src/shared/components/Input';
-import { KakaoLoginButton } from '@/src/shared/components/KakaoLoginButton';
-import { UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
+import LoginPageClient from './LoginPageClient';
 
 export const metadata: Metadata = {
   title: '로그인 | Tikkle',
@@ -13,17 +9,7 @@ export default function LoginPage() {
   return (
     <UserAuthFrame
       activeTab="login"
-      label="로그인"
-      title="티클 계정으로 바로 시작하세요"
       compact
-      footer={
-        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-medium text-slate-500">아직 계정이 없나요?</span>
-          <Link href="/signup" className="font-bold text-blue-600 transition hover:text-blue-700">
-            회원가입
-          </Link>
-        </div>
-      }
     >
       <form className="space-y-4">
         <div className="grid gap-4">
@@ -36,7 +22,7 @@ export default function LoginPage() {
             fullWidth
             required
             style={{ letterSpacing: '-0.02em' }}
-            className="[&_input]:text-[20px]"
+            className="[&_input]:text-[25px] mb-3 mt-3"
           />
 
           <Input
@@ -48,7 +34,7 @@ export default function LoginPage() {
             fullWidth
             required
             style={{ letterSpacing: '-0.02em' }}
-            className="[&_input]:text-[20px]"
+            className="[&_input]:text-[25px] mb-3 mt-3"
           />
         </div>
 
@@ -63,10 +49,11 @@ export default function LoginPage() {
           </a>
         </div>
 
-        <div className="grid gap-3">
-          <Button type="submit" display="block" size="large">
+        <div className="mt-10 grid gap-3">
+          <Button type="submit" display="block" size="large" color = "dark">
             로그인
           </Button>
+          <div></div>
           <KakaoLoginButton size="large" />
         </div>
       </form>

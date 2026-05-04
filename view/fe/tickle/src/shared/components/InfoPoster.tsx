@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { InfoPosterProps } from './types';
+import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 
 export const InfoPoster = ({
   src,
@@ -12,6 +13,11 @@ export const InfoPoster = ({
   isLoading = false,
 }: InfoPosterProps) => {
   const [imgFailed, setImgFailed] = useState(false);
+  const resolvedSrc = resolveImageSrc(src);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [resolvedSrc]);
 
   const inlineStyle: React.CSSProperties = {
     ...(width !== undefined ? { width } : {}),
@@ -37,7 +43,7 @@ export const InfoPoster = ({
       className={`relative overflow-hidden rounded-2xl shadow-md ${defaultDimensions} ${className}`}
       style={inlineStyle}
     >
-      {(!src || imgFailed) ? (
+      {(!resolvedSrc || imgFailed) ? (
         <div className={`absolute inset-0 w-full h-full bg-[#f2f4f6] flex flex-col items-center justify-center text-[#8B95A1] transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`}>
           <div className="flex items-baseline gap-1">
             <span className="text-xs font-semibold tracking-tight">준비중 입니다</span>
@@ -60,7 +66,7 @@ export const InfoPoster = ({
         </div>
       ) : (
         <Image
-          src={src} 
+          src={resolvedSrc} 
           alt={alt} 
           fill
           sizes="(max-width: 768px) 240px, 280px"

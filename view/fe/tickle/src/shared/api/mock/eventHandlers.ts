@@ -66,25 +66,32 @@ export const eventHandlers = [
   http.get('*/api/v1/events/:eventId', async ({ params }) => {
     // 실제 서버 통신처럼 약간의 지연 시간 추가 (Skeleton 확인용)
     await delay(1000);
+    const eventId = Number(params.eventId) || 1;
+    // id가 10이거나 999일 때 예매 대기 중 상태 (12시간 전 오픈)
+    const isWaitlistPending = eventId === 999 || eventId === 10;
+    
+    // 예매 오픈 대기 중 테스트: 예매는 12시간 뒤에 오픈됨
+    const now = new Date();
+    const twelveHoursLater = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
 
     return HttpResponse.json({
       status: 200,
       message: 'success',
       data: {
-        eventId: Number(params.eventId),
-        title: '오페라의 유령',
+        eventId: eventId,
+        title: isWaitlistPending ? '예매 대기 테스트 공연' : '오페라의 유령',
         categoryName: '뮤지컬',
         organizerName: 'SSAFY 18기',
-        venueName: '샤롯데씨어터',
+        venueName: isWaitlistPending ? '테스트 공연장' : '샤롯데씨어터',
         venueAddress: '서울특별시 송파구 올림픽로 240',
         cityName: '서울',
         timezoneCode: 'Asia/Seoul',
-        salesStartAt: '2026-04-01T10:00:00Z',
-        salesEndAt: '2026-04-30T23:59:59Z',
-        eventStartAt: '2026-04-20T19:30:00Z',
-        eventEndAt: '2026-04-30T21:30:00Z',
+        salesStartAt: isWaitlistPending ? twelveHoursLater : '2026-04-01T10:00:00Z',
+        salesEndAt: '2026-05-30T23:59:59Z',
+        eventStartAt: '2026-05-20T19:30:00Z',
+        eventEndAt: '2026-05-30T21:30:00Z',
         metadata: {
-          tags: ['뮤지컬', 'HOT']
+          tags: isWaitlistPending ? ['테스트', '대기중'] : ['뮤지컬', 'HOT']
         },
         notice: '관람등급: 만 13세 이상 관람가\n러닝타임: 총 러닝타임 약 150분 (인터미션 15분 포함)\n취소정책: 관람일 1일 전 17시까지 취소 가능\n주차 및 발렛파킹 불가 (대중교통 이용 권장)\n공연 시작 후 입장 제한',
         status: 'OPEN',

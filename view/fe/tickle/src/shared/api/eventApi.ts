@@ -98,12 +98,25 @@ export interface DiscountInfo {
 export interface EventPricePolicy {
   eventPricePolicyId: number;
   priceGrade: string;
-  audienceType: string;
-  salePriceAmount: number;
+  audienceType?: string;
+  priceAmount?: number | null;
+  salePriceAmount?: number | null;
   currencyCode: string;
   displayOrder: number;
   discountInfo?: DiscountInfo[];
 }
+
+export const getEventPriceAmount = (pricePolicy: EventPricePolicy) => {
+  if (typeof pricePolicy.priceAmount === 'number') {
+    return pricePolicy.priceAmount;
+  }
+
+  if (typeof pricePolicy.salePriceAmount === 'number') {
+    return pricePolicy.salePriceAmount;
+  }
+
+  return 0;
+};
 
 export interface EventDetailResponseData {
   eventId: number;
@@ -146,13 +159,21 @@ export const EventSessionSchema = Schema.Struct({
   status: Schema.String,
 });
 
+export const DiscountInfoSchema = Schema.Struct({
+  discountName: Schema.String,
+  discountRate: Schema.Number,
+  actualPriceAmount: Schema.Number,
+});
+
 export const EventPricePolicySchema = Schema.Struct({
   eventPricePolicyId: Schema.Number,
   priceGrade: Schema.String,
-  audienceType: Schema.String,
-  salePriceAmount: Schema.Number,
+  audienceType: Schema.optional(Schema.String),
+  priceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+  salePriceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
   currencyCode: Schema.String,
   displayOrder: Schema.Number,
+  discountInfo: Schema.optional(Schema.Array(DiscountInfoSchema)),
 });
 
 export const EventDetailResponseDataSchema = Schema.Struct({

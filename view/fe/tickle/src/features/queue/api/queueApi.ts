@@ -1,6 +1,7 @@
 // src/features/queue/api/queueApi.ts
 
-const API_BASE_URL = '/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE_URL = `${BASE_URL}/api/v1`;
 
 export interface EnterQueueResponse {
   status: number;

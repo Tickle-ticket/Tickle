@@ -3,14 +3,14 @@ import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
-
+import { reservationApi } from '@/src/shared/api/reservationApi';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
     queryFn: async () => {
       const response = await getFavoriteEvents(0, 100);
       const data = response.data;
-      return data.items.map((item: any) => ({
+      return data.items.map((item) => ({
         id: String(item.eventId),
         imageUrl: item.thumbnailUrl,
         title: item.title,
@@ -26,6 +26,7 @@ export const useMyUpcomingWishlist = () => {
 };
 export interface BookingData {
   id: string;
+  eventId: string;
   imageUrl: string;
   title: string;
   venue: string;
@@ -35,12 +36,38 @@ export interface BookingData {
   ticketCount: number;
 }
 
+export interface WaitlistSeatData {
+  id: string;
+  info: string;
+  waitlistNumber: number;
+}
+
+export interface WaitlistBookingData {
+  id: string;
+  imageUrl: string;
+  title: string;
+  venue: string;
+  performanceDate: string;
+  waitDate: string;
+  seats: WaitlistSeatData[];
+}
+
 export const useMyBookings = () => {
   return useQuery({
     queryKey: ['myBookings'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings');
-      return response.data;
+      const response = await reservationApi.fetchReservations();
+      return response.data.items.map((r) => ({
+        id: String(r.bookingId),
+        eventId: String(r.eventId),
+        imageUrl: r.thumbnailUrl,
+        title: r.eventName,
+        venue: r.venueName,
+        performanceDate: r.eventStartAt,
+        bookingDate: r.createdAt,
+        seatInfo: r.seats.map((s) => s.seatLabel).join(', '),
+        ticketCount: r.seats.length,
+      })) as BookingData[];
     },
   });
 };
@@ -50,7 +77,10 @@ export const usePastBookings = () => {
     queryKey: ['pastBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
-      return response.data;
+      return response.data.map((item) => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl),
+      }));
     },
   });
 };
@@ -59,8 +89,11 @@ export const useWaitlistBookings = () => {
   return useQuery({
     queryKey: ['waitlistBookings'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<any[]>>('/api/v1/mypage/waitlist');
-      return response.data;
+      const response = await http.get<ApiResponse<WaitlistBookingData[]>>('/api/v1/mypage/waitlist');
+      return response.data.map((item) => ({
+        ...item,
+        imageUrl: normalizeImageUrl(item.imageUrl),
+      }));
     },
   });
 };
@@ -70,7 +103,7 @@ export const useCancelBooking = () => {
   
   return useMutation({
     mutationFn: async (bookingId: string) => {
-      const response = await http.delete<ApiResponse<null>>(`/api/v1/mypage/bookings/${bookingId}`);
+      const response = await reservationApi.cancelReservation(bookingId);
       return response.data;
     },
     onSuccess: () => {

@@ -4,9 +4,18 @@ import Image from 'next/image';
 import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import {
   AgencySeatPolicyModal,
+  type AgencySeatAssignmentMode,
   createDefaultAgencySeatPolicy,
   getAgencySeatPolicySummary,
 } from '@/src/shared/components/AgencySeatPolicyModal';
+import {
+  submitAgencyEventRegistration,
+  type AgencyRegistrationFlowRequest,
+  type AgencySeatGrade,
+} from '@/src/shared/api/agencyApi';
+import { uploadImage, uploadImages } from '@/src/shared/api/uploadApi';
+import { ApiError } from '@/src/shared/api/types';
+import { useVenues } from '@/src/shared/api/useVenues';
 import { Badge } from '@/src/shared/components/Badge';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
@@ -15,8 +24,16 @@ import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
 import { PerformanceScheduleAddedModal } from '@/src/shared/components/PerformanceScheduleAddedModal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
+import { STAGE_1_SEAT_IDS as SSAFY_18_SEAT_IDS } from '@/src/shared/components/Stage_1';
 
-const performanceTypeOptions = [
+const FIXED_ORGANIZER_ID = 2001;
+const FIXED_VENUE_ID = 2001;
+const DEFAULT_PERFORMANCE_TITLE = '뮤지컬 Tikkle Original2';
+const DEFAULT_SESSION_DURATION_MINUTES = 60;
+
+type PerformanceTypeValue = 'musical' | 'concert' | 'play' | 'classic' | 'sports' | 'fanmeeting';
+
+const performanceTypeOptions: Array<{ label: string; value: PerformanceTypeValue }> = [
   { label: '뮤지컬', value: 'musical' },
   { label: '콘서트', value: 'concert' },
   { label: '연극', value: 'play' },
@@ -24,6 +41,22 @@ const performanceTypeOptions = [
   { label: '스포츠', value: 'sports' },
   { label: '팬미팅', value: 'fanmeeting' },
 ];
+
+const performanceTypeCategoryIds: Record<PerformanceTypeValue, number> = {
+  musical: 1,
+  concert: 2,
+  play: 3,
+  classic: 4,
+  sports: 5,
+  fanmeeting: 6,
+};
+
+type VenueOption = {
+  value: number;
+  label: string;
+  region?: string;
+  capacity?: string;
+};
 
 const registrationStepItems = [
   {
@@ -43,36 +76,19 @@ const registrationStepItems = [
   },
 ];
 
-const venueOptions = [
+const initialVenueOptions: VenueOption[] = [
   {
-    value: 'blue-square',
+    value: FIXED_VENUE_ID,
     label: '블루스퀘어 마스터카드홀',
     region: '서울 용산구',
     capacity: '1,766석',
-  },
-  {
-    value: 'kspo-dome',
-    label: 'KSPO DOME',
-    region: '서울 송파구',
-    capacity: '15,000석',
-  },
-  {
-    value: 'coex-auditorium',
-    label: '코엑스 오디토리움',
-    region: '서울 강남구',
-    capacity: '1,046석',
-  },
-  {
-    value: 'sejong-center',
-    label: '세종문화회관 대극장',
-    region: '서울 종로구',
-    capacity: '3,022석',
   },
 ];
 
 const maxPerformanceHashtagCount = 3;
 
 type SeatGradeKey = 'vip' | 'r' | 's' | 'a' | 'restricted';
+type SupportedAgencySeatGrade = Exclude<AgencySeatGrade, 'B'>;
 
 const seatGradeFields: Array<{
   key: SeatGradeKey;
@@ -86,6 +102,31 @@ const seatGradeFields: Array<{
   { key: 'a', label: 'A석', badgeColor: 'grey', description: '입문형 가격대 좌석' },
   { key: 'restricted', label: '시야제한석', badgeColor: 'purple', description: '시야 제한이 있는 좌석 구간' },
 ];
+
+const seatPriceGradeToApiGrade: Record<SeatGradeKey, SupportedAgencySeatGrade> = {
+  vip: 'VIP',
+  r: 'R',
+  s: 'S',
+  a: 'A',
+  restricted: 'RESTRICTED_VIEW',
+};
+
+const seatPolicyGradeToApiGrade: Record<
+  Exclude<AgencySeatAssignmentMode, 'disabled'>,
+  SupportedAgencySeatGrade
+> = {
+  VIP: 'VIP',
+  R: 'R',
+  S: 'S',
+  A: 'A',
+  restricted: 'RESTRICTED_VIEW',
+};
+
+const mockSeatIdByLabel = new Map(SSAFY_18_SEAT_IDS.map((seatLabel, index) => [seatLabel, index + 1]));
+const fallbackVenueOption: VenueOption = {
+  value: FIXED_VENUE_ID,
+  label: '공연장 선택',
+};
 
 const formatDateKey = (value: Date) => {
   const year = value.getFullYear();
@@ -255,6 +296,18 @@ const buildTicketScheduleDate = (
   const nextDate = new Date(scheduleAt);
   nextDate.setDate(nextDate.getDate() - rule.days);
   return withTimeFromDate(nextDate, timeSourceDate);
+};
+
+const buildSessionEndAt = (scheduleAt: Date, fallbackEndTimeSource: Date) => {
+  const nextEndAt = withTimeFromDate(scheduleAt, fallbackEndTimeSource);
+
+  if (nextEndAt.getTime() > scheduleAt.getTime()) {
+    return nextEndAt;
+  }
+
+  const fallbackEndAt = new Date(scheduleAt);
+  fallbackEndAt.setMinutes(fallbackEndAt.getMinutes() + DEFAULT_SESSION_DURATION_MINUTES);
+  return fallbackEndAt;
 };
 
 const formatFileSize = (bytes: number) => {
@@ -603,9 +656,11 @@ function DateRangeModal({
 }
 
 export default function AgencyRegistrationPage() {
+  const { data: venueList = [], isLoading: isVenueListLoading } = useVenues();
   const [activeRegistrationStep, setActiveRegistrationStep] = useState(0);
-  const [performanceType, setPerformanceType] = useState('musical');
-  const [selectedVenue, setSelectedVenue] = useState(venueOptions[0]?.value ?? '');
+  const [performanceTitle, setPerformanceTitle] = useState(DEFAULT_PERFORMANCE_TITLE);
+  const [performanceType, setPerformanceType] = useState<PerformanceTypeValue>('musical');
+  const [selectedVenue, setSelectedVenue] = useState<number>(FIXED_VENUE_ID);
   const [isVenueOpen, setIsVenueOpen] = useState(false);
   const [ticketOpenRule, setTicketOpenRule] = useState<TicketScheduleRule>({
     days: 14,
@@ -641,6 +696,9 @@ export default function AgencyRegistrationPage() {
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
+  const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
+  const [registrationErrorMessage, setRegistrationErrorMessage] = useState<string | null>(null);
+  const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
   const venueDropdownRef = useRef<HTMLDivElement | null>(null);
   const posterImageInputRef = useRef<HTMLInputElement | null>(null);
   const posterImageRegistryRef = useRef<IntroImageItem | null>(null);
@@ -648,6 +706,21 @@ export default function AgencyRegistrationPage() {
   const introImageInputRef = useRef<HTMLInputElement | null>(null);
   const introImageRegistryRef = useRef<IntroImageItem[]>([]);
   const introImageDragDepthRef = useRef(0);
+  const venueOptions = useMemo<VenueOption[]>(
+    () =>
+      venueList.map((venue) => ({
+        value: venue.venueId,
+        label: venue.venueName,
+      })),
+    [venueList],
+  );
+  const resolvedSelectedVenue = useMemo(
+    () =>
+      venueOptions.some((venue) => venue.value === selectedVenue)
+        ? selectedVenue
+        : venueOptions[0]?.value ?? initialVenueOptions[0]?.value ?? FIXED_VENUE_ID,
+    [selectedVenue, venueOptions],
+  );
 
   const selectedDateLabel = useMemo(() => {
     if (!selectedScheduleDate) {
@@ -692,8 +765,12 @@ export default function AgencyRegistrationPage() {
   const selectedScheduleDateCount = selectedScheduleDateKeys.length;
 
   const selectedVenueInfo = useMemo(
-    () => venueOptions.find((venue) => venue.value === selectedVenue) ?? venueOptions[0],
-    [selectedVenue],
+    () =>
+      venueOptions.find((venue) => venue.value === resolvedSelectedVenue) ??
+      venueOptions[0] ??
+      initialVenueOptions[0] ??
+      fallbackVenueOption,
+    [resolvedSelectedVenue, venueOptions],
   );
   const registeredTicketSchedulePreviews = useMemo<TicketSchedulePreview[]>(
     () =>
@@ -820,6 +897,11 @@ export default function AgencyRegistrationPage() {
   const formattedHashtagInput = normalizedHashtagInput ? `#${normalizedHashtagInput}` : '';
   const isFirstRegistrationStep = activeRegistrationStep === 0;
   const isLastRegistrationStep = activeRegistrationStep === registrationStepItems.length - 1;
+  const canSubmitRegistration =
+    performanceTitle.trim().length > 0 &&
+    posterImage !== null &&
+    registeredTicketSchedulePreviews.length > 0 &&
+    !hasInvalidTicketWindow;
   const canAddHashtag =
     formattedHashtagInput.length > 1 &&
     performanceHashtags.length < maxPerformanceHashtagCount &&
@@ -1168,6 +1250,140 @@ export default function AgencyRegistrationPage() {
     setActiveRegistrationStep((current) => Math.min(registrationStepItems.length - 1, current + 1));
   };
 
+  const handleRegistrationSubmit = async () => {
+    const normalizedPerformanceTitle = performanceTitle.trim();
+
+    setRegistrationErrorMessage(null);
+    setRegistrationSuccessMessage(null);
+
+    if (!normalizedPerformanceTitle) {
+      setRegistrationErrorMessage('공연명을 입력해 주세요.');
+      return;
+    }
+
+    if (registeredTicketSchedulePreviews.length === 0) {
+      setRegistrationErrorMessage('등록할 회차를 먼저 추가해 주세요.');
+      return;
+    }
+
+    if (hasInvalidTicketWindow) {
+      setRegistrationErrorMessage('티켓 오픈일과 종료일 기준을 먼저 조정해 주세요.');
+      return;
+    }
+
+    if (!posterImage) {
+      setRegistrationErrorMessage('Poster image is required.');
+      return;
+    }
+
+    const seatGroups = (['VIP', 'R', 'S', 'A', 'RESTRICTED_VIEW'] as const)
+      .map((priceGrade) => {
+        const seatIds = SSAFY_18_SEAT_IDS.flatMap((seatLabel) => {
+          const assignment = seatPolicy[seatLabel];
+
+          if (!assignment || assignment === 'disabled') {
+            return [];
+          }
+
+          return seatPolicyGradeToApiGrade[assignment] === priceGrade
+            ? [mockSeatIdByLabel.get(seatLabel) ?? -1]
+            : [];
+        }).filter((seatId) => seatId > 0);
+
+        return {
+          priceGrade,
+          seatIds,
+        };
+      })
+      .filter((seatGroup) => seatGroup.seatIds.length > 0);
+
+    if (seatGroups.length === 0) {
+      setRegistrationErrorMessage('등록 가능한 좌석이 없습니다. 좌석 정책을 다시 확인해 주세요.');
+      return;
+    }
+
+    const usedPriceGrades = new Set(seatGroups.map((seatGroup) => seatGroup.priceGrade));
+    const missingPriceField = seatGradeFields.find(
+      ({ key }) =>
+        usedPriceGrades.has(seatPriceGradeToApiGrade[key]) &&
+        seatPrices[key].trim().length === 0,
+    );
+
+    if (missingPriceField) {
+      setRegistrationErrorMessage(`${missingPriceField.label} 가격을 입력해 주세요.`);
+      return;
+    }
+
+    const pricePolicies = seatGradeFields
+      .filter(({ key }) => usedPriceGrades.has(seatPriceGradeToApiGrade[key]))
+      .map(({ key }, index) => ({
+        priceGrade: seatPriceGradeToApiGrade[key],
+        priceAmount: Number(seatPrices[key]),
+        discountInfo: [],
+        currencyCode: 'KRW',
+        displayOrder: index,
+      }));
+
+    const earliestTicketOpenAt = registeredTicketSchedulePreviews.reduce(
+      (earliest, preview) =>
+        preview.ticketOpenAt.getTime() < earliest.getTime() ? preview.ticketOpenAt : earliest,
+      registeredTicketSchedulePreviews[0].ticketOpenAt,
+    );
+    const latestTicketCloseAt = registeredTicketSchedulePreviews.reduce(
+      (latest, preview) =>
+        preview.ticketCloseAt.getTime() > latest.getTime() ? preview.ticketCloseAt : latest,
+      registeredTicketSchedulePreviews[0].ticketCloseAt,
+    );
+
+    setIsSubmittingRegistration(true);
+
+    try {
+      const posterImageUrl = await uploadImage(posterImage.file);
+      const detailImageUrls = await uploadImages(introImages.map((image) => image.file));
+      const request: AgencyRegistrationFlowRequest = {
+        basicEvent: {
+          organizerId: FIXED_ORGANIZER_ID,
+          venueId: resolvedSelectedVenue,
+          categoryId: performanceTypeCategoryIds[performanceType],
+          title: normalizedPerformanceTitle,
+          eventStartAt: earliestTicketOpenAt.toISOString(),
+          eventEndAt: latestTicketCloseAt.toISOString(),
+          tags: performanceHashtags,
+          notice: noticeText.trim(),
+          posterImageUrl,
+          detailImageUrls,
+        },
+        pricePolicies: {
+          pricePolicies,
+        },
+        sessions: {
+          sessions: registeredTicketSchedulePreviews.map((preview) => ({
+            startAt: preview.scheduleAt.toISOString(),
+            endAt: buildSessionEndAt(preview.scheduleAt, performanceCloseAt).toISOString(),
+            salesOpenAt: preview.ticketOpenAt.toISOString(),
+            salesCloseAt: preview.ticketCloseAt.toISOString(),
+          })),
+        },
+        seats: {
+          seats: seatGroups,
+        },
+      };
+
+      const result = await submitAgencyEventRegistration(request);
+      setRegistrationSuccessMessage(`공연 등록 API 호출이 완료되었습니다. eventId=${result.eventId}`);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setRegistrationErrorMessage(error.message);
+      } else if (error instanceof Error) {
+        setRegistrationErrorMessage(error.message);
+      } else {
+        setRegistrationErrorMessage('공연 등록 중 알 수 없는 오류가 발생했습니다.');
+      }
+    } finally {
+      setIsSubmittingRegistration(false);
+    }
+  };
+
   const hashtagSection = (
     <div className="flex min-h-[268px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-3">
@@ -1510,7 +1726,8 @@ export default function AgencyRegistrationPage() {
             >
               <Input
                 label="공연명"
-                defaultValue="뮤지컬 Tikkle Original"
+                value={performanceTitle}
+                onChange={(event) => setPerformanceTitle(event.target.value)}
                 fullWidth
                 className="[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px]"
               />
@@ -1523,11 +1740,12 @@ export default function AgencyRegistrationPage() {
                     className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-gray-900 outline-none transition-colors sm:text-[22px] ${
                       isVenueOpen ? 'border-blue-500' : 'border-gray-300'
                     }`}
+                    disabled={isVenueListLoading || venueOptions.length === 0}
                     aria-expanded={isVenueOpen}
                     aria-haspopup="listbox"
                     onClick={() => setIsVenueOpen((current) => !current)}
                   >
-                    <span className="truncate text-left">{selectedVenueInfo?.label}</span>
+                    <span className="truncate text-left">{selectedVenueInfo.label}</span>
                     <svg
                       className={`ml-3 h-5 w-5 shrink-0 transition-transform ${
                         isVenueOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'
@@ -1549,9 +1767,9 @@ export default function AgencyRegistrationPage() {
                       className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
                       role="listbox"
                     >
-                      <div className="max-h-72 overflow-y-auto p-2">
+                        <div className="max-h-72 overflow-y-auto p-2">
                         {venueOptions.map((venue) => {
-                          const isSelected = venue.value === selectedVenue;
+                          const isSelected = venue.value === resolvedSelectedVenue;
 
                           return (
                             <button
@@ -1570,9 +1788,11 @@ export default function AgencyRegistrationPage() {
                               }}
                             >
                               <p className="text-sm font-black">{venue.label}</p>
-                              <p className="mt-1 text-xs font-medium text-slate-500">
-                                {venue.region} / {venue.capacity}
-                              </p>
+                              {venue.region || venue.capacity ? (
+                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                  {[venue.region, venue.capacity].filter(Boolean).join(' / ')}
+                                </p>
+                              ) : null}
                             </button>
                           );
                         })}
@@ -1610,7 +1830,7 @@ export default function AgencyRegistrationPage() {
                     <SegmentedControl
                       options={performanceTypeOptions}
                       value={performanceType}
-                      onChange={setPerformanceType}
+                      onChange={(nextValue) => setPerformanceType(nextValue as PerformanceTypeValue)}
                       columns={3}
                       rows={2}
                       size="large"
@@ -2155,10 +2375,23 @@ export default function AgencyRegistrationPage() {
 
             {isLastRegistrationStep ? (
               <>
-                <Button color="primary" display="block" size="medium">
+                <Button
+                  color="primary"
+                  display="block"
+                  size="medium"
+                  onClick={handleRegistrationSubmit}
+                  isLoading={isSubmittingRegistration}
+                  disabled={!canSubmitRegistration}
+                >
                   공연 등록 신청하기
                 </Button>
-                <Button color="primary" variant="weak" display="block" size="medium">
+                <Button
+                  color="primary"
+                  variant="weak"
+                  display="block"
+                  size="medium"
+                  disabled={isSubmittingRegistration}
+                >
                   미리보기
                 </Button>
               </>
@@ -2179,6 +2412,18 @@ export default function AgencyRegistrationPage() {
                 이전 단계
               </Button>
             )}
+
+            {registrationErrorMessage ? (
+              <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-600">
+                {registrationErrorMessage}
+              </div>
+            ) : null}
+
+            {registrationSuccessMessage ? (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium leading-6 text-emerald-700">
+                {registrationSuccessMessage}
+              </div>
+            ) : null}
           </Box>
         </div>
       </section>

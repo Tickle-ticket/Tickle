@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchEventDetail } from '@/src/shared/api/eventApi';
+import { fetchEventDetail, getEventPriceAmount } from '@/src/shared/api/eventApi';
 
 export interface DetailData {
   eventId: string;
@@ -22,14 +22,15 @@ export interface DetailData {
   tags: string[];
 }
 
-export const useDetailData = (eventId: string = '1') => {
+export const useDetailData = (eventId: string | null | undefined) => {
   return useQuery({
     queryKey: ['detailData', eventId],
     queryFn: async () => {
+      if (!eventId) throw new Error('No event ID');
       const response = await fetchEventDetail(eventId);
       const data = response.data;
       
-      const scheduleMap = new Map<string, { time: string, remainingSeats: any[] }[]>();
+      const scheduleMap = new Map<string, ScheduleTime[]>();
       data.sessions.forEach(session => {
         const dateObj = new Date(session.startAt);
         const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
@@ -67,6 +68,7 @@ export const useDetailData = (eventId: string = '1') => {
         tags: data.metadata?.tags || []
       } as DetailData;
     },
+    enabled: !!eventId,
     staleTime: 5 * 60 * 1000,
   });
 };

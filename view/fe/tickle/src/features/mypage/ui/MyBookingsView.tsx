@@ -23,7 +23,7 @@ export const MyBookingsView = () => {
   const { mutate: cancelBooking, isPending: isCanceling } = useCancelBooking();
 
   const [modifyFlowState, setModifyFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK'>('NONE');
-  const [selectedBookingForModify, setSelectedBookingForModify] = useState<{ id: string, date: string, time: string, initialSeats: string[] } | null>(null);
+  const [selectedBookingForModify, setSelectedBookingForModify] = useState<{ id: string, eventId: string, date: string, time: string, initialSeats: string[] } | null>(null);
 
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<{ id: string, initialSeats: string[] } | null>(null);
@@ -107,6 +107,7 @@ export const MyBookingsView = () => {
 
     setSelectedBookingForModify({
       id: item.id,
+      eventId: item.eventId,
       date: dateStr,
       time: timeStr,
       initialSeats,
@@ -260,6 +261,7 @@ export const MyBookingsView = () => {
       {modifyFlowState === 'BOOK' && selectedBookingForModify && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <BookView 
+            eventId={selectedBookingForModify.eventId}
             mode="CANCEL" 
             initialSchedule={{ date: selectedBookingForModify.date, time: selectedBookingForModify.time }}
             initialSeats={selectedBookingForModify.initialSeats}

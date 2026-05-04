@@ -2,7 +2,7 @@ import { http, HttpResponse, delay } from 'msw';
 
 export const ticketTypeHandlers = [
   // 권종(인원 유형) 목록 조회
-  http.get('/api/v1/ticket-types', async () => {
+  http.get('*/api/v1/ticket-types', async () => {
     await delay(300);
     return HttpResponse.json({
       data: [
