@@ -23,6 +23,7 @@ import { Header } from '@/src/shared/components/Header';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
+import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -61,6 +62,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [admitToken, setAdmitToken] = useState<string | null>(null);
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [detailImageFailed, setDetailImageFailed] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -129,6 +131,10 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const selectedDateStr = selectedDate ? formatDateToDot(selectedDate) : '';
   const selectedSchedule = scheduleData.find((item: any) => item.date.startsWith(selectedDateStr));
   const detailImageSrc = resolveImageSrc(data?.detailImageUrl);
+
+  useEffect(() => {
+    setDetailImageFailed(false);
+  }, [detailImageSrc]);
 
   // 스크롤 스파이 (Scroll Spy)
   useEffect(() => {

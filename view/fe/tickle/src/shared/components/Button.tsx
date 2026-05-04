@@ -1,4 +1,4 @@
-import React, { ElementType } from 'react';
+import React, { type ElementType } from 'react';
 import type { ButtonProps } from './types';
 
 const sizeStyles: Record<string, React.CSSProperties> = {
@@ -37,24 +37,53 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
     const Component = as as ElementType;
 
     const getThemeStyles = (): React.CSSProperties => {
-      let baseStyle: React.CSSProperties = {};
-
       if (variant === 'fill') {
         switch (color) {
-          case 'primary': baseStyle = { '--button-background-color': 'var(--toss-blue-500)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
-          case 'danger': baseStyle = { '--button-background-color': 'var(--toss-red-500)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
-          case 'dark': baseStyle = { '--button-background-color': 'var(--toss-grey-700)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
-          case 'light': baseStyle = { '--button-background-color': 'var(--toss-white)', '--button-color': 'var(--toss-grey-600)' } as React.CSSProperties; break;
-        }
-      } else if (variant === 'weak') {
-        switch (color) {
-          case 'primary': baseStyle = { '--button-background-color': 'var(--toss-blue-100)', '--button-color': 'var(--toss-blue-600)' } as React.CSSProperties; break;
-          case 'danger': baseStyle = { '--button-background-color': 'var(--toss-red-100)', '--button-color': 'var(--toss-red-600)' } as React.CSSProperties; break;
-          case 'dark': baseStyle = { '--button-background-color': 'var(--toss-grey-100)', '--button-color': 'var(--toss-grey-600)' } as React.CSSProperties; break;
-          case 'light': baseStyle = { '--button-background-color': 'rgba(255, 255, 255, 0.15)', '--button-color': 'var(--toss-white)' } as React.CSSProperties; break;
+          case 'primary':
+            return {
+              '--button-background-color': 'var(--toss-blue-500)',
+              '--button-color': 'var(--toss-white)',
+            } as React.CSSProperties;
+          case 'danger':
+            return {
+              '--button-background-color': 'var(--toss-red-500)',
+              '--button-color': 'var(--toss-white)',
+            } as React.CSSProperties;
+          case 'dark':
+            return {
+              '--button-background-color': 'var(--toss-grey-700)',
+              '--button-color': 'var(--toss-white)',
+            } as React.CSSProperties;
+          case 'light':
+            return {
+              '--button-background-color': 'var(--toss-white)',
+              '--button-color': 'var(--toss-grey-600)',
+            } as React.CSSProperties;
         }
       }
-      return baseStyle;
+
+      switch (color) {
+        case 'primary':
+          return {
+            '--button-background-color': 'var(--toss-blue-100)',
+            '--button-color': 'var(--toss-blue-600)',
+          } as React.CSSProperties;
+        case 'danger':
+          return {
+            '--button-background-color': 'var(--toss-red-100)',
+            '--button-color': 'var(--toss-red-600)',
+          } as React.CSSProperties;
+        case 'dark':
+          return {
+            '--button-background-color': 'var(--toss-grey-100)',
+            '--button-color': 'var(--toss-grey-600)',
+          } as React.CSSProperties;
+        case 'light':
+          return {
+            '--button-background-color': 'rgba(255, 255, 255, 0.15)',
+            '--button-color': 'var(--toss-white)',
+          } as React.CSSProperties;
+      }
     };
 
     const isInteractionDisabled = disabled || isLoading;
@@ -74,7 +103,6 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
       position: 'relative',
       overflow: 'hidden',
       transition: 'background-color 0.2s ease, opacity 0.2s ease',
-
       backgroundColor: 'var(--button-background-color)',
       color: 'var(--button-color)',
       opacity: isInteractionDisabled ? 'var(--button-disabled-opacity-color, 0.5)' : 1,
@@ -84,8 +112,7 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
     const accessibilityProps = {
       'aria-disabled': isInteractionDisabled,
       'aria-busy': isLoading,
-
-      'aria-label': isLoading && !ariaLabel ? '처리 중' : ariaLabel,
+      'aria-label': ariaLabel ?? (isLoading ? '처리 중' : undefined),
     };
 
     return (
@@ -100,12 +127,11 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
         {...accessibilityProps}
         {...rest}
       >
-
         <span style={{ opacity: isLoading ? 0 : 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
           {children}
         </span>
 
-        {isLoading && (
+        {isLoading ? (
           <span
             style={{
               position: 'absolute',
@@ -133,11 +159,12 @@ export const Button = React.forwardRef<HTMLElement, ButtonProps>(
               />
             ))}
           </span>
-        )}
+        ) : null}
       </Component>
     );
   }
 );
 
 Button.displayName = 'Button';
+
 export default Button;
