@@ -48,7 +48,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const { selectedDetailId, setDetailBannerOpen } = useDetailStore();
   
   const urlId = searchParams?.get('id');
-  const activeEventId = selectedDetailId || urlId || '1';
+  const activeEventId = selectedDetailId || urlId;
   
   const { data, isLoading } = useDetailData(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -69,6 +69,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   }, [data?.isFavorite]);
 
   const handleFavoriteToggle = async () => {
+    if (!activeEventId) return;
     try {
       if (isFavorite) {
         await deleteFavorite(activeEventId);
@@ -155,6 +156,19 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  if (!activeEventId) {
+    if (isOverlay) return null;
+    return (
+      <div className="flex w-full h-screen items-center justify-center bg-[#f8f8f8] font-sans">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">공연 정보가 없습니다</h1>
+          <p className="text-gray-500">올바르지 않은 접근이거나 존재하지 않는 공연입니다.</p>
+          <Button color="dark" size="medium" onClick={() => router.push('/')}>홈으로 돌아가기</Button>
+        </div>
+      </div>
+    );
+  }
 
   const renderContent = () => (
     <div className="flex flex-col w-full h-full pb-32 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

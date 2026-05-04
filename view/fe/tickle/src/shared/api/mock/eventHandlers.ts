@@ -66,7 +66,7 @@ export const eventHandlers = [
   http.get('*/api/v1/events/:eventId', async ({ params }) => {
     // 실제 서버 통신처럼 약간의 지연 시간 추가 (Skeleton 확인용)
     await delay(1000);
-    const eventId = Number(params.eventId);
+    const eventId = Number(params.eventId) || 1;
     // id가 10이거나 999일 때 예매 대기 중 상태 (12시간 전 오픈)
     const isWaitlistPending = eventId === 999 || eventId === 10;
     

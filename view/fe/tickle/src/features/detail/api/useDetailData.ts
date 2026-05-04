@@ -22,10 +22,11 @@ export interface DetailData {
   tags: string[];
 }
 
-export const useDetailData = (eventId: string = '1') => {
+export const useDetailData = (eventId: string | null | undefined) => {
   return useQuery({
     queryKey: ['detailData', eventId],
     queryFn: async () => {
+      if (!eventId) throw new Error('No event ID');
       const response = await fetchEventDetail(eventId);
       const data = response.data;
       
@@ -67,6 +68,7 @@ export const useDetailData = (eventId: string = '1') => {
         tags: data.metadata?.tags || []
       } as DetailData;
     },
+    enabled: !!eventId,
     staleTime: 5 * 60 * 1000,
   });
 };
