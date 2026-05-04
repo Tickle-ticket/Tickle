@@ -2,6 +2,7 @@ package com.ssafy.tickle.cancellation.application;
 
 import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
 import com.ssafy.tickle.cancellation.domain.CancellationErrorCode;
+import com.ssafy.tickle.cancellation.domain.CancellationWaitSeatChangedEvent;
 import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
@@ -21,6 +22,7 @@ import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.user.domain.User;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +49,10 @@ public class CancellationWaitCandidateService {
             SessionSeat.SaleStatus.CONFIRMED,
             SessionSeat.SaleStatus.REALLOCATING
     );
+    private static final List<BookingTicket.Status> OWNED_TICKET_STATUSES = List.of(
+            BookingTicket.Status.PENDING_PAYMENT,
+            BookingTicket.Status.BOOKED
+    );
 
     private final EventSessionRepository eventSessionRepository;
     private final UserRepository userRepository;
@@ -55,6 +61,7 @@ public class CancellationWaitCandidateService {
     private final CancellationCandidateRepository cancellationCandidateRepository;
     private final QueueStatusService queueStatusService;
     private final RedisLockManager redisLockManager;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 좌석 단위 예매 대기 신청을 생성합니다.
@@ -94,6 +101,7 @@ public class CancellationWaitCandidateService {
 
         try {
             validateDuplicateCandidates(userId, requestedSeatIds);
+            validateNotOwnedSeats(userId, requestedSeatIds);
             // 확정 예매 티켓과 활성 예매 대기를 회차 기준으로 합산해 사용자별 4매 제한을 적용합니다.
             validateBookingAndWaitingLimit(userId, scheduleId, requestedSeatIds.size());
 
@@ -118,6 +126,11 @@ public class CancellationWaitCandidateService {
             List<CancellationWaitCandidateSeatResponse> responses = savedCandidates.stream()
                     .map(CancellationWaitCandidateSeatResponse::from)
                     .toList();
+
+            List<Long> changedSeatIds = savedCandidates.stream()
+                    .map(candidate -> candidate.getSessionSeat().getId())
+                    .toList();
+            eventPublisher.publishEvent(new CancellationWaitSeatChangedEvent(this, scheduleId, changedSeatIds));
 
             return new CancellationWaitCandidateCreateResponse(responses);
         } catch (ObjectOptimisticLockingFailureException e) {
@@ -236,6 +249,23 @@ public class CancellationWaitCandidateService {
                 .findActiveSessionSeatIdsByUserIdAndSessionSeatIds(userId, sessionSeatIds);
         if (!duplicatedSeatIds.isEmpty()) {
             throw new BaseException(CancellationErrorCode.CANDIDATE_DUPLICATE_SEAT);
+        }
+    }
+
+    /**
+     * 사용자가 이미 결제 진행 중이거나 예매 확정한 좌석인지 검증합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionSeatIds 회차 좌석 식별자 목록
+     */
+    private void validateNotOwnedSeats(Long userId, List<Long> sessionSeatIds) {
+        List<Long> ownedSeatIds = bookingTicketRepository.findSessionSeatIdsByUserIdAndSessionSeatIdsAndTicketStatusIn(
+                userId,
+                sessionSeatIds,
+                OWNED_TICKET_STATUSES
+        );
+        if (!ownedSeatIds.isEmpty()) {
+            throw new BaseException(CancellationErrorCode.CANDIDATE_SEAT_NOT_WAITABLE);
         }
     }
 

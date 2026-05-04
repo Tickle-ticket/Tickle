@@ -15,7 +15,7 @@ import java.math.BigDecimal;
  * @param saleStatus 현재 판매 상태
  * @param price 좌석 가격
  * @param waitingCount 해당 좌석 활성 예매 대기 인원 수
- * @param alreadyApplied 요청 사용자의 해당 좌석 대기 신청 여부
+ * @param waitable 요청 사용자의 해당 좌석 예매 대기 신청 가능 여부
  */
 public record CancellationWaitSeatItemResponse(
         Long sessionSeatId,
@@ -26,7 +26,7 @@ public record CancellationWaitSeatItemResponse(
         SessionSeat.SaleStatus saleStatus,
         BigDecimal price,
         long waitingCount,
-        boolean alreadyApplied
+        boolean waitable
 ) {
 
     /**
@@ -34,13 +34,13 @@ public record CancellationWaitSeatItemResponse(
      *
      * @param sessionSeat 회차 좌석 엔티티
      * @param waitingCount 해당 좌석의 활성 예매 대기 인원 수
-     * @param alreadyApplied 요청 사용자의 해당 좌석 신청 여부
+     * @param waitable 요청 사용자의 해당 좌석 예매 대기 신청 가능 여부
      * @return 예매 대기 좌석 응답
      */
     public static CancellationWaitSeatItemResponse of(
             SessionSeat sessionSeat,
             long waitingCount,
-            boolean alreadyApplied
+            boolean waitable
     ) {
         var eventSeat = sessionSeat.getEventSeat();
         return new CancellationWaitSeatItemResponse(
@@ -52,7 +52,7 @@ public record CancellationWaitSeatItemResponse(
                 sessionSeat.getSaleStatus(),
                 eventSeat.getEventPricePolicy().getPriceAmount(),
                 waitingCount,
-                alreadyApplied
+                waitable
         );
     }
 }

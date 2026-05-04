@@ -52,4 +52,25 @@ public interface BookingTicketRepository extends JpaRepository<BookingTicket, Lo
             @Param("sessionId") Long sessionId,
             @Param("ticketStatus") BookingTicket.Status ticketStatus
     );
+
+    /**
+     * 사용자가 특정 상태로 보유 중인 회차 좌석 식별자를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionSeatIds 회차 좌석 식별자 목록
+     * @param ticketStatuses 조회할 티켓 상태 목록
+     * @return 사용자가 보유 중인 회차 좌석 식별자 목록
+     */
+    @Query("""
+            select bt.sessionSeat.id
+            from BookingTicket bt
+            where bt.booking.user.id = :userId
+              and bt.sessionSeat.id in :sessionSeatIds
+              and bt.ticketStatus in :ticketStatuses
+            """)
+    List<Long> findSessionSeatIdsByUserIdAndSessionSeatIdsAndTicketStatusIn(
+            @Param("userId") Long userId,
+            @Param("sessionSeatIds") List<Long> sessionSeatIds,
+            @Param("ticketStatuses") List<BookingTicket.Status> ticketStatuses
+    );
 }
