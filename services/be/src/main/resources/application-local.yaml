@@ -54,6 +54,7 @@ spring:
 server:
   # 애플리케이션 HTTP 포트
   port: ${SERVER_PORT}
+  forward-headers-strategy: framework
 
 management:
   endpoints:

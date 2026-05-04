@@ -9,26 +9,38 @@
 | user_no | VARCHAR(50) | ✅ | 외부 노출 사용자 번호 |
 | email | VARCHAR(255) | ❌ | |
 | phone_number | VARCHAR(30) | ❌ | |
-| profileImgUrl | VARCHAR(1000) | ❌ | |
+| profile_image_url | VARCHAR(1000) | ❌ | |
 | name | VARCHAR(100) | ✅ | |
 | nickname | VARCHAR(50) | ✅ | |
 | birth_date | DATE | ❌ | |
+| organizer_name | VARCHAR(100) | ❌ | AGENCY 권한인 경우 필수 |
+| role | VARCHAR(30) | ✅ | USER, AGENCY, ADMIN |
 | status | VARCHAR(30) | ✅ | DEFAULT 'ACTIVE' / ACTIVE, INACTIVE, SUSPENDED, DELETED |
 | last_login_at | TIMESTAMP | ❌ | |
 | created_at | TIMESTAMP | ✅ | |
 | updated_at | TIMESTAMP | ✅ | |
 
-> ⚠️ oauth_provider / oauth_provider_user_id 컬럼 없음 — 자체 회원가입 기반 설계
+> ⚠️ oauth_provider / oauth_provider_user_id 컬럼 없음 — 자체 회원가입 기반 설계 (tickle_auth DB로 분리)
 > ⚠️ deleted_at 없음 — status = 'DELETED'로 소프트 삭제
+
+## categories
+| 컬럼 | 타입 | NOT NULL | 비고 |
+|------|------|----------|------|
+| category_id | BIGINT | ✅ PK | |
+| category_name | VARCHAR(30) | ✅ | |
+| created_at | TIMESTAMP | ✅ | |
+| updated_at | TIMESTAMP | ✅ | |
 
 ## events
 | 컬럼 | 타입 | NOT NULL | 비고 |
 |------|------|----------|------|
 | event_id | BIGINT | ✅ PK | |
+| category_id | BIGINT | ✅ FK | |
 | organizer_id | BIGINT | ✅ FK | |
 | venue_id | BIGINT | ✅ FK | |
 | title | VARCHAR(255) | ✅ | |
-| event_type | VARCHAR(30) | ✅ | CONCERT, MUSICAL, PLAY, CLASSIC, SPORTS, FANMEETING |
+| event_start_at | TIMESTAMP | ✅ | |
+| event_end_at | TIMESTAMP | ✅ | |
 | sales_start_at | TIMESTAMP | ✅ | |
 | sales_end_at | TIMESTAMP | ✅ | |
 | metadata | TEXT | ❌ | |
@@ -40,7 +52,7 @@
 ## event_sessions
 | 컬럼 | 타입 | NOT NULL | 비고 |
 |------|------|----------|------|
-| session_id | BIGINT | ✅ PK | |
+| event_session_id | BIGINT | ✅ PK | |
 | event_id | BIGINT | ✅ FK | |
 | session_no | INT | ✅ | 회차 번호 |
 | start_at | TIMESTAMP | ✅ | |
@@ -82,7 +94,8 @@
 | event_price_policy_id | BIGINT | ✅ PK | |
 | event_id | BIGINT | ✅ FK | |
 | price_grade | VARCHAR(30) | ✅ | VIP, R, S, A, B 등 |
-| sale_price_amount | DECIMAL(18,2) | ✅ | |
+| price_amount | DECIMAL(18,2) | ✅ | |
+| discount_info | JSON | ✅ | |
 | currency_code | CHAR(3) | ✅ | DEFAULT 'KRW' |
 | display_order | INT | ✅ | DEFAULT 0 |
 | created_at | TIMESTAMP | ✅ | |
@@ -96,6 +109,7 @@
 | event_seat_id | BIGINT | ✅ FK | |
 | event_section_id | BIGINT | ❌ | 조회 성능용 비정규화 |
 | sale_status | VARCHAR(30) | ✅ | DEFAULT 'AVAILABLE' / AVAILABLE, HELD, BOOKED, BLOCKED, UNAVAILABLE, BANNED |
+| held_by_user_id | BIGINT | ❌ | 선점한 유저 (Redis와 별개로 DB 저장) |
 | version_no | BIGINT | ✅ | DEFAULT 1 (낙관적 락) |
 | updated_at | TIMESTAMP | ✅ | |
 
@@ -121,7 +135,10 @@
 | booking_id | BIGINT | ✅ FK | |
 | session_seat_id | BIGINT | ✅ FK | |
 | ticket_status | VARCHAR(30) | ✅ | DEFAULT 'BOOKED' / BOOKED, CANCELLED, USED, EXPIRED |
-| face_price_amount | DECIMAL(18,2) | ✅ | 정가 |
+| ticket_no | VARCHAR(50) | ✅ | |
+| actual_price_amount | DECIMAL(18,2) | ✅ | 실제 티켓 가격 |
+| service_fee_amount | DECIMAL(18,2) | ✅ | 예매 수수료 |
+| final_price_amount | DECIMAL(18,2) | ✅ | 최종 결제 금액 |
 | cancelled_at | TIMESTAMP | ❌ | |
 | created_at | TIMESTAMP | ✅ | ⚠️ 구버전 ERD 대비 추가 |
 | updated_at | TIMESTAMP | ✅ | |
@@ -146,10 +163,33 @@
 | currency_code | CHAR(3) | ✅ | DEFAULT 'KRW' |
 | approved_amount | DECIMAL(18,2) | ❌ | |
 | provider_name | VARCHAR(50) | ✅ | |
+| provider_transaction_id | VARCHAR(100) | ❌ | |
 | approved_at | TIMESTAMP | ❌ | |
 | failed_at | TIMESTAMP | ❌ | |
 | created_at | TIMESTAMP | ✅ | |
 | updated_at | TIMESTAMP | ❌ | |
+
+## payment_transactions
+| 컬럼 | 타입 | NOT NULL | 비고 |
+|------|------|----------|------|
+| payment_transaction_id | BIGINT | ✅ PK | |
+| payment_id | BIGINT | ✅ FK | |
+| transaction_type | VARCHAR(30) | ✅ | |
+| transaction_status | VARCHAR(30) | ✅ | |
+| amount | DECIMAL(18,2) | ✅ | |
+| currency_code | CHAR(3) | ✅ | |
+| provider_name | VARCHAR(50) | ✅ | |
+| provider_transaction_id | VARCHAR(100) | ❌ | |
+| provider_approval_no | VARCHAR(50) | ❌ | |
+| provider_event_id | VARCHAR(100) | ❌ | |
+| request_id | VARCHAR(100) | ❌ | |
+| idempotency_key | VARCHAR(100) | ❌ | |
+| transacted_at | TIMESTAMP | ❌ | |
+| processed_at | TIMESTAMP | ❌ | |
+| failure_code | VARCHAR(50) | ❌ | |
+| failure_message | VARCHAR(255) | ❌ | |
+| raw_response_json | TEXT | ❌ | |
+| created_at | TIMESTAMP | ✅ | |
 
 ## cancellation_candidates
 | 컬럼 | 타입 | NOT NULL | 비고 |
