@@ -34,6 +34,7 @@ from macro.mouse_automation.collector.lv3_balabit_kde.trajectory import generate
 # 안전 영역 — lv2/lv3_linear 와 동일 (의문 4 결정: SAFE random)
 SAFE_X_MIN, SAFE_X_MAX = 800, 1200
 SAFE_Y_MIN, SAFE_Y_MAX = 400, 800
+SAFE_CENTER = ((SAFE_X_MIN + SAFE_X_MAX) // 2, (SAFE_Y_MIN + SAFE_Y_MAX) // 2)
 MIN_CLICK_DIST = 50
 
 # 산출물 디렉토리
@@ -149,10 +150,16 @@ def run_session(
     pyautogui.FAILSAFE = True
     pyautogui.PAUSE = 0.01
 
+    # 옵션 A: 시작 위치 SAFE 중앙 강제 워프 (session.start() 전이라 jsonl 미로그).
+    # pyautogui.position() 그대로 쓰면 듀얼 모니터 등 SAFE 밖 시작 시 첫 trajectory
+    # distance 가 커져서 사람 trace 의 ny 곡률(±0.6) × distance 로 화면 모서리 진입 →
+    # FAILSAFE 트리거. SAFE 안 시작이면 max distance 566px 로 곡률 영향 제한.
+    pyautogui.moveTo(SAFE_CENTER[0], SAFE_CENTER[1], duration=0)
+    start_pos = SAFE_CENTER
+
     session = Session(source=SOURCE, label="macro")
     logger = EventLogger(session)
-    start_pos = pyautogui.position()
-    targets = _gen_targets(num_clicks, (start_pos[0], start_pos[1]), rng)
+    targets = _gen_targets(num_clicks, start_pos, rng)
 
     session.start()
     try:
