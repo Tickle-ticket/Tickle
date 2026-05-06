@@ -104,4 +104,27 @@ public class CancellationOffer {
         this.acceptedAt = acceptedAt;
         this.passedAt = passedAt;
     }
+
+    /**
+     * 알림을 발송하고 1시간 카운트다운 타이머를 시작합니다.
+     *
+     * @param offeredAt 제안 시작 시각
+     */
+    public void startTimer(Instant offeredAt) {
+        this.offeredAt = offeredAt;
+        this.offerExpiresAt = offeredAt.plus(1, java.time.temporal.ChronoUnit.HOURS);
+        this.offerStatus = OfferStatus.UNACCEPTED;
+        this.updatedAt = offeredAt;
+    }
+
+    /**
+     * 제안을 수락하고 상태를 변경합니다.
+     *
+     * @param acceptedAt 수락 시각
+     */
+    public void accept(Instant acceptedAt) {
+        this.offerStatus = OfferStatus.ACCEPTED;
+        this.acceptedAt = acceptedAt;
+        this.updatedAt = acceptedAt;
+    }
 }
