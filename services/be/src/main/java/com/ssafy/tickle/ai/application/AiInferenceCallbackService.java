@@ -2,8 +2,6 @@ package com.ssafy.tickle.ai.application;
 
 import com.ssafy.tickle.ai.presentation.dto.AiInferenceCallbackRequest;
 import com.ssafy.tickle.blacklist.application.BlacklistService;
-import com.ssafy.tickle.blacklist.domain.Blacklist;
-import com.ssafy.tickle.blacklist.presentation.dto.InternalAddBlacklistRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,11 +47,8 @@ public class AiInferenceCallbackService {
                 request.createdAt()
         );
 
-        // 블랙리스트 등록
-        blacklistService.addBlacklistInternal(new InternalAddBlacklistRequest(
-                userId,
-                Blacklist.Reason.BOT_DETECTED.name(),
-                request.description()
-        ));
+        // 블랙리스트 등록 (pMacro를 botScore로 저장)
+        Double botScore = request.pMacro() != null ? request.pMacro().doubleValue() : null;
+        blacklistService.addFromAiResult(userId, botScore, request.description());
     }
 }
