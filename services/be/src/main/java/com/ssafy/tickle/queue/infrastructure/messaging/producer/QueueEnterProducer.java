@@ -24,7 +24,7 @@ public class QueueEnterProducer {
             // send().get()으로 브로커 ack까지 확인해야 enter API가 적재 실패를 감지할 수 있다.
             kafkaTemplate.send(
                     QueueConstants.ENTER_REQUEST_TOPIC,
-                    message.scope().name() + ":" + message.sessionId(),
+                    message.scope().name() + ":" + message.eventId(),
                     queueEnterMessageMapper.toPayload(message)
             ).get();
         } catch (InterruptedException exception) {

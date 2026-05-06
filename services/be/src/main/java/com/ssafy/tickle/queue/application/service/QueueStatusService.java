@@ -46,21 +46,21 @@ public class QueueStatusService {
                 requestId,
                 reference.userId(),
                 reference.scope(),
-                reference.sessionId(),
+                reference.eventId(),
                 Instant.now()
         );
 
         return QueueTokenResponse.waiting(queueToken);
     }
 
-    public QueueTokenResponse getQueueToken(Long sessionId, String requestId) {
-        return getQueueToken(QueueScope.BOOKING, sessionId, requestId);
+    public QueueTokenResponse getQueueToken(Long eventId, String requestId) {
+        return getQueueToken(QueueScope.BOOKING, eventId, requestId);
     }
 
-    public QueueTokenResponse getQueueToken(QueueScope scope, Long sessionId, String requestId) {
+    public QueueTokenResponse getQueueToken(QueueScope scope, Long eventId, String requestId) {
         QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
-        if (!reference.sessionId().equals(sessionId) || reference.scope() != scope) {
+        if (!reference.eventId().equals(eventId) || reference.scope() != scope) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 진입 요청 정보가 일치하지 않습니다.");
         }
         return getQueueToken(requestId);
@@ -85,9 +85,9 @@ public class QueueStatusService {
         }
 
         // 순번과 ETA는 조회 시점의 redis 상태를 읽어 계산.
-        Long rank = queueStatusStore.findRank(snapshot.scope(), snapshot.sessionId(), queueToken);
-        long waitingCount = queueStatusStore.countWaiting(snapshot.scope(), snapshot.sessionId());
-        long estimatedWaitSeconds = estimateWaitSeconds(snapshot.scope(), snapshot.sessionId(), rank);
+        Long rank = queueStatusStore.findRank(snapshot.scope(), snapshot.eventId(), queueToken);
+        long waitingCount = queueStatusStore.countWaiting(snapshot.scope(), snapshot.eventId());
+        long estimatedWaitSeconds = estimateWaitSeconds(snapshot.scope(), snapshot.eventId(), rank);
         Instant estimatedEntryAt = Instant.now().plusSeconds(estimatedWaitSeconds);
 
         return QueueStatusResponse.waiting(
@@ -99,14 +99,14 @@ public class QueueStatusService {
         );
     }
 
-    public QueueStatusResponse getStatusByQueueToken(Long sessionId, String queueToken) {
-        return getStatusByQueueToken(QueueScope.BOOKING, sessionId, queueToken);
+    public QueueStatusResponse getStatusByQueueToken(Long eventId, String queueToken) {
+        return getStatusByQueueToken(QueueScope.BOOKING, eventId, queueToken);
     }
 
-    public QueueStatusResponse getStatusByQueueToken(QueueScope scope, Long sessionId, String queueToken) {
+    public QueueStatusResponse getStatusByQueueToken(QueueScope scope, Long eventId, String queueToken) {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
-        if (!snapshot.sessionId().equals(sessionId) || snapshot.scope() != scope) {
+        if (!snapshot.eventId().equals(eventId) || snapshot.scope() != scope) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
         }
         return getStatusByQueueToken(queueToken);
@@ -128,14 +128,14 @@ public class QueueStatusService {
      * admitToken이 특정 대기열 입장 권한을 나타내는지 검증합니다.
      *
      * @param scope 대기열 목적
-     * @param sessionId 회차 식별자
+     * @param eventId 공연 식별자
      * @param userId 사용자 식별자
      * @param admitToken 입장 허용 토큰
      * @return 검증된 대기열 스냅샷
      */
     public QueueStatusSnapshot validateAdmitToken(
             QueueScope scope,
-            Long sessionId,
+            Long eventId,
             Long userId,
             String admitToken
     ) {
@@ -147,7 +147,7 @@ public class QueueStatusService {
 
         if (snapshot.status() != QueueRequestStatus.ADMITTED
                 || snapshot.scope() != scope
-                || !snapshot.sessionId().equals(sessionId)
+                || !snapshot.eventId().equals(eventId)
                 || !snapshot.userId().equals(userId)
                 || !admitToken.equals(snapshot.admitToken())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 입장 토큰 정보가 일치하지 않습니다.");
@@ -171,14 +171,14 @@ public class QueueStatusService {
         deleteRelatedTokens(snapshot);
     }
 
-    public void leave(Long sessionId, String queueToken) {
-        leave(QueueScope.BOOKING, sessionId, queueToken);
+    public void leave(Long eventId, String queueToken) {
+        leave(QueueScope.BOOKING, eventId, queueToken);
     }
 
-    public void leave(QueueScope scope, Long sessionId, String queueToken) {
+    public void leave(QueueScope scope, Long eventId, String queueToken) {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
-        if (!snapshot.sessionId().equals(sessionId) || snapshot.scope() != scope) {
+        if (!snapshot.eventId().equals(eventId) || snapshot.scope() != scope) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
         }
         leave(queueToken);
@@ -223,14 +223,14 @@ public class QueueStatusService {
 
     private void deleteRelatedTokens(QueueStatusSnapshot snapshot) {
         stringRedisTemplate.delete(QueueConstants.QUEUE_TOKEN_REQUEST_KEY_PREFIX + snapshot.requestId());
-        queueEnterRequestStore.delete(snapshot.scope(), snapshot.userId(), snapshot.sessionId(), snapshot.requestId());
+        queueEnterRequestStore.delete(snapshot.scope(), snapshot.userId(), snapshot.eventId(), snapshot.requestId());
     }
 
-    private long estimateWaitSeconds(Long sessionId, Long rank) {
-        return estimateWaitSeconds(QueueScope.BOOKING, sessionId, rank);
+    private long estimateWaitSeconds(Long eventId, Long rank) {
+        return estimateWaitSeconds(QueueScope.BOOKING, eventId, rank);
     }
 
-    private long estimateWaitSeconds(QueueScope scope, Long sessionId, Long rank) {
+    private long estimateWaitSeconds(QueueScope scope, Long eventId, Long rank) {
         if (rank == null || rank <= 1L) {
             return 0L;
         }
@@ -238,7 +238,7 @@ public class QueueStatusService {
         Instant now = Instant.now();
         long recentAdmissionCount = queueStatusStore.countRecentAdmissions(
                 scope,
-                sessionId,
+                eventId,
                 now.minus(QueueConstants.ETA_WINDOW),
                 now
         );

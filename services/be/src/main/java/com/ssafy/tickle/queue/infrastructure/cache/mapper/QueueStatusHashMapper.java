@@ -18,7 +18,7 @@ public class QueueStatusHashMapper {
     private static final String REQUEST_ID = "requestId";
     private static final String USER_ID = "userId";
     private static final String SCOPE = "scope";
-    private static final String SESSION_ID = "sessionId";
+    private static final String EVENT_ID = "eventId";
     private static final String STATUS = "status";
     private static final String REGISTERED_AT = "registeredAt";
     private static final String ADMIT_TOKEN = "admitToken";
@@ -28,7 +28,7 @@ public class QueueStatusHashMapper {
             String requestId,
             Long userId,
             QueueScope scope,
-            Long sessionId,
+            Long eventId,
             QueueRequestStatus status,
             Instant registeredAt
     ) {
@@ -36,7 +36,7 @@ public class QueueStatusHashMapper {
                 REQUEST_ID, requestId,
                 USER_ID, String.valueOf(userId),
                 SCOPE, scope.name(),
-                SESSION_ID, String.valueOf(sessionId),
+                EVENT_ID, String.valueOf(eventId),
                 STATUS, status.name(),
                 REGISTERED_AT, String.valueOf(registeredAt.toEpochMilli())
         );
@@ -60,10 +60,10 @@ public class QueueStatusHashMapper {
         Object requestId = entries.get(REQUEST_ID);
         Object userId = entries.get(USER_ID);
         Object scope = entries.get(SCOPE);
-        Object sessionId = entries.get(SESSION_ID);
+        Object eventId = entries.get(EVENT_ID);
         Object status = entries.get(STATUS);
         Object registeredAt = entries.get(REGISTERED_AT);
-        if (requestId == null || userId == null || sessionId == null || status == null || registeredAt == null) {
+        if (requestId == null || userId == null || eventId == null || status == null || registeredAt == null) {
             return Optional.empty();
         }
 
@@ -75,7 +75,7 @@ public class QueueStatusHashMapper {
                 requestId.toString(),
                 Long.parseLong(userId.toString()),
                 scope == null ? QueueScope.BOOKING : QueueScope.valueOf(scope.toString()),
-                Long.parseLong(sessionId.toString()),
+                Long.parseLong(eventId.toString()),
                 QueueRequestStatus.valueOf(status.toString()),
                 Instant.ofEpochMilli(Long.parseLong(registeredAt.toString())),
                 admitToken == null ? null : admitToken.toString(),

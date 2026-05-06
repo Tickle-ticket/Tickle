@@ -27,7 +27,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * 대기열 진입 관련 API를 제공합니다.
  */
 @RestController
-@RequestMapping("/api/v1/queues/{sessionId}")
+@RequestMapping("/api/v1/queues/{eventId}")
 @RequiredArgsConstructor
 public class QueueController implements QueueApiDoc {
 
@@ -44,11 +44,11 @@ public class QueueController implements QueueApiDoc {
     @PostMapping("/enter")
     @Override
     public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(
-            @PathVariable Long sessionId,
+            @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @Valid @RequestBody QueueEnterRequest request
     ) {
-        QueueEnterResponse response = queueEnterService.enter(scope, sessionId, request);
+        QueueEnterResponse response = queueEnterService.enter(scope, eventId, request);
 
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
@@ -64,11 +64,11 @@ public class QueueController implements QueueApiDoc {
     @GetMapping("/token")
     @Override
     public ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(
-            @PathVariable Long sessionId,
+            @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String requestId
     ) {
-        QueueTokenResponse response = queueStatusService.getQueueToken(scope, sessionId, requestId);
+        QueueTokenResponse response = queueStatusService.getQueueToken(scope, eventId, requestId);
 
         return ResponseEntity
                 .ok()
@@ -84,11 +84,11 @@ public class QueueController implements QueueApiDoc {
     @GetMapping("/status")
     @Override
     public ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(
-            @PathVariable Long sessionId,
+            @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String queueToken
     ) {
-        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(scope, sessionId, queueToken);
+        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(scope, eventId, queueToken);
 
         return ResponseEntity
                 .ok()
@@ -98,11 +98,11 @@ public class QueueController implements QueueApiDoc {
     @PostMapping("/leave")
     @Override
     public ResponseEntity<BaseResponse<Void>> leave(
-            @PathVariable Long sessionId,
+            @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String queueToken
     ) {
-        queueStatusService.leave(scope, sessionId, queueToken);
+        queueStatusService.leave(scope, eventId, queueToken);
 
         return ResponseEntity
                 .ok()
@@ -118,11 +118,11 @@ public class QueueController implements QueueApiDoc {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
     public SseEmitter stream(
-            @PathVariable Long sessionId,
+            @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String queueToken
     ) {
-        queueStatusService.getStatusByQueueToken(scope, sessionId, queueToken);
+        queueStatusService.getStatusByQueueToken(scope, eventId, queueToken);
         return queueSseHandler.connect(queueToken);
     }
 }

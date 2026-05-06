@@ -26,10 +26,10 @@ public class QueueStatusCleanupScheduler {
         Instant now = Instant.now();
 
         for (QueueTarget target : queueStatusStore.findWaitingTargets()) {
-            for (String queueToken : queueStatusStore.findWaitingQueueTokens(target.scope(), target.sessionId())) {
+            for (String queueToken : queueStatusStore.findWaitingQueueTokens(target.scope(), target.eventId())) {
                 QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken).orElse(null);
                 if (snapshot == null) {
-                    queueStatusStore.removeWaitingQueueToken(target.scope(), target.sessionId(), queueToken);
+                    queueStatusStore.removeWaitingQueueToken(target.scope(), target.eventId(), queueToken);
                     continue;
                 }
 
@@ -49,10 +49,10 @@ public class QueueStatusCleanupScheduler {
         Instant now = Instant.now();
 
         for (QueueTarget target : queueStatusStore.findAdmittedTargets()) {
-            for (String queueToken : queueStatusStore.findAdmittedQueueTokens(target.scope(), target.sessionId())) {
+            for (String queueToken : queueStatusStore.findAdmittedQueueTokens(target.scope(), target.eventId())) {
                 QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken).orElse(null);
                 if (snapshot == null) {
-                    queueStatusStore.removeAdmittedQueueToken(target.scope(), target.sessionId(), queueToken);
+                    queueStatusStore.removeAdmittedQueueToken(target.scope(), target.eventId(), queueToken);
                     continue;
                 }
 

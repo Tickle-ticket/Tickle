@@ -21,45 +21,45 @@ public class QueueEnterRequestStore {
     private final QueueEnterRequestReferenceHashMapper queueEnterRequestReferenceHashMapper;
 
     /**
-     * 사용자-회차 조합으로 이미 저장된 요청 식별자를 조회합니다.
+     * 사용자-공연 조합으로 이미 저장된 요청 식별자를 조회합니다.
      *
      * @param userId 사용자 식별자
-     * @param sessionId 회차 식별자
+     * @param eventId 공연 식별자
      * @return 기존 요청 식별자
      */
-    public Optional<String> findRequestId(Long userId, Long sessionId) {
-        return findRequestId(QueueScope.BOOKING, userId, sessionId);
+    public Optional<String> findRequestId(Long userId, Long eventId) {
+        return findRequestId(QueueScope.BOOKING, userId, eventId);
     }
 
-    public Optional<String> findRequestId(QueueScope scope, Long userId, Long sessionId) {
-        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(enterKey(scope, userId, sessionId)));
+    public Optional<String> findRequestId(QueueScope scope, Long userId, Long eventId) {
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(enterKey(scope, userId, eventId)));
     }
 
     /**
-     * 사용자-회차 조합으로 새 요청 식별자를 저장합니다.
+     * 사용자-공연 조합으로 새 요청 식별자를 저장합니다.
      *
      * @param userId 사용자 식별자
-     * @param sessionId 회차 식별자
+     * @param eventId 공연 식별자
      * @param requestId 요청 식별자
      * @return 저장 성공 여부
      */
-    public boolean saveIfAbsent(Long userId, Long sessionId, String requestId) {
-        return saveIfAbsent(QueueScope.BOOKING, userId, sessionId, requestId);
+    public boolean saveIfAbsent(Long userId, Long eventId, String requestId) {
+        return saveIfAbsent(QueueScope.BOOKING, userId, eventId, requestId);
     }
 
-    public boolean saveIfAbsent(QueueScope scope, Long userId, Long sessionId, String requestId) {
+    public boolean saveIfAbsent(QueueScope scope, Long userId, Long eventId, String requestId) {
         Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(
-                enterKey(scope, userId, sessionId),
+                enterKey(scope, userId, eventId),
                 requestId,
                 QueueConstants.REQUEST_TTL
         );
 
         if (Boolean.TRUE.equals(saved)) {
-            // requestId만으로 다시 사용자/회차를 복구할 수 있게 reference hash를 별도로 둔다.
+            // requestId만으로 다시 사용자/공연를 복구할 수 있게 reference hash를 별도로 둔다.
             String referenceKey = referenceKey(requestId);
             stringRedisTemplate.opsForHash().putAll(
                     referenceKey,
-                    queueEnterRequestReferenceHashMapper.toHash(scope, sessionId, userId)
+                    queueEnterRequestReferenceHashMapper.toHash(scope, eventId, userId)
             );
             stringRedisTemplate.expire(referenceKey, QueueConstants.REQUEST_TTL);
         }
@@ -68,10 +68,10 @@ public class QueueEnterRequestStore {
     }
 
     /**
-     * requestId에 연결된 사용자/회차 식별자를 조회합니다.
+     * requestId에 연결된 사용자/공연 식별자를 조회합니다.
      *
      * @param requestId 요청 식별자
-     * @return 사용자/회차 식별자
+     * @return 사용자/공연 식별자
      */
     public Optional<QueueEnterRequestReference> findReferenceByRequestId(String requestId) {
         return queueEnterRequestReferenceHashMapper.fromHash(
@@ -80,22 +80,22 @@ public class QueueEnterRequestStore {
     }
 
     /**
-     * 요청 적재 실패 시 사용자-회차 조합 키를 제거합니다.
+     * 요청 적재 실패 시 사용자-공연 조합 키를 제거합니다.
      *
      * @param userId 사용자 식별자
-     * @param sessionId 회차 식별자
+     * @param eventId 공연 식별자
      */
-    public void delete(Long userId, Long sessionId, String requestId) {
-        delete(QueueScope.BOOKING, userId, sessionId, requestId);
+    public void delete(Long userId, Long eventId, String requestId) {
+        delete(QueueScope.BOOKING, userId, eventId, requestId);
     }
 
-    public void delete(QueueScope scope, Long userId, Long sessionId, String requestId) {
-        stringRedisTemplate.delete(enterKey(scope, userId, sessionId));
+    public void delete(QueueScope scope, Long userId, Long eventId, String requestId) {
+        stringRedisTemplate.delete(enterKey(scope, userId, eventId));
         stringRedisTemplate.delete(referenceKey(requestId));
     }
 
-    private String enterKey(QueueScope scope, Long userId, Long sessionId) {
-        return QueueConstants.ENTER_KEY_PREFIX + scope.name() + ":" + sessionId + ":" + userId;
+    private String enterKey(QueueScope scope, Long userId, Long eventId) {
+        return QueueConstants.ENTER_KEY_PREFIX + scope.name() + ":" + eventId + ":" + userId;
     }
 
     private String referenceKey(String requestId) {

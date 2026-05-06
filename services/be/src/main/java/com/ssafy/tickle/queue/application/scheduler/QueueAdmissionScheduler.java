@@ -23,7 +23,7 @@ public class QueueAdmissionScheduler {
     private final RedisLockManager redisLockManager;
 
     /**
-     * 회차별 available slot만큼 waiting 상위 사용자를 admission 처리합니다.
+     * 공연별 available slot만큼 waiting 상위 사용자를 admission 처리합니다.
      */
     @Scheduled(fixedDelay = 1000L)
     public void admitWaitingUsers() {
@@ -36,14 +36,14 @@ public class QueueAdmissionScheduler {
             }
 
             try {
-                // slot 계산부터 admitToken 발급과 상태 전이 완료까지는 같은 sessionId 락 안에서 처리한다.
-                Long admittedCount = queueStatusStore.countAdmitted(target.scope(), target.sessionId());
+                // slot 계산부터 admitToken 발급과 상태 전이 완료까지는 같은 eventId 락 안에서 처리한다.
+                Long admittedCount = queueStatusStore.countAdmitted(target.scope(), target.eventId());
                 Long availableSlots = queueStatusService.slotLimit() - admittedCount;
                 if (availableSlots <= 0) {
                     continue;
                 }
 
-                queueStatusStore.admitWaitingUsers(target.scope(), target.sessionId(), availableSlots, admittedAt);
+                queueStatusStore.admitWaitingUsers(target.scope(), target.eventId(), availableSlots, admittedAt);
             } finally {
                 redisLockManager.unlock(admissionLockKey(target));
             }
@@ -51,6 +51,6 @@ public class QueueAdmissionScheduler {
     }
 
     private String admissionLockKey(QueueTarget target) {
-        return QueueConstants.ADMISSION_LOCK_KEY_PREFIX + target.scope().name() + ":" + target.sessionId();
+        return QueueConstants.ADMISSION_LOCK_KEY_PREFIX + target.scope().name() + ":" + target.eventId();
     }
 }
