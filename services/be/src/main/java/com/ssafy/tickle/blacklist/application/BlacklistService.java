@@ -69,6 +69,8 @@ public class BlacklistService {
                         .reason(reason)
                         .detail(request.detail())
                         .blockedBy(adminUserId)
+                        .ipAddress(null)
+                        .botScore(null)
                         .build()
         );
     }
@@ -109,6 +111,35 @@ public class BlacklistService {
                         .reason(reason)
                         .detail(request.detail())
                         .blockedBy(null)
+                        .ipAddress(request.ipAddress())
+                        .botScore(null)
+                        .build()
+        );
+    }
+
+    /**
+     * AI 서버로부터 봇 판별 결과를 수신하여 블랙리스트에 등록합니다.
+     *
+     * <p>이미 블랙리스트에 등록된 사용자라면 중복 등록하지 않고 조용히 건너뜁니다 (멱등성 보장).</p>
+     *
+     * @param userId   차단 대상 사용자 식별자
+     * @param botScore AI 봇 판별 확률 (0.0~1.0)
+     * @param detail   판정 설명 (nullable)
+     */
+    @Transactional
+    public void addFromAiResult(Long userId, Double botScore, String detail) {
+        if (blacklistRepository.existsByUserId(userId)) {
+            return;
+        }
+
+        blacklistRepository.save(
+                Blacklist.builder()
+                        .userId(userId)
+                        .reason(Blacklist.Reason.BOT_DETECTED)
+                        .detail(detail)
+                        .blockedBy(null)
+                        .ipAddress(null)
+                        .botScore(botScore)
                         .build()
         );
     }

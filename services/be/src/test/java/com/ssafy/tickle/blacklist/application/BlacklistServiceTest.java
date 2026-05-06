@@ -179,7 +179,7 @@ class BlacklistServiceTest {
         @Test
         @DisplayName("정상 요청이면 blockedBy=null로 저장된다")
         void addBlacklistInternal_success_savesWithNullBlockedBy() {
-            InternalAddBlacklistRequest request = new InternalAddBlacklistRequest(USER_ID, "BOT_DETECTED", "AI 탐지");
+            InternalAddBlacklistRequest request = new InternalAddBlacklistRequest(USER_ID, "BOT_DETECTED", "AI 탐지", null);
             given(blacklistRepository.existsByUserId(USER_ID)).willReturn(false);
             ArgumentCaptor<Blacklist> captor = ArgumentCaptor.forClass(Blacklist.class);
             given(blacklistRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
@@ -194,7 +194,7 @@ class BlacklistServiceTest {
         @Test
         @DisplayName("이미 블랙리스트에 있으면 중복 등록하지 않는다 (멱등성)")
         void addBlacklistInternal_alreadyBlacklisted_skips() {
-            InternalAddBlacklistRequest request = new InternalAddBlacklistRequest(USER_ID, "BOT_DETECTED", null);
+            InternalAddBlacklistRequest request = new InternalAddBlacklistRequest(USER_ID, "BOT_DETECTED", null, null);
             given(blacklistRepository.existsByUserId(USER_ID)).willReturn(true);
 
             blacklistService.addBlacklistInternal(request);
@@ -209,7 +209,7 @@ class BlacklistServiceTest {
                 given(blacklistRepository.existsByUserId(USER_ID)).willReturn(false);
                 given(blacklistRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-                InternalAddBlacklistRequest request = new InternalAddBlacklistRequest(USER_ID, reason.name(), null);
+                InternalAddBlacklistRequest request = new InternalAddBlacklistRequest(USER_ID, reason.name(), null, null);
                 blacklistService.addBlacklistInternal(request);
             }
 
@@ -227,9 +227,9 @@ class BlacklistServiceTest {
         @DisplayName("배치 요청의 모든 항목을 등록한다")
         void addBlacklistBatch_success_savesAll() {
             InternalBatchAddBlacklistRequest request = new InternalBatchAddBlacklistRequest(List.of(
-                    new InternalAddBlacklistRequest(101L, "BOT_DETECTED", null),
-                    new InternalAddBlacklistRequest(102L, "IP_RATE_LIMIT", null),
-                    new InternalAddBlacklistRequest(103L, "MACRO_DETECTED_FE", null)
+                    new InternalAddBlacklistRequest(101L, "BOT_DETECTED", null, null),
+                    new InternalAddBlacklistRequest(102L, "IP_RATE_LIMIT", null, null),
+                    new InternalAddBlacklistRequest(103L, "MACRO_DETECTED_FE", null, null)
             ));
             given(blacklistRepository.existsByUserId(any())).willReturn(false);
             given(blacklistRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -243,8 +243,8 @@ class BlacklistServiceTest {
         @DisplayName("배치 중 이미 등록된 항목은 건너뛰고 나머지는 정상 등록된다")
         void addBlacklistBatch_partialDuplicate_skipsExisting() {
             InternalBatchAddBlacklistRequest request = new InternalBatchAddBlacklistRequest(List.of(
-                    new InternalAddBlacklistRequest(101L, "BOT_DETECTED", null),
-                    new InternalAddBlacklistRequest(102L, "BOT_DETECTED", null)
+                    new InternalAddBlacklistRequest(101L, "BOT_DETECTED", null, null),
+                    new InternalAddBlacklistRequest(102L, "BOT_DETECTED", null, null)
             ));
             given(blacklistRepository.existsByUserId(101L)).willReturn(true);
             given(blacklistRepository.existsByUserId(102L)).willReturn(false);

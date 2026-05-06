@@ -78,7 +78,8 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
             blacklistService.addBlacklistInternal(new InternalAddBlacklistRequest(
                     userId,
                     "SUSPICIOUS_PATTERN",
-                    userId + "번 유저: " + size + "개 IP 동시 접근"
+                    userId + "번 유저: " + size + "개 IP 동시 접근",
+                    null
             ));
             log.warn("Multi-IP 의심 패턴 탐지: userId={}, ipCount={}", userId, size);
         }
@@ -102,7 +103,8 @@ public class SuspiciousPatternInterceptor implements HandlerInterceptor {
             blacklistService.addBlacklistInternal(new InternalAddBlacklistRequest(
                     userId,
                     "SUSPICIOUS_PATTERN",
-                    userId + "번 유저: 60초 내 좌석 선점 해제 " + count + "회 반복"
+                    userId + "번 유저: 60초 내 좌석 선점 해제 " + count + "회 반복",
+                    null
             ));
             log.warn("좌석 선점 해제 반복 의심 패턴 탐지: userId={}, count={}", userId, count);
         }
