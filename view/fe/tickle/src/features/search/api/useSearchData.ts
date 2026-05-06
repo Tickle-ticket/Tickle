@@ -16,7 +16,13 @@ export const useSearchData = (query: string) => {
     queryKey: ['search', query],
     queryFn: async () => {
       if (!query.trim()) return [];
-      const res = await fetchEventList({ keyword: query, size: 20, page: 0 });
+      
+      const params: any = { size: 20, page: 0 };
+      if (query !== '전체') {
+        params.keyword = query;
+      }
+      
+      const res = await fetchEventList(params);
       
       return res.data.items.map((item) => {
         const isOpeningSoon = item.salesStartAt && new Date(item.salesStartAt).getTime() > Date.now();

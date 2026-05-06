@@ -95,9 +95,14 @@ export default function PaymentFailPage() {
 
       <Modal
         isOpen={errorModalConfig.isOpen}
+        onClose={() => {
+          setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
+          if (errorModalConfig.action) errorModalConfig.action();
+        }}
         title={errorModalConfig.title}
         description={errorModalConfig.message}
         confirmText="확인"
+        showCancelButton={false}
         onConfirm={() => {
           setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
           if (errorModalConfig.action) errorModalConfig.action();

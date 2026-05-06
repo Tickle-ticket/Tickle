@@ -23,6 +23,9 @@ import { Header } from '@/src/shared/components/Header';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
+import { getUserId } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 
@@ -62,27 +65,75 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
   const [isBannerFolded, setIsBannerFolded] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
+  const isFavorite = activeEventId ? !!wishlistMap[activeEventId] : false;
   const [detailImageFailed, setDetailImageFailed] = useState(false);
-  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: '' });
+  const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
+  const queryClient = useQueryClient();
+
+  const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK') => {
+    if (!getUserId()) {
+      setModalConfig({ 
+        isOpen: true, 
+        title: '로그인 필요', 
+        content: '로그인이 필요한 서비스입니다.',
+        confirmText: '로그인 하기',
+        showCancelButton: true,
+        onConfirm: () => { window.location.href = '/login'; }
+      });
+      return;
+    }
+    setFlowState(state);
+  };
 
   useEffect(() => {
-    if (data) {
-      setIsFavorite(data.isFavorite);
+    if (data && activeEventId) {
+      // API에서 받은 상태로 초기화하되, 이미 사용자가 토글한 값이 스토어에 있으면 덮어쓰지 않음
+      if (wishlistMap[activeEventId] === undefined) {
+        if (data.isFavorite) {
+          addWishlist(activeEventId);
+        } else {
+          removeWishlist(activeEventId);
+        }
+      }
     }
-  }, [data?.isFavorite]);
+  }, [data?.isFavorite, activeEventId, wishlistMap, addWishlist, removeWishlist]);
 
   const handleFavoriteToggle = async () => {
     if (!activeEventId) return;
+
+    if (!getUserId()) {
+      setModalConfig({ 
+        isOpen: true, 
+        title: '로그인 필요', 
+        content: '로그인이 필요한 서비스입니다.',
+        confirmText: '로그인 하기',
+        showCancelButton: true,
+        onConfirm: () => { window.location.href = '/login'; }
+      });
+      return;
+    }
+
     try {
+      if (isFavorite) {
+        removeWishlist(activeEventId);
+      } else {
+        addWishlist(activeEventId);
+      }
+
       if (isFavorite) {
         await deleteFavorite(activeEventId);
       } else {
         await createFavorite(activeEventId);
       }
-      setIsFavorite(!isFavorite);
+      queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
     } catch (error: any) {
       console.error('찜 등록/취소 실패:', error);
+      if (isFavorite) {
+        addWishlist(activeEventId);
+      } else {
+        removeWishlist(activeEventId);
+      }
       if (error.status === 400) {
         setModalConfig({ isOpen: true, title: '잘못된 요청', content: '요청이 올바르지 않습니다.' });
       } else if (error.status === 404) {
@@ -222,7 +273,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                 color="dark"
                 size="large"
                 className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`}
-                onClick={() => !isUpcoming && setFlowState('QUEUE')}
+                onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
                 isLoading={isLoading}
               >
                 {isUpcoming && data?.openDate ? (
@@ -245,7 +296,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                 color="light"
                 size="large"
                 className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`}
-                onClick={() => !isWaitlistUpcoming && setFlowState('WAITLIST_QUEUE')}
+                onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
                 isLoading={isLoading}
               >
                 {isWaitlistUpcoming && data?.openDate ? (
@@ -286,10 +337,10 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           <div className="flex items-center gap-3 w-full mt-2">
             {/* 위쪽 버튼 그룹과 정확히 동일한 너비를 가지도록 flex-1 설정 */}
             <div className="flex items-center flex-1 gap-2">
-              <Button color="dark" size="small" className="flex-1 opacity-50 !bg-gray-500 hover:!bg-gray-600 !rounded-md" onClick={() => setFlowState('TEST_WAITLIST_QUEUE')}>
+              <Button color="dark" size="small" className="flex-1 opacity-50 !bg-gray-500 hover:!bg-gray-600 !rounded-md" onClick={() => handleFlowStart('TEST_WAITLIST_QUEUE')}>
                 Test: Waitlist Queue
               </Button>
-              <Button color="light" size="small" className="flex-1 opacity-50 border border-gray-300 !rounded-md hover:bg-gray-100" onClick={() => setFlowState('TEST_WAITLIST_BOOK')}>
+              <Button color="light" size="small" className="flex-1 opacity-50 border border-gray-300 !rounded-md hover:bg-gray-100" onClick={() => handleFlowStart('TEST_WAITLIST_BOOK')}>
                 Test: Waitlist Book
               </Button>
             </div>
@@ -474,20 +525,15 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={() => {
+          setModalConfig({ ...modalConfig, isOpen: false });
+          if (modalConfig.onConfirm) modalConfig.onConfirm();
+        }}
         title={modalConfig.title}
-      >
-        <p className="text-gray-600 mb-6 mt-2">{modalConfig.content}</p>
-        <div className="w-full">
-          <Button
-            color="dark"
-            size="large"
-            className="w-full font-bold"
-            onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
-          >
-            확인
-          </Button>
-        </div>
-      </Modal>
+        description={modalConfig.content}
+        confirmText={modalConfig.confirmText || '확인'}
+        showCancelButton={modalConfig.showCancelButton ?? false}
+      />
     </div>
   );
 

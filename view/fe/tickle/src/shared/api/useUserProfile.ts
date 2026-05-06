@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchMyInfo, updateMyInfo, withdrawMyInfo } from '@/src/shared/api/userApi';
+import { getUserId } from '@/src/shared/api/tokenManager';
 
 export interface UserProfileData {
   userId: number;
@@ -28,6 +29,7 @@ export const useUserProfile = () => {
       } as UserProfileData;
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!getUserId(),
   });
 };
 
