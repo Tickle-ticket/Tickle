@@ -36,7 +36,7 @@ def build_insert_rows(
         rows.append(
             (
                 result.record_id,
-                str(payload["type"]).upper(),
+                payload["type"],
                 payload.get("scheduleId") or payload.get("schedule_id"),
                 payload.get("eventId") or payload.get("event_id"),
                 payload.get("eventDate") or payload.get("event_date"),
