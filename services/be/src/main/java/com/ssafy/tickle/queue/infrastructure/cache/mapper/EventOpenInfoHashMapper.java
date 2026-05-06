@@ -13,27 +13,27 @@ import java.util.Optional;
 @Component
 public class EventOpenInfoHashMapper {
 
-    private static final String SALES_OPEN_AT = "salesOpenAt";
-    private static final String SALES_CLOSE_AT = "salesCloseAt";
+    private static final String SALES_START_AT = "salesStartAt";
+    private static final String SALES_END_AT = "salesEndAt";
 
     public Map<String, String> toHash(EventOpenInfo info) {
         return Map.of(
-                SALES_OPEN_AT, info.salesOpenAt().toString(),
-                SALES_CLOSE_AT, info.salesCloseAt().toString()
+                SALES_START_AT, info.salesStartAt().toString(),
+                SALES_END_AT, info.salesEndAt().toString()
         );
     }
 
     public Optional<EventOpenInfo> fromHash(Long eventId, Map<Object, Object> entries) {
-        Object salesOpenAt = entries.get(SALES_OPEN_AT);
-        Object salesCloseAt = entries.get(SALES_CLOSE_AT);
-        if (salesOpenAt == null || salesCloseAt == null) {
+        Object salesStartAt = entries.get(SALES_START_AT);
+        Object salesEndAt = entries.get(SALES_END_AT);
+        if (salesStartAt == null || salesEndAt == null) {
             return Optional.empty();
         }
 
         return Optional.of(new EventOpenInfo(
                 eventId,
-                Instant.parse(salesOpenAt.toString()),
-                Instant.parse(salesCloseAt.toString())
+                Instant.parse(salesStartAt.toString()),
+                Instant.parse(salesEndAt.toString())
         ));
     }
 }

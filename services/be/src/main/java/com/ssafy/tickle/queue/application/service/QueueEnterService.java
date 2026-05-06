@@ -87,11 +87,11 @@ public class QueueEnterService {
      * @param now 현재 시각
      */
     private void validateQueueEntry(EventOpenInfo eventOpenInfo, Instant now) {
-        if (now.isBefore(eventOpenInfo.salesOpenAt())) {
+        if (now.isBefore(eventOpenInfo.salesStartAt())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "아직 예매 오픈 전인 공연입니다.");
         }
 
-        if (!now.isBefore(eventOpenInfo.salesCloseAt())) {
+        if (!now.isBefore(eventOpenInfo.salesEndAt())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "예매가 종료된 공연입니다.");
         }
     }
