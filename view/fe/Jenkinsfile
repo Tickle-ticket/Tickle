@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    // 젠킨스 Tools에 등록한 node20 설정을 불러옵니다.
+    tools {
+        nodejs 'node20' 
+    }
+
     environment {
         // 프로젝트 경로 설정 (로그 기준)
         PROJECT_PATH = "view/fe/tickle"
