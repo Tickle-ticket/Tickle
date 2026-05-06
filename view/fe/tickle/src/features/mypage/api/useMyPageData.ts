@@ -28,7 +28,6 @@ export const useMyUpcomingWishlist = () => {
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
     },
-    staleTime: 5 * 60 * 1000,
   });
 };
 export interface BookingData {

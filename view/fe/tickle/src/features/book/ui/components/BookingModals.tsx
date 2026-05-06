@@ -5,7 +5,7 @@ interface BookingModalsProps {
   isExitModalOpen: boolean;
   isWaitlistCompleteModalOpen: boolean;
   isConflictModalOpen: boolean;
-  errorModalConfig: { isOpen: boolean; title: string; message: string };
+  errorModalConfig: { isOpen: boolean; title: string; message: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean };
   handleCancelExit: () => void;
   handleConfirmExit: () => void;
   handleCloseWaitlistComplete: () => void;
@@ -80,9 +80,9 @@ export const BookingModals: React.FC<BookingModalsProps> = ({
         onClose={handleCloseErrorModal}
         title={errorModalConfig.title}
         description={errorModalConfig.message}
-        confirmText="확인"
+        confirmText={errorModalConfig.confirmText || '확인'}
         onConfirm={handleCloseErrorModal}
-        showCancelButton={false}
+        showCancelButton={errorModalConfig.showCancelButton ?? false}
       />
     </>
   );

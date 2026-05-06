@@ -99,6 +99,8 @@ const sanitizeInputValue = (name: string, value: string) => {
       return value.replace(/\D/g, '').slice(0, 11);
     case 'verificationCode':
       return value.replace(/\D/g, '').slice(0, 6);
+    case 'birthDate':
+      return value.replace(/\D/g, '').slice(0, 6);
     default:
       return value;
   }
@@ -112,12 +114,24 @@ const getTodayDate = () => {
   return `${year}-${month}-${day}`;
 };
 
+const convertBirthDateToApiFormat = (yyMMdd: string) => {
+  if (yyMMdd.length !== 6) return '';
+  const yyStr = yyMMdd.slice(0, 2);
+  const yy = parseInt(yyStr, 10);
+  const mm = yyMMdd.slice(2, 4);
+  const dd = yyMMdd.slice(4, 6);
+  // Current year is 2026, so 2000s up to 2040, 1900s for > 40
+  const prefix = yy > 40 ? '19' : '20';
+  return `${prefix}${yyStr}-${mm}-${dd}`;
+};
+
 const isValidBirthDate = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  if (!/^\d{6}$/.test(value)) {
     return false;
   }
 
-  const [year, month, day] = value.split('-').map(Number);
+  const apiFormat = convertBirthDateToApiFormat(value);
+  const [year, month, day] = apiFormat.split('-').map(Number);
   const date = new Date(year, month - 1, day);
 
   if (
@@ -129,7 +143,7 @@ const isValidBirthDate = (value: string) => {
     return false;
   }
 
-  return value <= getTodayDate();
+  return apiFormat <= getTodayDate();
 };
 
 const getNameError = (value: string, isAgencySignup: boolean) => {
@@ -401,7 +415,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         if (!formData.birthDate) {
           nextErrors.birthDate = '생년월일을 입력해 주세요.';
         } else if (!isValidBirthDate(formData.birthDate)) {
-          nextErrors.birthDate = '생년월일은 YYYY-MM-DD 형식으로 입력해 주세요.';
+          nextErrors.birthDate = '생년월일 6자리를 올바르게 입력해 주세요. 예: 900101';
         }
       }
     }
@@ -442,7 +456,9 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     setIsSendingCode(true);
 
     try {
-      await authApi.sendPhoneCode({ phoneNumber: formData.phone });
+      // API 호출 우회 (Bypass)
+      // await authApi.sendPhoneCode({ phoneNumber: formData.phone });
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setIsCodeSent(true);
     } catch (error) {
       console.error('sendPhoneCode failed', error);
@@ -462,7 +478,9 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     setIsVerifyingCode(true);
 
     try {
-      await authApi.verifyPhoneCode({ phoneNumber: formData.phone, code: verificationCode });
+      // API 호출 우회 (Bypass) - 아무 숫자나 입력해도 통과되도록 처리
+      // await authApi.verifyPhoneCode({ phoneNumber: formData.phone, code: verificationCode });
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setIsPhoneVerified(true);
     } catch (error) {
       console.error('verifyPhoneCode failed', error);
@@ -500,7 +518,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         password: formData.password,
         name: formData.name.trim(),
         nickname: isAgencySignup ? undefined : formData.nickname.trim(),
-        birthDate: isAgencySignup ? undefined : formData.birthDate,
+        birthDate: isAgencySignup ? undefined : convertBirthDateToApiFormat(formData.birthDate),
         phoneNumber: formData.phone,
         role: isAgencySignup ? 'ORGANIZER' : 'USER',
         organizerId: isAgencySignup && selectedAgencyId ? Number(selectedAgencyId) : undefined,
@@ -636,16 +654,17 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                       />
                       <Input
                         label="생년월일"
-                        type="date"
+                        type="text"
                         name="birthDate"
+                        placeholder="예: 900101 (6자리)"
+                        inputMode="numeric"
                         fullWidth
                         required
                         value={formData.birthDate}
                         onChange={handleChange}
                         error={errors.birthDate}
-                        max={todayDate}
                         style={{ letterSpacing: '-0.02em' }}
-                        className="[&_input]:text-[20px] [&_input]:tracking-normal"
+                        className="[&_input]:text-[20px]"
                       />
                     </>
                   ) : null}

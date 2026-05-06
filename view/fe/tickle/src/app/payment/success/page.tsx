@@ -173,6 +173,7 @@ export default function PaymentSuccessPage() {
         title={errorModalConfig.title}
         description={errorModalConfig.message}
         confirmText="확인"
+        showCancelButton={false}
         onConfirm={() => {
           setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
           if (errorModalConfig.action) errorModalConfig.action();

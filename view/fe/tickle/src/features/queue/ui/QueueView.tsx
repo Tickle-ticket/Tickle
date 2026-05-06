@@ -20,7 +20,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
-  const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string; action?: () => void}>({
+  const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string; action?: () => void; confirmText?: string; showCancelButton?: boolean}>({
     isOpen: false,
     title: '',
     message: ''
@@ -42,7 +42,9 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
       setErrorModalConfig({
         isOpen: true,
         title: '로그인 필요',
-        message: '로그인이 필요합니다.',
+        message: '로그인이 필요한 서비스입니다.',
+        confirmText: '로그인 하기',
+        showCancelButton: true,
         action: () => { window.location.href = '/login'; }
       });
       return;
@@ -310,7 +312,8 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
         }}
         title={errorModalConfig.title}
         description={errorModalConfig.message}
-        confirmText="확인"
+        confirmText={errorModalConfig.confirmText || "확인"}
+        showCancelButton={errorModalConfig.showCancelButton ?? false}
         onConfirm={() => {
           setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
           if (errorModalConfig.action) errorModalConfig.action();
