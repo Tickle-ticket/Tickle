@@ -310,12 +310,15 @@ public class CancellationRedistributionService {
         if (nextCandidate.isPresent()) {
             // 2. 다음 대기자가 있으면 새로운 제안 생성 및 알림
             CancellationCandidate candidate = nextCandidate.get();
+            Instant now = Instant.now();
+            // 제안 받은 candidate는 취소 API 대상에서 빠지도록 WAITING에서 OFFERED로 먼저 전이합니다.
+            candidate.offer(now);
             CancellationOffer newOffer = offerRepository.save(
                     CancellationOffer.builder()
                             .cancellationCandidate(candidate)
                             .offerStatus(CancellationOffer.OfferStatus.UNACCEPTED)
-                            .offeredAt(Instant.now())
-                            .offerExpiresAt(Instant.now().plus(1, java.time.temporal.ChronoUnit.HOURS))
+                            .offeredAt(now)
+                            .offerExpiresAt(now.plus(1, java.time.temporal.ChronoUnit.HOURS))
                             .build());
 
             log.info("다음 대기자에게 취소표 제안: offerId={}, userId={}, seatId={}, rank={}",

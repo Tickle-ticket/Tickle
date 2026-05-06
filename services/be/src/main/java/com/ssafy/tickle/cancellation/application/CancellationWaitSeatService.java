@@ -1,6 +1,8 @@
 package com.ssafy.tickle.cancellation.application;
 
+import com.ssafy.tickle.cancellation.domain.CancellationOffer;
 import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
+import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationOfferRepository;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatItemResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatSectionResponse;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +49,7 @@ public class CancellationWaitSeatService {
     private final EventSessionRepository eventSessionRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final CancellationCandidateRepository cancellationCandidateRepository;
+    private final CancellationOfferRepository cancellationOfferRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final QueueStatusService queueStatusService;
 
@@ -76,6 +80,8 @@ public class CancellationWaitSeatService {
         // 기존 좌석맵 데이터에 예매 대기 전용 집계값만 덧붙이기 위해 별도 조회로 분리합니다.
         Map<Long, Long> waitingCounts = findWaitingCounts(sessionSeatIds);
         Set<Long> alreadyAppliedSeatIds = findAlreadyAppliedSeatIds(userId, sessionSeatIds);
+        // 제안 받은 좌석은 WAITING 신청은 아니지만 같은 좌석 재신청/노출을 막아야 합니다.
+        Set<Long> offeredSeatIds = findOfferedSeatIds(userId, sessionSeatIds);
         Set<Long> ownedSeatIds = findOwnedSeatIds(userId, sessionSeatIds);
 
         Map<EventSection, List<CancellationWaitSeatItemResponse>> seatsBySection = sessionSeats.stream()
@@ -86,7 +92,7 @@ public class CancellationWaitSeatService {
                                 sessionSeat -> CancellationWaitSeatItemResponse.of(
                                         sessionSeat,
                                         waitingCounts.getOrDefault(sessionSeat.getId(), 0L),
-                                        isWaitable(sessionSeat, alreadyAppliedSeatIds, ownedSeatIds)
+                                        isWaitable(sessionSeat, alreadyAppliedSeatIds, offeredSeatIds, ownedSeatIds)
                                 ),
                                 Collectors.toList()
                         )
@@ -151,6 +157,28 @@ public class CancellationWaitSeatService {
     }
 
     /**
+     * 사용자가 유효한 취소표 제안을 받은 좌석 식별자를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionSeatIds 회차 좌석 식별자 목록
+     * @return 유효한 제안을 받은 회차 좌석 식별자 집합
+     */
+    private Set<Long> findOfferedSeatIds(Long userId, List<Long> sessionSeatIds) {
+        if (sessionSeatIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return cancellationOfferRepository.findActiveSessionSeatIdsByUserIdAndSessionSeatIds(
+                        userId,
+                        sessionSeatIds,
+                        CancellationOffer.OfferStatus.UNACCEPTED,
+                        Instant.now()
+                )
+                .stream()
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * 사용자가 이미 결제 진행 중이거나 예매 확정한 좌석 식별자를 조회합니다.
      *
      * @param userId 사용자 식별자
@@ -176,17 +204,20 @@ public class CancellationWaitSeatService {
      *
      * @param sessionSeat 회차 좌석
      * @param alreadyAppliedSeatIds 사용자가 이미 예매 대기 신청한 좌석 식별자 집합
+     * @param offeredSeatIds 사용자가 유효한 취소표 제안을 받은 좌석 식별자 집합
      * @param ownedSeatIds 사용자가 이미 보유 중인 좌석 식별자 집합
      * @return 예매 대기 신청 가능 여부
      */
     private boolean isWaitable(
             SessionSeat sessionSeat,
             Set<Long> alreadyAppliedSeatIds,
+            Set<Long> offeredSeatIds,
             Set<Long> ownedSeatIds
     ) {
         Long sessionSeatId = sessionSeat.getId();
         return WAITABLE_SEAT_STATUSES.contains(sessionSeat.getSaleStatus())
                 && !alreadyAppliedSeatIds.contains(sessionSeatId)
+                && !offeredSeatIds.contains(sessionSeatId)
                 && !ownedSeatIds.contains(sessionSeatId);
     }
 }
