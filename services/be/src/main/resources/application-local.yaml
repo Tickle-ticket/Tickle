@@ -24,10 +24,11 @@ spring:
     show-sql: ${JPA_SHOW_SQL}
 
   data:
-    # Redis 연결 정보
+    # Redis 연결 정보 (Sentinel 모드 — master는 Sentinel이 자동으로 찾음)
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      sentinel:
+        master: mymaster
+        nodes: ${REDIS_SENTINEL_NODES}
       password: ${REDIS_PASSWORD}
       # Redis 명령 타임아웃
       timeout: 3s

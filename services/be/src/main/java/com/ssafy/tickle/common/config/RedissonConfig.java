@@ -3,28 +3,34 @@ package com.ssafy.tickle.common.config;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
-import org.redisson.config.SingleServerConfig;
+import org.redisson.config.SentinelServersConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Arrays;
 
 @Configuration
 public class RedissonConfig {
 
     @Bean(destroyMethod = "shutdown")
     public RedissonClient redissonClient(
-            // 추후 application.yml 파일로 대체 가능
-            @Value("${spring.data.redis.host}") String host,
-            @Value("${spring.data.redis.port}") int port,
+            @Value("${spring.data.redis.sentinel.master}") String masterName,
+            @Value("${spring.data.redis.sentinel.nodes}") String sentinelNodes,
             @Value("${spring.data.redis.password:}") String password
     ) {
         Config config = new Config();
 
-        SingleServerConfig singleServerConfig = config.useSingleServer()
-                .setAddress("redis://" + host + ":" + port);
+        String[] addresses = Arrays.stream(sentinelNodes.split(","))
+                .map(node -> "redis://" + node.trim())
+                .toArray(String[]::new);
+
+        SentinelServersConfig sentinelConfig = config.useSentinelServers()
+                .setMasterName(masterName)
+                .addSentinelAddress(addresses);
 
         if (password != null && !password.isBlank()) {
-            singleServerConfig.setPassword(password);
+            sentinelConfig.setPassword(password);
         }
 
         return Redisson.create(config);
