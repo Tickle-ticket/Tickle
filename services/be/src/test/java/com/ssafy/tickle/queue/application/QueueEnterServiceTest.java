@@ -30,6 +30,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -89,10 +90,11 @@ class QueueEnterServiceTest {
         void enter_savesRequestIdToRedis() {
             long eventId = 10L;
             long userId = 1L;
+            Instant salesEndAt = Instant.now().plusSeconds(600);
             eventOpenInfoStore.save(new EventOpenInfo(
                     eventId,
                     Instant.now().minusSeconds(60),
-                    Instant.now().plusSeconds(600)
+                    salesEndAt
             ));
 
             QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
@@ -100,6 +102,9 @@ class QueueEnterServiceTest {
             assertThat(response.requestId()).isNotBlank();
             assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + "BOOKING:" + eventId + ":" + userId))
                     .isEqualTo(response.requestId());
+            assertThat(stringRedisTemplate.getExpire(QueueConstants.EVENT_KEY_PREFIX + eventId, TimeUnit.SECONDS))
+                    .isPositive()
+                    .isLessThanOrEqualTo(600L);
         }
 
         @Test
@@ -191,8 +196,8 @@ class QueueEnterServiceTest {
         }
 
         @Test
-        @DisplayName("판매 종료된 공연이면 INVALID_REQUEST 예외가 발생한다")
-        void enter_afterClose_throwsQueueClosed() {
+        @DisplayName("판매 종료된 공연 오픈 정보는 저장하지 않아 RESOURCE_NOT_FOUND 예외가 발생한다")
+        void enter_afterClose_throwsResourceNotFound() {
             long eventId = 12L;
             eventOpenInfoStore.save(new EventOpenInfo(
                     eventId,
@@ -203,7 +208,7 @@ class QueueEnterServiceTest {
             assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
-                    .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
+                    .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
         }
 
         @Test

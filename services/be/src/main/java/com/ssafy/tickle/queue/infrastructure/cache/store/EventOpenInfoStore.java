@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,8 +28,15 @@ public class EventOpenInfoStore {
      * @param info 저장할 공연 예매 오픈 정보
      */
     public void save(EventOpenInfo info) {
-        stringRedisTemplate.opsForHash().putAll(key(info.eventId()),
+        String key = key(info.eventId());
+        Instant now = Instant.now();
+        if (!info.salesEndAt().isAfter(now)) {
+            return;
+        }
+
+        stringRedisTemplate.opsForHash().putAll(key,
                 eventOpenInfoHashMapper.toHash(info));
+        stringRedisTemplate.expire(key, Duration.between(now, info.salesEndAt()));
     }
 
     /**
