@@ -22,6 +22,7 @@ import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
+import com.ssafy.tickle.event.presentation.dto.EventSessionsResponse;
 import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
@@ -82,6 +83,21 @@ public class EventService {
         List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
 
         return EventDetailResponse.from(event, images, sessions, pricePolicies, isFavorite(userId, eventId));
+    }
+
+    /**
+     * 특정 공연의 회차 목록을 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 회차 목록 응답
+     */
+    public EventSessionsResponse getEventSessions(Long eventId) {
+        if (!eventRepository.existsById(eventId)) {
+            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다.");
+        }
+
+        List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
+        return EventSessionsResponse.from(sessions);
     }
 
     /**

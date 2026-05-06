@@ -5,6 +5,7 @@ import com.ssafy.tickle.event.application.EventService;
 import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.EventSessionsResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -94,5 +95,21 @@ public class EventController implements EventApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(eventService.getEventDetail(eventId, userId)));
+    }
+
+    /**
+     * 특정 공연의 회차 목록을 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 회차 목록 응답
+     */
+    @Override
+    @GetMapping("/{eventId}/sessions")
+    public ResponseEntity<BaseResponse<EventSessionsResponse>> getEventSessions(
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(eventService.getEventSessions(eventId)));
     }
 }

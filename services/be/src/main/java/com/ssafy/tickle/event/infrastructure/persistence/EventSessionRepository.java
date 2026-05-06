@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,15 +21,6 @@ public interface EventSessionRepository extends JpaRepository<EventSession, Long
      * @return 회차 목록
      */
     List<EventSession> findByEventIdOrderByStartAtAsc(Long eventId);
-
-    /**
-     * 아직 판매 종료되지 않았고, 지정한 시각 이전에 예매 오픈하는 회차를 조회합니다.
-     *
-     * @param salesCloseAt 판매 종료 하한 시각
-     * @param salesOpenAt 판매 오픈 상한 시각
-     * @return 오픈 중이거나 곧 오픈할 회차 목록
-     */
-    List<EventSession> findBySalesCloseAtAfterAndSalesOpenAtBefore(Instant salesCloseAt, Instant salesOpenAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from EventSession s where s.event.id = :eventId")
@@ -52,4 +42,3 @@ public interface EventSessionRepository extends JpaRepository<EventSession, Long
             @Param("eventId") Long eventId
     );
 }
-

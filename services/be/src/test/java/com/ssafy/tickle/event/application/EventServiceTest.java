@@ -19,6 +19,7 @@ import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
+import com.ssafy.tickle.event.presentation.dto.EventSessionsResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import com.ssafy.tickle.venue.domain.Venue;
@@ -168,6 +169,46 @@ class EventServiceTest {
         @DisplayName("존재하지 않는 이벤트를 조회하면 RESOURCE_NOT_FOUND 예외가 발생한다")
         void getEventDetail_notFound() {
             assertThatThrownBy(() -> eventService.getEventDetail(Long.MAX_VALUE))
+                    .isInstanceOf(BaseException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("회차 목록 조회")
+    class GetEventSessionsTest {
+
+        @Test
+        @DisplayName("공연 ID로 회차 목록을 시작 시각 순으로 조회한다")
+        void getEventSessions_success() {
+            Event event = eventRepository.save(createEvent(
+                    "Session Select Event",
+                    concertCategory,
+                    Instant.parse("2026-05-01T10:00:00Z")
+            ));
+            EventSession later = eventSessionRepository.save(createSession(
+                    event,
+                    2,
+                    Instant.parse("2026-05-02T10:00:00Z")
+            ));
+            EventSession earlier = eventSessionRepository.save(createSession(
+                    event,
+                    1,
+                    Instant.parse("2026-05-01T10:00:00Z")
+            ));
+
+            EventSessionsResponse response = eventService.getEventSessions(event.getId());
+
+            assertThat(response.sessions())
+                    .extracting(session -> session.sessionId())
+                    .containsExactly(earlier.getId(), later.getId());
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 공연의 회차 목록을 조회하면 RESOURCE_NOT_FOUND 예외가 발생한다")
+        void getEventSessions_notFound() {
+            assertThatThrownBy(() -> eventService.getEventSessions(Long.MAX_VALUE))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);

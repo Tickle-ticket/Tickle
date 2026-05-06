@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
+import com.ssafy.tickle.event.presentation.dto.EventSessionsResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -101,5 +102,25 @@ public interface EventApiDoc {
             Long eventId,
             @Parameter(description = "사용자 식별자")
             Long userId
+    );
+
+    /**
+     * 공연 회차 목록 조회 API 문서 정의입니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 회차 목록 응답
+     */
+    @Operation(
+            summary = "공연 회차 목록 조회",
+            description = "특정 공연의 회차 목록을 시작 시각 오름차순으로 조회합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "공연 회차 목록 조회 성공"
+    )
+    @ApiResponse(responseCode = "404", description = "공연을 찾을 수 없음")
+    ResponseEntity<BaseResponse<EventSessionsResponse>> getEventSessions(
+            @Parameter(description = "공연 식별자", required = true)
+            Long eventId
     );
 }
