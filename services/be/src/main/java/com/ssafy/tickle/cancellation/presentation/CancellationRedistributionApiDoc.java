@@ -1,10 +1,12 @@
 package com.ssafy.tickle.cancellation.presentation;
 
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationOfferDetailResponse;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseRequest;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseResponse;
 import com.ssafy.tickle.common.response.BaseResponse;
-import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,14 +26,15 @@ public interface CancellationRedistributionApiDoc {
             @Parameter(description = "취소표 제안 ID") Long cancellationId
     );
 
-    @Operation(summary = "취소표 무통장 입금 구매 확정", description = "1시간 타이머 내에 취소표를 무통장 입금으로 구매 확정합니다.")
+    @Operation(summary = "취소표 구매 확정", description = "1시간 타이머 내에 취소표를 구매 확정합니다. 무통장 입금 또는 카카오페이를 선택할 수 있습니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "구매 확정(가상계좌 생성) 성공"),
+            @ApiResponse(responseCode = "200", description = "구매 확정 성공"),
             @ApiResponse(responseCode = "409", description = "유효한 구매 가능 시간이 지났거나 상태 오류")
     })
-    ResponseEntity<BaseResponse<BankTransferPrepareResponse>> purchaseCancellation(
+    ResponseEntity<BaseResponse<CancellationPurchaseResponse>> purchaseCancellation(
             @Parameter(hidden = true) Long userId,
-            @Parameter(description = "취소표 제안 ID") Long cancellationId
+            @Parameter(description = "취소표 제안 ID") Long cancellationId,
+            @RequestBody(description = "구매 요청 정보") CancellationPurchaseRequest request
     );
 
     @Operation(summary = "취소표 알림 발송 (내부 시스템 전용)", description = "내부 스케줄러가 호출하여 1순위 후보자에게 문자 알림을 발송하고 1시간 카운트다운을 시작합니다.")

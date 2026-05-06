@@ -2,8 +2,9 @@ package com.ssafy.tickle.cancellation.presentation;
 
 import com.ssafy.tickle.cancellation.application.CancellationRedistributionService;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationOfferDetailResponse;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseRequest;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseResponse;
 import com.ssafy.tickle.common.response.BaseResponse;
-import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,11 +28,12 @@ public class CancellationRedistributionController implements CancellationRedistr
 
     @Override
     @PostMapping("/{cancellationId}/purchase")
-    public ResponseEntity<BaseResponse<BankTransferPrepareResponse>> purchaseCancellation(
+    public ResponseEntity<BaseResponse<CancellationPurchaseResponse>> purchaseCancellation(
             @RequestHeader("X-User-Id") Long userId,
-            @PathVariable Long cancellationId
+            @PathVariable Long cancellationId,
+            @RequestBody CancellationPurchaseRequest request
     ) {
-        BankTransferPrepareResponse response = cancellationRedistributionService.purchaseCancellation(cancellationId, userId);
+        CancellationPurchaseResponse response = cancellationRedistributionService.purchaseCancellation(cancellationId, userId, request);
         return ResponseEntity.ok().body(BaseResponse.success(response));
     }
 

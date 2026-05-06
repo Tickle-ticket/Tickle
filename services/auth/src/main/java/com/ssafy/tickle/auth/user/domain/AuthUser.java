@@ -63,6 +63,9 @@ public class AuthUser {
     @Column(name = "oauth_provider_user_id", length = 100)
     private String oauthProviderUserId;
 
+    @Column(name = "organizer_id")
+    private Long organizerId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -103,6 +106,7 @@ public class AuthUser {
             String phoneNumber,
             OAuthProvider oauthProvider,
             String oauthProviderUserId,
+            Long organizerId,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -112,7 +116,18 @@ public class AuthUser {
         this.phoneNumber = phoneNumber;
         this.oauthProvider = oauthProvider == null ? OAuthProvider.LOCAL : oauthProvider;
         this.oauthProviderUserId = oauthProviderUserId;
+        this.organizerId = organizerId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    /**
+     * 기획사 식별자를 업데이트합니다.
+     *
+     * @param organizerId 기획사 식별자
+     */
+    public void updateOrganizerId(Long organizerId) {
+        this.organizerId = organizerId;
+        this.updatedAt = Instant.now();
     }
 }

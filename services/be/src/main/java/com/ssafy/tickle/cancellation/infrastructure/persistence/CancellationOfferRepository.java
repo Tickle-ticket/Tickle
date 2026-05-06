@@ -30,4 +30,24 @@ public interface CancellationOfferRepository extends JpaRepository<CancellationO
             where co.id = :id
             """)
     Optional<CancellationOffer> findByIdWithDetails(@Param("id") Long id);
+
+    /**
+     * 특정 상태이고 만료 시각이 지난 제안 목록을 조회합니다.
+     */
+    java.util.List<CancellationOffer> findAllByOfferStatusAndOfferExpiresAtBefore(
+            CancellationOffer.OfferStatus offerStatus,
+            java.time.Instant now
+    );
+
+    /**
+     * 특정 좌석에 대해 가장 최근(순번이 가장 높은) 제안을 조회합니다.
+     */
+    @Query("""
+            select co from CancellationOffer co
+            join co.cancellationCandidate cc
+            where cc.sessionSeat.id = :sessionSeatId
+            order by cc.waitingRank desc
+            limit 1
+            """)
+    Optional<CancellationOffer> findLatestBySessionSeatId(@Param("sessionSeatId") Long sessionSeatId);
 }

@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserResponse;
+import com.ssafy.tickle.auth.common.response.BaseResponse;
+import org.springframework.core.ParameterizedTypeReference;
 
 /**
  * BE 서버 내부 API 클라이언트입니다.
@@ -31,16 +34,19 @@ public class BeInternalClient {
      * BE 서버에 tickle_core.users 생성을 요청합니다.
      *
      * @param request 사용자 생성 요청 (userId, userNo, email, name, nickname)
+     * @return 기획사 식별자 (있을 경우)
      * @throws RuntimeException BE 서버 호출 실패 시
      */
-    public void createUser(CreateUserRequest request) {
+    public CreateUserResponse createUser(CreateUserRequest request) {
         log.info("BE 내부 사용자 생성 요청: userId={}", request.userId());
-        beRestClient.post()
+        BaseResponse<CreateUserResponse> response = beRestClient.post()
                 .uri("/internal/v1/users")
                 .header("X-Internal-Secret", internalSecret)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
-                .toBodilessEntity();
+                .body(new ParameterizedTypeReference<BaseResponse<CreateUserResponse>>() {});
+
+        return response != null ? response.data() : null;
     }
 }

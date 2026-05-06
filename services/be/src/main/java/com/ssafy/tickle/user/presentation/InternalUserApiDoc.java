@@ -2,6 +2,7 @@ package com.ssafy.tickle.user.presentation;
 
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.user.presentation.dto.CreateUserRequest;
+import com.ssafy.tickle.user.presentation.dto.CreateUserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -38,7 +39,7 @@ public interface InternalUserApiDoc {
             @ApiResponse(responseCode = "409", description = "이미 존재하는 사용자"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
-    ResponseEntity<BaseResponse<Void>> createUser(
+    ResponseEntity<BaseResponse<CreateUserResponse>> createUser(
             @Parameter(description = "내부 통신 시크릿 키", required = true)
             @RequestHeader("X-Internal-Secret") String secret,
 

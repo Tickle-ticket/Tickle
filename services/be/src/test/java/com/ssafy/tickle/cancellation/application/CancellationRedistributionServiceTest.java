@@ -3,7 +3,9 @@ package com.ssafy.tickle.cancellation.application;
 import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
 import com.ssafy.tickle.cancellation.domain.CancellationOffer;
 import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationOfferRepository;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseRequest;
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.payment.application.KakaoPayPaymentService;
 import com.ssafy.tickle.payment.domain.Payment;
 import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
 import com.ssafy.tickle.payment.infrastructure.persistence.PaymentTransactionRepository;
@@ -57,6 +59,8 @@ class CancellationRedistributionServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private SmsNotificationService smsNotificationService;
+    @Mock
+    private KakaoPayPaymentService kakaoPayPaymentService;
 
     @Test
     @DisplayName("notifyCandidate 호출 시 문자 발송 및 타이머가 시작된다")
@@ -96,8 +100,10 @@ class CancellationRedistributionServiceTest {
         
         given(offerRepository.findByIdWithDetails(1L)).willReturn(Optional.of(offer));
 
+        CancellationPurchaseRequest request = new CancellationPurchaseRequest(Payment.MethodType.BANK_TRANSFER);
+
         // when & then
-        assertThatThrownBy(() -> service.purchaseCancellation(1L, 1L))
+        assertThatThrownBy(() -> service.purchaseCancellation(1L, 1L, request))
                 .isInstanceOf(BaseException.class)
                 .hasMessageContaining("취소표 구매 가능 시간");
     }
@@ -117,8 +123,10 @@ class CancellationRedistributionServiceTest {
         
         given(offerRepository.findByIdWithDetails(1L)).willReturn(Optional.of(offer));
 
+        CancellationPurchaseRequest request = new CancellationPurchaseRequest(Payment.MethodType.BANK_TRANSFER);
+
         // when & then
-        assertThatThrownBy(() -> service.purchaseCancellation(1L, 2L)) // 다른 userId
+        assertThatThrownBy(() -> service.purchaseCancellation(1L, 2L, request)) // 다른 userId
                 .isInstanceOf(BaseException.class)
                 .hasMessageContaining("자신의 취소표만 구매할 수 있습니다.");
     }

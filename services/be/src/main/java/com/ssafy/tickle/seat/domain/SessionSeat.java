@@ -200,4 +200,18 @@ public class SessionSeat {
         this.heldByUserId = null;
         this.updatedAt = Instant.now();
     }
+
+    /**
+     * 재배정 중인 좌석을 일반 판매 상태로 완전히 해제합니다.
+     * 
+     * <p>REALLOCATING 상태인 경우에만 AVAILABLE로 전환 가능합니다.</p>
+     */
+    public void releaseToAvailable() {
+        if (this.saleStatus != SaleStatus.REALLOCATING) {
+            return;
+        }
+        this.saleStatus = SaleStatus.AVAILABLE;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
 }

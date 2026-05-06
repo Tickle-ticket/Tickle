@@ -8,6 +8,7 @@ import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.domain.AuthUser;
 import com.ssafy.tickle.auth.user.infrastructure.client.BeInternalClient;
 import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserRequest;
+import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.KakaoOAuthClient;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
@@ -85,13 +86,9 @@ public class AuthService {
         AuthUser saved = authUserRepository.save(authUser);
 
         String userNo = generateUserNo();
-        String resolvedNickname = request.nickname();
-        if (isBlank(resolvedNickname)) {
-            resolvedNickname = request.name();
-        }
-
+        String resolvedNickname = isBlank(request.nickname()) ? request.name() : request.nickname();
         try {
-            beInternalClient.createUser(new CreateUserRequest(
+            CreateUserResponse beResponse = beInternalClient.createUser(new CreateUserRequest(
                     saved.getId(),
                     userNo,
                     request.email(),
@@ -102,6 +99,10 @@ public class AuthService {
                     request.organizerName(),
                     request.birthDate()
             ));
+            
+            if (beResponse != null && beResponse.organizerId() != null) {
+                saved.updateOrganizerId(beResponse.organizerId());
+            }
         } catch (Exception e) {
             log.error("BE 내부 사용자 생성 실패, 트랜잭션 롤백 예정: userId={}", saved.getId(), e);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
@@ -160,7 +161,7 @@ public class AuthService {
 
         if (existingUser.isPresent()) {
             TokenResponse tokens = issueTokens(existingUser.get());
-            return new KakaoLoginResponse(false, null, tokens.accessToken(), tokens.refreshToken(), tokens.userId());
+            return new KakaoLoginResponse(false, null, tokens.accessToken(), tokens.refreshToken(), tokens.userId(), tokens.organizerId());
         }
 
         // 신규 카카오 유저: 정보 임시 저장 후 가입 유도
@@ -173,7 +174,7 @@ public class AuthService {
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
         }
 
-        return new KakaoLoginResponse(true, signUpToken, null, null, null);
+        return new KakaoLoginResponse(true, signUpToken, null, null, null, null);
     }
 
     /**
@@ -328,19 +329,23 @@ public class AuthService {
 
         String nickname = resolveKakaoNickname(userInfo, providerUserId);
         try {
-            beInternalClient.createUser(new CreateUserRequest(
+            CreateUserResponse beResponse = beInternalClient.createUser(new CreateUserRequest(
                     saved.getId(),
                     generateUserNo(),
                     email,
                     name,
                     nickname,
                     phoneNumber,
-                    saved.getRole(),
+                    AuthUser.Role.USER,
                     null,
                     birthDate
             ));
+            
+            if (beResponse != null && beResponse.organizerId() != null) {
+                saved.updateOrganizerId(beResponse.organizerId());
+            }
         } catch (Exception e) {
-            log.error("BE 내부 Kakao 사용자 생성 실패, 트랜잭션 롤백 예정: userId={}", saved.getId(), e);
+            log.error("Kakao 가입 시 BE 내부 사용자 생성 실패: userId={}", saved.getId(), e);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
         }
 
@@ -376,7 +381,7 @@ public class AuthService {
                 refreshToken,
                 jwtProvider.getRefreshTokenExpirySeconds()
         );
-        return new TokenResponse(accessToken, refreshToken, authUser.getId());
+        return new TokenResponse(accessToken, refreshToken, authUser.getId(), authUser.getOrganizerId());
     }
 
     /**

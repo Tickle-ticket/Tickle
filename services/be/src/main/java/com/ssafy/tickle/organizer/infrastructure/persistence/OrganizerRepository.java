@@ -3,6 +3,7 @@ package com.ssafy.tickle.organizer.infrastructure.persistence;
 import com.ssafy.tickle.organizer.domain.Organizer;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import java.util.Optional;
 
 import java.util.List;
 
@@ -18,4 +19,12 @@ public interface OrganizerRepository extends JpaRepository<Organizer, Long> {
      */
     @Query("select o from Organizer o order by lower(o.organizerName) asc, o.id asc")
     List<Organizer> findAllOrderByOrganizerName();
+
+    /**
+     * 주최자 이름을 기준으로 주최자를 조회합니다.
+     *
+     * @param organizerName 주최자명
+     * @return 주최자 (있을 경우)
+     */
+    Optional<Organizer> findByOrganizerName(String organizerName);
 }

@@ -127,4 +127,21 @@ public class CancellationOffer {
         this.acceptedAt = acceptedAt;
         this.updatedAt = acceptedAt;
     }
+
+    /**
+     * 제안을 만료 처리합니다.
+     */
+    public void expire() {
+        this.offerStatus = OfferStatus.EXPIRED;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 제안을 거절(패스) 처리합니다.
+     */
+    public void pass() {
+        this.offerStatus = OfferStatus.PASSED;
+        this.passedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
 }

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param accessToken  기존 회원일 경우 발급되는 Access Token (isNewUser=false 일 때만 존재)
  * @param refreshToken 기존 회원일 경우 발급되는 Refresh Token
  * @param userId       기존 회원일 경우 사용자 식별자
+ * @param organizerId  기획사 식별자 (isNewUser=false 이고 권한이 기획사일 경우)
  */
 @Schema(description = "카카오 로그인 응답 DTO")
 public record KakaoLoginResponse(
@@ -26,6 +27,9 @@ public record KakaoLoginResponse(
         String refreshToken,
 
         @Schema(description = "사용자 식별자", example = "1")
-        Long userId
+        Long userId,
+
+        @Schema(description = "기획사 식별자", example = "1")
+        Long organizerId
 ) {
 }

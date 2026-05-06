@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.user.application.InternalUserService;
 import com.ssafy.tickle.user.presentation.dto.CreateUserRequest;
+import com.ssafy.tickle.user.presentation.dto.CreateUserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,13 +37,13 @@ public class InternalUserController implements InternalUserApiDoc {
      */
     @PostMapping
     @Override
-    public ResponseEntity<BaseResponse<Void>> createUser(
+    public ResponseEntity<BaseResponse<CreateUserResponse>> createUser(
             @RequestHeader("X-Internal-Secret") String secret,
             @Valid @RequestBody CreateUserRequest request
     ) {
-        internalUserService.createUser(request);
+        Long organizerId = internalUserService.createUser(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BaseResponse.success(SuccessCode.CREATED));
+                .body(BaseResponse.success(SuccessCode.CREATED, new CreateUserResponse(organizerId)));
     }
 }
