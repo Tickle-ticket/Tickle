@@ -12,9 +12,10 @@ interface QueueViewProps {
   onAdmitted: (admitToken: string) => void;
   onClose: () => void;
   fastMode?: boolean;
+  scope?: 'BOOKING' | 'CANCELLATION_WAIT';
 }
 
-export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueViewProps) => {
+export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'BOOKING' }: QueueViewProps) => {
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
@@ -69,12 +70,12 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
 
       try {
         // 1. Enter Queue
-        const enterRes = await enterQueue(sessionId, userId);
+        const enterRes = await enterQueue(sessionId, userId, scope);
         if (isCancelled) return;
         const { requestId } = enterRes.data;
 
         // 2. Get Queue Token
-        const tokenRes = await getQueueToken(sessionId, requestId);
+        const tokenRes = await getQueueToken(sessionId, requestId, scope);
         if (isCancelled) return;
         const { queueToken } = tokenRes.data;
         queueTokenRef.current = queueToken;
@@ -88,7 +89,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
 
         // 3. Get Initial Queue Status
         try {
-          const statusRes = await getQueueStatus(sessionId, queueToken);
+          const statusRes = await getQueueStatus(sessionId, queueToken, scope);
           if (statusRes.data.status === 'WAITING') {
             setRank(statusRes.data.rank);
             setWaitingCount(statusRes.data.waitingCount);
@@ -102,7 +103,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
         }
 
         // 4. Setup SSE
-        eventSource = new EventSource(getQueueStreamUrl(sessionId, queueToken));
+        eventSource = new EventSource(getQueueStreamUrl(sessionId, queueToken, scope));
 
         eventSource.addEventListener('queue-status', (event: MessageEvent) => {
           try {
@@ -172,7 +173,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
         eventSource.close();
       }
       if (queueTokenRef.current && !isLeavingRef.current) {
-        leaveQueue(sessionId, queueTokenRef.current).catch(() => {});
+        leaveQueue(sessionId, queueTokenRef.current, scope).catch(() => {});
       }
     };
   }, [sessionId, onAdmitted]);
@@ -187,7 +188,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
     isExitModalOpenRef.current = false;
     isLeavingRef.current = true;
     if (queueTokenRef.current) {
-      leaveQueue(sessionId, queueTokenRef.current).catch(console.error);
+      leaveQueue(sessionId, queueTokenRef.current, scope).catch(console.error);
     }
     onClose();
   };

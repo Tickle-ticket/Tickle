@@ -6,6 +6,7 @@ import { useSeatData } from '@/src/features/book/api/useSeatData';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { bookingApi } from '@/src/shared/api/bookingApi';
 import { paymentApi } from '@/src/shared/api/paymentApi';
+import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
 import { fetchVenues } from '@/src/shared/api/venueApi';
 
 import { PriceLegend } from '@/src/shared/components/PriceLegend';
@@ -38,11 +39,12 @@ interface BookViewProps {
   initialSeats?: string[];
   initialModifyModeActive?: boolean;
   initialModifyingSchedule?: boolean;
+  admitToken?: string;
 }
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false }: BookViewProps) => {
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken }: BookViewProps) => {
   const isWaitlistMode = mode === 'WAITLIST';
   const isCancelMode = mode === 'CANCEL';
 
@@ -249,7 +251,13 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const { data: seatAvailability, isLoading: isSeatsLoading, error: seatError } = useSeatData(eventDetail?.eventId || null, scheduleId, enableWs);
+  const { data: seatAvailability, isLoading: isSeatsLoading, error: seatError } = useSeatData(
+    eventDetail?.eventId || null, 
+    scheduleId, 
+    enableWs, 
+    mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING', 
+    admitToken || null
+  );
 
   useEffect(() => {
     if (seatError) {
@@ -385,18 +393,22 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         .map(seatId => seatsData[seatId]?.sessionSeatId)
         .filter(Boolean) as number[];
 
-      if (sessionSeatIds.length > 0) {
-        // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
-        await seatApi.holdSeat(eventDetail.eventId, scheduleId!, userId, { sessionSeatIds });
-        
-        // 선점 성공 시 옵션(권종/할인) 데이터 조회
-        await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), userId, sessionSeatIds);
-      }
-
       if (isWaitlistMode) {
+        if (!admitToken) {
+          throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
+        }
+        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, userId, admitToken, { sessionSeatIds });
         await finalizeTrial();
         setIsWaitlistCompleteModalOpen(true);
       } else {
+        if (sessionSeatIds.length > 0) {
+          // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
+          await seatApi.holdSeat(eventDetail.eventId, scheduleId!, userId, { sessionSeatIds });
+          
+          // 선점 성공 시 옵션(권종/할인) 데이터 조회
+          await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), userId, sessionSeatIds);
+        }
+
         const gradeCounts: Record<string, number> = {};
         Array.from(selectedSeats).forEach(seatId => {
           const { grade } = getSeatInfo(seatId);

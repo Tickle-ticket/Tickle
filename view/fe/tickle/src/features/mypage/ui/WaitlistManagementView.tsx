@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useWaitlistBookings } from '@/src/features/mypage/api/useMyPageData';
+import { useWaitlistBookings, useCancelWaitlist } from '@/src/features/mypage/api/useMyPageData';
 import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Table } from '@/src/shared/components/Table';
@@ -9,6 +9,7 @@ import Button from '@/src/shared/components/Button';
 import { Modal } from '@/src/shared/components/Modal';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { BookView } from '@/src/features/book/ui/BookView';
+import { CancellationDetailView } from '@/src/features/cancellation/ui/CancellationDetailView';
 
 export const WaitlistManagementView = () => {
   const { data: waitlist, isLoading } = useWaitlistBookings();
@@ -21,6 +22,10 @@ export const WaitlistManagementView = () => {
   // Modify Flow State
   const [modifyFlowState, setModifyFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK'>('NONE');
   const [selectedWaitlistForModify, setSelectedWaitlistForModify] = useState<any | null>(null);
+  const [admitToken, setAdmitToken] = useState<string | null>(null);
+
+  // Cancellation Flow State
+  const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
 
   const handleOpenCancelModal = (item: any) => {
     setSelectedWaitlistForCancel(item);
@@ -36,10 +41,21 @@ export const WaitlistManagementView = () => {
     }, 300);
   };
 
-  const handleConfirmCancel = () => {
-    // 임시 취소 로직
-    alert('선택한 대기 내역이 취소되었습니다.');
-    handleCloseCancelModal();
+  const cancelWaitlistMutation = useCancelWaitlist();
+
+  const handleConfirmCancel = async () => {
+    try {
+      const cancelPromises = Array.from(selectedSeatsToCancel).map(id => 
+        cancelWaitlistMutation.mutateAsync(id)
+      );
+      await Promise.all(cancelPromises);
+      alert('선택한 대기 내역이 취소되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('취소 처리 중 오류가 발생했습니다.');
+    } finally {
+      handleCloseCancelModal();
+    }
   };
 
   const handleOpenModifyFlow = (item: any) => {
@@ -138,7 +154,10 @@ export const WaitlistManagementView = () => {
                           let badgeClass = '';
                           let barClass = '';
                           
-                          if (seat.waitlistNumber <= 5) {
+                          if (seat.waitlistNumber <= 0) {
+                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.6)] animate-pulse';
+                            barClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
+                          } else if (seat.waitlistNumber <= 5) {
                             badgeClass = 'bg-blue-500/20 text-blue-300 border-blue-500/30 shadow-[0_0_8px_rgba(59,130,246,0.3)]';
                             barClass = 'bg-blue-400 shadow-[0_0_4px_rgba(59,130,246,0.8)]';
                           } else if (seat.waitlistNumber <= 10) {
@@ -152,17 +171,31 @@ export const WaitlistManagementView = () => {
                             barClass = 'bg-red-400 shadow-[0_0_4px_rgba(239,68,68,0.8)]';
                           }
 
+                          const isOffered = seat.waitlistNumber <= 0;
+
                           return (
-                            <div key={seat.id} className="flex justify-between items-center text-[11px] bg-black/20 p-1.5 rounded-lg border border-white/5">
-                              <span className="text-gray-200 font-medium truncate max-w-[110px]">{seat.info}</span>
-                              <div className="flex flex-col items-end gap-1 w-[40px]">
-                                <span className={`px-1.5 py-0.5 rounded border text-[9px] font-extrabold whitespace-nowrap ${badgeClass}`}>
-                                  {seat.waitlistNumber}번
-                                </span>
-                                <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
+                            <div key={seat.id} className={`flex flex-col gap-2 bg-black/20 p-2 rounded-lg border ${isOffered ? 'border-rose-500/50' : 'border-white/5'}`}>
+                              <div className="flex justify-between items-center text-[11px]">
+                                <span className="text-gray-200 font-medium truncate max-w-[110px]">{seat.info}</span>
+                                <div className="flex flex-col items-end gap-1 w-[40px]">
+                                  <span className={`px-1.5 py-0.5 rounded border text-[9px] font-extrabold whitespace-nowrap ${badgeClass}`}>
+                                    {isOffered ? '배정됨!' : `${seat.waitlistNumber}번`}
+                                  </span>
+                                  {!isOffered && (
+                                    <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                                      <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
+                              {isOffered && (
+                                <button
+                                  onClick={() => setSelectedOfferId(seat.id)}
+                                  className="w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[11px] font-bold shadow-lg shadow-rose-500/30 transition-colors"
+                                >
+                                  상세 확인 및 결제
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -207,7 +240,9 @@ export const WaitlistManagementView = () => {
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView 
             sessionId={selectedWaitlistForModify.id || '1'} 
+            scope="CANCELLATION_WAIT"
             onAdmitted={(token) => {
+              setAdmitToken(token);
               setModifyFlowState('BOOK');
             }}
             onClose={() => setModifyFlowState('NONE')}
@@ -223,6 +258,7 @@ export const WaitlistManagementView = () => {
             initialSchedule={{ date: selectedWaitlistForModify.date, time: selectedWaitlistForModify.time }}
             initialSeats={selectedWaitlistForModify.initialSeats}
             initialModifyModeActive={true}
+            admitToken={admitToken || undefined}
             onClose={() => {
               handleCloseModifyFlow();
             }} 
@@ -284,6 +320,13 @@ export const WaitlistManagementView = () => {
           })}
         </div>
       </Modal>
+
+      {selectedOfferId && (
+        <CancellationDetailView
+          cancellationId={selectedOfferId}
+          onClose={() => setSelectedOfferId(null)}
+        />
+      )}
     </div>
   );
 };

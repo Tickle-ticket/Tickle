@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMyBookings, useCancelBooking, useBookingDetail } from '@/src/features/mypage/api/useMyPageData';
 import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
@@ -46,7 +46,21 @@ export const MyBookingsView = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
 
-  const { data: bookingDetail, isLoading: isDetailLoading } = useBookingDetail(selectedDetailId);
+  const { data: bookingDetail, isLoading: isDetailLoading, error: detailError } = useBookingDetail(selectedDetailId);
+
+  useEffect(() => {
+    if (detailError) {
+      handleCloseDetailModal();
+      const err = detailError as any;
+      if (err.status === 403) {
+        setErrorModalConfig({ isOpen: true, title: '권한 없음', message: '해당 예매 상세 정보를 볼 권한이 없습니다.' });
+      } else if (err.status === 404) {
+        setErrorModalConfig({ isOpen: true, title: '예매 없음', message: '존재하지 않는 예매 내역입니다.' });
+      } else {
+        setErrorModalConfig({ isOpen: true, title: '조회 오류', message: err.message || '상세 정보를 불러오는 중 오류가 발생했습니다.' });
+      }
+    }
+  }, [detailError]);
 
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedBarcodeText, setSelectedBarcodeText] = useState<string | null>(null);
@@ -103,7 +117,7 @@ export const MyBookingsView = () => {
           } else if (err.status === 409) {
             setErrorModalConfig({ isOpen: true, title: '이미 취소됨', message: '이미 취소 처리된 예매 내역입니다.' });
           } else {
-            setErrorModalConfig({ isOpen: true, title: '취소 오류', message: '예매 취소 중 알 수 없는 오류가 발생했습니다.' });
+            setErrorModalConfig({ isOpen: true, title: '취소 오류', message: err.message || '예매 취소 중 알 수 없는 오류가 발생했습니다.' });
           }
         }
       });
