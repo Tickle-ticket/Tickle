@@ -61,3 +61,4 @@ automouse_data.json
 # --- ingest ---
 .gradle/
 build/
+bin/
