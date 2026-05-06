@@ -50,7 +50,7 @@ public class CancellationWaitCandidateService {
             CancellationWaitCandidateCreateRequest request
     ) {
         // 예매 대기 페이지 입장과 같은 scope의 admitToken인지 재검증해 직접 호출을 차단합니다.
-        queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, scheduleId, userId, admitToken);
+        queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, eventId, userId, admitToken);
 
         // 같은 요청 안의 중복 좌석은 동일 좌석에 여러 순번을 만들 수 있으므로 먼저 제거하지 않고 거부합니다.
         List<Long> requestedSeatIds = validateAndNormalizeSeatIds(request.sessionSeatIds());

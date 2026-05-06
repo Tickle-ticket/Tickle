@@ -52,7 +52,7 @@ public class CancellationWaitSeatSseService {
     @Transactional(readOnly = true)
     public SseEmitter subscribe(Long eventId, Long scheduleId, Long userId, String admitToken) {
         validateSession(eventId, scheduleId);
-        queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, scheduleId, userId, admitToken);
+        queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, eventId, userId, admitToken);
 
         SseEmitter emitter = new SseEmitter(CancellationWaitSeatSseEmitterRepository.timeoutMillis());
         sseEmitterRepository.add(scheduleId, emitter);
