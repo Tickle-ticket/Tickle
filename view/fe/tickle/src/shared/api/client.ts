@@ -11,6 +11,14 @@ import {
 } from './tokenManager';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const AUTH_ENDPOINT_PATTERNS = [
+  '/auth/login',
+  '/auth/signup',
+  '/auth/logout',
+  '/auth/reissue',
+  '/auth/kakao',
+  '/auth/phone/',
+];
 
 const buildUrl = (path: string, params?: RequestOptions['params']) => {
   const base = BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
@@ -56,7 +64,7 @@ export const apiClient = async <T, A = any, I = any>(
     const response = await fetch(url, config);
 
     // 인증 관련 API는 401을 토큰 갱신이 아닌 일반 에러로 처리
-    const isAuthEndpoint = path.includes('/auth/login') || path.includes('/auth/register') || path.includes('/auth/refresh');
+    const isAuthEndpoint = AUTH_ENDPOINT_PATTERNS.some((pattern) => path.includes(pattern));
 
     // 401 또는 302(리다이렉트) 발생 시 인증 만료로 간주하여 TokenManager 핸들러로 위임
     if (!isAuthEndpoint && (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302)) {

@@ -4,12 +4,18 @@ import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
-import { normalizeImageUrl } from '@/src/shared/utils/imageUrl';
+import { getUserId } from '@/src/shared/api/tokenManager';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
     queryFn: async () => {
-      const response = await getFavoriteEvents(0, 100);
+      const userId = getUserId();
+
+      if (userId === null) {
+        return [] as PerformanceData[];
+      }
+
+      const response = await getFavoriteEvents(0, 100, userId);
       const data = response.data;
       return data.items.map((item) => ({
         id: String(item.eventId),
@@ -78,10 +84,7 @@ export const usePastBookings = () => {
     queryKey: ['pastBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
-      return response.data.map((item) => ({
-        ...item,
-        imageUrl: normalizeImageUrl(item.imageUrl),
-      }));
+      return response.data;
     },
   });
 };
@@ -91,10 +94,7 @@ export const useWaitlistBookings = () => {
     queryKey: ['waitlistBookings'],
     queryFn: async () => {
       const response = await http.get<ApiResponse<WaitlistBookingData[]>>('/api/v1/mypage/waitlist');
-      return response.data.map((item) => ({
-        ...item,
-        imageUrl: normalizeImageUrl(item.imageUrl),
-      }));
+      return response.data;
     },
   });
 };
