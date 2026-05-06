@@ -59,9 +59,9 @@ public class User {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
-    // 기획사명
-    @Column(name = "organizer_name", length = 200)
-    private String organizerName;
+    // 기획사 식별자 (ORGANIZER 권한일 경우 필수)
+    @Column(name = "organizer_id")
+    private Long organizerId;
 
     // 권한
     @Enumerated(EnumType.STRING)
@@ -106,7 +106,7 @@ public class User {
      * @param nickname        닉네임
      * @param profileImageUrl 프로필 이미지 URL
      * @param birthDate       생년월일
-     * @param organizerName   기획사명
+     * @param organizerId     기획사 식별자
      * @param role            사용자 권한
      * @param status          사용자 상태
      * @param lastLoginAt     마지막 로그인 시각
@@ -123,7 +123,7 @@ public class User {
             String nickname,
             String profileImageUrl,
             LocalDate birthDate,
-            String organizerName,
+            Long organizerId,
             UserRole role,
             Status status,
             Instant lastLoginAt,
@@ -138,7 +138,7 @@ public class User {
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.birthDate = birthDate;
-        this.organizerName = organizerName;
+        this.organizerId = organizerId;
         this.role = role;
         this.status = status;
         this.lastLoginAt = lastLoginAt;

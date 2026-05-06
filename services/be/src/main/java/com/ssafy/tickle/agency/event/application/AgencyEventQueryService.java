@@ -19,6 +19,8 @@ import com.ssafy.tickle.seat.domain.EventSeat;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +53,7 @@ public class AgencyEventQueryService {
     private final OrganizerRepository organizerRepository;
     private final EventSeatRepository eventSeatRepository;
     private final SessionSeatRepository sessionSeatRepository;
+    private final UserRepository userRepository;
 
     /**
      * 기획사 공연 목록을 조회합니다.
@@ -60,8 +63,8 @@ public class AgencyEventQueryService {
      * @param size 페이지 크기
      * @return 공연 목록 응답
      */
-    public AgencyEventListResponse getEvents(Long organizerId, int page, int size) {
-        validateOrganizerExists(organizerId);
+    public AgencyEventListResponse getEvents(Long userId, int page, int size) {
+        Long organizerId = getOrganizerIdByUserId(userId);
 
         Pageable pageable = PageRequest.of(
                 page,
@@ -109,14 +112,21 @@ public class AgencyEventQueryService {
     }
 
     /**
-     * 기획사 존재 여부를 검증합니다.
-     *
-     * @param organizerId 기획사 식별자
+     * 유저 식별자를 통해 소속 기획사 식별자를 조회합니다.
      */
-    private void validateOrganizerExists(Long organizerId) {
-        if (!organizerRepository.existsById(organizerId)) {
-            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "기획사를 찾을 수 없습니다.");
+    private Long getOrganizerIdByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+        if (user.getOrganizerId() == null) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "기획사 권한이 없는 사용자입니다.");
         }
+
+        if (!organizerRepository.existsById(user.getOrganizerId())) {
+            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "소속 기획사를 찾을 수 없습니다.");
+        }
+
+        return user.getOrganizerId();
     }
 
     /**

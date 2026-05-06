@@ -8,6 +8,7 @@ import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.domain.AuthUser;
 import com.ssafy.tickle.auth.user.infrastructure.client.BeInternalClient;
 import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserRequest;
+import com.ssafy.tickle.auth.user.infrastructure.client.dto.CreateUserResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.KakaoOAuthClient;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
@@ -140,7 +141,7 @@ class AuthServiceTest {
             given(phoneVerificationService.isVerified(PHONE)).willReturn(true);
             given(passwordEncoder.encode(PASSWORD)).willReturn(ENCODED_PW);
             given(authUserRepository.save(any(AuthUser.class))).willReturn(userAuthUser);
-            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
+            given(beInternalClient.createUser(any(CreateUserRequest.class))).willReturn(new CreateUserResponse(null));
             willDoNothing().given(phoneVerificationService).clearVerified(PHONE);
             given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.USER)).willReturn(ACCESS_TOKEN);
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
@@ -165,7 +166,7 @@ class AuthServiceTest {
             given(phoneVerificationService.isVerified(PHONE)).willReturn(true);
             given(passwordEncoder.encode(PASSWORD)).willReturn(ENCODED_PW);
             given(authUserRepository.save(any(AuthUser.class))).willReturn(organizerAuthUser);
-            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
+            given(beInternalClient.createUser(any(CreateUserRequest.class))).willReturn(new CreateUserResponse(null));
             willDoNothing().given(phoneVerificationService).clearVerified(PHONE);
             given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.ORGANIZER)).willReturn(ACCESS_TOKEN);
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
@@ -288,7 +289,7 @@ class AuthServiceTest {
             given(phoneVerificationService.isVerified(PHONE)).willReturn(true);
             given(passwordEncoder.encode(PASSWORD)).willReturn(ENCODED_PW);
             given(authUserRepository.save(any(AuthUser.class))).willReturn(userAuthUser);
-            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
+            given(beInternalClient.createUser(any(CreateUserRequest.class))).willReturn(new CreateUserResponse(null));
             willDoNothing().given(phoneVerificationService).clearVerified(PHONE);
             given(jwtProvider.issueAccessToken(any(), any())).willReturn(ACCESS_TOKEN);
             given(jwtProvider.issueRefreshToken(any())).willReturn(REFRESH_TOKEN);
@@ -393,7 +394,7 @@ class AuthServiceTest {
             
             given(authUserRepository.existsByEmail(EMAIL)).willReturn(false);
             given(authUserRepository.save(any(AuthUser.class))).willReturn(kakaoAuthUser);
-            willDoNothing().given(beInternalClient).createUser(any(CreateUserRequest.class));
+            given(beInternalClient.createUser(any(CreateUserRequest.class))).willReturn(new CreateUserResponse(null));
             given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.USER)).willReturn(ACCESS_TOKEN);
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);

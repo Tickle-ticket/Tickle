@@ -135,11 +135,27 @@ public class SessionSeat {
      * 이미 해제됐거나 다른 상태인 경우 조용히 무시합니다 (멱등성).</p>
      */
     public void release() {
-        if (this.saleStatus != SaleStatus.HELD) {
+        if (this.saleStatus != SaleStatus.HELD && this.saleStatus != SaleStatus.REALLOCATING) {
             return;
         }
         this.saleStatus = SaleStatus.AVAILABLE;
         this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 취소표 재배분 중인 좌석을 구매하기 위해 선점 상태로 전환합니다.
+     *
+     * <p>REALLOCATING 상태인 경우에만 HELD로 전환 가능합니다.</p>
+     *
+     * @param userId 선점 사용자 식별자
+     */
+    public void holdForCancellation(Long userId) {
+        if (this.saleStatus != SaleStatus.REALLOCATING) {
+            throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
+        }
+        this.saleStatus = SaleStatus.HELD;
+        this.heldByUserId = userId;
         this.updatedAt = Instant.now();
     }
 
@@ -197,6 +213,20 @@ public class SessionSeat {
             throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
         }
         this.saleStatus = SaleStatus.CONFIRMED;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * 재배정 중인 좌석을 일반 판매 상태로 완전히 해제합니다.
+     * 
+     * <p>REALLOCATING 상태인 경우에만 AVAILABLE로 전환 가능합니다.</p>
+     */
+    public void releaseToAvailable() {
+        if (this.saleStatus != SaleStatus.REALLOCATING) {
+            return;
+        }
+        this.saleStatus = SaleStatus.AVAILABLE;
         this.heldByUserId = null;
         this.updatedAt = Instant.now();
     }

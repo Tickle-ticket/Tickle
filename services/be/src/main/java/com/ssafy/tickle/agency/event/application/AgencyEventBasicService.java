@@ -19,9 +19,12 @@ import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
+import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +55,7 @@ public class AgencyEventBasicService {
     private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final VenueRepository venueRepository;
+    private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
 
     /**
@@ -67,6 +71,7 @@ public class AgencyEventBasicService {
      */
     @Transactional
     public AgencyCreateEventResponse createBasicEvent(
+            Long userId,
             AgencyCreateEventBasicRequest request,
             MultipartFile posterImage,
             List<MultipartFile> detailImages
@@ -75,7 +80,7 @@ public class AgencyEventBasicService {
         validatePosterImage(posterImage);
         validateDetailImages(detailImages);
 
-        Organizer organizer = getOrganizer(request.organizerId());
+        Organizer organizer = getOrganizerByUserId(userId);
         Venue venue = getVenue(request.venueId());
         Category category = getCategory(request.categoryId());
 
@@ -245,11 +250,18 @@ public class AgencyEventBasicService {
     }
 
     /**
-     * 기획사를 조회합니다.
+     * 유저 식별자를 통해 소속 기획사를 조회합니다.
      */
-    private Organizer getOrganizer(Long organizerId) {
-        return organizerRepository.findById(organizerId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "기획사를 찾을 수 없습니다."));
+    private Organizer getOrganizerByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        
+        if (user.getOrganizerId() == null) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "기획사 권한이 없는 사용자입니다.");
+        }
+
+        return organizerRepository.findById(user.getOrganizerId())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "소속 기획사를 찾을 수 없습니다."));
     }
 
     /**

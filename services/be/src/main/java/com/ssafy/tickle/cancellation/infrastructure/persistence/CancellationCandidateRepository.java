@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 취소 대기 후보 엔티티를 조회하고 저장하는 JPA 리포지토리입니다.
@@ -124,6 +125,23 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
             where c.sessionSeat.id = :sessionSeatId
             """)
     Integer findMaxWaitingRankBySessionSeatId(@Param("sessionSeatId") Long sessionSeatId);
+
+    /**
+     * 특정 좌석에 대해 특정 순번보다 큰 첫 번째 대기자를 조회합니다.
+     */
+    Optional<CancellationCandidate> findFirstBySessionSeatIdAndStatusAndWaitingRankGreaterThanOrderByWaitingRankAsc(
+            Long sessionSeatId,
+            CancellationCandidate.Status status,
+            Integer waitingRank
+    );
+
+    /**
+     * 특정 좌석에 대해 가장 낮은 순번(1번 등)의 대기자를 조회합니다.
+     */
+    Optional<CancellationCandidate> findFirstBySessionSeatIdAndStatusOrderByWaitingRankAsc(
+            Long sessionSeatId,
+            CancellationCandidate.Status status
+    );
 
     /**
      * 좌석별 활성 예매 대기 인원 수 조회 결과입니다.

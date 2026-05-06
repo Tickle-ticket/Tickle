@@ -57,3 +57,8 @@ cloud:
     credentials:
       access-key: test-access-key
       secret-key: test-secret-key
+
+coolsms:
+  api-key: test-key
+  api-secret: test-secret
+  sender-number: 01000000000

@@ -26,6 +26,9 @@ import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -79,6 +82,9 @@ class AgencyEventQueryServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private Organizer organizer;
     private Venue venue;
     private Category category;
@@ -89,12 +95,22 @@ class AgencyEventQueryServiceTest {
     private EventSeat vipSeat1;
     private EventSeat vipSeat2;
     private EventSeat rSeat1;
+    private User agencyUser;
 
     @BeforeEach
     void setUp() {
         organizer = organizerRepository.save(createOrganizer("조회 테스트 기획사"));
         venue = venueRepository.save(createVenue("조회 테스트 공연장"));
         category = categoryRepository.save(createCategory("콘서트"));
+
+        agencyUser = userRepository.save(User.builder()
+                .id(2001L)
+                .userNo("USER-2001")
+                .name("조회테스트기획자")
+                .role(UserRole.ORGANIZER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizer.getId())
+                .build());
 
         detailEvent = eventRepository.save(createEvent(
                 "상세 조회 공연",
@@ -170,6 +186,7 @@ class AgencyEventQueryServiceTest {
         eventImageRepository.deleteAllInBatch();
         eventPricePolicyRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
         categoryRepository.deleteAllInBatch();
         organizerRepository.deleteAllInBatch();
@@ -178,7 +195,7 @@ class AgencyEventQueryServiceTest {
     @Test
     @DisplayName("기획사 공연 목록 조회 시 예매율을 포함한 목록을 반환한다")
     void getEvents_success() {
-        AgencyEventListResponse response = agencyEventQueryService.getEvents(organizer.getId(), 0, 20);
+        AgencyEventListResponse response = agencyEventQueryService.getEvents(agencyUser.getId(), 0, 20);
 
         assertThat(response.items()).hasSize(2);
         assertThat(response.items().get(0).eventName()).isEqualTo("목록 조회 비교 공연");

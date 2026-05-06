@@ -22,9 +22,6 @@ import java.util.List;
  * @param notice       공지사항
  */
 public record AgencyCreateEventBasicRequest(
-        @NotNull(message = "organizerId는 필수입니다.")
-        Long organizerId,
-
         @NotNull(message = "venueId는 필수입니다.")
         Long venueId,
 

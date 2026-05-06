@@ -14,6 +14,7 @@ import com.ssafy.tickle.reservation.presentation.dto.ReservationTicketResponse;
 import com.ssafy.tickle.seat.domain.SeatStatusChangedEvent;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
+import com.ssafy.tickle.cancellation.application.CancellationRedistributionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class ReservationService {
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final SessionSeatRepository sessionSeatRepository;
+    private final CancellationRedistributionService cancellationRedistributionService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -116,16 +118,22 @@ public class ReservationService {
                 .toList();
 
         boolean isDraft = booking.getBookingStatus() == Booking.Status.DRAFT;
+        boolean isCancellationOffer = booking.getCancellationOfferId() != null;
         SessionSeat.SaleStatus nextSeatStatus;
 
-        if (isDraft) {
-            // DRAFT: 결제 전이므로 좌석을 AVAILABLE로 즉시 복귀
+        if (isDraft && !isCancellationOffer) {
+            // 일반 DRAFT: 결제 전이므로 좌석을 AVAILABLE로 즉시 복귀
             seats.forEach(SessionSeat::release);
             nextSeatStatus = SessionSeat.SaleStatus.AVAILABLE;
         } else {
-            // PENDING_PAYMENT / CONFIRMED: 취소표 재배분 대기
+            // PENDING_PAYMENT / CONFIRMED / 취소표 DRAFT: 취소표 재배분 대기
             seats.forEach(SessionSeat::cancelForReallocation);
             nextSeatStatus = SessionSeat.SaleStatus.REALLOCATING;
+            
+            // 만약 취소표 예매였다면, 관련 제안을 PASSED로 바꾸고 다음 사람에게 즉시 넘긴다
+            if (isCancellationOffer) {
+                cancellationRedistributionService.passOffer(booking.getCancellationOfferId(), userId);
+            }
         }
 
         tickets.forEach(ticket -> ticket.cancel(now));

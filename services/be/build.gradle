@@ -47,6 +47,9 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.25.0')
     implementation 'software.amazon.awssdk:s3'
 
+    // CoolSMS
+    implementation 'net.nurigo:sdk:4.3.0'
+
     // Prometheus 메트릭 수집
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
