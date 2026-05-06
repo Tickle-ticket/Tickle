@@ -1,27 +1,8 @@
 import { getAccessToken } from './tokenManager';
-import type { ApiResponse } from './types';
-import type { TrialMetrics, TrialStage } from '@/src/shared/utils/schema';
+import type { TrialMetrics } from '@/src/shared/utils/schema';
+import { BehaviorEventPayload, SendBehaviorEventInput, BehaviorEventResponse } from './types/behavior.types';
 
 const BEHAVIOR_EVENTS_PATH = '/api/behavior/events';
-
-export type BehaviorEventType = TrialStage | 'booking' | string;
-
-export interface BehaviorEventPayload {
-  type: BehaviorEventType;
-  schedule_id: string;
-  // TODO: AI Ingest Server에서 event_id 필드가 분리되면 name 대신 event_id를 함께 전송하도록 확장합니다.
-  name: string;
-  event_date: string;
-  createdAt: string;
-  features: Partial<TrialMetrics>;
-}
-
-export interface SendBehaviorEventInput extends Omit<BehaviorEventPayload, 'createdAt'> {
-  createdAt?: string;
-  requestId?: string;
-}
-
-export type BehaviorEventResponse = ApiResponse<null>;
 
 const buildBehaviorEventsUrl = () => {
   const baseUrl = process.env.NEXT_PUBLIC_AI_INGEST_API_URL || process.env.NEXT_PUBLIC_API_URL || '';

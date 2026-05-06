@@ -5,6 +5,7 @@ export interface SeatStatusData {
   grade: string;
   isAvailable: boolean;
   sessionSeatId?: number; // Backend sessionSeatId
+  detailedInfo?: string;
 }
 
 export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
@@ -12,6 +13,7 @@ export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
 export const useSeatData = (eventId: string | null, scheduleId: string | null, enableWs: boolean = true) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     if (!eventId || !scheduleId) {
@@ -27,7 +29,7 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
     }
 
     let isMounted = true;
-    let socket: WebSocket | null = null;
+    let eventSource: EventSource | null = null;
 
     const fetchInitialSeats = async () => {
       setIsLoading(true);
@@ -53,32 +55,40 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
                 }
               }
 
+              // 백엔드에서 전달받은 구역, 열, 번호를 조합하여 상세 정보 생성
+              // 예: "1층 A구역 A열 1번" (sectionName이 "1층 A구역"인 경우)
+              const detailedInfo = `${section.sectionName} ${seat.rowLabel}열 ${seat.seatNumber}번`;
+
               initialMap[seat.seatLabel] = {
                 grade,
                 isAvailable: seat.saleStatus === 'AVAILABLE',
                 sessionSeatId: seat.sessionSeatId,
+                detailedInfo,
               };
             });
           });
 
           setSeatAvailability(initialMap);
-          connectWebSocket();
+          connectSSE();
         }
       } catch (err) {
         console.error('Failed to fetch initial seats', err);
+        if (isMounted) setError(err);
       } finally {
         if (isMounted) setIsLoading(false);
       }
     };
 
-    const connectWebSocket = () => {
-      // Backend STOMP or raw WebSocket. Assuming raw WS for now based on docs: /topic/seats/{scheduleId}
-      // If the backend uses STOMP, a STOMP client would be needed, but we'll stick to native WS for now as in the original code, just updating URL.
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'wss://api.tickle.com';
-      socket = new WebSocket(`${wsUrl}/topic/seats/${scheduleId}`);
+    const connectSSE = () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/seats/stream`;
+      
+      // EventSource를 사용하여 SSE 스트림 연결
+      eventSource = new EventSource(streamUrl, { withCredentials: true });
 
-      socket.onmessage = (event) => {
-        // Parse incoming update. Assuming backend sends: { seatLabel: string, saleStatus: string } or similar
+      // 커스텀 이벤트 타입이 있다면 eventSource.addEventListener('이름', ...) 으로 변경 가능
+      // 여기서는 기본 onmessage 사용 (백엔드에서 데이터 전송 시 'message' 이벤트라고 가정)
+      eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
           
@@ -98,12 +108,12 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
             });
           }
         } catch (e) {
-          console.error('WS message parse error', e);
+          console.error('SSE message parse error', e);
         }
       };
 
-      socket.onerror = (error) => {
-        console.error('WebSocket Error:', error);
+      eventSource.onerror = (error) => {
+        console.error('SSE Error:', error);
       };
     };
 
@@ -111,9 +121,9 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
 
     return () => {
       isMounted = false;
-      if (socket) socket.close();
+      if (eventSource) eventSource.close();
     };
   }, [eventId, scheduleId, enableWs]);
 
-  return { data: seatAvailability, isLoading };
+  return { data: seatAvailability, isLoading, error };
 };

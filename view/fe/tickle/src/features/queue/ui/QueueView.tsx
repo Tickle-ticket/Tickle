@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { enterQueue, getQueueToken, leaveQueue, getStreamUrl } from '@/src/features/queue/api/queueApi';
+import { enterQueue, getQueueToken, leaveQueue, getQueueStreamUrl, getQueueStatus } from '@/src/shared/api/queueApi';
 import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
 import { Modal } from '@/src/shared/components/Modal';
+import { useUserProfile } from '@/src/shared/api/useUserProfile';
 
 interface QueueViewProps {
   sessionId: string;
@@ -19,13 +20,34 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string; action?: () => void}>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
   
   const queueTokenRef = useRef<string | null>(null);
   const isLeavingRef = useRef<boolean>(false);
   const isExitModalOpenRef = useRef<boolean>(false);
   const pendingAdmitTokenRef = useRef<string | null>(null);
 
+  // useUserProfile 훅을 통해 현재 유저 데이터 가져오기 (없으면 fallback)
+  const { data: userProfile, isLoading: isUserProfileLoading } = useUserProfile();
+
   useEffect(() => {
+    if (isUserProfileLoading) return; // 유저 정보 로딩 중에는 대기
+
+    const userId = userProfile?.userId;
+    if (!userId) {
+      setErrorModalConfig({
+        isOpen: true,
+        title: '로그인 필요',
+        message: '로그인이 필요합니다.',
+        action: () => { window.location.href = '/login'; }
+      });
+      return;
+    }
+
     let eventSource: EventSource | null = null;
     let isCancelled = false;
 
@@ -45,7 +67,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
 
       try {
         // 1. Enter Queue
-        const enterRes = await enterQueue(sessionId);
+        const enterRes = await enterQueue(sessionId, userId);
         if (isCancelled) return;
         const { requestId } = enterRes.data;
 
@@ -62,8 +84,23 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
 
         setStatus('WAITING');
 
-        // 3. Setup SSE
-        eventSource = new EventSource(getStreamUrl(sessionId, queueToken));
+        // 3. Get Initial Queue Status
+        try {
+          const statusRes = await getQueueStatus(sessionId, queueToken);
+          if (statusRes.data.status === 'WAITING') {
+            setRank(statusRes.data.rank);
+            setWaitingCount(statusRes.data.waitingCount);
+            setEstimatedWaitSeconds(statusRes.data.estimatedWaitSeconds);
+          } else if (statusRes.data.status === 'ADMITTED') {
+            onAdmitted(statusRes.data.admitToken || 'at-immediate');
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch initial queue status', err);
+        }
+
+        // 4. Setup SSE
+        eventSource = new EventSource(getQueueStreamUrl(sessionId, queueToken));
 
         eventSource.addEventListener('queue-status', (event: MessageEvent) => {
           try {
@@ -95,7 +132,26 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
           console.warn('EventSource connection error');
         };
 
-      } catch (err) {
+      } catch (err: any) {
+        if (err.status === 400) {
+          setErrorModalConfig({
+            isOpen: true,
+            title: '진입 불가',
+            message: '예매 오픈 전이거나 이미 종료된 회차입니다.',
+            action: () => { if (!isCancelled) onClose(); }
+          });
+          return;
+        }
+        if (err.status === 404) {
+          setErrorModalConfig({
+            isOpen: true,
+            title: '정보 없음',
+            message: '대기열 진입용 회차 오픈 정보를 찾을 수 없습니다.',
+            action: () => { if (!isCancelled) onClose(); }
+          });
+          return;
+        }
+        
         // MSW가 아직 준비되지 않았을 수 있으므로 최대 3회 재시도
         if (attempt < 3 && !isCancelled) {
           await new Promise(r => setTimeout(r, 500 * attempt));
@@ -244,6 +300,21 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode }: QueueVie
         cancelText="계속 대기"
         onConfirm={handleConfirmExit}
         onCancel={handleCancelExit}
+      />
+
+      <Modal
+        isOpen={errorModalConfig.isOpen}
+        onClose={() => {
+          setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
+          if (errorModalConfig.action) errorModalConfig.action();
+        }}
+        title={errorModalConfig.title}
+        description={errorModalConfig.message}
+        confirmText="확인"
+        onConfirm={() => {
+          setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
+          if (errorModalConfig.action) errorModalConfig.action();
+        }}
       />
     </div>
   );

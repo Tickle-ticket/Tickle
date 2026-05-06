@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { EventItem, EventRankingItem, fetchEventList, fetchOpeningSoonEvents, fetchRanking } from '@/src/shared/api/eventApi';
+import { fetchEventList, fetchOpeningSoonEvents, fetchRanking } from '@/src/shared/api/eventApi';
+import type { EventItem, EventRankingItem } from '@/src/shared/api/types/event.types';
 import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
 
@@ -35,7 +36,7 @@ const mapRankingItemToPerformance = (item: EventRankingItem): PerformanceData =>
   imageUrl: item.thumbnailUrl,
   venue: item.venueName,
   date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
-  badges: item.tags || [],
+  badges: item.tags ? [...item.tags] : [],
 });
 
 const mapEventItemToPerformance = (item: EventItem): PerformanceData => ({
@@ -44,7 +45,7 @@ const mapEventItemToPerformance = (item: EventItem): PerformanceData => ({
   imageUrl: item.thumbnailUrl,
   venue: item.venueLocation,
   date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
-  badges: item.metadata?.tags || [],
+  badges: item.metadata?.tags ? [...item.metadata.tags] : [],
   openDate: item.salesStartAt,
 });
 
@@ -99,7 +100,7 @@ export const useHomeUpcoming = () => {
         imageUrl: item.thumbnailUrl,
         venue: item.venueName,
         date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
-        badges: item.tags || [],
+        badges: item.tags ? [...item.tags] : [],
         openDate: item.salesStartAt,
       }) as PerformanceData);
     },

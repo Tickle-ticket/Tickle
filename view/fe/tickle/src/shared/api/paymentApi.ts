@@ -1,122 +1,19 @@
 import { apiClient } from './client';
 import { ApiResponse } from './types';
-import { Schema } from 'effect';
 import { createApiResponseSchema } from '../utils/schema';
-
-export interface PaymentSeatSummary {
-  sessionSeatId: number;
-  seatLabel: string;
-  rowLabel: string;
-  seatNumber: string;
-  ticketPriceAmount: number;
-  serviceFeeAmount: number;
-  finalPriceAmount: number;
-}
-
-export const PaymentSeatSummarySchema = Schema.Struct({
-  sessionSeatId: Schema.Number,
-  seatLabel: Schema.String,
-  rowLabel: Schema.String,
-  seatNumber: Schema.String,
-  ticketPriceAmount: Schema.Number,
-  serviceFeeAmount: Schema.Number,
-  finalPriceAmount: Schema.Number,
-});
-
-export interface PaymentMethodSelectionRequest {
-  bookingId: number;
-  paymentMethod: 'BANK_TRANSFER' | 'KAKAOPAY';
-}
-
-export interface PaymentMethodSelectionResponse {
-  bookingId: number;
-  paymentMethod: 'BANK_TRANSFER' | 'KAKAOPAY';
-  nextAction: 'PREPARE_BANK_TRANSFER' | 'PREPARE_KAKAOPAY';
-}
-
-export const PaymentMethodSelectionResponseSchema = Schema.Struct({
-  bookingId: Schema.Number,
-  paymentMethod: Schema.Literal('BANK_TRANSFER', 'KAKAOPAY'),
-  nextAction: Schema.Literal('PREPARE_BANK_TRANSFER', 'PREPARE_KAKAOPAY'),
-});
-
-export interface KakaoPayReadyRequest {
-  bookingId: number;
-}
-
-export interface KakaoPayReadyResponse {
-  tid: string;
-  nextRedirectPcUrl: string;
-  createdAt: string;
-}
-
-export const KakaoPayReadyResponseSchema = Schema.Struct({
-  tid: Schema.String,
-  nextRedirectPcUrl: Schema.String,
-  createdAt: Schema.String,
-});
-
-export interface BankTransferPrepareRequest {
-  bookingId: number;
-}
-
-export interface BankTransferPrepareResponse {
-  paymentId: number;
-  bookingId: number;
-  bookingNo: string;
-  paymentStatus: string;
-  bookingStatus: string;
-  orderAmount: number;
-  currencyCode: string;
-  bankAccount: string;
-  accountHolder: string;
-  depositDeadline: string;
-  seats: PaymentSeatSummary[];
-}
-
-export const BankTransferPrepareResponseSchema = Schema.Struct({
-  paymentId: Schema.Number,
-  bookingId: Schema.Number,
-  bookingNo: Schema.String,
-  paymentStatus: Schema.String,
-  bookingStatus: Schema.String,
-  orderAmount: Schema.Number,
-  currencyCode: Schema.String,
-  bankAccount: Schema.String,
-  accountHolder: Schema.String,
-  depositDeadline: Schema.String,
-  seats: Schema.Array(PaymentSeatSummarySchema),
-});
-
-export interface PaymentStatusResponse {
-  paymentId: number;
-  bookingId: number;
-  bookingNo: string;
-  paymentMethodType: string;
-  paymentStatus: string;
-  bookingStatus: string;
-  orderAmount: number;
-  currencyCode: string;
-  depositDeadline: string | null;
-  bankAccount: string | null;
-  accountHolder: string | null;
-  seats: PaymentSeatSummary[];
-}
-
-export const PaymentStatusResponseSchema = Schema.Struct({
-  paymentId: Schema.Number,
-  bookingId: Schema.Number,
-  bookingNo: Schema.String,
-  paymentMethodType: Schema.String,
-  paymentStatus: Schema.String,
-  bookingStatus: Schema.String,
-  orderAmount: Schema.Number,
-  currencyCode: Schema.String,
-  depositDeadline: Schema.NullOr(Schema.String),
-  bankAccount: Schema.NullOr(Schema.String),
-  accountHolder: Schema.NullOr(Schema.String),
-  seats: Schema.Array(PaymentSeatSummarySchema),
-});
+import {
+  PaymentMethodSelectionRequest,
+  PaymentMethodSelectionResponse,
+  PaymentMethodSelectionResponseSchema,
+  KakaoPayReadyRequest,
+  KakaoPayReadyResponse,
+  KakaoPayReadyResponseSchema,
+  BankTransferPrepareRequest,
+  BankTransferPrepareResponse,
+  BankTransferPrepareResponseSchema,
+  PaymentStatusResponse,
+  PaymentStatusResponseSchema,
+} from './types/payment.types';
 
 export const paymentApi = {
   selectPaymentMethod: async (
@@ -180,6 +77,36 @@ export const paymentApi = {
       },
       true,
       createApiResponseSchema(PaymentStatusResponseSchema)
+    );
+  },
+
+  approveKakaoPay: async (paymentId: number | string, pgToken: string): Promise<void> => {
+    return apiClient<void>(
+      `/api/v1/payments/kakaopay/approve?paymentId=${paymentId}&pg_token=${pgToken}`,
+      {
+        method: 'GET',
+      },
+      false
+    );
+  },
+
+  failKakaoPay: async (paymentId: number | string): Promise<void> => {
+    return apiClient<void>(
+      `/api/v1/payments/kakaopay/fail?paymentId=${paymentId}`,
+      {
+        method: 'GET',
+      },
+      false
+    );
+  },
+
+  cancelKakaoPay: async (paymentId: number | string): Promise<void> => {
+    return apiClient<void>(
+      `/api/v1/payments/kakaopay/cancel?paymentId=${paymentId}`,
+      {
+        method: 'GET',
+      },
+      false
     );
   },
 };

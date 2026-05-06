@@ -1,5 +1,5 @@
 import React from 'react';
-import type { DiscountInfo } from '@/src/shared/api/eventApi';
+import type { DiscountInfo } from '@/src/shared/api/types/event.types';
 
 export interface GradePrice {
   grade: string;

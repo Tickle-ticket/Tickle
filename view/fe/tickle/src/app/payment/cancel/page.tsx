@@ -1,12 +1,58 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/src/shared/components/Header';
 import { XCircleIcon } from '@heroicons/react/24/solid';
+import { paymentApi } from '@/src/shared/api/paymentApi';
+import { Modal } from '@/src/shared/components/Modal';
 
 export default function PaymentCancelPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentId = searchParams.get('paymentId');
+
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [errorModalConfig, setErrorModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    action: () => { },
+  });
+
+  useEffect(() => {
+    const processCancel = async () => {
+      if (!paymentId) {
+        setIsProcessing(false);
+        return;
+      }
+
+      try {
+        await paymentApi.cancelKakaoPay(paymentId);
+        setIsProcessing(false);
+      } catch (err: any) {
+        setIsProcessing(false);
+
+        let title = '취소 처리 오류';
+        let message = '결제 취소 처리 중 오류가 발생했습니다.';
+
+        if (err.status === 404) {
+          message = '결제 정보를 찾을 수 없습니다.';
+        } else if (err.status === 409) {
+          message = '현재 결제 상태에서는 취소 처리를 할 수 없습니다.';
+        }
+
+        setErrorModalConfig({
+          isOpen: true,
+          title,
+          message,
+          action: () => router.push('/'),
+        });
+      }
+    };
+
+    processCancel();
+  }, [paymentId, router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -15,24 +61,45 @@ export default function PaymentCancelPage() {
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full text-center space-y-6">
           <XCircleIcon className="w-20 h-20 text-gray-400 mx-auto" />
           <h1 className="text-2xl font-extrabold text-gray-900">결제를 취소하셨습니다</h1>
-          <p className="text-gray-500">결제 과정에서 취소되었습니다. 다시 예매를 진행해주세요.</p>
-          
+          <p className="text-gray-500">
+            {isProcessing ? '취소 처리 중입니다...' : '결제 과정에서 취소되었습니다. 다시 예매를 진행해주세요.'}
+          </p>
+
           <div className="flex flex-col gap-3 pt-4">
             <button
-              onClick={() => router.back()}
-              className="w-full py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+              onClick={() => router.push('/')}
+              disabled={isProcessing}
+              className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
-              이전 페이지로 돌아가기
+              다시 예매하기 (홈으로)
             </button>
             <button
               onClick={() => router.push('/')}
-              className="w-full py-4 bg-gray-600 text-white font-bold rounded-xl shadow-lg shadow-gray-600/30 hover:bg-gray-700 transition-colors"
+              disabled={isProcessing}
+              className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
+                  ? 'bg-gray-300 text-white cursor-not-allowed'
+                  : 'bg-gray-600 text-white shadow-lg shadow-gray-600/30 hover:bg-gray-700'
+                }`}
             >
-              홈으로 이동
+              마이페이지에서 결제 재시도
             </button>
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={errorModalConfig.isOpen}
+        title={errorModalConfig.title}
+        description={errorModalConfig.message}
+        confirmText="확인"
+        onConfirm={() => {
+          setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
+          if (errorModalConfig.action) errorModalConfig.action();
+        }}
+      />
     </div>
   );
 }

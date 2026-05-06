@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useMyBookings, useCancelBooking } from '@/src/features/mypage/api/useMyPageData';
+import { useMyBookings, useCancelBooking, useBookingDetail } from '@/src/features/mypage/api/useMyPageData';
 import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { InfoTime } from '@/src/shared/components/InfoTime';
 import { Table } from '@/src/shared/components/Table';
 import { Modal } from '@/src/shared/components/Modal';
-import { BookView } from '@/src/features/book/ui/BookView';
-import { QueueView } from '@/src/features/queue/ui/QueueView';
 
 const isToday = (dateString: string) => {
   const today = new Date();
@@ -42,12 +40,13 @@ export const MyBookingsView = () => {
   const { data: bookings, isLoading } = useMyBookings();
   const { mutate: cancelBooking, isPending: isCanceling } = useCancelBooking();
 
-  const [modifyFlowState, setModifyFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK'>('NONE');
-  const [selectedBookingForModify, setSelectedBookingForModify] = useState<{ id: string, eventId: string, date: string, time: string, initialSeats: string[] } | null>(null);
-
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<{ id: string, initialSeats: string[] } | null>(null);
-  const [seatsToCancel, setSeatsToCancel] = useState<Set<string>>(new Set());
+  const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<{ id: string } | null>(null);
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
+
+  const { data: bookingDetail, isLoading: isDetailLoading } = useBookingDetail(selectedDetailId);
 
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedBarcodeText, setSelectedBarcodeText] = useState<string | null>(null);
@@ -62,82 +61,53 @@ export const MyBookingsView = () => {
     setSelectedBarcodeText(null);
   };
 
-  const getDetailedSeatInfo = (seatId: string) => {
-    const match = seatId.match(/^([a-zA-Z]+)(\d+)$/);
-    if (!match) return seatId;
-    
-    const rowStr = match[1].toUpperCase();
-    const num = parseInt(match[2], 10);
-    
-    let zone = '';
-    if (['A', 'B', 'C'].includes(rowStr)) {
-      zone = num <= 5 ? 'A' : 'B';
-    } else {
-      if (['G', 'H', 'I', 'J'].includes(rowStr)) {
-        zone = num <= 7 ? 'C' : 'D';
-      } else {
-        zone = num <= 8 ? 'C' : 'D';
-      }
-    }
-    
-    return `1층 ${zone}구역 ${rowStr}열 ${num}번`;
+  const handleOpenDetailModal = (bookingId: string) => {
+    setSelectedDetailId(bookingId);
+    setIsDetailModalOpen(true);
   };
 
-  const handleOpenCancelModal = (item: any) => {
-    const match = item.seatInfo.match(/([A-Z]+)석\s+(\d+)매/);
-    const grade = match ? match[1] : 'VIP';
-    const count = match ? parseInt(match[2], 10) : 1;
-    const initialSeats = Array.from({ length: count }).map((_, i) => `${grade}${i + 1}`);
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDetailId(null);
+  };
 
-    setSelectedBookingForCancel({ id: item.id, initialSeats });
-    setSeatsToCancel(new Set()); 
-    setIsCancelModalOpen(true);
+  const handleOpenCancelModal = () => {
+    if (selectedDetailId) {
+      setSelectedBookingForCancel({ id: selectedDetailId });
+      setIsDetailModalOpen(false);
+      setIsCancelModalOpen(true);
+    }
   };
 
   const handleCloseCancelModal = () => {
     setIsCancelModalOpen(false);
     setSelectedBookingForCancel(null);
-    setSeatsToCancel(new Set());
   };
+
+  const [errorModalConfig, setErrorModalConfig] = useState({ isOpen: false, title: '', message: '' });
 
   const handleConfirmCancel = () => {
     if (selectedBookingForCancel) {
       cancelBooking(selectedBookingForCancel.id, {
         onSuccess: () => {
           handleCloseCancelModal();
+        },
+        onError: (err: any) => {
+          handleCloseCancelModal();
+          if (err.status === 400) {
+            setErrorModalConfig({ isOpen: true, title: '취소 불가', message: '현재 취소할 수 없는 예매 상태입니다.' });
+          } else if (err.status === 403) {
+            setErrorModalConfig({ isOpen: true, title: '권한 없음', message: '해당 예매 내역을 취소할 권한이 없습니다.' });
+          } else if (err.status === 404) {
+            setErrorModalConfig({ isOpen: true, title: '예매 없음', message: '취소하려는 예매 내역을 찾을 수 없습니다.' });
+          } else if (err.status === 409) {
+            setErrorModalConfig({ isOpen: true, title: '이미 취소됨', message: '이미 취소 처리된 예매 내역입니다.' });
+          } else {
+            setErrorModalConfig({ isOpen: true, title: '취소 오류', message: '예매 취소 중 알 수 없는 오류가 발생했습니다.' });
+          }
         }
       });
     }
-  };
-
-  const handleOpenModifyFlow = (item: any) => {
-    // 임의의 좌석 데이터 생성 로직 (seatInfo 파싱 후 임시 좌석 ID 주입)
-    const match = item.seatInfo.match(/([A-Z]+)석\s+(\d+)매/);
-    const grade = match ? match[1] : 'VIP';
-    const count = match ? parseInt(match[2], 10) : 1;
-    const initialSeats = Array.from({ length: count }).map((_, i) => `${grade}${i + 1}`);
-    
-    // date와 time 분리
-    const d = new Date(item.performanceDate);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const dateStr = `${year}.${month}.${day}`;
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-
-    setSelectedBookingForModify({
-      id: item.id,
-      eventId: item.eventId,
-      date: dateStr,
-      time: timeStr,
-      initialSeats,
-    });
-    setModifyFlowState('QUEUE');
-  };
-
-  const handleCloseModifyFlow = () => {
-    setModifyFlowState('NONE');
-    setSelectedBookingForModify(null);
   };
 
   return (
@@ -235,16 +205,10 @@ export const MyBookingsView = () => {
                     {/* 하단 액션 버튼들 */}
                     <div className="flex gap-2 mt-4">
                       <button 
-                        onClick={() => handleOpenCancelModal(item)}
-                        className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded-xl font-bold transition-colors text-sm"
+                        onClick={() => handleOpenDetailModal(item.id)}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold transition-colors text-sm shadow-sm"
                       >
-                        취소하기
-                      </button>
-                      <button 
-                        onClick={() => handleOpenModifyFlow(item)}
-                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold transition-colors text-sm shadow-sm"
-                      >
-                        일정 변경
+                        상세 정보 및 취소
                       </button>
                     </div>
                   </div>
@@ -266,71 +230,67 @@ export const MyBookingsView = () => {
         )}
       </div>
 
-      {modifyFlowState === 'QUEUE' && selectedBookingForModify && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <QueueView 
-            sessionId={selectedBookingForModify.id || '1'} 
-            onAdmitted={(token) => {
-              setModifyFlowState('BOOK');
-            }}
-            onClose={() => setModifyFlowState('NONE')}
-          />
-        </div>
-      )}
-
-      {modifyFlowState === 'BOOK' && selectedBookingForModify && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView 
-            eventId={selectedBookingForModify.eventId}
-            mode="CANCEL" 
-            initialSchedule={{ date: selectedBookingForModify.date, time: selectedBookingForModify.time }}
-            initialSeats={selectedBookingForModify.initialSeats}
-            initialModifyModeActive={true}
-            onClose={() => {
-              handleCloseModifyFlow();
-            }} 
-          />
-        </div>
-      )}
-
       <Modal
         isOpen={isCancelModalOpen}
         onClose={handleCloseCancelModal}
         onCancel={handleCloseCancelModal}
         onConfirm={handleConfirmCancel}
-        title="예매 취소"
-        description="취소하실 좌석을 선택해주세요. 취소된 예매는 복구할 수 없습니다."
+        title="예매 전체 취소"
+        description="이 예매 내역을 취소하시겠습니까? 취소된 예매는 복구할 수 없습니다."
         confirmText={isCanceling ? "취소 중..." : "예매 취소하기"}
         cancelText="닫기"
         isLoading={isCanceling}
-        isConfirmDisabled={seatsToCancel.size === 0}
       >
-        <div className="mt-4 flex flex-col gap-2 w-full">
-          {selectedBookingForCancel?.initialSeats.map(seat => (
-            <label key={seat} className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                checked={seatsToCancel.has(seat)}
-                onChange={(e) => {
-                  setSeatsToCancel(prev => {
-                    const next = new Set(prev);
-                    if (e.target.checked) next.add(seat);
-                    else next.delete(seat);
-                    return next;
-                  });
-                }}
-              />
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-gray-900 dark:text-white text-[15px]">
-                  {seat.match(/([a-zA-Z]+)/)?.[1]?.toUpperCase() || 'VIP'}석
-                </span>
-                <span className="text-gray-400 dark:text-gray-500 font-medium text-[12px]">
-                  {getDetailedSeatInfo(seat)}
-                </span>
+        <div className="mt-4 flex flex-col gap-2 w-full text-sm text-red-600 bg-red-50 p-4 rounded-xl border border-red-100">
+          부분 취소는 지원하지 않으며, 포함된 모든 티켓이 일괄 취소됩니다.
+        </div>
+      </Modal>
+
+      {/* 상세 모달 */}
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        title="예매 상세 내역"
+        confirmText="예매 취소하기"
+        cancelText="닫기"
+        onConfirm={handleOpenCancelModal}
+        onCancel={handleCloseDetailModal}
+        isConfirmDisabled={bookingDetail?.bookingStatus === 'CANCELLED'}
+      >
+        <div className="flex flex-col gap-4 mt-2 w-full max-h-[60vh] overflow-y-auto">
+          {isDetailLoading || !bookingDetail ? (
+            <div className="py-10 flex justify-center text-gray-500">불러오는 중...</div>
+          ) : (
+            <>
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <Text typography="t5" fontWeight="bold" className="mb-2">{bookingDetail.eventTitle}</Text>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <p><span className="font-semibold w-20 inline-block text-gray-500">예매 번호</span> {bookingDetail.bookingNo}</p>
+                  <p><span className="font-semibold w-20 inline-block text-gray-500">예매 일시</span> {new Date(bookingDetail.createdAt).toLocaleString()}</p>
+                  <p><span className="font-semibold w-20 inline-block text-gray-500">상태</span> {bookingDetail.bookingStatus}</p>
+                  <p><span className="font-semibold w-20 inline-block text-gray-500">총 결제액</span> {bookingDetail.totalPaymentAmount.toLocaleString()}원</p>
+                </div>
               </div>
-            </label>
-          ))}
+
+              <div>
+                <Text typography="t6" fontWeight="bold" className="mb-2 text-gray-800">티켓 목록 ({bookingDetail.tickets?.length || 0}매)</Text>
+                <div className="flex flex-col gap-2">
+                  {bookingDetail.tickets?.map((ticket) => (
+                    <div key={ticket.ticketNo} className="border border-gray-200 p-3 rounded-lg flex justify-between items-center">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900">{ticket.seatLabel}</span>
+                        <span className="text-xs text-gray-500">{ticket.sectionName} {ticket.rowLabel}열 {ticket.seatNumber}번</span>
+                      </div>
+                      <div className="text-right flex flex-col">
+                        <span className="text-sm font-semibold text-blue-600">{ticket.finalPriceAmount.toLocaleString()}원</span>
+                        <span className="text-[10px] text-gray-400">{ticket.ticketStatus}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
@@ -347,6 +307,17 @@ export const MyBookingsView = () => {
           <div className="text-lg tracking-[0.4em] text-gray-800 mt-4 font-mono font-bold">{selectedBarcodeText}</div>
         </div>
       </Modal>
+
+      {/* 에러 모달 */}
+      <Modal
+        isOpen={errorModalConfig.isOpen}
+        onClose={() => setErrorModalConfig({ ...errorModalConfig, isOpen: false })}
+        title={errorModalConfig.title}
+        description={errorModalConfig.message}
+        confirmText="확인"
+        showCancelButton={false}
+        onConfirm={() => setErrorModalConfig({ ...errorModalConfig, isOpen: false })}
+      />
     </div>
   );
 };

@@ -2,36 +2,8 @@ import { apiClient } from './client';
 import { getUserId } from './tokenManager';
 import { buildUserApiUrl } from './userConfig';
 import { ApiResponse } from './types';
-import { Schema } from 'effect';
 import { createApiResponseSchema } from '../utils/schema';
-
-export interface MyInfoResponseData {
-  userId: number;
-  userNo: string;
-  email: string;
-  phoneNumber: string;
-  name: string;
-  nickname: string;
-  profileImageUrl: string | null;
-  birthDate: string;
-}
-
-export interface UpdateMyInfoRequest {
-  phoneNumber?: string;
-  nickname?: string;
-  profileImageUrl?: string;
-}
-
-export const MyInfoResponseDataSchema = Schema.Struct({
-  userId: Schema.Number,
-  userNo: Schema.String,
-  email: Schema.String,
-  phoneNumber: Schema.String,
-  name: Schema.String,
-  nickname: Schema.String,
-  profileImageUrl: Schema.Union(Schema.String, Schema.Null),
-  birthDate: Schema.String,
-});
+import { MyInfoResponseData, UpdateMyInfoRequest, MyInfoResponseDataSchema } from './types/user.types';
 
 const getRequiredUserId = () => {
   const userId = getUserId();
@@ -54,21 +26,30 @@ export const fetchMyInfo = async (): Promise<ApiResponse<MyInfoResponseData>> =>
 };
 
 export const updateMyInfo = async (request: UpdateMyInfoRequest): Promise<ApiResponse<MyInfoResponseData>> => {
-  const userId = getRequiredUserId();
+  const { userId, nickname, phoneNumber, profileImage } = request;
+  
+  const params: Record<string, string> = { userId: String(userId) };
+  if (nickname) params.nickname = nickname;
+  if (phoneNumber) params.phoneNumber = phoneNumber;
+
+  const formData = new FormData();
+  if (profileImage) {
+    formData.append('profileImage', profileImage);
+  }
+
   return apiClient<ApiResponse<MyInfoResponseData>>(
     buildUserApiUrl('/api/v1/users/me'), 
     {
       method: 'PATCH',
-      params: { userId },
-      body: request,
+      params,
+      body: formData,
     },
     false,
     createApiResponseSchema(MyInfoResponseDataSchema)
   );
 };
 
-export const withdrawMyInfo = async (): Promise<ApiResponse<void>> => {
-  const userId = getRequiredUserId();
+export const withdrawMyInfo = async (userId: number): Promise<ApiResponse<void>> => {
   return apiClient<ApiResponse<void>>(buildUserApiUrl('/api/v1/users/me'), {
     method: 'DELETE',
     params: { userId },

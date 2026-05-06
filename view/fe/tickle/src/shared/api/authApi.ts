@@ -2,46 +2,32 @@ import { apiClient } from './client';
 import { buildAuthApiUrl } from './authConfig';
 import { ApiResponse } from './types';
 
-export interface TokenResponse {
-  accessToken: string;
-  refreshToken: string;
-  userId: number;
-}
-
-export interface SignUpRequest {
-  email: string;
-  password?: string;
-  name: string;
-  nickname?: string;
-  birthDate?: string;
-  phoneNumber?: string;
-  role?: 'USER' | 'ORGANIZER';
-  organizerId?: number;
-  organizerName?: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password?: string;
-}
-
-export interface ReissueRequest {
-  refreshToken: string;
-}
+import { TokenResponse, SignUpRequest, LoginRequest, ReissueRequest, TokenResponseSchema } from './types/auth.types';
+import { createApiResponseSchema } from '../utils/schema';
 
 export const authApi = {
   login: async (request: LoginRequest): Promise<ApiResponse<TokenResponse>> => {
-    return apiClient<ApiResponse<TokenResponse>>(buildAuthApiUrl('/api/v1/auth/login'), {
-      method: 'POST',
-      body: request,
-    });
+    return apiClient<ApiResponse<TokenResponse>>(
+      buildAuthApiUrl('/api/v1/auth/login'),
+      {
+        method: 'POST',
+        body: request,
+      },
+      false,
+      createApiResponseSchema(TokenResponseSchema)
+    );
   },
 
   signup: async (request: SignUpRequest): Promise<ApiResponse<TokenResponse>> => {
-    return apiClient<ApiResponse<TokenResponse>>(buildAuthApiUrl('/api/v1/auth/signup'), {
-      method: 'POST',
-      body: request,
-    });
+    return apiClient<ApiResponse<TokenResponse>>(
+      buildAuthApiUrl('/api/v1/auth/signup'),
+      {
+        method: 'POST',
+        body: request,
+      },
+      false,
+      createApiResponseSchema(TokenResponseSchema)
+    );
   },
 
   logout: async (): Promise<ApiResponse<void>> => {
@@ -51,16 +37,26 @@ export const authApi = {
   },
 
   reissue: async (request: ReissueRequest): Promise<ApiResponse<TokenResponse>> => {
-    return apiClient<ApiResponse<TokenResponse>>(buildAuthApiUrl('/api/v1/auth/reissue'), {
-      method: 'POST',
-      body: request,
-    });
+    return apiClient<ApiResponse<TokenResponse>>(
+      buildAuthApiUrl('/api/v1/auth/reissue'),
+      {
+        method: 'POST',
+        body: request,
+      },
+      false,
+      createApiResponseSchema(TokenResponseSchema)
+    );
   },
 
   kakaoCallback: async (code: string): Promise<ApiResponse<TokenResponse>> => {
-    return apiClient<ApiResponse<TokenResponse>>(buildAuthApiUrl(`/api/v1/auth/kakao/callback?code=${code}`), {
-      method: 'GET',
-    });
+    return apiClient<ApiResponse<TokenResponse>>(
+      buildAuthApiUrl(`/api/v1/auth/kakao/callback?code=${code}`),
+      {
+        method: 'GET',
+      },
+      false,
+      createApiResponseSchema(TokenResponseSchema)
+    );
   },
 
   sendPhoneCode: async (request: { phoneNumber: string }): Promise<ApiResponse<void>> => {
