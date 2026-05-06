@@ -7,14 +7,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 어드민 봇 탐지 현황 API를 제공하는 컨트롤러입니다.
  */
 @RestController
-@RequestMapping("/api/v1/admin/bot-detections")
+@RequestMapping("/api/v1/admin/bot")
 @RequiredArgsConstructor
 public class AdminBotDetectionController implements AdminBotDetectionApiDoc {
 
@@ -27,10 +26,8 @@ public class AdminBotDetectionController implements AdminBotDetectionApiDoc {
      * @return 봇 탐지 현황 통계 응답
      */
     @Override
-    @GetMapping
-    public ResponseEntity<BaseResponse<BotDetectionStatsResponse>> getStats(
-            @RequestParam Long userId
-    ) {
+    @GetMapping("/stats")
+    public ResponseEntity<BaseResponse<BotDetectionStatsResponse>> getStats() {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(botDetectionService.getStats()));
