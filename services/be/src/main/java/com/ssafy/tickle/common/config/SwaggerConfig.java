@@ -12,11 +12,16 @@ public class SwaggerConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
-        Server server = new Server();
+        Server localServer = new Server();
+        localServer.setUrl("http://localhost:8080");
+        localServer.setDescription("Local");
+
+        Server prodServer = new Server();
         // Nginx 환경에서 무조건 HTTPS URL을 사용하도록 강제 설정
-        server.setUrl("https://tickle-ticket.co.kr");
-        
+        prodServer.setUrl("https://tickle-ticket.co.kr");
+        prodServer.setDescription("Production");
+
         return new OpenAPI()
-                .servers(List.of(server));
+                .servers(List.of(localServer, prodServer));
     }
 }

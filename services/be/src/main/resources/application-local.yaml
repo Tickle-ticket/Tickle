@@ -72,6 +72,9 @@ management:
       endpoint: http://${SERVER3_PRIVATE_IP}:4318/v1/traces
 
 springdoc:
+  # 코드 변경 후 서버 재시작 시 Swagger 즉시 반영되도록 캐시 비활성화
+  cache:
+    disabled: true
   # Swagger UI와 OpenAPI 문서 경로 설정
   swagger-ui:
     path: /swagger-ui.html
