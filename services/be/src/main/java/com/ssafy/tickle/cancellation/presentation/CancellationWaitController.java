@@ -4,6 +4,7 @@ import com.ssafy.tickle.cancellation.application.CancellationWaitCandidateServic
 import com.ssafy.tickle.cancellation.application.CancellationWaitSeatService;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateListResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapResponse;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -88,5 +90,43 @@ public class CancellationWaitController implements CancellationWaitApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(SuccessCode.OK, response));
+    }
+
+    /**
+     * 사용자의 예매 대기 신청 목록을 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @return 예매 대기 신청 목록
+     */
+    @Override
+    @GetMapping("/cancellation-wait/candidates")
+    public ResponseEntity<BaseResponse<CancellationWaitCandidateListResponse>> getMyCandidates(
+            @RequestParam Long userId
+    ) {
+        CancellationWaitCandidateListResponse response = cancellationWaitCandidateService.getMyCandidates(userId);
+
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK, response));
+    }
+
+    /**
+     * 사용자의 예매 대기 신청을 취소합니다.
+     *
+     * @param candidateId 예매 대기 신청 식별자
+     * @param userId 사용자 식별자
+     * @return 취소 결과
+     */
+    @Override
+    @DeleteMapping("/cancellation-wait/candidates/{candidateId}")
+    public ResponseEntity<BaseResponse<Void>> cancelCandidate(
+            @PathVariable Long candidateId,
+            @RequestParam Long userId
+    ) {
+        cancellationWaitCandidateService.cancelCandidate(candidateId, userId);
+
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK));
     }
 }
