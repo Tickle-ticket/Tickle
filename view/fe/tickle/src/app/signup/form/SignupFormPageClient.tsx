@@ -401,7 +401,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         if (!formData.birthDate) {
           nextErrors.birthDate = '생년월일을 입력해 주세요.';
         } else if (!isValidBirthDate(formData.birthDate)) {
-          nextErrors.birthDate = '생년월일은 YYYY-MM-DD 형식으로 입력해 주세요.';
+          nextErrors.birthDate = '올바른 생년월일을 선택해 주세요.';
         }
       }
     }
