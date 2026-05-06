@@ -50,6 +50,14 @@ public class Blacklist {
     @Column(name = "blocked_by")
     private Long blockedBy;
 
+    // 탐지 당시 IP 주소 (IP_RATE_LIMIT 탐지 시 저장, 그 외 null)
+    @Column(name = "ip_address", length = 50)
+    private String ipAddress;
+
+    // AI 서버 봇 판별 확률 (0.0~1.0, AI 탐지 시만 저장)
+    @Column(name = "bot_score")
+    private Double botScore;
+
     // 블랙리스트 등록 시각
     @Column(name = "created_at", columnDefinition = "DATETIME(6) NOT NULL", updatable = false)
     private Instant createdAt;
@@ -73,17 +81,21 @@ public class Blacklist {
     /**
      * 블랙리스트 엔티티를 생성합니다.
      *
-     * @param userId    블랙리스트 대상 사용자 ID
-     * @param reason    등록 사유
-     * @param detail    상세 설명 (nullable)
-     * @param blockedBy 등록 관리자 ID (자동 탐지 시 null)
+     * @param userId     블랙리스트 대상 사용자 ID
+     * @param reason     등록 사유
+     * @param detail     상세 설명 (nullable)
+     * @param blockedBy  등록 관리자 ID (자동 탐지 시 null)
+     * @param ipAddress  탐지 당시 IP 주소 (IP_RATE_LIMIT 탐지 시, 그 외 null)
+     * @param botScore   AI 서버 봇 판별 확률 (0.0~1.0, AI 탐지 시만 저장)
      */
     @Builder
-    public Blacklist(Long userId, Reason reason, String detail, Long blockedBy) {
+    public Blacklist(Long userId, Reason reason, String detail, Long blockedBy, String ipAddress, Double botScore) {
         this.userId = userId;
         this.reason = reason;
         this.detail = detail;
         this.blockedBy = blockedBy;
+        this.ipAddress = ipAddress;
+        this.botScore = botScore;
         this.createdAt = Instant.now();
     }
 }
