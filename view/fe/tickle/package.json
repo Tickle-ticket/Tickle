@@ -36,7 +36,6 @@
     "@tanstack/react-query-devtools": "^5.99.2",
     "@types/node": "^20",
     "@types/react": "^19",
-    "@types/react-datepicker": "^7.0.0",
     "@types/react-dom": "^19",
     "@vitest/browser-playwright": "^4.1.4",
     "@vitest/coverage-v8": "^4.1.4",
