@@ -78,7 +78,7 @@ pipeline {
             steps {
                 echo '===== [4/4] 배포 완료 확인 ====='
                 sshagent([SSH_CREDENTIAL_ID]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'docker compose ps'"
+                    sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'cd ${TARGET_DIR} && docker compose ps'"
                 }
             }
         }
