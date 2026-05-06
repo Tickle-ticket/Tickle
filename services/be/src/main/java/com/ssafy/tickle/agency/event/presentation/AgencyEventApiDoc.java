@@ -50,8 +50,8 @@ public interface AgencyEventApiDoc {
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
     ResponseEntity<BaseResponse<AgencyEventListResponse>> getEvents(
-            @Parameter(description = "기획사 식별자", required = true, example = "2001")
-            Long organizerId,
+            @Parameter(description = "사용자 식별자 (X-User-Id)", required = true, example = "1001")
+            Long userId,
             @Parameter(description = "페이지 번호", required = true, example = "0")
             int page,
             @Parameter(description = "페이지 크기", required = true, example = "20")
@@ -137,6 +137,8 @@ public interface AgencyEventApiDoc {
     @ApiResponse(responseCode = "404", description = "기획사/공연장/카테고리를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     ResponseEntity<BaseResponse<AgencyCreateEventResponse>> createEvent(
+            @Parameter(description = "사용자 식별자 (X-User-Id)", required = true, example = "1001")
+            Long userId,
             AgencyCreateEventBasicRequest request,
             @Parameter(description = "포스터 이미지 파일 (필수)") MultipartFile posterImage,
             @Parameter(description = "소개 이미지 파일 목록 (선택, 최대 3개)") List<MultipartFile> detailImages
