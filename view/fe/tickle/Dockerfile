@@ -10,8 +10,6 @@ RUN pnpm install --no-frozen-lockfile --shamefully-hoist
 
 COPY . .
 
-RUN NEXT_PUBLIC_API_MOCKING=disabled pnpm build
-
 EXPOSE 3000
 
 CMD ["pnpm", "start"]
