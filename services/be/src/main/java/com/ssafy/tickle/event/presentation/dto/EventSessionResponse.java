@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.presentation.dto;
 
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionItem;
 
 import java.time.Instant;
 
@@ -40,6 +41,18 @@ public record EventSessionResponse(
                 eventSession.getSalesOpenAt(),
                 eventSession.getSalesCloseAt(),
                 eventSession.getStatus()
+        );
+    }
+
+    public static EventSessionResponse from(CachedEventSessionItem item) {
+        return new EventSessionResponse(
+                item.sessionId(),
+                item.sessionNo(),
+                item.startAt(),
+                item.endAt(),
+                item.salesOpenAt(),
+                item.salesCloseAt(),
+                item.status()
         );
     }
 }

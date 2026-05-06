@@ -9,9 +9,11 @@ import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedCategoryRankingResponse;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventRankingItem;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEvent;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEventsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
+import com.ssafy.tickle.event.infrastructure.cache.store.EventSessionsCacheStore;
 import com.ssafy.tickle.event.infrastructure.cache.store.OpeningSoonEventCacheStore;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
@@ -56,6 +58,7 @@ public class EventService {
     private final FavoriteRepository favoriteRepository;
     private final EventRankingCacheStore eventRankingCacheStore;
     private final OpeningSoonEventCacheStore openingSoonEventCacheStore;
+    private final EventSessionsCacheStore eventSessionsCacheStore;
 
     /**
      * 이벤트 상세 정보를 조회합니다.
@@ -92,12 +95,19 @@ public class EventService {
      * @return 공연 회차 목록 응답
      */
     public EventSessionsResponse getEventSessions(Long eventId) {
-        if (!eventRepository.existsById(eventId)) {
-            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다.");
-        }
+        return eventSessionsCacheStore.findByEventId(eventId)
+                .map(EventSessionsResponse::from)
+                .orElseGet(() -> getEventSessionsFromDatabase(eventId));
+    }
+
+    private EventSessionsResponse getEventSessionsFromDatabase(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
 
         List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
-        return EventSessionsResponse.from(sessions);
+        CachedEventSessionsResponse cachedResponse = CachedEventSessionsResponse.from(sessions);
+        eventSessionsCacheStore.save(eventId, cachedResponse, event.getSalesEndAt());
+        return EventSessionsResponse.from(cachedResponse);
     }
 
     /**

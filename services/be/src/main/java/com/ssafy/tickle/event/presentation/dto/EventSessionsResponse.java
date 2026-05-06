@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.presentation.dto;
 
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionsResponse;
 
 import java.util.List;
 
@@ -22,6 +23,14 @@ public record EventSessionsResponse(
     public static EventSessionsResponse from(List<EventSession> sessions) {
         return new EventSessionsResponse(
                 sessions.stream()
+                        .map(EventSessionResponse::from)
+                        .toList()
+        );
+    }
+
+    public static EventSessionsResponse from(CachedEventSessionsResponse response) {
+        return new EventSessionsResponse(
+                response.sessions().stream()
                         .map(EventSessionResponse::from)
                         .toList()
         );

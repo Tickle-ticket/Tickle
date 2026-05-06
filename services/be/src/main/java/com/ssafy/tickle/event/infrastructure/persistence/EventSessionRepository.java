@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.infrastructure.persistence;
 
 import com.ssafy.tickle.event.domain.EventSession;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,6 +22,15 @@ public interface EventSessionRepository extends JpaRepository<EventSession, Long
      * @return 회차 목록
      */
     List<EventSession> findByEventIdOrderByStartAtAsc(Long eventId);
+
+    /**
+     * 여러 공연의 회차를 시작 시각 순으로 조회합니다.
+     *
+     * @param eventIds 이벤트 식별자 목록
+     * @return 회차 목록
+     */
+    @EntityGraph(attributePaths = {"event"})
+    List<EventSession> findByEventIdInOrderByStartAtAsc(List<Long> eventIds);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from EventSession s where s.event.id = :eventId")

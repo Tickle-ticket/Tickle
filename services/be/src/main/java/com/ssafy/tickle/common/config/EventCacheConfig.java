@@ -2,6 +2,7 @@ package com.ssafy.tickle.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedCategoryRankingResponse;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEventsResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,6 +42,21 @@ public class EventCacheConfig {
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(
                 new Jackson2JsonRedisSerializer<>(objectMapper, CachedOpeningSoonEventsResponse.class)
+        );
+        redisTemplate.afterPropertiesSet();
+        return redisTemplate;
+    }
+
+    @Bean
+    public RedisTemplate<String, CachedEventSessionsResponse> eventSessionsRedisTemplate(
+            RedisConnectionFactory redisConnectionFactory,
+            ObjectMapper objectMapper
+    ) {
+        RedisTemplate<String, CachedEventSessionsResponse> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(redisConnectionFactory);
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(
+                new Jackson2JsonRedisSerializer<>(objectMapper, CachedEventSessionsResponse.class)
         );
         redisTemplate.afterPropertiesSet();
         return redisTemplate;
