@@ -5,6 +5,7 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.application.service.QueueEnterService;
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.application.service.QueueSseHandler;
+import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
@@ -44,9 +45,10 @@ public class QueueController implements QueueApiDoc {
     @Override
     public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(
             @PathVariable Long sessionId,
+            @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @Valid @RequestBody QueueEnterRequest request
     ) {
-        QueueEnterResponse response = queueEnterService.enter(sessionId, request);
+        QueueEnterResponse response = queueEnterService.enter(scope, sessionId, request);
 
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
@@ -63,9 +65,10 @@ public class QueueController implements QueueApiDoc {
     @Override
     public ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(
             @PathVariable Long sessionId,
+            @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String requestId
     ) {
-        QueueTokenResponse response = queueStatusService.getQueueToken(sessionId, requestId);
+        QueueTokenResponse response = queueStatusService.getQueueToken(scope, sessionId, requestId);
 
         return ResponseEntity
                 .ok()
@@ -82,9 +85,10 @@ public class QueueController implements QueueApiDoc {
     @Override
     public ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(
             @PathVariable Long sessionId,
+            @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String queueToken
     ) {
-        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(sessionId, queueToken);
+        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(scope, sessionId, queueToken);
 
         return ResponseEntity
                 .ok()
@@ -95,9 +99,10 @@ public class QueueController implements QueueApiDoc {
     @Override
     public ResponseEntity<BaseResponse<Void>> leave(
             @PathVariable Long sessionId,
+            @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String queueToken
     ) {
-        queueStatusService.leave(sessionId, queueToken);
+        queueStatusService.leave(scope, sessionId, queueToken);
 
         return ResponseEntity
                 .ok()
@@ -114,9 +119,10 @@ public class QueueController implements QueueApiDoc {
     @Override
     public SseEmitter stream(
             @PathVariable Long sessionId,
+            @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @RequestParam String queueToken
     ) {
-        queueStatusService.getStatusByQueueToken(sessionId, queueToken);
+        queueStatusService.getStatusByQueueToken(scope, sessionId, queueToken);
         return queueSseHandler.connect(queueToken);
     }
 }

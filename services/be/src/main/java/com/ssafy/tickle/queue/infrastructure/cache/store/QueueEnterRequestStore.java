@@ -1,6 +1,7 @@
 package com.ssafy.tickle.queue.infrastructure.cache.store;
 
 import com.ssafy.tickle.queue.config.QueueConstants;
+import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueEnterRequestReferenceHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,11 @@ public class QueueEnterRequestStore {
      * @return 기존 요청 식별자
      */
     public Optional<String> findRequestId(Long userId, Long sessionId) {
-        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(enterKey(userId, sessionId)));
+        return findRequestId(QueueScope.BOOKING, userId, sessionId);
+    }
+
+    public Optional<String> findRequestId(QueueScope scope, Long userId, Long sessionId) {
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(enterKey(scope, userId, sessionId)));
     }
 
     /**
@@ -39,8 +44,12 @@ public class QueueEnterRequestStore {
      * @return 저장 성공 여부
      */
     public boolean saveIfAbsent(Long userId, Long sessionId, String requestId) {
+        return saveIfAbsent(QueueScope.BOOKING, userId, sessionId, requestId);
+    }
+
+    public boolean saveIfAbsent(QueueScope scope, Long userId, Long sessionId, String requestId) {
         Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(
-                enterKey(userId, sessionId),
+                enterKey(scope, userId, sessionId),
                 requestId,
                 QueueConstants.REQUEST_TTL
         );
@@ -50,7 +59,7 @@ public class QueueEnterRequestStore {
             String referenceKey = referenceKey(requestId);
             stringRedisTemplate.opsForHash().putAll(
                     referenceKey,
-                    queueEnterRequestReferenceHashMapper.toHash(sessionId, userId)
+                    queueEnterRequestReferenceHashMapper.toHash(scope, sessionId, userId)
             );
             stringRedisTemplate.expire(referenceKey, QueueConstants.REQUEST_TTL);
         }
@@ -77,12 +86,16 @@ public class QueueEnterRequestStore {
      * @param sessionId 회차 식별자
      */
     public void delete(Long userId, Long sessionId, String requestId) {
-        stringRedisTemplate.delete(enterKey(userId, sessionId));
+        delete(QueueScope.BOOKING, userId, sessionId, requestId);
+    }
+
+    public void delete(QueueScope scope, Long userId, Long sessionId, String requestId) {
+        stringRedisTemplate.delete(enterKey(scope, userId, sessionId));
         stringRedisTemplate.delete(referenceKey(requestId));
     }
 
-    private String enterKey(Long userId, Long sessionId) {
-        return QueueConstants.ENTER_KEY_PREFIX + sessionId + ":" + userId;
+    private String enterKey(QueueScope scope, Long userId, Long sessionId) {
+        return QueueConstants.ENTER_KEY_PREFIX + scope.name() + ":" + sessionId + ":" + userId;
     }
 
     private String referenceKey(String requestId) {

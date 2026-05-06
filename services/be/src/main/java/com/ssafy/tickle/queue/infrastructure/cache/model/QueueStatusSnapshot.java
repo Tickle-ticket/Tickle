@@ -1,6 +1,7 @@
 package com.ssafy.tickle.queue.infrastructure.cache.model;
 
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueScope;
 
 import java.time.Instant;
 
@@ -10,6 +11,7 @@ import java.time.Instant;
  * @param queueToken 대기열 토큰
  * @param requestId 요청 식별자
  * @param userId 사용자 식별자
+ * @param scope 대기열 목적
  * @param sessionId 회차 식별자
  * @param status 현재 상태
  * @param registeredAt waiting 등록 시각
@@ -20,6 +22,7 @@ public record QueueStatusSnapshot(
         String queueToken,
         String requestId,
         Long userId,
+        QueueScope scope,
         Long sessionId,
         QueueRequestStatus status,
         Instant registeredAt,
