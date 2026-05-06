@@ -88,7 +88,7 @@ public class CancellationRedistributionService {
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "제안을 찾을 수 없습니다."));
 
         offer.startTimer(Instant.now());
-        
+
         String phone = offer.getCancellationCandidate().getUser().getPhoneNumber();
         if (phone != null && !phone.isBlank()) {
             smsNotificationService.sendCancellationNotifyMessage(phone, offer.getId());
@@ -101,7 +101,8 @@ public class CancellationRedistributionService {
      * 취소표 구매를 확정하고 결제를 생성합니다. (무통장 입금 또는 카카오페이)
      */
     @Transactional
-    public CancellationPurchaseResponse purchaseCancellation(Long offerId, Long userId, CancellationPurchaseRequest request) {
+    public CancellationPurchaseResponse purchaseCancellation(Long offerId, Long userId,
+            CancellationPurchaseRequest request) {
         CancellationOffer offer = offerRepository.findByIdWithDetails(offerId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "제안을 찾을 수 없습니다."));
 
@@ -112,6 +113,11 @@ public class CancellationRedistributionService {
 
         SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
         
+        // 좌석 상태 변경 (REALLOCATING -> HELD)
+        // 기존 결제 로직을 재사용하기 위해 HELD 상태로 선점한다.
+        seat.holdForCancellation(userId);
+        sessionSeatRepository.save(seat);
+
         // 가격 계산 로직 (기본가 적용)
         BigDecimal ticketPrice = seat.getEventSeat().getEventPricePolicy().getPriceAmount();
         BigDecimal fee = calculateServiceFee(ticketPrice);
@@ -119,18 +125,18 @@ public class CancellationRedistributionService {
 
         // 2. 예매(Booking) 생성 (Draft 상태)
         Booking booking = bookingRepository.save(
-                Booking.draft(
-                        generateBookingNo(), 
-                        offer.getCancellationCandidate().getUser(), 
-                        seat.getSession(), 
-                        totalAmount, 
-                        1
+                Booking.draftForCancellation(
+                        generateBookingNo(),
+                        offer.getCancellationCandidate().getUser(),
+                        seat.getSession(),
+                        totalAmount,
+                        1,
+                        offer.getId()
                 )
         );
 
         BookingTicket ticket = bookingTicketRepository.save(
-                BookingTicket.draft(booking, seat, generateTicketNo(), ticketPrice, fee, totalAmount)
-        );
+                BookingTicket.draft(booking, seat, generateTicketNo(), ticketPrice, fee, totalAmount));
 
         // 3. 결제 수단별 처리
         if (request.paymentMethod() == Payment.MethodType.KAKAOPAY) {
@@ -139,26 +145,24 @@ public class CancellationRedistributionService {
                     seat.getSession().getEvent().getId(),
                     seat.getSession().getId(),
                     userId,
-                    new KakaoPayReadyRequest(booking.getId())
-            );
+                    new KakaoPayReadyRequest(booking.getId()));
 
             // 상태 전이 (READY)
             booking.markPendingPayment();
             ticket.markPendingPayment();
             seat.markPendingPayment();
-            
+
             // WebSocket 동기화
             eventPublisher.publishEvent(
-                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()), SessionSeat.SaleStatus.PENDING)
-            );
+                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()),
+                            SessionSeat.SaleStatus.PENDING));
 
             return CancellationPurchaseResponse.forKakaoPay(
                     booking.getId(),
                     booking.getBookingNo(),
                     totalAmount,
                     PaymentConstants.CURRENCY_KRW,
-                    kakaoResponse.nextRedirectPcUrl()
-            );
+                    kakaoResponse.nextRedirectPcUrl());
         } else {
             // 무통장 입금 처리
             Payment payment = paymentRepository.save(
@@ -166,9 +170,7 @@ public class CancellationRedistributionService {
                             booking,
                             totalAmount,
                             PaymentConstants.CURRENCY_KRW,
-                            PaymentConstants.BANK_TRANSFER_PROVIDER
-                    )
-            );
+                            PaymentConstants.BANK_TRANSFER_PROVIDER));
 
             // 상태 전이 (PENDING_PAYMENT)
             booking.markPendingPayment();
@@ -181,13 +183,12 @@ public class CancellationRedistributionService {
                             .bookingTicket(ticket)
                             .fromStatus(BookingTicket.Status.DRAFT.name())
                             .toStatus(BookingTicket.Status.PENDING_PAYMENT.name())
-                            .build()
-            );
+                            .build());
 
             // WebSocket 동기화
             eventPublisher.publishEvent(
-                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()), SessionSeat.SaleStatus.PENDING)
-            );
+                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()),
+                            SessionSeat.SaleStatus.PENDING));
 
             Instant deadline = getDepositDeadline(payment);
             return CancellationPurchaseResponse.forBankTransfer(
@@ -197,8 +198,7 @@ public class CancellationRedistributionService {
                     PaymentConstants.CURRENCY_KRW,
                     PaymentConstants.BANK_TRANSFER_ACCOUNT,
                     PaymentConstants.BANK_TRANSFER_ACCOUNT_HOLDER,
-                    deadline
-            );
+                    deadline);
         }
     }
 
@@ -234,17 +234,40 @@ public class CancellationRedistributionService {
     }
 
     /**
+     * 취소표 제안을 거절(양보)하고 즉시 다음 순번으로 넘깁니다.
+     */
+    @Transactional
+    public void passOffer(Long offerId, Long userId) {
+        CancellationOffer offer = offerRepository.findByIdWithDetails(offerId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "제안을 찾을 수 없습니다."));
+
+        if (!offer.getCancellationCandidate().getUser().getId().equals(userId)) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표 제안만 거절할 수 있습니다.");
+        }
+
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
+            return; // 이미 처리된 제안이면 무시
+        }
+
+        log.info("취소표 제안 거절(Pass) 처리: offerId={}, userId={}", offerId, userId);
+        offer.pass();
+
+        // 즉시 다음 사람에게 기회 부여
+        processRedistribution(offer.getCancellationCandidate().getSessionSeat());
+    }
+
+    /**
      * 만료된 제안들을 처리하고 다음 순번으로 넘깁니다.
      */
     @Transactional
     public void processExpiredOffers() {
         List<CancellationOffer> expiredOffers = offerRepository.findAllByOfferStatusAndOfferExpiresAtBefore(
                 CancellationOffer.OfferStatus.UNACCEPTED,
-                Instant.now()
-        );
+                Instant.now());
 
         for (CancellationOffer offer : expiredOffers) {
-            log.info("취소표 제안 만료 처리: offerId={}, userId={}", offer.getId(), offer.getCancellationCandidate().getUser().getId());
+            log.info("취소표 제안 만료 처리: offerId={}, userId={}", offer.getId(),
+                    offer.getCancellationCandidate().getUser().getId());
             offer.expire();
             processRedistribution(offer.getCancellationCandidate().getSessionSeat());
         }
@@ -255,23 +278,30 @@ public class CancellationRedistributionService {
      */
     @Transactional
     public void processRedistribution(SessionSeat seat) {
-        // 1. 현재 좌석에 대해 마지막으로 제안된 순번을 찾습니다.
-        Optional<CancellationOffer> latestOffer = offerRepository.findLatestBySessionSeatId(seat.getId());
-        
+        // 1. 현재 좌석에 대해 유효한(진행 중인) 제안이 있는지 확인하여 중복 방지
+        Optional<CancellationOffer> activeOffer = offerRepository.findLatestBySessionSeatId(seat.getId());
+        if (activeOffer.isPresent()) {
+            CancellationOffer offer = activeOffer.get();
+            if (offer.getOfferStatus() == CancellationOffer.OfferStatus.UNACCEPTED && 
+                Instant.now().isBefore(offer.getOfferExpiresAt())) {
+                log.info("이미 진행 중인 유효한 제안이 있어 재배분을 중단합니다. seatId={}, offerId={}", seat.getId(), offer.getId());
+                return;
+            }
+        }
+
         Optional<CancellationCandidate> nextCandidate;
-        if (latestOffer.isPresent()) {
+        if (activeOffer.isPresent()) {
             // 마지막 제안 순번 다음의 대기자를 찾습니다.
-            nextCandidate = candidateRepository.findFirstBySessionSeatIdAndStatusAndWaitingRankGreaterThanOrderByWaitingRankAsc(
-                    seat.getId(),
-                    CancellationCandidate.Status.WAITING,
-                    latestOffer.get().getCancellationCandidate().getWaitingRank()
-            );
+            nextCandidate = candidateRepository
+                    .findFirstBySessionSeatIdAndStatusAndWaitingRankGreaterThanOrderByWaitingRankAsc(
+                            seat.getId(),
+                            CancellationCandidate.Status.WAITING,
+                            activeOffer.get().getCancellationCandidate().getWaitingRank());
         } else {
             // 제안이 한 번도 없었다면 1번 대기자부터 시작합니다.
             nextCandidate = candidateRepository.findFirstBySessionSeatIdAndStatusOrderByWaitingRankAsc(
                     seat.getId(),
-                    CancellationCandidate.Status.WAITING
-            );
+                    CancellationCandidate.Status.WAITING);
         }
 
         if (nextCandidate.isPresent()) {
@@ -283,29 +313,28 @@ public class CancellationRedistributionService {
                             .offerStatus(CancellationOffer.OfferStatus.UNACCEPTED)
                             .offeredAt(Instant.now())
                             .offerExpiresAt(Instant.now().plus(1, java.time.temporal.ChronoUnit.HOURS))
-                            .build()
-            );
-            
-            log.info("다음 대기자에게 취소표 제안: offerId={}, userId={}, seatId={}, rank={}", 
+                            .build());
+
+            log.info("다음 대기자에게 취소표 제안: offerId={}, userId={}, seatId={}, rank={}",
                     newOffer.getId(), candidate.getUser().getId(), seat.getId(), candidate.getWaitingRank());
-            
+
             // SMS 발송
             String phone = candidate.getUser().getPhoneNumber();
             if (phone != null && !phone.isBlank()) {
                 smsNotificationService.sendCancellationNotifyMessage(phone, newOffer.getId());
             }
-            
+
             // 좌석 상태 유지 (REALLOCATING)
         } else {
             // 3. 더 이상 대기자가 없으면 좌석을 AVAILABLE로 전환
             log.info("더 이상 대기자가 없어 좌석을 일반 판매로 전환합니다. seatId={}", seat.getId());
             seat.releaseToAvailable();
             sessionSeatRepository.save(seat);
-            
+
             // WebSocket 동기화 (AVAILABLE)
             eventPublisher.publishEvent(
-                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()), SessionSeat.SaleStatus.AVAILABLE)
-            );
+                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()),
+                            SessionSeat.SaleStatus.AVAILABLE));
         }
     }
 }

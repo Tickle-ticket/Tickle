@@ -67,6 +67,10 @@ public class Booking {
     @Column(name = "ticket_count", nullable = false)
     private Integer ticketCount;
 
+    // 취소표 제안 ID (취소표 재배분을 통한 예매인 경우에만 존재)
+    @Column(name = "cancellation_offer_id")
+    private Long cancellationOfferId;
+
     // 예매 시각
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -114,7 +118,8 @@ public class Booking {
             EventSession session,
             Status bookingStatus,
             BigDecimal totalPaymentAmount,
-            Integer ticketCount
+            Integer ticketCount,
+            Long cancellationOfferId
     ) {
         this.bookingNo = bookingNo;
         this.user = user;
@@ -122,6 +127,7 @@ public class Booking {
         this.bookingStatus = bookingStatus;
         this.totalPaymentAmount = totalPaymentAmount;
         this.ticketCount = ticketCount;
+        this.cancellationOfferId = cancellationOfferId;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
@@ -150,6 +156,28 @@ public class Booking {
                 .bookingStatus(Status.DRAFT)
                 .totalPaymentAmount(totalPaymentAmount)
                 .ticketCount(ticketCount)
+                .build();
+    }
+
+    /**
+     * 취소표 재배분을 통한 예매 초안을 생성합니다.
+     */
+    public static Booking draftForCancellation(
+            String bookingNo,
+            User user,
+            EventSession session,
+            BigDecimal totalPaymentAmount,
+            Integer ticketCount,
+            Long cancellationOfferId
+    ) {
+        return Booking.builder()
+                .bookingNo(bookingNo)
+                .user(user)
+                .session(session)
+                .bookingStatus(Status.DRAFT)
+                .totalPaymentAmount(totalPaymentAmount)
+                .ticketCount(ticketCount)
+                .cancellationOfferId(cancellationOfferId)
                 .build();
     }
 
