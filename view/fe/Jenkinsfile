@@ -8,7 +8,7 @@ pipeline {
     environment {
         PROJECT_PATH = 'view/fe/tickle'
         EC2_USER = 'ubuntu'
-        EC2_IP = '3.38.111.218'
+        EC2_IP = '13.124.218.77'
         TARGET_DIR = '/home/ubuntu/S14P31A203/view/fe/tickle'
         SSH_CREDENTIAL_ID = 'fe-ec2-key'
         MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
