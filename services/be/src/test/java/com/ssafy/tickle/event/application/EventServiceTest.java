@@ -8,6 +8,8 @@ import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionsResponse;
+import com.ssafy.tickle.event.infrastructure.cache.store.EventSessionsCacheStore;
 import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
@@ -19,6 +21,7 @@ import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
+import com.ssafy.tickle.event.presentation.dto.EventSessionsResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
 import com.ssafy.tickle.venue.domain.Venue;
@@ -78,6 +81,9 @@ class EventServiceTest {
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
 
+    @Autowired
+    private EventSessionsCacheStore eventSessionsCacheStore;
+
     private Organizer organizer;
     private Venue venue;
     private Category concertCategory;
@@ -111,6 +117,10 @@ class EventServiceTest {
         }
 
         stringRedisTemplate.delete("event:opening-soon");
+        Set<String> sessionKeys = stringRedisTemplate.keys("event:sessions:*");
+        if (sessionKeys != null && !sessionKeys.isEmpty()) {
+            stringRedisTemplate.delete(sessionKeys);
+        }
     }
 
     @Nested
@@ -168,6 +178,78 @@ class EventServiceTest {
         @DisplayName("존재하지 않는 이벤트를 조회하면 RESOURCE_NOT_FOUND 예외가 발생한다")
         void getEventDetail_notFound() {
             assertThatThrownBy(() -> eventService.getEventDetail(Long.MAX_VALUE))
+                    .isInstanceOf(BaseException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("회차 목록 조회")
+    class GetEventSessionsTest {
+
+        @Test
+        @DisplayName("공연 ID로 회차 목록을 시작 시각 순으로 조회한다")
+        void getEventSessions_success() {
+            Event event = eventRepository.save(createEvent(
+                    "Session Select Event",
+                    concertCategory,
+                    Instant.parse("2026-05-01T10:00:00Z")
+            ));
+            EventSession later = eventSessionRepository.save(createSession(
+                    event,
+                    2,
+                    Instant.parse("2026-05-02T10:00:00Z")
+            ));
+            EventSession earlier = eventSessionRepository.save(createSession(
+                    event,
+                    1,
+                    Instant.parse("2026-05-01T10:00:00Z")
+            ));
+            eventSessionsCacheStore.save(
+                    event.getId(),
+                    CachedEventSessionsResponse.from(List.of(earlier, later)),
+                    Instant.now().plusSeconds(600)
+            );
+
+            EventSessionsResponse response = eventService.getEventSessions(event.getId());
+
+            assertThat(response.sessions())
+                    .extracting(session -> session.sessionId())
+                    .containsExactly(earlier.getId(), later.getId());
+        }
+
+        @Test
+        @DisplayName("캐시에 회차 목록이 없으면 DB에서 조회하고 캐시에 저장한다")
+        void getEventSessions_cacheMiss_fallsBackToDatabase() {
+            Event event = eventRepository.save(createEvent(
+                    "Session Fallback Event",
+                    concertCategory,
+                    Instant.parse("2026-05-01T10:00:00Z")
+            ));
+            EventSession later = eventSessionRepository.save(createSession(
+                    event,
+                    2,
+                    Instant.parse("2026-05-02T10:00:00Z")
+            ));
+            EventSession earlier = eventSessionRepository.save(createSession(
+                    event,
+                    1,
+                    Instant.parse("2026-05-01T10:00:00Z")
+            ));
+
+            EventSessionsResponse response = eventService.getEventSessions(event.getId());
+
+            assertThat(response.sessions())
+                    .extracting(session -> session.sessionId())
+                    .containsExactly(earlier.getId(), later.getId());
+            assertThat(stringRedisTemplate.hasKey("event:sessions:" + event.getId())).isTrue();
+        }
+
+        @Test
+        @DisplayName("캐시에 없는 공연의 회차 목록을 조회하면 RESOURCE_NOT_FOUND 예외가 발생한다")
+        void getEventSessions_notFound() {
+            assertThatThrownBy(() -> eventService.getEventSessions(Long.MAX_VALUE))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);

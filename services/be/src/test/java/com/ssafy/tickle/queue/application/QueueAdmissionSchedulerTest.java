@@ -6,8 +6,8 @@ import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
-import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
-import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
+import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
+import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
@@ -48,7 +48,7 @@ class QueueAdmissionSchedulerTest {
     private QueueStatusStore queueStatusStore;
 
     @Autowired
-    private SessionOpenInfoStore sessionOpenInfoStore;
+    private EventOpenInfoStore eventOpenInfoStore;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -64,17 +64,17 @@ class QueueAdmissionSchedulerTest {
     @Test
         @DisplayName("slotLimit 기준으로 waiting 상위 사용자만 ADMITTED 처리한다")
     void admitWaitingUsers_admitsTopHundredUsersOnly() throws InterruptedException {
-        long sessionId = 40L;
-        sessionOpenInfoStore.save(new SessionOpenInfo(
-                sessionId,
+        long eventId = 40L;
+        eventOpenInfoStore.save(new EventOpenInfo(
+                eventId,
                 Instant.now().minusSeconds(60),
                 Instant.now().plusSeconds(600)
         ));
 
         List<String> queueTokens = new ArrayList<>();
         for (long userId = 1L; userId <= 101L; userId++) {
-            QueueEnterResponse enterResponse = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(sessionId, enterResponse.requestId());
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
             queueTokens.add(tokenResponse.queueToken());
 
             // waiting zset score를 등록 순서대로 분리해 admission 순서를 안정적으로 만든다.
@@ -83,7 +83,7 @@ class QueueAdmissionSchedulerTest {
 
         // Kafka 비동기 처리 대기
         int attempts = 0;
-        while (queueStatusStore.countWaiting(sessionId) < 101L && attempts < 50) {
+        while (queueStatusStore.countWaiting(eventId) < 101L && attempts < 50) {
             Thread.sleep(100);
             attempts++;
         }
@@ -91,23 +91,23 @@ class QueueAdmissionSchedulerTest {
         queueAdmissionScheduler.admitWaitingUsers();
 
         long admittedCount = queueTokens.stream()
-                .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
+                .map(queueToken -> queueStatusService.getStatusByQueueToken(eventId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.ADMITTED)
                 .count();
         long waitingCount = queueTokens.stream()
-                .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
+                .map(queueToken -> queueStatusService.getStatusByQueueToken(eventId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.WAITING)
                 .count();
 
         assertThat(admittedCount).isEqualTo(QueueConstants.SLOT_LIMIT);
         assertThat(waitingCount).isEqualTo(1L);
-        assertThat(queueStatusStore.countAdmitted(sessionId)).isEqualTo(QueueConstants.SLOT_LIMIT);
-        assertThat(queueStatusStore.countWaiting(sessionId)).isEqualTo(1L);
-        assertThat(queueStatusStore.countRecentAdmissions(sessionId, Instant.now().minusSeconds(60), Instant.now()))
+        assertThat(queueStatusStore.countAdmitted(eventId)).isEqualTo(QueueConstants.SLOT_LIMIT);
+        assertThat(queueStatusStore.countWaiting(eventId)).isEqualTo(1L);
+        assertThat(queueStatusStore.countRecentAdmissions(eventId, Instant.now().minusSeconds(60), Instant.now()))
                 .isEqualTo(QueueConstants.SLOT_LIMIT);
 
         queueTokens.stream()
-                .map(queueToken -> queueStatusService.getStatusByQueueToken(sessionId, queueToken))
+                .map(queueToken -> queueStatusService.getStatusByQueueToken(eventId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.ADMITTED)
                 .forEach(response -> assertThat(response.admitToken()).isNotBlank());
     }

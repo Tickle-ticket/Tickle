@@ -66,7 +66,7 @@ public class CancellationWaitSeatService {
     ) {
         validateSession(eventId, scheduleId);
         // 예매 대기 좌석맵은 cancellation wait 큐를 통과한 사용자에게만 노출합니다.
-        queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, scheduleId, userId, admitToken);
+        queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, eventId, userId, admitToken);
 
         List<SessionSeat> sessionSeats = sessionSeatRepository.findBySessionIdWithDetails(scheduleId);
         List<Long> sessionSeatIds = sessionSeats.stream()

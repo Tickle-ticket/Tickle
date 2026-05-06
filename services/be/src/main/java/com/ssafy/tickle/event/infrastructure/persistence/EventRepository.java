@@ -84,4 +84,13 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             Instant now,
             Pageable pageable
     );
+
+    /**
+     * 아직 판매 종료되지 않았고, 지정한 시각 이전에 예매 오픈하는 공연을 조회합니다.
+     *
+     * @param salesEndAt 판매 종료 하한 시각
+     * @param salesStartAt 판매 시작 상한 시각
+     * @return 오픈 중이거나 곧 오픈할 공연 목록
+     */
+    List<Event> findBySalesEndAtAfterAndSalesStartAtBefore(Instant salesEndAt, Instant salesStartAt);
 }

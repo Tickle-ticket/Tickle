@@ -11,6 +11,7 @@ public final class EventConstants {
     public static final Duration EVENT_RANKING_CACHE_TTL = Duration.ofMinutes(30);
     public static final String EVENT_OPENING_SOON_CACHE_KEY = "event:opening-soon";
     public static final Duration EVENT_OPENING_SOON_CACHE_TTL = Duration.ofMinutes(10);
+    public static final String EVENT_SESSIONS_CACHE_KEY_PREFIX = "event:sessions:";
 
     private EventConstants() {
     }

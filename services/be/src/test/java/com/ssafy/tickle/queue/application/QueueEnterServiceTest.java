@@ -6,8 +6,8 @@ import com.ssafy.tickle.queue.application.service.QueueEnterService;
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.domain.QueueScope;
-import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
-import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
+import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
+import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -30,6 +30,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,7 +48,7 @@ class QueueEnterServiceTest {
     private QueueEnterService queueEnterService;
 
     @Autowired
-    private SessionOpenInfoStore sessionOpenInfoStore;
+    private EventOpenInfoStore eventOpenInfoStore;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -70,15 +71,15 @@ class QueueEnterServiceTest {
         @Test
         @DisplayName("대기열 진입 요청을 호출하면 PENDING 상태와 requestId를 반환한다")
         void enter_returnsPendingResponse() {
-            long sessionId = 10L;
+            long eventId = 10L;
             long userId = 1L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(response.status()).isEqualTo(QueueRequestStatus.PENDING);
@@ -87,28 +88,32 @@ class QueueEnterServiceTest {
         @Test
         @DisplayName("대기열 진입 요청을 호출하면 Redis에 requestId를 저장한다")
         void enter_savesRequestIdToRedis() {
-            long sessionId = 10L;
+            long eventId = 10L;
             long userId = 1L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+            Instant salesEndAt = Instant.now().plusSeconds(600);
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().minusSeconds(60),
-                    Instant.now().plusSeconds(600)
+                    salesEndAt
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
-            assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + "BOOKING:" + sessionId + ":" + userId))
+            assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + "BOOKING:" + eventId + ":" + userId))
                     .isEqualTo(response.requestId());
+            assertThat(stringRedisTemplate.getExpire(QueueConstants.EVENT_KEY_PREFIX + eventId, TimeUnit.SECONDS))
+                    .isPositive()
+                    .isLessThanOrEqualTo(600L);
         }
 
         @Test
         @DisplayName("대기열 진입 요청을 호출하면 Kafka에 enter-request를 적재한다")
         void enter_publishesEnterRequestToKafka() {
-            long sessionId = 99L;  // 다른 테스트와 겹치지 않는 고유 sessionId
+            long eventId = 99L;  // 다른 테스트와 겹치지 않는 고유 eventId
             long userId = 99L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
             ));
@@ -116,7 +121,7 @@ class QueueEnterServiceTest {
             Consumer<String, String> consumer = createConsumer();
             embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
-            QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
 
             // getSingleRecord 대신 getRecords로 조회 후 해당 requestId 포함 여부 검증
             var records = KafkaTestUtils.getRecords(consumer, java.time.Duration.ofSeconds(3));
@@ -128,27 +133,27 @@ class QueueEnterServiceTest {
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(matchingRecord).isPresent();
-            assertThat(matchingRecord.get().key()).isEqualTo("BOOKING:" + sessionId);
+            assertThat(matchingRecord.get().key()).isEqualTo("BOOKING:" + eventId);
             assertThat(matchingRecord.get().value()).contains("\"userId\":" + userId);
             assertThat(matchingRecord.get().value()).contains("\"scope\":\"BOOKING\"");
-            assertThat(matchingRecord.get().value()).contains("\"sessionId\":" + sessionId);
+            assertThat(matchingRecord.get().value()).contains("\"eventId\":" + eventId);
 
             consumer.close();
         }
 
         @Test
-        @DisplayName("같은 사용자와 회차로 중복 요청하면 동일한 requestId를 반환한다")
+        @DisplayName("같은 사용자와 공연으로 중복 요청하면 동일한 requestId를 반환한다")
         void enter_returnsSameRequestIdOnDuplicateRequest() {
-            long sessionId = 14L;
+            long eventId = 14L;
             long userId = 1L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse first = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
-            QueueEnterResponse second = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse first = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse second = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
 
             assertThat(first.requestId()).isNotBlank();
             assertThat(second.requestId()).isEqualTo(first.requestId());
@@ -156,18 +161,18 @@ class QueueEnterServiceTest {
         }
 
         @Test
-        @DisplayName("같은 사용자와 회차라도 scope가 다르면 서로 다른 requestId를 반환한다")
+        @DisplayName("같은 사용자와 공연이라도 scope가 다르면 서로 다른 requestId를 반환한다")
         void enter_allowsSeparateRequestIdByScope() {
-            long sessionId = 15L;
+            long eventId = 15L;
             long userId = 1L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().minusSeconds(60),
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse booking = queueEnterService.enter(QueueScope.BOOKING, sessionId, new QueueEnterRequest(userId));
-            QueueEnterResponse cancellationWait = queueEnterService.enter(QueueScope.CANCELLATION_WAIT, sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse booking = queueEnterService.enter(QueueScope.BOOKING, eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse cancellationWait = queueEnterService.enter(QueueScope.CANCELLATION_WAIT, eventId, new QueueEnterRequest(userId));
 
             assertThat(booking.requestId()).isNotBlank();
             assertThat(cancellationWait.requestId()).isNotBlank();
@@ -175,43 +180,43 @@ class QueueEnterServiceTest {
         }
 
         @Test
-        @DisplayName("오픈 전 회차면 INVALID_REQUEST 예외가 발생한다")
+        @DisplayName("오픈 전 공연이면 INVALID_REQUEST 예외가 발생한다")
         void enter_beforeOpen_throwsQueueNotOpen() {
-            long sessionId = 11L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+            long eventId = 11L;
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().plusSeconds(60),
                     Instant.now().plusSeconds(600)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
+            assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
         }
 
         @Test
-        @DisplayName("판매 종료된 회차면 INVALID_REQUEST 예외가 발생한다")
-        void enter_afterClose_throwsQueueClosed() {
-            long sessionId = 12L;
-            sessionOpenInfoStore.save(new SessionOpenInfo(
-                    sessionId,
+        @DisplayName("판매 종료된 공연 오픈 정보는 저장하지 않아 RESOURCE_NOT_FOUND 예외가 발생한다")
+        void enter_afterClose_throwsResourceNotFound() {
+            long eventId = 12L;
+            eventOpenInfoStore.save(new EventOpenInfo(
+                    eventId,
                     Instant.now().minusSeconds(600),
                     Instant.now().minusSeconds(60)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
+            assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
-                    .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
+                    .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("캐시에 회차 오픈 정보가 없으면 DB fallback 없이 바로 RESOURCE_NOT_FOUND 예외가 발생한다")
-        void enter_missingSessionOpenInfo_failsFastWithoutFallback() {
-            long sessionId = 13L;
+        @DisplayName("캐시에 공연 오픈 정보가 없으면 DB fallback 없이 바로 RESOURCE_NOT_FOUND 예외가 발생한다")
+        void enter_missingEventOpenInfo_failsFastWithoutFallback() {
+            long eventId = 13L;
 
-            assertThatThrownBy(() -> queueEnterService.enter(sessionId, new QueueEnterRequest(1L)))
+            assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);

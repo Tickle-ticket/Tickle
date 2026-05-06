@@ -64,6 +64,7 @@ public interface SeatApiDoc {
                     - 거의 동시에 두 명이 겹치는 좌석으로 "선택완료"를 눌렀다면, 한 명은 밀리초 대기 후 409를 받습니다.
                     
                     **선점 규칙**
+                    - BOOKING 대기열 admitToken이 있어야 선점할 수 있습니다.
                     - 1인당 최대 4개까지 선점 가능합니다 (ADR 시나리오 10).
                     - 하나라도 AVAILABLE이 아닌 좌석이 포함되면 **전체 실패**합니다.
                     - 성공 시 Redis에 15분 TTL 키를 등록합니다.
@@ -72,6 +73,7 @@ public interface SeatApiDoc {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "좌석 선점 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 대기열 입장 토큰"),
             @ApiResponse(responseCode = "404", description = "공연, 회차 또는 좌석을 찾을 수 없음"),
             @ApiResponse(responseCode = "409", description = "이미 선점된 좌석 포함 / 락 획득 실패")
     })
@@ -82,6 +84,8 @@ public interface SeatApiDoc {
             @PathVariable Long scheduleId,
             @Parameter(description = "사용자 식별자", required = true, example = "1")
             @RequestParam Long userId,
+            @Parameter(description = "BOOKING 대기열 입장 허용 토큰", required = true)
+            @RequestParam String admitToken,
             @Valid @RequestBody SeatHoldRequest request
     );
 

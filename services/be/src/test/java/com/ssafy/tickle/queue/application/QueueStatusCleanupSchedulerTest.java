@@ -6,8 +6,8 @@ import com.ssafy.tickle.queue.application.service.QueueEnterService;
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
-import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
-import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
+import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
+import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
@@ -47,7 +47,7 @@ class QueueStatusCleanupSchedulerTest {
     private QueueStatusCleanupScheduler queueStatusCleanupScheduler;
 
     @Autowired
-    private SessionOpenInfoStore sessionOpenInfoStore;
+    private EventOpenInfoStore eventOpenInfoStore;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -63,16 +63,16 @@ class QueueStatusCleanupSchedulerTest {
     @Test
     @DisplayName("queueToken TTL이 지난 WAITING 사용자는 EXPIRED로 정리된다")
     void cleanupWaitingUsers_expiresQueueTokenExpiredUser() {
-        long sessionId = 50L;
+        long eventId = 50L;
         long userId = 1L;
-        sessionOpenInfoStore.save(new SessionOpenInfo(
-                sessionId,
+        eventOpenInfoStore.save(new EventOpenInfo(
+                eventId,
                 Instant.now().minusSeconds(60),
                 Instant.now().plusSeconds(600)
         ));
 
-        QueueEnterResponse enterResponse = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
-        QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(sessionId, enterResponse.requestId());
+        QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+        QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
         stringRedisTemplate.opsForHash().put(
                 QueueConstants.STATUS_KEY_PREFIX + tokenResponse.queueToken(),
@@ -82,24 +82,24 @@ class QueueStatusCleanupSchedulerTest {
 
         queueStatusCleanupScheduler.cleanupWaitingUsers();
 
-        assertThat(queueStatusStore.countWaiting(sessionId)).isZero();
-        assertThatThrownBy(() -> queueStatusService.getQueueToken(sessionId, enterResponse.requestId()))
+        assertThat(queueStatusStore.countWaiting(eventId)).isZero();
+        assertThatThrownBy(() -> queueStatusService.getQueueToken(eventId, enterResponse.requestId()))
                 .isInstanceOf(com.ssafy.tickle.common.exception.BaseException.class);
     }
 
     @Test
     @DisplayName("admitToken TTL이 지난 ADMITTED 사용자는 EXPIRED로 정리된다")
     void cleanupAdmittedUsers_expiresAdmittedUser() {
-        long sessionId = 51L;
+        long eventId = 51L;
         long userId = 1L;
-        sessionOpenInfoStore.save(new SessionOpenInfo(
-                sessionId,
+        eventOpenInfoStore.save(new EventOpenInfo(
+                eventId,
                 Instant.now().minusSeconds(60),
                 Instant.now().plusSeconds(600)
         ));
 
-        QueueEnterResponse enterResponse = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
-        QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(sessionId, enterResponse.requestId());
+        QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+        QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
         queueAdmissionScheduler.admitWaitingUsers();
 
         stringRedisTemplate.opsForHash().put(
@@ -110,8 +110,8 @@ class QueueStatusCleanupSchedulerTest {
 
         queueStatusCleanupScheduler.cleanupAdmittedUsers();
 
-        assertThat(queueStatusStore.countAdmitted(sessionId)).isZero();
-        assertThatThrownBy(() -> queueStatusService.getQueueToken(sessionId, enterResponse.requestId()))
+        assertThat(queueStatusStore.countAdmitted(eventId)).isZero();
+        assertThatThrownBy(() -> queueStatusService.getQueueToken(eventId, enterResponse.requestId()))
                 .isInstanceOf(com.ssafy.tickle.common.exception.BaseException.class);
     }
 }

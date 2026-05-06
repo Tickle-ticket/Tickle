@@ -36,15 +36,15 @@ public interface QueueApiDoc {
     )
     @ApiResponse(
             responseCode = "400",
-            description = "예매 오픈 전이거나 이미 종료된 회차",
+            description = "예매 오픈 전이거나 이미 종료된 공연",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
     @ApiResponse(
             responseCode = "404",
-            description = "대기열 진입용 회차 오픈 정보를 찾을 수 없음",
+            description = "대기열 진입용 공연 오픈 정보를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(Long sessionId, QueueScope scope, QueueEnterRequest request);
+    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(Long eventId, QueueScope scope, QueueEnterRequest request);
 
     /**
      * requestId 기반 최초 queueToken 발급 API 문서 정의입니다.
@@ -65,7 +65,7 @@ public interface QueueApiDoc {
             description = "존재하지 않는 대기열 진입 요청",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(Long sessionId, QueueScope scope, String requestId);
+    ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(Long eventId, QueueScope scope, String requestId);
 
     /**
      * queueToken 기준 상태 조회 API 문서 정의입니다.
@@ -86,7 +86,7 @@ public interface QueueApiDoc {
             description = "존재하지 않는 대기열 토큰",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(Long sessionId, QueueScope scope, String queueToken);
+    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(Long eventId, QueueScope scope, String queueToken);
 
     @Operation(
             summary = "대기열 이탈",
@@ -96,7 +96,7 @@ public interface QueueApiDoc {
             responseCode = "200",
             description = "대기열 이탈 성공"
     )
-    ResponseEntity<BaseResponse<Void>> leave(Long sessionId, QueueScope scope, String queueToken);
+    ResponseEntity<BaseResponse<Void>> leave(Long eventId, QueueScope scope, String queueToken);
 
     /**
      * queueToken 기준 실시간 대기 상태 SSE API 문서 정의입니다.
@@ -112,5 +112,5 @@ public interface QueueApiDoc {
             responseCode = "200",
             description = "SSE 연결 성공"
     )
-    SseEmitter stream(Long sessionId, QueueScope scope, String queueToken);
+    SseEmitter stream(Long eventId, QueueScope scope, String queueToken);
 }

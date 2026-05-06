@@ -9,9 +9,11 @@ import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedCategoryRankingResponse;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventRankingItem;
+import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEvent;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedOpeningSoonEventsResponse;
 import com.ssafy.tickle.event.infrastructure.cache.store.EventRankingCacheStore;
+import com.ssafy.tickle.event.infrastructure.cache.store.EventSessionsCacheStore;
 import com.ssafy.tickle.event.infrastructure.cache.store.OpeningSoonEventCacheStore;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
@@ -22,6 +24,7 @@ import com.ssafy.tickle.event.presentation.dto.CategoryRankingResponse;
 import com.ssafy.tickle.event.presentation.dto.EventDetailResponse;
 import com.ssafy.tickle.event.presentation.dto.EventListResponse;
 import com.ssafy.tickle.event.presentation.dto.EventRankingResponse;
+import com.ssafy.tickle.event.presentation.dto.EventSessionsResponse;
 import com.ssafy.tickle.event.presentation.dto.EventSummaryResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventResponse;
 import com.ssafy.tickle.event.presentation.dto.OpeningSoonEventsResponse;
@@ -55,6 +58,7 @@ public class EventService {
     private final FavoriteRepository favoriteRepository;
     private final EventRankingCacheStore eventRankingCacheStore;
     private final OpeningSoonEventCacheStore openingSoonEventCacheStore;
+    private final EventSessionsCacheStore eventSessionsCacheStore;
 
     /**
      * 이벤트 상세 정보를 조회합니다.
@@ -82,6 +86,28 @@ public class EventService {
         List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
 
         return EventDetailResponse.from(event, images, sessions, pricePolicies, isFavorite(userId, eventId));
+    }
+
+    /**
+     * 특정 공연의 회차 목록을 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 회차 목록 응답
+     */
+    public EventSessionsResponse getEventSessions(Long eventId) {
+        return eventSessionsCacheStore.findByEventId(eventId)
+                .map(EventSessionsResponse::from)
+                .orElseGet(() -> getEventSessionsFromDatabase(eventId));
+    }
+
+    private EventSessionsResponse getEventSessionsFromDatabase(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
+
+        List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
+        CachedEventSessionsResponse cachedResponse = CachedEventSessionsResponse.from(sessions);
+        eventSessionsCacheStore.save(eventId, cachedResponse, event.getSalesEndAt());
+        return EventSessionsResponse.from(cachedResponse);
     }
 
     /**

@@ -12,7 +12,7 @@ import java.time.Instant;
  * @param requestId 요청 식별자
  * @param userId 사용자 식별자
  * @param scope 대기열 목적
- * @param sessionId 회차 식별자
+ * @param eventId 공연 식별자
  * @param status 현재 상태
  * @param registeredAt waiting 등록 시각
  * @param admitToken 입장 허용 토큰
@@ -23,7 +23,7 @@ public record QueueStatusSnapshot(
         String requestId,
         Long userId,
         QueueScope scope,
-        Long sessionId,
+        Long eventId,
         QueueRequestStatus status,
         Instant registeredAt,
         String admitToken,

@@ -10,14 +10,14 @@ import java.time.Instant;
  * @param requestId 요청 식별자
  * @param userId 사용자 식별자
  * @param scope 대기열 목적
- * @param sessionId 회차 식별자
+ * @param eventId 공연 식별자
  * @param requestedAt 요청 시각
  */
 public record QueueEnterMessage(
         String requestId,
         Long userId,
         QueueScope scope,
-        Long sessionId,
+        Long eventId,
         Instant requestedAt
 ) {
 }

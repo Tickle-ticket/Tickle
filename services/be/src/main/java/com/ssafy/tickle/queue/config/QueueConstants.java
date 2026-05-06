@@ -19,7 +19,7 @@ public final class QueueConstants {
 
     public static final String ENTER_REQUEST_TOPIC = "queue.enter-request";
     public static final String ADMISSION_LOCK_KEY_PREFIX = "lock:queue:admission:";
-    public static final String SESSION_KEY_PREFIX = "queue:session:";
+    public static final String EVENT_KEY_PREFIX = "queue:event:";
     public static final String ENTER_KEY_PREFIX = "queue:enter:";
     public static final String ENTER_REFERENCE_KEY_PREFIX = "queue:enter:reference:";
     public static final String STATUS_KEY_PREFIX = "queue:status:";
