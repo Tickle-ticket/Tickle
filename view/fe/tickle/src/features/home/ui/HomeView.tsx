@@ -51,9 +51,9 @@ const useCarouselScroll = () => {
     const timer = setTimeout(checkScroll, 100);
     node.addEventListener('scroll', checkScroll, { passive: true });
     window.addEventListener('resize', checkScroll);
-    return () => { 
-      clearTimeout(timer); 
-      node.removeEventListener('scroll', checkScroll); 
+    return () => {
+      clearTimeout(timer);
+      node.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
     };
   }, [node, checkScroll]);
@@ -115,13 +115,13 @@ const containerVariants: Variants = {
 
 const sectionVariants: Variants = {
   hidden: { x: -30, opacity: 0 },
-  visible: { 
-    x: 0, 
+  visible: {
+    x: 0,
     opacity: 1,
     transition: { type: "spring", stiffness: 300, damping: 24 }
   },
-  exit: { 
-    x: 30, 
+  exit: {
+    x: 30,
     opacity: 0,
     transition: { duration: 0.2 }
   }
@@ -131,7 +131,7 @@ const sectionVariants: Variants = {
 
 const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
   const [hasError, setHasError] = useState(false);
-  
+
   if (hasError) {
     return (
       <div className="w-full h-full bg-white" />
@@ -139,10 +139,10 @@ const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
   }
 
   return (
-    <img 
-      src={src} 
-      alt={alt} 
-      className="w-full h-full object-cover bg-white" 
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover bg-white"
       onError={() => setHasError(true)}
     />
   );
@@ -158,7 +158,7 @@ export const HomeView = () => {
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [currentBanner, setCurrentBanner] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
-  
+
   const { wishlistMap, initWishlist, addWishlist, removeWishlist } = useWishlistStore();
   const queryClient = useQueryClient();
 
@@ -210,8 +210,8 @@ export const HomeView = () => {
   }, []);
 
   const totalBanners = banners?.length || 0;
-  const activeBanner = selectedDetailId && isDetailBannerOpen 
-    ? { id: selectedDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '', subtitle: '' } 
+  const activeBanner = selectedDetailId && isDetailBannerOpen
+    ? { id: selectedDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '', subtitle: '' }
     : banners?.[currentBanner];
 
   const goNext = () => setCurrentBanner((prev) => (prev + 1) % (totalBanners || 1));
@@ -223,11 +223,11 @@ export const HomeView = () => {
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
-    
+
     if (!getUserId()) {
-      setModalConfig({ 
-        isOpen: true, 
-        title: '로그인 필요', 
+      setModalConfig({
+        isOpen: true,
+        title: '로그인 필요',
         content: '로그인이 필요한 서비스입니다.',
         confirmText: '로그인 하기',
         showCancelButton: true,
@@ -254,11 +254,11 @@ export const HomeView = () => {
       queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
     } catch (error: any) {
       console.error('찜 등록/취소 실패:', error);
-      
+
       // 이미 백엔드에서 찜 해제되어 있는 경우 ('찾을 수 없습니다' 에러)
       // 우리의 낙관적 업데이트(UI에서 해제)가 결과적으로 맞았으므로 롤백하지 않습니다.
       const isAlreadyDeleted = isWishlisted && error?.message?.includes('찾을 수 없습니다');
-      
+
       if (!isAlreadyDeleted) {
         // 그 외의 진짜 에러 발생 시 원래 상태로 롤백 (Revert)
         if (isWishlisted) {
@@ -275,13 +275,12 @@ export const HomeView = () => {
 
       {/* Left Column: 배너 슬라이드 */}
       <aside
-        className={`hidden lg:block h-full relative transition-[width,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${
-          isBannerFolded
-            ? 'w-0 min-w-0 opacity-0' 
+        className={`hidden lg:block h-full relative transition-[width,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded
+            ? 'w-0 min-w-0 opacity-0'
             : 'w-2/5 min-w-[40%] opacity-100'
           }`}
       >
-        <motion.div 
+        <motion.div
           className={`w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
           layoutId={clickedLayoutId || "main-banner"}
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
@@ -308,20 +307,19 @@ export const HomeView = () => {
                     {banners?.map((b, idx) => (
                       <button
                         key={`${b.id}-${idx}`}
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setCurrentBanner(idx); 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentBanner(idx);
                         }}
-                        className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 shadow-md ${
-                          currentBanner === idx 
-                            ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)] z-10' 
+                        className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 shadow-md ${currentBanner === idx
+                            ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)] z-10'
                             : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'
-                        }`}
+                          }`}
                         aria-label={`${idx + 1}번 배너로 이동`}
                       >
-                        <ThumbnailImage 
-                          src={b.imageUrl} 
-                          alt={b.subtitle?.replace(' 랭킹 1위', '') || b.title || `Banner ${idx + 1}`} 
+                        <ThumbnailImage
+                          src={b.imageUrl}
+                          alt={b.subtitle?.replace(' 랭킹 1위', '') || b.title || `Banner ${idx + 1}`}
                         />
                       </button>
                     ))}
@@ -348,9 +346,9 @@ export const HomeView = () => {
       </aside>
 
       {/* Toggle Button */}
-      <PanelToggle 
-        isFolded={isBannerFolded} 
-        onToggle={() => setIsBannerFolded(!isBannerFolded)} 
+      <PanelToggle
+        isFolded={isBannerFolded}
+        onToggle={() => setIsBannerFolded(!isBannerFolded)}
       />
 
       {/* Right Column: Main Content */}
@@ -376,153 +374,153 @@ export const HomeView = () => {
             <motion.div key="home" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0 flex flex-col">
               {/* Section 1: 랭킹 */}
               <section className="mt-4">
-              <div className="flex items-center mb-4">
-                <Title
-                  title="인기 랭킹"
-                  bottomBorder={false}
-                  className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
-                />
-              </div>
+                <div className="flex items-center mb-4">
+                  <Title
+                    title="인기 순위"
+                    bottomBorder={false}
+                    className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
+                  />
+                </div>
 
-              {/* Tab Menu + 화살표 */}
-              <div className="flex items-center mb-6">
-                <Tab onChange={setActiveTab} size="large">
-                  {tabItems.map((item, idx) => (
-                    <Tab.Item key={item} selected={activeTab === idx}>
-                      {item}
-                    </Tab.Item>
-                  ))}
-                </Tab>
-                <CarouselNav
-                  canLeft={rankingCarousel.canScrollLeft}
-                  canRight={rankingCarousel.canScrollRight}
-                  onPrev={() => rankingCarousel.scroll('left')}
-                  onNext={() => rankingCarousel.scroll('right')}
-                />
-              </div>
+                {/* Tab Menu + 화살표 */}
+                <div className="flex items-center mb-6">
+                  <Tab onChange={setActiveTab} size="large">
+                    {tabItems.map((item, idx) => (
+                      <Tab.Item key={item} selected={activeTab === idx}>
+                        {item}
+                      </Tab.Item>
+                    ))}
+                  </Tab>
+                  <CarouselNav
+                    canLeft={rankingCarousel.canScrollLeft}
+                    canRight={rankingCarousel.canScrollRight}
+                    onPrev={() => rankingCarousel.scroll('left')}
+                    onNext={() => rankingCarousel.scroll('right')}
+                  />
+                </div>
 
-              {/* 카드 */}
-              <div
-                ref={rankingCarousel.scrollRef}
-                className="flex gap-5 overflow-x-auto pb-4 pt-2 px-2 -mx-2"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {rankingLoading ? (
-                  Array.from({ length: 5 }).map((_, idx) => (
-                    <div key={idx} className="shrink-0">
-                      <InfoCard src="" title="" isLoading={true} showRank={true} rank={idx + 1} />
-                    </div>
-                  ))
-                ) : (
-                  ranking?.map((item, idx) => {
-                    const isWishlisted = !!wishlistMap[item.id];
-                    return (
-                      <div
-                        key={item.id}
-                        className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
-                        onClick={() => handleCardClick(item.id, `poster-ranking-${item.id}`)}
-                      >
-                        <InfoCard
-                          layoutId={`poster-ranking-${item.id}`}
-                          src={item.imageUrl}
-                          title={item.title}
-                          place={item.venue}
-                          day={item.date}
-                          rank={idx + 1}
-                          showRank={true}
-                          isWishlisted={isWishlisted}
-                          onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                          badges={item.badges.map((b, badgeIdx) => ({
-                            text: b,
-                            color: getBadgeColor(badgeIdx) as any,
-                            variant: 'fill' as const,
-                          }))}
-                          priority={idx < 3}
-                        />
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* 더보기 */}
-              <div className="w-full flex items-center gap-4 mt-6">
-                <span className="flex-1 h-px bg-gray-200" />
-                <button
-                  onClick={() => setSearchValue(tabItems[activeTab])}
-                  className="group cursor-pointer"
+                {/* 카드 */}
+                <div
+                  ref={rankingCarousel.scrollRef}
+                  className="flex gap-5 overflow-x-auto pb-4 pt-2 px-2 -mx-2"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                  <Box variant="outline" padding="none" className="py-2 px-5 hover:bg-gray-50 transition-colors flex items-center justify-center">
-                    <span className="text-sm text-gray-500 group-hover:text-gray-800 transition-colors whitespace-nowrap font-medium">
-                      더보기
-                    </span>
-                  </Box>
-                </button>
-                <span className="flex-1 h-px bg-gray-200" />
-              </div>
-            </section>
-
-            {/* Section 2: 오픈 예정 */}
-            <section className="mt-16 pb-32">
-              <div className="flex items-center mb-6">
-                <Title
-                  title="오픈 예정"
-                  bottomBorder={false}
-                  className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
-                />
-                <CarouselNav
-                  canLeft={upcomingCarousel.canScrollLeft}
-                  canRight={upcomingCarousel.canScrollRight}
-                  onPrev={() => upcomingCarousel.scroll('left')}
-                  onNext={() => upcomingCarousel.scroll('right')}
-                />
-              </div>
-
-              {/* 카드 */}
-              <div
-                ref={upcomingCarousel.scrollRef}
-                className="flex gap-5 overflow-x-auto pb-4 pt-5 px-2 -mx-2"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {upcomingLoading ? (
-                  Array.from({ length: 5 }).map((_, idx) => (
-                    <div key={idx} className="shrink-0">
-                      <InfoCard src="" title="" isLoading={true} showTime={true} />
-                    </div>
-                  ))
-                ) : (
-                  upcoming?.map((item, idx) => {
-                    const isWishlisted = !!wishlistMap[item.id];
-                    return (
-                      <div
-                        key={item.id}
-                        className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
-                        onClick={() => handleCardClick(item.id, `poster-upcoming-${item.id}`)}
-                      >
-                        <InfoCard
-                          layoutId={`poster-upcoming-${item.id}`}
-                          src={item.imageUrl}
-                          title={item.title}
-                          place={item.venue}
-                          day={item.date}
-                          disabled={true}
-                          showTime={true}
-                          targetDate={item.openDate}
-                          isWishlisted={isWishlisted}
-                          onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                          badges={item.badges.map((b, badgeIdx) => ({
-                            text: b,
-                            color: getBadgeColor(badgeIdx) as any,
-                            variant: 'fill' as const,
-                          }))}
-                          priority={idx < 3}
-                        />
+                  {rankingLoading ? (
+                    Array.from({ length: 5 }).map((_, idx) => (
+                      <div key={idx} className="shrink-0">
+                        <InfoCard src="" title="" isLoading={true} showRank={true} rank={idx + 1} />
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </section>
+                    ))
+                  ) : (
+                    ranking?.map((item, idx) => {
+                      const isWishlisted = !!wishlistMap[item.id];
+                      return (
+                        <div
+                          key={item.id}
+                          className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
+                          onClick={() => handleCardClick(item.id, `poster-ranking-${item.id}`)}
+                        >
+                          <InfoCard
+                            layoutId={`poster-ranking-${item.id}`}
+                            src={item.imageUrl}
+                            title={item.title}
+                            place={item.venue}
+                            day={item.date}
+                            rank={idx + 1}
+                            showRank={true}
+                            isWishlisted={isWishlisted}
+                            onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
+                            badges={item.badges.map((b, badgeIdx) => ({
+                              text: b,
+                              color: getBadgeColor(badgeIdx) as any,
+                              variant: 'fill' as const,
+                            }))}
+                            priority={idx < 3}
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* 더보기 */}
+                <div className="w-full flex items-center gap-4 mt-6">
+                  <span className="flex-1 h-px bg-gray-200" />
+                  <button
+                    onClick={() => setSearchValue(tabItems[activeTab])}
+                    className="group cursor-pointer"
+                  >
+                    <Box variant="outline" padding="none" className="py-2 px-5 hover:bg-gray-50 transition-colors flex items-center justify-center">
+                      <span className="text-sm text-gray-500 group-hover:text-gray-800 transition-colors whitespace-nowrap font-medium">
+                        더보기
+                      </span>
+                    </Box>
+                  </button>
+                  <span className="flex-1 h-px bg-gray-200" />
+                </div>
+              </section>
+
+              {/* Section 2: 오픈 예정 */}
+              <section className="mt-16 pb-32">
+                <div className="flex items-center mb-6">
+                  <Title
+                    title="오픈 예정"
+                    bottomBorder={false}
+                    className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
+                  />
+                  <CarouselNav
+                    canLeft={upcomingCarousel.canScrollLeft}
+                    canRight={upcomingCarousel.canScrollRight}
+                    onPrev={() => upcomingCarousel.scroll('left')}
+                    onNext={() => upcomingCarousel.scroll('right')}
+                  />
+                </div>
+
+                {/* 카드 */}
+                <div
+                  ref={upcomingCarousel.scrollRef}
+                  className="flex gap-5 overflow-x-auto pb-4 pt-5 px-2 -mx-2"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {upcomingLoading ? (
+                    Array.from({ length: 5 }).map((_, idx) => (
+                      <div key={idx} className="shrink-0">
+                        <InfoCard src="" title="" isLoading={true} showTime={true} />
+                      </div>
+                    ))
+                  ) : (
+                    upcoming?.map((item, idx) => {
+                      const isWishlisted = !!wishlistMap[item.id];
+                      return (
+                        <div
+                          key={item.id}
+                          className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
+                          onClick={() => handleCardClick(item.id, `poster-upcoming-${item.id}`)}
+                        >
+                          <InfoCard
+                            layoutId={`poster-upcoming-${item.id}`}
+                            src={item.imageUrl}
+                            title={item.title}
+                            place={item.venue}
+                            day={item.date}
+                            disabled={true}
+                            showTime={true}
+                            targetDate={item.openDate}
+                            isWishlisted={isWishlisted}
+                            onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
+                            badges={item.badges.map((b, badgeIdx) => ({
+                              text: b,
+                              color: getBadgeColor(badgeIdx) as any,
+                              variant: 'fill' as const,
+                            }))}
+                            priority={idx < 3}
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
             </motion.div>
           )}
         </AnimatePresence>
