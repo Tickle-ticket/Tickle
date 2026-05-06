@@ -51,6 +51,8 @@ services:
       DB_NAME: tickle_core
       DB_USERNAME: root
       DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_HOST: redis-master
+      REDIS_PORT: 6379
       REDIS_PASSWORD: ""
       KAFKA_BOOTSTRAP_SERVERS: ${SERVER2_PRIVATE_IP}:9092
       KAFKA_CONSUMER_GROUP_ID: tickle-group
