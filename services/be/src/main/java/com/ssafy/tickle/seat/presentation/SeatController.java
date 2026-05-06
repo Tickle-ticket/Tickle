@@ -2,6 +2,8 @@ package com.ssafy.tickle.seat.presentation;
 
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.queue.application.service.QueueStatusService;
+import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.seat.application.SeatService;
 import com.ssafy.tickle.seat.presentation.dto.SeatHoldRequest;
 import com.ssafy.tickle.seat.presentation.dto.SeatHoldResponse;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SeatController implements SeatApiDoc {
 
     private final SeatService seatService;
+    private final QueueStatusService queueStatusService;
 
     @Override
     @GetMapping("/events/{eventId}/schedules/{scheduleId}/seats")
@@ -47,8 +50,10 @@ public class SeatController implements SeatApiDoc {
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
             @RequestParam Long userId,
+            @RequestParam String admitToken,
             @Valid @RequestBody SeatHoldRequest request
     ) {
+        queueStatusService.validateAdmitToken(QueueScope.BOOKING, eventId, userId, admitToken);
         SeatHoldResponse response = seatService.holdSeats(eventId, scheduleId, userId, request);
         return ResponseEntity
                 .ok()
