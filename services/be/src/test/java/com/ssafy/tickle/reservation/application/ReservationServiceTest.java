@@ -14,6 +14,7 @@ import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
 import com.ssafy.tickle.seat.domain.SeatStatusChangedEvent;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
+import com.ssafy.tickle.cancellation.application.CancellationRedistributionService;
 import com.ssafy.tickle.venue.domain.Venue;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +55,7 @@ class ReservationServiceTest {
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingTicketRepository bookingTicketRepository;
     @Mock private SessionSeatRepository sessionSeatRepository;
+    @Mock private CancellationRedistributionService cancellationRedistributionService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private ReservationService reservationService;
@@ -65,6 +67,7 @@ class ReservationServiceTest {
     private Booking confirmedBooking;
     private Booking cancelledBooking;
     private BookingTicket ticket;
+    private SessionSeat sessionSeat;
 
     @BeforeEach
     void setUp() {
@@ -96,14 +99,14 @@ class ReservationServiceTest {
         given(cancelledBooking.getBookingStatus()).willReturn(Booking.Status.CANCELLED);
 
         // 티켓 + 좌석
-        SessionSeat sessionSeat = mock(SessionSeat.class);
+        sessionSeat = mock(SessionSeat.class);
         given(sessionSeat.getId()).willReturn(SEAT_ID);
 
         ticket = mock(BookingTicket.class);
         given(ticket.getSessionSeat()).willReturn(sessionSeat);
 
         // 좌석 조회 기본 stub
-        given(sessionSeatRepository.findAllByIdIn(List.of(SEAT_ID))).willReturn(List.of(sessionSeat));
+        given(sessionSeatRepository.findAllByIdIn(any())).willReturn(List.of(sessionSeat));
         given(sessionSeatRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
         willDoNothing().given(eventPublisher).publishEvent(any());
     }
@@ -212,7 +215,7 @@ class ReservationServiceTest {
             // then
             verify(ticket).cancel(any(Instant.class));
             verify(confirmedBooking).cancel(any(Instant.class));
-            verify(ticket.getSessionSeat()).cancelForReallocation();
+            verify(sessionSeat).cancelForReallocation();
             verify(sessionSeatRepository).saveAll(any());
             verify(eventPublisher).publishEvent(any(SeatStatusChangedEvent.class));
             verify(eventPublisher).publishEvent(
@@ -229,6 +232,7 @@ class ReservationServiceTest {
             Booking draftBooking = mock(Booking.class);
             EventSession session = confirmedBooking.getSession();
             given(draftBooking.getBookingStatus()).willReturn(Booking.Status.DRAFT);
+            given(draftBooking.getCancellationOfferId()).willReturn(null);
             given(draftBooking.getSession()).willReturn(session);
             given(bookingRepository.findByIdAndUserId(BOOKING_ID, USER_ID))
                     .willReturn(Optional.of(draftBooking));
@@ -238,8 +242,8 @@ class ReservationServiceTest {
             reservationService.cancelReservation(BOOKING_ID, USER_ID);
 
             // then: 좌석은 AVAILABLE 복귀 (cancelForReallocation 아님)
-            verify(ticket.getSessionSeat()).release();
-            verify(ticket.getSessionSeat(), never()).cancelForReallocation();
+            verify(sessionSeat).release();
+            verify(sessionSeat, never()).cancelForReallocation();
             // then: Kafka 불필요 이벤트 발행
             verify(eventPublisher).publishEvent(
                     argThat(e -> e instanceof BookingCancelledEvent
