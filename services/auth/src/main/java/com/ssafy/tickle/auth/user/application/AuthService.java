@@ -85,13 +85,18 @@ public class AuthService {
         AuthUser saved = authUserRepository.save(authUser);
 
         String userNo = generateUserNo();
+        String resolvedNickname = request.nickname();
+        if (isBlank(resolvedNickname)) {
+            resolvedNickname = request.name();
+        }
+
         try {
             beInternalClient.createUser(new CreateUserRequest(
                     saved.getId(),
                     userNo,
                     request.email(),
                     request.name(),
-                    request.nickname(),
+                    resolvedNickname,
                     request.phoneNumber(),
                     request.role(),
                     request.organizerName(),
