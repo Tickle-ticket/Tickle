@@ -78,7 +78,21 @@ public class CancellationCandidate {
 
     public enum Status {
         WAITING,
+        OFFERED,
         CANCELLED
+    }
+
+    /**
+     * 취소표 제안을 받은 상태로 전환합니다.
+     *
+     * @param offeredAt 제안 시각
+     */
+    public void offer(Instant offeredAt) {
+        if (this.status != Status.WAITING) {
+            return;
+        }
+        this.status = Status.OFFERED;
+        this.updatedAt = offeredAt;
     }
 
     /**
