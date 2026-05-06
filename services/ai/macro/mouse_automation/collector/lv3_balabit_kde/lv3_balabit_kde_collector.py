@@ -22,7 +22,9 @@ dry-run: pyautogui 호출 X. sampler/pool 로드 + trajectory 생성만 검증 (
 from __future__ import annotations
 
 import argparse
+import json
 import random
+import subprocess
 import time
 from pathlib import Path
 
@@ -42,6 +44,51 @@ PARAMS_DIR_DEFAULT = Path("data/processed/balabit_kde_params")
 POOL_DIR_DEFAULT = Path("data/processed/balabit_trace_pool")
 
 SOURCE = "pyautogui_lv3_balabit_kde_collector"
+
+
+def _git_short_hash() -> str | None:
+    """git short hash. repo 가 아니거나 git 없으면 None (선택 필드)."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True, text=True, timeout=2.0, check=False,
+        )
+        if out.returncode == 0:
+            return out.stdout.strip() or None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+    return None
+
+
+def _write_sidecar(
+    jsonl_path: Path,
+    *,
+    session_id: str,
+    user_id: str,
+    seed: int | None,
+    kde_param_path: Path,
+    trace_pool_path: Path,
+) -> Path:
+    """jsonl 옆 {session_id}.meta.json sidecar 저장. logger.flush() 후 호출 가정.
+
+    jsonl_to_trial 이 user_id/algorithm_type 채우는 채널 (옵션 C). EventLogger 본체
+    미변경 — raw jsonl 형식 100% 호환 정책 유지.
+    """
+    sidecar = {
+        "session_id": session_id,
+        "user_id": user_id,
+        "algorithm_type": "lv3_balabit_kde",
+        "source": SOURCE,
+        "seed": seed,
+        "kde_param_path": str(kde_param_path),
+        "trace_pool_path": str(trace_pool_path),
+        "collector_version": _git_short_hash(),
+    }
+    sidecar_path = jsonl_path.with_suffix(".meta.json")
+    with open(sidecar_path, "w", encoding="utf-8") as f:
+        json.dump(sidecar, f, ensure_ascii=False, indent=2)
+    return sidecar_path
 
 
 def _list_users(params_dir: Path) -> list[str]:
@@ -92,6 +139,8 @@ def run_session(
     params_dir: Path,
     pool_dir: Path,
     dry_run: bool,
+    *,
+    session_seed: int | None = None,
 ) -> dict:
     """한 session 실행.
 
@@ -189,11 +238,24 @@ def run_session(
         session.end()
         logger.flush()
 
+    # sidecar manifest — jsonl_to_trial 가 user_id/algorithm_type 채우는 채널 (옵션 C).
+    # collector 가 원천에서 USER_PREFIX_BY_ALGORITHM["lv3_balabit_kde"]="balabit_kde_"
+    # 약속 prefix 부착 후 박음.
+    sidecar_path = _write_sidecar(
+        logger.file_path,
+        session_id=session.session_id,
+        user_id=f"balabit_kde_{user_id}",
+        seed=session_seed,
+        kde_param_path=params_dir / f"{user_id}.json",
+        trace_pool_path=pool_dir / f"{user_id}.json",
+    )
+
     return {
         "session_id": session.session_id, "user_id": user_id,
         "move_count": move_count, "click_count": click_count,
         "fallback_count": fallback_count, "trajectory_count": trajectory_count,
         "dry_run": False,
+        "sidecar_path": str(sidecar_path),
     }
 
 
@@ -234,14 +296,21 @@ def main():
     print(f"  pool_dir:   {pool_dir}")
     print(f"  user pool:  {len(users)} ({users})")
 
-    rng = random.Random(args.seed) if args.seed is not None else random.Random()
+    # 재현성: --seed 미지정이면 SystemRandom 으로 base_seed 1개 derive 후 sidecar 에 박음.
+    base_seed = args.seed if args.seed is not None else random.SystemRandom().randint(0, 2**32 - 1)
+    rng = random.Random(base_seed)
+    print(f"  base_seed:  {base_seed} (resolved)")
 
     total_fallback = 0
     total_trajectory = 0
     for i in range(1, args.sessions + 1):
+        # 세션마다 derived seed 로 fresh rng — sidecar.seed 단독으로 trial 단위 재현 가능.
+        session_seed = rng.randint(0, 2**32 - 1)
+        session_rng = random.Random(session_seed)
         result = run_session(
-            args.clicks_min, args.clicks_max, rng,
+            args.clicks_min, args.clicks_max, session_rng,
             params_dir, pool_dir, args.dry_run,
+            session_seed=session_seed,
         )
         print(
             f"[{i}/{args.sessions}] session_id={result['session_id']} "
