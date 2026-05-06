@@ -11,6 +11,7 @@ import com.ssafy.tickle.queue.infrastructure.cache.store.QueueEnterRequestStore;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueStatsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -122,6 +123,27 @@ public class QueueStatusService {
 
     public java.time.Duration admitTokenTtl() {
         return QueueConstants.ADMIT_TOKEN_TTL;
+    }
+
+    /**
+     * 어드민용: 특정 회차의 대기열 현황 통계를 조회합니다.
+     *
+     * <p>대기 인원, 입장 허용 인원, 예상 평균 대기 시간을 Redis에서 실시간으로 조회합니다.</p>
+     *
+     * @param sessionId 회차 식별자
+     * @return 대기열 현황 통계
+     */
+    public QueueStatsResponse getQueueStats(Long sessionId) {
+        long totalWaiting = queueStatusStore.countWaiting(QueueScope.BOOKING, sessionId);
+        long processingCount = queueStatusStore.countAdmitted(QueueScope.BOOKING, sessionId);
+
+        // 대기열 중간(절반 순번)을 기준으로 대표 평균 대기 시간 산출
+        long midRank = totalWaiting == 0 ? 0L : Math.max(1L, totalWaiting / 2);
+        long averageWaitSeconds = totalWaiting == 0
+                ? 0L
+                : estimateWaitSeconds(QueueScope.BOOKING, sessionId, midRank);
+
+        return new QueueStatsResponse(sessionId, totalWaiting, processingCount, averageWaitSeconds, QueueConstants.SLOT_LIMIT);
     }
 
     /**

@@ -5,12 +5,15 @@ import com.ssafy.tickle.blacklist.infrastructure.persistence.BlacklistRepository
 import com.ssafy.tickle.blacklist.presentation.dto.BlacklistResponse;
 import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse;
 import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse.ReasonStat;
+import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse.ScoreBucket;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -31,12 +34,20 @@ public class BotDetectionService {
     /**
      * 봇 탐지 현황 통계를 조회합니다.
      *
-     * <p>전체 블랙리스트 수, 사유별 통계, 최근 등록 10건을 포함합니다.</p>
+     * <p>전체 블랙리스트 수, 최근 1시간 탐지 건수, 고유 IP 수, 사유별 통계,
+     * AI 봇 점수 구간 분포, 최근 등록 10건을 포함합니다.</p>
      *
      * @return 봇 탐지 현황 통계 응답
      */
     public BotDetectionStatsResponse getStats() {
         long total = blacklistRepository.count();
+
+        // 최근 1시간 탐지 건수
+        Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
+        long recentOneHourCount = blacklistRepository.countByCreatedAtAfter(oneHourAgo);
+
+        // 고유 IP 수 (IP_RATE_LIMIT 탐지 건)
+        long blockedIpCount = blacklistRepository.countDistinctIpAddress();
 
         // 단일 GROUP BY 쿼리로 사유별 카운트 일괄 조회 (N+1 방지)
         Map<String, Long> reasonCountMap = blacklistRepository.countGroupByReason().stream()
@@ -48,6 +59,11 @@ public class BotDetectionService {
                 .map(reason -> new ReasonStat(reason.name(), reasonCountMap.getOrDefault(reason.name(), 0L)))
                 .toList();
 
+        // AI 봇 스코어 구간별 분포 (botScore IS NOT NULL인 건만)
+        List<ScoreBucket> scoreDistribution = blacklistRepository.countByScoreRange().stream()
+                .map(row -> new ScoreBucket((String) row[0], (Long) row[1]))
+                .toList();
+
         List<BlacklistResponse> recent = blacklistRepository
                 .findAll(PageRequest.of(0, 10, Sort.by(DESC, "createdAt")))
                 .getContent()
@@ -55,6 +71,6 @@ public class BotDetectionService {
                 .map(BlacklistResponse::from)
                 .toList();
 
-        return BotDetectionStatsResponse.from(total, byReason, recent);
+        return BotDetectionStatsResponse.from(total, recentOneHourCount, blockedIpCount, byReason, scoreDistribution, recent);
     }
 }

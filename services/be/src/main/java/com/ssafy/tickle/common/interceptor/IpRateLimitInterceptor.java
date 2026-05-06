@@ -69,7 +69,8 @@ public class IpRateLimitInterceptor implements HandlerInterceptor {
                         blacklistService.addBlacklistInternal(new InternalAddBlacklistRequest(
                                 userId,
                                 "IP_RATE_LIMIT",
-                                "10초 내 " + count + "회 요청 (IP: " + ip + ")"
+                                "10초 내 " + count + "회 요청 (IP: " + ip + ")",
+                                ip
                         ));
                     } catch (NumberFormatException ignored) {
                     }
