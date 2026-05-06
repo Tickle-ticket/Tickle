@@ -58,7 +58,7 @@ class BeCallbackClient:
 
         body = {
             "result": str(label).upper(),
-            "type": payload.get("type"),
+            "type": str(payload.get("type") or "").upper(),
             "scheduleId": payload.get("scheduleId") or payload.get("schedule_id"),
             "eventId": payload.get("eventId") or payload.get("event_id") or payload.get("name"),
             "eventDate": payload.get("eventDate") or payload.get("event_date"),
