@@ -28,7 +28,7 @@ spring:
     redis:
       sentinel:
         master: mymaster
-        nodes: ${REDIS_SENTINEL_NODES}
+        nodes: 172.31.52.183:26379,172.31.57.10:26379,172.31.62.10:26379
       password: ${REDIS_PASSWORD}
       # Redis 명령 타임아웃
       timeout: 3s
