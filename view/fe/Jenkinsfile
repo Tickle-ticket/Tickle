@@ -6,15 +6,11 @@ pipeline {
     }
 
     environment {
-        PROJECT_PATH = "view/fe/tickle"
-        EC2_USER = "ubuntu"
-        EC2_IP = "3.38.111.218"
-        TARGET_DIR = "/home/ubuntu/S14P31A203/view/fe/tickle"
-        
-        // BE에서 사용한 'tickle-deploy-key'를 사용해도 되고, 
-        // 따로 만든 'fe-ec2-key'를 써도 됩니다. (BE 키가 확실히 작동하므로 통일하는 것도 추천합니다)
-        SSH_CREDENTIAL_ID = "fe-ec2-key" 
-        
+        PROJECT_PATH = 'view/fe/tickle'
+        EC2_USER = 'ubuntu'
+        EC2_IP = '3.38.111.218'
+        TARGET_DIR = '/home/ubuntu/S14P31A203/view/fe/tickle'
+        SSH_CREDENTIAL_ID = 'fe-ec2-key'
         MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
     }
 
@@ -23,35 +19,36 @@ pipeline {
             steps {
                 echo '===== [1/4] 코드 체크아웃 시작 ====='
                 checkout scm
+                echo "브랜치: ${env.GIT_BRANCH}"
+                echo "커밋: ${env.GIT_COMMIT}"
             }
         }
 
         stage('FE Build') {
             steps {
-                // 빌드 단계에서는 소스 코드가 있는 폴더로 들어가야 하므로 dir() 유지
                 dir("${env.PROJECT_PATH}") {
-                    echo "===== [2/4] pnpm 설치 및 빌드 ====="
-                    sh "npm install -g pnpm"
-                    sh """
+                    echo '===== [2/4] pnpm 환경 구축 및 Next.js 빌드 ====='
+                    sh 'npm install -g pnpm'
+                    sh '''
                         rm -rf node_modules
                         pnpm install --no-frozen-lockfile --shamefully-hoist
                         pnpm approve-builds
                         NEXT_PUBLIC_API_MOCKING=disabled pnpm build
-                    """
+                    '''
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                // [핵심 변경] dir() 블록 밖(워크스페이스 루트)에서 sshagent를 실행하여 꼬임을 방지합니다.
+                // [핵심 변경] dir 블록 바깥에서 sshagent를 실행하여 젠킨스 내부 폴더 꼬임을 원천 차단 (BE 방식)
                 sshagent([SSH_CREDENTIAL_ID]) {
-                    echo "===== [3/4] 파일 압축 및 서버 전송 ====="
+                    echo '===== [3/4] 파일 압축 및 서버 전송 ====='
                     
-                    // 1. 빌드 파일 압축 (dir 없이 명시적 경로 사용)
+                    // 1. 빌드 파일 압축 (명시적 경로 사용)
                     sh "cd ${env.PROJECT_PATH} && tar -czf deploy.tar.gz .next public package.json pnpm-lock.yaml next.config.ts"
 
-                    // 2. EC2 폴더 준비 및 소유권 강제 변경 (BE 코드 방식 차용)
+                    // 2. 서버 폴더 준비 및 소유권 설정
                     sh """
                         ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} '
                             set -e
@@ -60,7 +57,7 @@ pipeline {
                         '
                     """
 
-                    // 3. 파일 전송
+                    // 3. 파일 전송 (SCP)
                     sh "scp -o StrictHostKeyChecking=no ${env.PROJECT_PATH}/deploy.tar.gz ${EC2_USER}@${EC2_IP}:${TARGET_DIR}"
 
                     // 4. 배포 실행
@@ -79,7 +76,7 @@ pipeline {
 
         stage('Verify') {
             steps {
-                echo "===== [4/4] 컨테이너 상태 확인 ====="
+                echo '===== [4/4] 배포 완료 확인 ====='
                 sshagent([SSH_CREDENTIAL_ID]) {
                     sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'docker compose ps'"
                 }
@@ -87,17 +84,25 @@ pipeline {
         }
     }
 
-    // BE 배포의 멋진 알림 메시지 형식을 가져왔습니다.
     post {
         success {
             script {
-                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 프론트 배포 성공!", "fields": [{"short": true, "title": "🔗 접속", "value": "http://${env.EC2_IP}:3000"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}], "footer": "Tickle Jenkins"}]}"""
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 FE(Withy) 배포 성공!", "fields": [{"short": true, "title": "👤 작업자", "value": "${author}"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 접속", "value": "http://${env.EC2_IP}:3000"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}], "footer": "Tickle Jenkins"}]}"""
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
         failure {
             script {
-                def msg = """{"text": "> 프론트 배포 터졌어 진짜 슬퍼ㅠㅠ 다음엔 잘 되겠지... 🚨", "attachments": [{"color": "#ff4444", "title": "💥 프론트 배포 실패!", "fields": [{"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}, {"short": false, "title": "🔗 빌드", "value": "[Jenkins 로그 확인](${env.BUILD_URL})"}], "footer": "Tickle Jenkins"}]}"""
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def failMsg = ["아 ${author}야 프론트 배포 터졌어 빨리 봐 🚨", "${author} FE CD 나갔는데 ㅋㅋ 확인해", "${author} 프론트 서버 죽었다 살려줘 😭", "${author}!! FE 배포 빨간불 ㅠ 고쳐줘"][new Random().nextInt(4)]
+                def msg = """{"text": "> ${failMsg}", "attachments": [{"color": "#ff4444", "title": "💥 FE(Withy) 배포 실패!", "fields": [{"short": true, "title": "👤 담당자", "value": "**${author}**"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
