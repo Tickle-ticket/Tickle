@@ -38,6 +38,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -318,7 +319,7 @@ public class CancellationRedistributionService {
                             .cancellationCandidate(candidate)
                             .offerStatus(CancellationOffer.OfferStatus.UNACCEPTED)
                             .offeredAt(now)
-                            .offerExpiresAt(now.plus(1, java.time.temporal.ChronoUnit.HOURS))
+                            .offerExpiresAt(now.plus(1, ChronoUnit.HOURS))
                             .build());
 
             log.info("다음 대기자에게 취소표 제안: offerId={}, userId={}, seatId={}, rank={}",
