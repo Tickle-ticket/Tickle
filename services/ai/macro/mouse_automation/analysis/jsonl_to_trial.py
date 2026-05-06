@@ -26,24 +26,42 @@ from statistics import mean
 import yaml
 
 
-COLLECTION_PIPELINE = "mouse_automation_lv2"
-
 # === ADR-016 메타 backfill ===
 
-# label → algorithm_type 매핑 (lv2_collector / human_recorder 산출 풀 한정)
+# label → algorithm_type 매핑 (lv2_collector / human_recorder 산출 풀 한정, source 무관)
 ALGORITHM_TYPE_BY_LABEL = {
     "human": "human_lv2_collector",
     "macro": "lv2_bezier",
 }
 
+
+def resolve_algorithm_type(label: str | None, source: str) -> str | None:
+    """label + source → algorithm_type. lv3_balabit_kde 는 source 로 식별.
+
+    sidecar 가 algorithm_type 을 명시한 경우 caller 에서 sidecar 값이 우선,
+    sidecar 없으면 본 함수가 fallback (source 자력 식별 포함).
+    """
+    if source == "pyautogui_lv3_balabit_kde_collector":
+        return "lv3_balabit_kde"
+    return ALGORITHM_TYPE_BY_LABEL.get(label)
+
+
+def resolve_collection_pipeline(source: str) -> str:
+    """source → collection_pipeline 메타. lv3_balabit_kde 는 격리된 풀."""
+    if source == "pyautogui_lv3_balabit_kde_collector":
+        return "mouse_automation_lv3_balabit_kde"
+    return "mouse_automation_lv2"
+
+
 # 정합성 제약: macro 라벨은 이 algorithm_type 집합에만 속해야 함
-MACRO_ALGORITHM_TYPES = frozenset({"lv2_bezier", "lv3_random_walk"})
+MACRO_ALGORITHM_TYPES = frozenset({"lv2_bezier", "lv3_random_walk", "lv3_balabit_kde"})
 
 # user_id prefix ↔ algorithm_type 매핑 (정합성 검증용)
 USER_PREFIX_BY_ALGORITHM = {
     "human_lv2_collector": "lv2_",
     "human_lv3_collector": "lv3_",
     "human_balabit": "balabit_",
+    "lv3_balabit_kde": "balabit_kde_",
 }
 
 # === 추출 대상 feature ===
@@ -336,7 +354,7 @@ def build_summary(events: list[dict], session_id: str, source: str) -> dict:
     duration_ms = (events[-1]["ts_ms"] - events[0]["ts_ms"]) if events else 0.0
     click_count = sum(1 for e in events if e.get("event") == "mouse_click")
     return {
-        "collection_pipeline": COLLECTION_PIPELINE,
+        "collection_pipeline": resolve_collection_pipeline(source),
         "session_id": session_id,
         "source": source,
         "durationMs": round(float(duration_ms), 3),
@@ -390,6 +408,9 @@ def validate_meta(trial: dict) -> list[str]:
     if label == "human" and user_id is None:
         warnings.append("label=human but user_id is null")
 
+    if algo == "lv3_balabit_kde" and user_id is None:
+        warnings.append("algorithm_type=lv3_balabit_kde but user_id is null (sidecar missing?)")
+
     if user_id is not None:
         expected_prefix = USER_PREFIX_BY_ALGORITHM.get(algo)
         if expected_prefix and not str(user_id).startswith(expected_prefix):
@@ -398,6 +419,24 @@ def validate_meta(trial: dict) -> list[str]:
             )
 
     return warnings
+
+
+def _sidecar_path(jsonl_path: Path) -> Path:
+    """jsonl 옆 sidecar manifest 경로 ({stem}.meta.json)."""
+    return jsonl_path.with_suffix(".meta.json")
+
+
+def _read_sidecar(jsonl_path: Path) -> dict | None:
+    """sidecar 가 있으면 dict, 없거나 파싱 실패 시 None (warn 출력)."""
+    p = _sidecar_path(jsonl_path)
+    if not p.exists():
+        return None
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"  [warn] sidecar parse fail {p.name}: {e}")
+        return None
 
 
 def jsonl_to_trial(
@@ -431,8 +470,29 @@ def jsonl_to_trial(
     coord_domain = "os_screen"
     screen_width: int | None = None
     screen_height: int | None = None
-    algorithm_type = ALGORITHM_TYPE_BY_LABEL.get(label)
-    user_id = user_id_for_human if label == "human" else None
+
+    # sidecar manifest 우선 (lv3_balabit_kde 등 jsonl 에 user_id 가 박히지 않는 풀).
+    # 없으면 기존 dict-fallback 동작 — lv2/human/balabit 풀 byte invariance.
+    sidecar = _read_sidecar(jsonl_path)
+    if sidecar is not None:
+        sidecar_user_id = sidecar.get("user_id")
+        sidecar_algo = sidecar.get("algorithm_type")
+        sidecar_source = sidecar.get("source")
+
+        if sidecar_source and sidecar_source != source:
+            print(
+                f"  [warn] {jsonl_path.name}: sidecar source={sidecar_source!r} "
+                f"!= jsonl source={source!r}"
+            )
+
+        algorithm_type = sidecar_algo or resolve_algorithm_type(label, source)
+        if label == "human":
+            user_id = sidecar_user_id or user_id_for_human
+        else:
+            user_id = sidecar_user_id  # macro: sidecar 명시 X 면 None
+    else:
+        algorithm_type = resolve_algorithm_type(label, source)
+        user_id = user_id_for_human if label == "human" else None
 
     event_rows = [
         _add_nx_ny(
