@@ -39,6 +39,22 @@ SAFE_Y_MIN, SAFE_Y_MAX = 400, 800
 SAFE_CENTER = ((SAFE_X_MIN + SAFE_X_MAX) // 2, (SAFE_Y_MIN + SAFE_Y_MAX) // 2)
 MIN_CLICK_DIST = 50
 
+# trajectory step 화면 안전 마진 — 휴먼 trace 곡률이 SAFE 밖으로 stretch 되어
+# 화면 모서리 (FAILSAFE trigger) 도달하는 것 차단. SAFE 밖 이동 자체는 허용
+# (휴먼라이크 trace 충실 재현) 하되 OS 모서리 (0,0) 등 접근만 막음.
+SAFE_MARGIN = 50
+
+
+def _clamp_to_screen(px: int, py: int, sw: int, sh: int, margin: int = SAFE_MARGIN) -> tuple[int, int, bool]:
+    """좌표 (px, py) 를 [margin, sw-margin] × [margin, sh-margin] 안으로 clamp.
+
+    반환: (cx, cy, clamped). clamped=True 면 입력 좌표가 마진 밖이라 변경됨.
+    pyautogui FAILSAFE 트리거 영역 (정확히 (0,0) 모서리) 회피 보장.
+    """
+    cx = max(margin, min(sw - margin, px))
+    cy = max(margin, min(sh - margin, py))
+    return cx, cy, (cx != px or cy != py)
+
 # 산출물 디렉토리
 PARAMS_DIR_DEFAULT = Path("data/processed/balabit_kde_params")
 POOL_DIR_DEFAULT = Path("data/processed/balabit_trace_pool")
@@ -69,11 +85,15 @@ def _write_sidecar(
     seed: int | None,
     kde_param_path: Path,
     trace_pool_path: Path,
+    clamp_count: int = 0,
 ) -> Path:
     """jsonl 옆 {session_id}.meta.json sidecar 저장. logger.flush() 후 호출 가정.
 
     jsonl_to_trial 이 user_id/algorithm_type 채우는 채널 (옵션 C). EventLogger 본체
     미변경 — raw jsonl 형식 100% 호환 정책 유지.
+
+    clamp_count: trajectory step 중 화면 안전 마진 밖이라 clamp 발생한 횟수.
+    50 trial 수집 후 분포 영향 정량 분석용.
     """
     sidecar = {
         "session_id": session_id,
@@ -84,6 +104,7 @@ def _write_sidecar(
         "kde_param_path": str(kde_param_path),
         "trace_pool_path": str(trace_pool_path),
         "collector_version": _git_short_hash(),
+        "clamp_count": clamp_count,
     }
     sidecar_path = jsonl_path.with_suffix(".meta.json")
     with open(sidecar_path, "w", encoding="utf-8") as f:
@@ -199,6 +220,9 @@ def run_session(
     pyautogui.FAILSAFE = True
     pyautogui.PAUSE = 0.01
 
+    # 화면 해상도 — clamp 기준. 듀얼 모니터에서는 primary 해상도 (우측 모니터 진입 차단).
+    sw, sh = pyautogui.size()
+
     # 옵션 A: 시작 위치 SAFE 중앙 강제 워프 (session.start() 전이라 jsonl 미로그).
     # pyautogui.position() 그대로 쓰면 듀얼 모니터 등 SAFE 밖 시작 시 첫 trajectory
     # distance 가 커져서 사람 trace 의 ny 곡률(±0.6) × distance 로 화면 모서리 진입 →
@@ -210,6 +234,7 @@ def run_session(
     logger = EventLogger(session)
     targets = _gen_targets(num_clicks, start_pos, rng)
 
+    clamp_count = 0
     session.start()
     try:
         current = (start_pos[0], start_pos[1])
@@ -220,8 +245,11 @@ def run_session(
             trajectory_count += 1
 
             for px, py, sleep_ms in traj:
-                pyautogui.moveTo(px, py, duration=0)
-                logger.log("mouse_move", x=px, y=py)
+                cx, cy, clamped = _clamp_to_screen(px, py, sw, sh)
+                if clamped:
+                    clamp_count += 1
+                pyautogui.moveTo(cx, cy, duration=0)
+                logger.log("mouse_move", x=cx, y=cy)
                 move_count += 1
                 if sleep_ms > 0:
                     time.sleep(sleep_ms / 1000.0)
@@ -248,12 +276,14 @@ def run_session(
         seed=session_seed,
         kde_param_path=params_dir / f"{user_id}.json",
         trace_pool_path=pool_dir / f"{user_id}.json",
+        clamp_count=clamp_count,
     )
 
     return {
         "session_id": session.session_id, "user_id": user_id,
         "move_count": move_count, "click_count": click_count,
         "fallback_count": fallback_count, "trajectory_count": trajectory_count,
+        "clamp_count": clamp_count,
         "dry_run": False,
         "sidecar_path": str(sidecar_path),
     }
@@ -303,6 +333,8 @@ def main():
 
     total_fallback = 0
     total_trajectory = 0
+    total_clamp = 0
+    total_move = 0
     for i in range(1, args.sessions + 1):
         # 세션마다 derived seed 로 fresh rng — sidecar.seed 단독으로 trial 단위 재현 가능.
         session_seed = rng.randint(0, 2**32 - 1)
@@ -312,18 +344,25 @@ def main():
             params_dir, pool_dir, args.dry_run,
             session_seed=session_seed,
         )
+        clamp = result.get("clamp_count", 0)
         print(
             f"[{i}/{args.sessions}] session_id={result['session_id']} "
             f"user_id={result['user_id']} "
             f"mouse_move={result['move_count']} mouse_click={result['click_count']} "
-            f"trajectory={result['trajectory_count']} fallback={result['fallback_count']}"
+            f"trajectory={result['trajectory_count']} fallback={result['fallback_count']} "
+            f"clamp={clamp}"
         )
         total_fallback += result["fallback_count"]
         total_trajectory += result["trajectory_count"]
+        total_clamp += clamp
+        total_move += result["move_count"]
 
     if total_trajectory > 0:
         pct = 100.0 * total_fallback / total_trajectory
         print(f"\n  fallback 빈도: {total_fallback} / {total_trajectory} trajectories ({pct:.2f}%)")
+    if total_move > 0:
+        pct_c = 100.0 * total_clamp / total_move
+        print(f"  clamp 빈도:    {total_clamp} / {total_move} mouse_moves ({pct_c:.2f}%)")
     return 0
 
 
