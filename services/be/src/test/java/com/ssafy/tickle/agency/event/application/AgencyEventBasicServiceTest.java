@@ -20,6 +20,9 @@ import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -70,6 +73,9 @@ class AgencyEventBasicServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private static final String MOCK_POSTER_URL = "https://cdn.test/poster.jpg";
     private static final String MOCK_DETAIL_URL_1 = "https://cdn.test/detail-1.jpg";
     private static final String MOCK_DETAIL_URL_2 = "https://cdn.test/detail-2.jpg";
@@ -80,12 +86,22 @@ class AgencyEventBasicServiceTest {
     private Organizer organizer;
     private Venue venue;
     private Category category;
+    private User agencyUser;
 
     @BeforeEach
     void setUp() {
         organizer = organizerRepository.save(createOrganizer("테스트 기획사"));
         venue = venueRepository.save(createVenue("테스트 공연장"));
         category = categoryRepository.save(createCategory("콘서트"));
+        
+        agencyUser = userRepository.save(User.builder()
+                .id(1001L)
+                .userNo("USER-1001")
+                .name("기획자")
+                .role(UserRole.ORGANIZER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizer.getId())
+                .build());
 
         mockPosterImage = new MockMultipartFile("posterImage", "poster.jpg", "image/jpeg", "fake".getBytes());
         mockDetailImages = List.of(
@@ -104,6 +120,7 @@ class AgencyEventBasicServiceTest {
         eventImageRepository.deleteAllInBatch();
         eventPricePolicyRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
         categoryRepository.deleteAllInBatch();
         organizerRepository.deleteAllInBatch();
@@ -113,7 +130,6 @@ class AgencyEventBasicServiceTest {
     @DisplayName("공연 기본정보를 등록하면 공연이 저장된다")
     void createBasicEvent_success() {
         AgencyCreateEventBasicRequest request = new AgencyCreateEventBasicRequest(
-                organizer.getId(),
                 venue.getId(),
                 category.getId(),
                 "기획사 등록 공연",
@@ -124,7 +140,7 @@ class AgencyEventBasicServiceTest {
         );
 
         AgencyCreateEventResponse response = agencyEventBasicService.createBasicEvent(
-                request, mockPosterImage, mockDetailImages
+                agencyUser.getId(), request, mockPosterImage, mockDetailImages
         );
 
         Event savedEvent = eventRepository.findById(response.eventId()).orElseThrow();
@@ -154,7 +170,6 @@ class AgencyEventBasicServiceTest {
     @DisplayName("공연 시작 시각이 종료 시각보다 늦으면 예외가 발생한다")
     void createBasicEvent_invalidTimeline() {
         AgencyCreateEventBasicRequest request = new AgencyCreateEventBasicRequest(
-                organizer.getId(),
                 venue.getId(),
                 category.getId(),
                 "잘못된 공연",
@@ -164,7 +179,7 @@ class AgencyEventBasicServiceTest {
                 null
         );
 
-        assertThatThrownBy(() -> agencyEventBasicService.createBasicEvent(request, mockPosterImage, List.of()))
+        assertThatThrownBy(() -> agencyEventBasicService.createBasicEvent(agencyUser.getId(), request, mockPosterImage, List.of()))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
