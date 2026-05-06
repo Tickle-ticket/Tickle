@@ -4,13 +4,18 @@ Phase A: trial_*.json 로더 + eventRows DataFrame 변환 + 그룹 샘플링.
 시각화 의존성 없음 (matplotlib import 금지). pure I/O + pandas.
 
 그룹 정의:
-  - lv2_human  : trialId 900001~909999 AND label == "human"
-  - lv2_macro  : trialId 900001~909999 AND label == "macro"
-  - balabit    : trialId 910001~910500
+  - lv2_human        : trialId 900001~909999 AND label == "human"
+  - lv2_macro        : trialId 900001~909999 AND label == "macro"
+  - balabit          : trialId 910001~910500
+  - lv3_balabit_kde  : trialId 930001~930050 (label="macro", algorithm_type="lv3_balabit_kde")
 
-Balabit user_id: summary.session_id 가
-  f"balabit_{user_name}_{sess_label}_chunk_{ci:03d}" 형식
-  (services/ai/macro/mouse_automation/analysis/balabit_to_trial.py:420)
+user_id 정규화 (Balabit_human ↔ lv3_balabit_kde 비교용 동일 namespace 'userN'):
+  - balabit (Balabit_human): summary.session_id 가
+      f"balabit_{user_name}_{sess_label}_chunk_{ci:03d}" 형식 → parse_balabit_user
+      (services/ai/macro/mouse_automation/analysis/balabit_to_trial.py:420)
+  - lv3_balabit_kde: trial 최상위 user_id 가
+      f"balabit_kde_{user_name}" 형식 → parse_balabit_kde_user
+      (services/ai/macro/mouse_automation/collector/lv3_balabit_kde/lv3_balabit_kde_collector.py)
 """
 
 from __future__ import annotations
@@ -28,11 +33,18 @@ DATA_DIR = ROOT.parent.parent / "data" / "behavior"
 
 LV2_RANGE = (900001, 909999)
 BALABIT_RANGE = (910001, 910500)
-GROUPS = ("lv2_human", "lv2_macro", "balabit")
+LV3_BALABIT_KDE_RANGE = (930001, 930050)
+GROUPS = ("lv2_human", "lv2_macro", "balabit", "lv3_balabit_kde")
 
-DEFAULT_SAMPLE_N = {"lv2_human": 16, "lv2_macro": 16, "balabit": 20}
+DEFAULT_SAMPLE_N = {
+    "lv2_human": 16,
+    "lv2_macro": 16,
+    "balabit": 20,
+    "lv3_balabit_kde": 50,  # 50 trial 전체 사용 (모집단 작음)
+}
 
 _BALABIT_USER_RE = re.compile(r"^balabit_(user\d+)_")
+_BALABIT_KDE_USER_RE = re.compile(r"^balabit_kde_(user\d+)$")
 
 
 def load_trial(trial_id: int, data_dir: Path = DATA_DIR) -> dict:
@@ -44,6 +56,15 @@ def parse_balabit_user(session_id: str | None) -> str | None:
     if not session_id:
         return None
     m = _BALABIT_USER_RE.match(session_id)
+    return m.group(1) if m else None
+
+
+def parse_balabit_kde_user(user_id: str | None) -> str | None:
+    """lv3_balabit_kde trial 최상위 user_id (예: 'balabit_kde_user15') → 'user15'.
+    Balabit_human 의 parse_balabit_user 결과와 동일 namespace 로 매칭."""
+    if not user_id:
+        return None
+    m = _BALABIT_KDE_USER_RE.match(user_id)
     return m.group(1) if m else None
 
 
@@ -77,6 +98,8 @@ def list_trials_by_group(group: str, data_dir: Path = DATA_DIR) -> list[dict]:
             continue
         if group == "balabit" and not _in_range(trial_id, BALABIT_RANGE):
             continue
+        if group == "lv3_balabit_kde" and not _in_range(trial_id, LV3_BALABIT_KDE_RANGE):
+            continue
 
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
@@ -108,6 +131,9 @@ def list_trials_by_group(group: str, data_dir: Path = DATA_DIR) -> list[dict]:
         }
         if group == "balabit":
             meta["user_id"] = parse_balabit_user(meta["session_id"])
+        if group == "lv3_balabit_kde":
+            meta["user_id"] = parse_balabit_kde_user(data.get("user_id"))
+            meta["algorithm_type"] = data.get("algorithm_type")
         metas.append(meta)
 
     return metas
