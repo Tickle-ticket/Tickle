@@ -1,28 +1,22 @@
 pipeline {
     agent any
 
-    // 젠킨스 Tools에 등록한 node20 설정을 불러옵니다.
     tools {
         nodejs 'node20' 
     }
 
     environment {
-        // 프로젝트 경로 설정 (로그 기준)
         PROJECT_PATH = "view/fe/tickle"
-        
-        // 배포 서버 정보
         EC2_USER = "ubuntu"
         EC2_IP = "3.38.111.218"
         TARGET_DIR = "/home/ubuntu/S14P31A203/view/fe/tickle"
-        
-        // 젠킨스에 등록된 SSH Credential ID (SSH 키 이름)
         SSH_CREDENTIAL_ID = "fe-ec2-key"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo "===== [1/5] 코드 체크아웃 ====="
+                echo "===== [1/4] 소스 코드 체크아웃 ====="
                 checkout scm
             }
         }
@@ -30,21 +24,17 @@ pipeline {
         stage('FE Build') {
             steps {
                 dir("${env.PROJECT_PATH}") {
-                    echo "===== [2/5] pnpm 환경 구축 및 빌드 ====="
-                    
-                    // 최신 pnpm 설치
+                    echo "===== [2/4] pnpm 환경 구축 및 Next.js 빌드 ====="
                     sh "npm install -g pnpm"
                     
-                    // 핵심 해결책: 기존 모듈 삭제 후 호이스팅 옵션으로 재설치
-                    // --shamefully-hoist: 타입 인식 에러를 해결하기 위해 패키지 구조를 평탄화합니다.
-                    // --no-frozen-lockfile: CI 환경에서 락파일 강제 업데이트를 허용합니다.
+                    // 핵심 해결책: 호이스팅 강제로 타입 에러 해결 및 보안 정책 승인
                     sh """
                         rm -rf node_modules
                         pnpm install --no-frozen-lockfile --shamefully-hoist
                         pnpm approve-builds
                     """
                     
-                    // Next.js 빌드 실행
+                    // Next.js 빌드 (Turbopack 사용 중임을 로그에서 확인)
                     sh "NEXT_PUBLIC_API_MOCKING=disabled pnpm build"
                 }
             }
@@ -53,23 +43,25 @@ pipeline {
         stage('Deploy') {
             steps {
                 dir("${env.PROJECT_PATH}") {
-                    echo "===== [3/5] 빌드 파일 압축 및 전송 ====="
+                    echo "===== [3/4] 빌드 파일 전송 및 도커 배포 ====="
                     
-                    // 배포에 필요한 파일들만 압축 (서버에 있는 .env를 유지하기 위해 .env는 제외)
+                    // 빌드 파일 압축 (next.config.ts 확장자 포함)
                     sh "tar -czf deploy.tar.gz .next public package.json pnpm-lock.yaml next.config.ts"
 
                     sshagent([SSH_CREDENTIAL_ID]) {
-                        // EC2 서버로 파일 전송
+                        // 1. 서버 폴더 생성 및 권한 설정
+                        sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'mkdir -p ${TARGET_DIR} && sudo chown -R ${EC2_USER}:${EC2_USER} ${TARGET_DIR}'"
+
+                        // 2. 압축 파일 전송
                         sh "scp -o StrictHostKeyChecking=no deploy.tar.gz ${EC2_USER}@${EC2_IP}:${TARGET_DIR}"
 
-                        // 서버 내부에서 압축 해제 및 서비스 재시작
+                        // 3. 서버 내부에서 압축 해제 및 도커 컴포즈 재시작
                         sh """
                             ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} "
                                 cd ${TARGET_DIR} &&
                                 tar -xzf deploy.tar.gz &&
                                 rm deploy.tar.gz &&
-                                pnpm install --prod &&
-                                pm2 restart all || pm2 start pnpm --name 'withy-fe' -- start
+                                docker compose up -d --build
                             "
                         """
                     }
@@ -79,8 +71,10 @@ pipeline {
 
         stage('Verify') {
             steps {
-                echo "===== [4/5] 배포 완료 확인 ====="
-                // 서버 상태 체크 로직을 추가할 수 있습니다.
+                echo "===== [4/4] 컨테이너 가동 상태 확인 ====="
+                sshagent([SSH_CREDENTIAL_ID]) {
+                    sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'docker compose ps'"
+                }
             }
         }
     }
@@ -88,13 +82,13 @@ pipeline {
     post {
         success {
             script {
-                def message = "✅ **Withy 프론트 배포 성공!**\n브랜치: ${env.BRANCH_NAME}\n빌드 번호: #${env.BUILD_NUMBER}"
+                def message = "✅ **Withy 프론트 배포 성공!**\n- 빌드 번호: #${env.BUILD_NUMBER}\n- 접속 주소: http://${env.EC2_IP}:3000"
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"${message}\"}' https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr"
             }
         }
         failure {
             script {
-                def message = "🚨 **Withy 프론트 배포 실패!**\n로그 확인: ${env.BUILD_URL}"
+                def message = "🚨 **Withy 프론트 배포 실패!**\n- 로그 확인: ${env.BUILD_URL}"
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"${message}\"}' https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr"
             }
         }
