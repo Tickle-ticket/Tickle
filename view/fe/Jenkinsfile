@@ -10,24 +10,28 @@ pipeline {
         EC2_USER = "ubuntu"
         EC2_IP = "3.38.111.218"
         TARGET_DIR = "/home/ubuntu/S14P31A203/view/fe/tickle"
-        SSH_CREDENTIAL_ID = "fe-ec2-key"
+        
+        // BE에서 사용한 'tickle-deploy-key'를 사용해도 되고, 
+        // 따로 만든 'fe-ec2-key'를 써도 됩니다. (BE 키가 확실히 작동하므로 통일하는 것도 추천합니다)
+        SSH_CREDENTIAL_ID = "fe-ec2-key" 
+        
+        MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo "===== [1/4] 소스 코드 체크아웃 ====="
+                echo '===== [1/4] 코드 체크아웃 시작 ====='
                 checkout scm
             }
         }
 
         stage('FE Build') {
             steps {
+                // 빌드 단계에서는 소스 코드가 있는 폴더로 들어가야 하므로 dir() 유지
                 dir("${env.PROJECT_PATH}") {
-                    echo "===== [2/4] pnpm 환경 구축 및 빌드 ====="
+                    echo "===== [2/4] pnpm 설치 및 빌드 ====="
                     sh "npm install -g pnpm"
-                    
-                    // --shamefully-hoist: react-datepicker 등의 타입 인식 문제 해결
                     sh """
                         rm -rf node_modules
                         pnpm install --no-frozen-lockfile --shamefully-hoist
@@ -40,41 +44,35 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                dir("${env.PROJECT_PATH}") {
-                    echo "===== [3/4] SSH 키 권한 설정 및 파일 전송 ====="
-                    sh "tar -czf deploy.tar.gz .next public package.json pnpm-lock.yaml next.config.ts"
+                // [핵심 변경] dir() 블록 밖(워크스페이스 루트)에서 sshagent를 실행하여 꼬임을 방지합니다.
+                sshagent([SSH_CREDENTIAL_ID]) {
+                    echo "===== [3/4] 파일 압축 및 서버 전송 ====="
+                    
+                    // 1. 빌드 파일 압축 (dir 없이 명시적 경로 사용)
+                    sh "cd ${env.PROJECT_PATH} && tar -czf deploy.tar.gz .next public package.json pnpm-lock.yaml next.config.ts"
 
-                    sshagent([SSH_CREDENTIAL_ID]) {
-                        script {
-                            // 사용자님 말씀대로 실제 임시 키가 생성된 위치를 정확히 타격합니다.
-                            // dir() 내부이므로 현재 폴더 바로 옆의 @tmp를 가리킵니다.
-                            def tempKeyPath = "${env.WORKSPACE}/${env.PROJECT_PATH}@tmp"
-                            sh """
-                                chmod 700 ${tempKeyPath}
-                                chmod 400 ${tempKeyPath}/private_key*
-                            """
-                            echo "✅ 임시 키 권한을 400으로 조율했습니다."
-                        }
+                    // 2. EC2 폴더 준비 및 소유권 강제 변경 (BE 코드 방식 차용)
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} '
+                            set -e
+                            mkdir -p ${TARGET_DIR}
+                            sudo chown -R ${EC2_USER}:${EC2_USER} /home/ubuntu/S14P31A203
+                        '
+                    """
 
-                        // 1. EC2 서버 폴더 준비 및 소유권 설정
-                        sh """
-                            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${EC2_USER}@${EC2_IP} \
-                            "mkdir -p ${TARGET_DIR} && sudo chown -R ${EC2_USER}:${EC2_USER} /home/ubuntu/S14P31A203"
-                        """
+                    // 3. 파일 전송
+                    sh "scp -o StrictHostKeyChecking=no ${env.PROJECT_PATH}/deploy.tar.gz ${EC2_USER}@${EC2_IP}:${TARGET_DIR}"
 
-                        // 2. 빌드 파일 전송
-                        sh "scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null deploy.tar.gz ${EC2_USER}@${EC2_IP}:${TARGET_DIR}"
-
-                        // 3. 도커 컴포즈 배포 실행
-                        sh """
-                            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${EC2_USER}@${EC2_IP} "
-                                cd ${TARGET_DIR} &&
-                                tar -xzf deploy.tar.gz &&
-                                rm deploy.tar.gz &&
-                                docker compose up -d --build
-                            "
-                        """
-                    }
+                    // 4. 배포 실행
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} '
+                            set -e
+                            cd ${TARGET_DIR}
+                            tar -xzf deploy.tar.gz
+                            rm deploy.tar.gz
+                            docker compose up -d --build
+                        '
+                    """
                 }
             }
         }
@@ -89,17 +87,18 @@ pipeline {
         }
     }
 
+    // BE 배포의 멋진 알림 메시지 형식을 가져왔습니다.
     post {
         success {
             script {
-                def message = "✅ **Tickle 프론트 배포 성공!**\n- 빌드 번호: #${env.BUILD_NUMBER}"
-                sh "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"${message}\"}' https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr"
+                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 프론트 배포 성공!", "fields": [{"short": true, "title": "🔗 접속", "value": "http://${env.EC2_IP}:3000"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
         failure {
             script {
-                def message = "🚨 **Tickle 프론트 배포 실패!**\n- 로그 확인: ${env.BUILD_URL}"
-                sh "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"${message}\"}' https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr"
+                def msg = """{"text": "> 프론트 배포 터졌어 진짜 슬퍼ㅠㅠ 다음엔 잘 되겠지... 🚨", "attachments": [{"color": "#ff4444", "title": "💥 프론트 배포 실패!", "fields": [{"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}, {"short": false, "title": "🔗 빌드", "value": "[Jenkins 로그 확인](${env.BUILD_URL})"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
     }
