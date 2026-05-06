@@ -28,11 +28,11 @@ export default function GlobalError({
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
       <ErrorView 
         type={errorType}
-        // 백엔드에서 보내준 에러 메시지가 있고, 브라우저/리액트의 기술적 에러(예: Unexpected token)가 아닐 경우 유저에게 직접 노출
+        // 500번대(JS 런타임 에러 등 알 수 없는 오류)는 기본 예쁜 문구를 사용하고, 그 외의 에러(401, 404 등)는 메시지 노출
         description={
-          error.message && !error.message.toLowerCase().includes('unexpected') && !error.message.toLowerCase().includes('network')
+          errorType !== '500' && error.message
             ? error.message 
-            : undefined // 그렇지 않으면 ErrorView에 정의된 예쁜 기본 문구 자동 사용
+            : undefined
         }
         onAction={() => reset()}
       />

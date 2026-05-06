@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useMyUpcomingWishlist } from '@/src/features/mypage/api/useMyPageData';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
+import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Text } from '@/src/shared/components/Text';
@@ -13,33 +14,42 @@ import Button from '@/src/shared/components/Button';
 
 export const UpcomingWishlistView = () => {
   const { data: upcoming, isLoading, isError, error } = useMyUpcomingWishlist();
-  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const { wishlistMap, addWishlist, removeWishlist, initWishlist } = useWishlistStore();
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: '' });
+
+  React.useEffect(() => {
+    if (upcoming) {
+      initWishlist(upcoming.map(item => item.id));
+    }
+  }, [upcoming, initWishlist]);
 
   const handleToggle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
-      const isCurrentlyRemoved = removedIds.has(id);
+      const isCurrentlyWishlisted = wishlistMap[id] !== false; // undefined or true means wishlisted in this context
       
-      // 현재 제거된 상태(회색 +버튼)라면 -> 찜 추가 API 호출
-      // 현재 추가된 상태(빨간 하트)라면 -> 찜 해제 API 호출
-      if (isCurrentlyRemoved) {
-        await createFavorite(Number(id));
+      // 낙관적 업데이트
+      if (isCurrentlyWishlisted) {
+        removeWishlist(id);
       } else {
-        await deleteFavorite(Number(id));
+        addWishlist(id);
       }
 
-      // API 호출이 성공하면 로컬 상태 업데이트 (카드를 제거하지 않고 UI 상태만 토글)
-      setRemovedIds(prev => {
-        const next = new Set(prev);
-        if (isCurrentlyRemoved) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
+      // API 호출
+      if (isCurrentlyWishlisted) {
+        await deleteFavorite(Number(id));
+      } else {
+        await createFavorite(Number(id));
+      }
+
     } catch (err: any) {
+      // 롤백
+      const isCurrentlyWishlisted = wishlistMap[id] !== false;
+      if (!isCurrentlyWishlisted) {
+        addWishlist(id);
+      } else {
+        removeWishlist(id);
+      }
       console.error('찜 상태 변경 실패:', err);
       if (err.status === 400) {
         setModalConfig({ isOpen: true, title: '잘못된 요청', content: '요청이 올바르지 않습니다.' });
@@ -53,8 +63,8 @@ export const UpcomingWishlistView = () => {
     }
   };
 
-  // 표시할 총 관심 공연 수 (제거되지 않은 것만 카운트)
-  const activeWishlistCount = upcoming?.filter(item => !removedIds.has(item.id)).length || 0;
+  // 표시할 총 관심 공연 수 (현재 찜 상태인 것만 카운트)
+  const activeWishlistCount = upcoming?.filter(item => wishlistMap[item.id] !== false).length || 0;
 
   if (isError) {
     return (
@@ -85,7 +95,7 @@ export const UpcomingWishlistView = () => {
           ))
         ) : upcoming && upcoming.length > 0 ? (
           upcoming.map((item) => {
-            const isRemoved = removedIds.has(item.id);
+            const isRemoved = wishlistMap[item.id] === false;
             return (
               <div
                 key={item.id}
@@ -133,20 +143,11 @@ export const UpcomingWishlistView = () => {
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={() => setModalConfig({ ...modalConfig, isOpen: false })}
         title={modalConfig.title}
-      >
-        <p className="text-gray-600 mb-6 mt-2">{modalConfig.content}</p>
-        <div className="w-full">
-          <Button
-            color="dark"
-            size="large"
-            className="w-full font-bold"
-            onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}
-          >
-            확인
-          </Button>
-        </div>
-      </Modal>
+        description={modalConfig.content}
+        showCancelButton={false}
+      />
     </div>
   );
 };

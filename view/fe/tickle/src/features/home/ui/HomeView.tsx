@@ -3,9 +3,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useHomeBanners, useHomeRanking, useHomeUpcoming } from '@/src/features/home/api/useHomeData';
+import { useHomeBanners, useHomeRanking, useHomeUpcoming, useHomeCategories } from '@/src/features/home/api/useHomeData';
 import { http } from '@/src/shared/api/http';
-import { createFavorite, deleteFavorite, getFavoriteEvents } from '@/src/shared/api/favoriteApi';
+import { getFavoriteEvents, createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { getBadgeColor } from '@/src/shared/utils/badgeColor';
+import { getUserId } from '@/src/shared/api/tokenManager';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { BannerTitle } from '@/src/shared/components/BannerTitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
@@ -21,12 +24,14 @@ import { Box } from '@/src/shared/components/Box';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { SearchContent } from '@/src/shared/components/SearchContent';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
+import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { MyPageContent } from '@/src/features/mypage/ui/MyPageContent';
+import { Modal } from '@/src/shared/components/Modal';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { DetailView } from '@/src/features/detail/ui/DetailView';
 
-const TAB_ITEMS = ['전체', '뮤지컬', '콘서트', '연극', '전시/행사'];
+
 
 const useCarouselScroll = () => {
   const [node, setNode] = useState<HTMLDivElement | null>(null);
@@ -122,6 +127,27 @@ const sectionVariants: Variants = {
   }
 };
 
+
+
+const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
+  const [hasError, setHasError] = useState(false);
+  
+  if (hasError) {
+    return (
+      <div className="w-full h-full bg-white" />
+    );
+  }
+
+  return (
+    <img 
+      src={src} 
+      alt={alt} 
+      className="w-full h-full object-cover bg-white" 
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 export const HomeView = () => {
   const router = useRouter();
   const { data: banners, isLoading: bannersLoading } = useHomeBanners();
@@ -132,9 +158,16 @@ export const HomeView = () => {
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [currentBanner, setCurrentBanner] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
-  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+  
+  const { wishlistMap, initWishlist, addWishlist, removeWishlist } = useWishlistStore();
+  const queryClient = useQueryClient();
 
-  const categoryId = activeTab === 0 ? undefined : activeTab;
+  const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
+
+  const { data: categoryList, isLoading: categoriesLoading } = useHomeCategories();
+  const tabItems = ['전체', ...(categoryList?.map(c => c.categoryName) || [])];
+
+  const categoryId = activeTab === 0 ? undefined : categoryList?.[activeTab - 1]?.categoryId;
   const { data: ranking, isLoading: rankingLoading } = useHomeRanking(categoryId);
 
   const rankingCarousel = useCarouselScroll();
@@ -142,6 +175,7 @@ export const HomeView = () => {
 
   const { selectedDetailId, isDetailBannerOpen, openDetail, closeDetail, clickedLayoutId } = useDetailStore();
   const { data: detailData, isLoading: detailLoading } = useDetailData(selectedDetailId || undefined);
+
 
   useEffect(() => {
     // 1초마다 배너 자동 전환
@@ -165,21 +199,20 @@ export const HomeView = () => {
   // 임시: 컴포넌트 마운트 시 전체 찜 목록 조회 (실제로는 API 혹은 Global State 연동 필요)
   useEffect(() => {
     getFavoriteEvents().then(res => {
-      const ids = new Set<string>();
+      const ids: string[] = [];
       if (res.data?.items) {
-        res.data.items.forEach((item) => ids.add(String(item.eventId)));
+        res.data.items.forEach((item) => ids.push(String(item.eventId)));
       }
-      setWishlistedIds(ids);
+      initWishlist(ids);
     }).catch(err => {
       // API 실패 시 무시
     });
   }, []);
 
-  const activeBannerId = banners?.[currentBanner]?.id;
   const totalBanners = banners?.length || 0;
   const activeBanner = selectedDetailId && isDetailBannerOpen 
-    ? { id: selectedDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '' } 
-    : banners?.find(b => b.id === (activeBannerId || banners[0]?.id));
+    ? { id: selectedDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '', subtitle: '' } 
+    : banners?.[currentBanner];
 
   const goNext = () => setCurrentBanner((prev) => (prev + 1) % (totalBanners || 1));
   const goPrev = () => setCurrentBanner((prev) => (prev - 1 + (totalBanners || 1)) % (totalBanners || 1));
@@ -190,25 +223,50 @@ export const HomeView = () => {
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
+    
+    if (!getUserId()) {
+      setModalConfig({ 
+        isOpen: true, 
+        title: '로그인 필요', 
+        content: '로그인이 필요한 서비스입니다.',
+        confirmText: '로그인 하기',
+        showCancelButton: true,
+        onConfirm: () => { window.location.href = '/login'; }
+      });
+      return;
+    }
+
+    const isWishlisted = !!wishlistMap[eventId];
+
+    // Optimistic UI Update: 먼저 UI를 즉각적으로 변경하여 반응성을 높입니다.
+    if (isWishlisted) {
+      removeWishlist(eventId);
+    } else {
+      addWishlist(eventId);
+    }
+
     try {
-      const isWishlisted = wishlistedIds.has(eventId);
       if (isWishlisted) {
         await deleteFavorite(Number(eventId));
       } else {
         await createFavorite(Number(eventId));
       }
-
-      setWishlistedIds(prev => {
-        const next = new Set(prev);
-        if (isWishlisted) {
-          next.delete(eventId);
-        } else {
-          next.add(eventId);
-        }
-        return next;
-      });
-    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
+    } catch (error: any) {
       console.error('찜 등록/취소 실패:', error);
+      
+      // 이미 백엔드에서 찜 해제되어 있는 경우 ('찾을 수 없습니다' 에러)
+      // 우리의 낙관적 업데이트(UI에서 해제)가 결과적으로 맞았으므로 롤백하지 않습니다.
+      const isAlreadyDeleted = isWishlisted && error?.message?.includes('찾을 수 없습니다');
+      
+      if (!isAlreadyDeleted) {
+        // 그 외의 진짜 에러 발생 시 원래 상태로 롤백 (Revert)
+        if (isWishlisted) {
+          addWishlist(eventId);
+        } else {
+          removeWishlist(eventId);
+        }
+      }
     }
   };
 
@@ -249,7 +307,7 @@ export const HomeView = () => {
                   <div className="hidden lg:flex items-center gap-2">
                     {banners?.map((b, idx) => (
                       <button
-                        key={b.id || idx}
+                        key={`${b.id}-${idx}`}
                         onClick={(e) => { 
                           e.stopPropagation(); 
                           setCurrentBanner(idx); 
@@ -261,10 +319,9 @@ export const HomeView = () => {
                         }`}
                         aria-label={`${idx + 1}번 배너로 이동`}
                       >
-                        <img 
+                        <ThumbnailImage 
                           src={b.imageUrl} 
-                          alt={b.title || `Banner ${idx + 1}`} 
-                          className="w-full h-full object-cover" 
+                          alt={b.subtitle?.replace(' 랭킹 1위', '') || b.title || `Banner ${idx + 1}`} 
                         />
                       </button>
                     ))}
@@ -275,6 +332,11 @@ export const HomeView = () => {
               {/* 하단: 타이틀 등 정보 표시 */}
               {!selectedDetailId && (
                 <div className="mt-auto w-full max-w-4xl flex flex-col items-start gap-1">
+                  {'subtitle' in (activeBanner || {}) && (activeBanner as any).subtitle && (
+                    <span className="text-white text-sm md:text-base font-semibold tracking-wide mb-1 drop-shadow-md bg-black/30 px-2 py-0.5 rounded">
+                      {(activeBanner as any).subtitle}
+                    </span>
+                  )}
                   <BannerTitle title={activeBanner?.title || ''} isLoading={bannersLoading} />
                   <BannerPlace place={activeBanner?.venue || ''} isLoading={bannersLoading} />
                   <BannerTime time={activeBanner?.date || ''} isLoading={bannersLoading} />
@@ -325,7 +387,7 @@ export const HomeView = () => {
               {/* Tab Menu + 화살표 */}
               <div className="flex items-center mb-6">
                 <Tab onChange={setActiveTab} size="large">
-                  {TAB_ITEMS.map((item, idx) => (
+                  {tabItems.map((item, idx) => (
                     <Tab.Item key={item} selected={activeTab === idx}>
                       {item}
                     </Tab.Item>
@@ -353,7 +415,7 @@ export const HomeView = () => {
                   ))
                 ) : (
                   ranking?.map((item, idx) => {
-                    const isWishlisted = wishlistedIds.has(item.id);
+                    const isWishlisted = !!wishlistMap[item.id];
                     return (
                       <div
                         key={item.id}
@@ -370,9 +432,9 @@ export const HomeView = () => {
                           showRank={true}
                           isWishlisted={isWishlisted}
                           onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                          badges={item.badges.map((b) => ({
+                          badges={item.badges.map((b, badgeIdx) => ({
                             text: b,
-                            color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
+                            color: getBadgeColor(badgeIdx) as any,
                             variant: 'fill' as const,
                           }))}
                           priority={idx < 3}
@@ -387,7 +449,7 @@ export const HomeView = () => {
               <div className="w-full flex items-center gap-4 mt-6">
                 <span className="flex-1 h-px bg-gray-200" />
                 <button
-                  onClick={() => setSearchValue(TAB_ITEMS[activeTab])}
+                  onClick={() => setSearchValue(tabItems[activeTab])}
                   className="group cursor-pointer"
                 >
                   <Box variant="outline" padding="none" className="py-2 px-5 hover:bg-gray-50 transition-colors flex items-center justify-center">
@@ -430,7 +492,7 @@ export const HomeView = () => {
                   ))
                 ) : (
                   upcoming?.map((item, idx) => {
-                    const isWishlisted = wishlistedIds.has(item.id);
+                    const isWishlisted = !!wishlistMap[item.id];
                     return (
                       <div
                         key={item.id}
@@ -448,9 +510,9 @@ export const HomeView = () => {
                           targetDate={item.openDate}
                           isWishlisted={isWishlisted}
                           onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                          badges={item.badges.map((b) => ({
+                          badges={item.badges.map((b, badgeIdx) => ({
                             text: b,
-                            color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
+                            color: getBadgeColor(badgeIdx) as any,
                             variant: 'fill' as const,
                           }))}
                           priority={idx < 3}
@@ -464,6 +526,20 @@ export const HomeView = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* 알림 모달 */}
+        <Modal
+          isOpen={modalConfig.isOpen}
+          onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+          onConfirm={() => {
+            setModalConfig({ ...modalConfig, isOpen: false });
+            if (modalConfig.onConfirm) modalConfig.onConfirm();
+          }}
+          title={modalConfig.title}
+          description={modalConfig.content}
+          confirmText={modalConfig.confirmText || '확인'}
+          showCancelButton={modalConfig.showCancelButton ?? false}
+        />
 
         {/* 전역 푸터 (하단 스크롤 시 모든 뷰에서 등장) */}
         <Footer />

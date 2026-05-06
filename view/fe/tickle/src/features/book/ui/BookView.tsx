@@ -82,7 +82,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
-  const [errorModalConfig, setErrorModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm?: () => void }>({ isOpen: false, title: '', message: '' });
+  const [errorModalConfig, setErrorModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm?: () => void, confirmText?: string, showCancelButton?: boolean }>({ isOpen: false, title: '', message: '' });
 
   const handleCloseErrorModal = () => {
     setErrorModalConfig(prev => ({ ...prev, isOpen: false }));
@@ -369,8 +369,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
     const userId = userProfile?.userId;
     if (!userId) {
-      setErrorModalConfig({ isOpen: true, title: '로그인 필요', message: '로그인이 필요합니다.' });
-      window.location.href = '/login';
+      setErrorModalConfig({ 
+        isOpen: true, 
+        title: '로그인 필요', 
+        message: '로그인이 필요한 서비스입니다.',
+        confirmText: '로그인 하기',
+        showCancelButton: true,
+        onConfirm: () => { window.location.href = '/login'; }
+      });
       return;
     }
 
@@ -532,8 +538,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               onSubmitPreorder={async (seatIds, optionSelections) => {
                 const userId = userProfile?.userId;
                 if (!userId) {
-                  setErrorModalConfig({ isOpen: true, title: '로그인 필요', message: '로그인이 필요합니다.' });
-                  window.location.href = '/login';
+                  setErrorModalConfig({ 
+                    isOpen: true, 
+                    title: '로그인 필요', 
+                    message: '로그인이 필요한 서비스입니다.',
+                    confirmText: '로그인 하기',
+                    showCancelButton: true,
+                    onConfirm: () => { window.location.href = '/login'; }
+                  });
                   return;
                 }
                 try {

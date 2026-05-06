@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchEventList, fetchOpeningSoonEvents, fetchRanking } from '@/src/shared/api/eventApi';
+import { fetchEventList, fetchOpeningSoonEvents, fetchRanking, fetchCategories } from '@/src/shared/api/eventApi';
 import type { EventItem, EventRankingItem } from '@/src/shared/api/types/event.types';
 import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
@@ -49,15 +49,45 @@ const mapEventItemToPerformance = (item: EventItem): PerformanceData => ({
   openDate: item.salesStartAt,
 });
 
-// 배너는 백엔드 전용 API가 준비되기 전까지 별도 조회 경로를 사용한다.
 export const useHomeBanners = () => {
   return useQuery({
     queryKey: ['homeBanners'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<BannerData[]>>('/api/v1/home/banners');
-      return response.data;
+      // 1. 카테고리 목록 조회
+      const categoriesResponse = await fetchCategories();
+      const categories = categoriesResponse.data.categories;
+
+      // 2. 전체 랭킹 1위 및 각 카테고리별 랭킹 1위 조회 (병렬)
+      const rankingPromises = [
+        fetchRanking(undefined), // 전체 랭킹
+        ...categories.map((category) => fetchRanking(category.categoryId))
+      ];
+      const rankingResponses = await Promise.allSettled(rankingPromises);
+
+      const banners: BannerData[] = [];
+
+      rankingResponses.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          // index 0은 전체, 그 이후는 categories[index - 1]
+          const categoryName = index === 0 ? '전체' : categories[index - 1].categoryName;
+          const topRanking = result.value.data.rankings?.[0];
+
+          if (topRanking) {
+            banners.push({
+              id: String(topRanking.eventId),
+              title: topRanking.eventName,
+              subtitle: `${categoryName} 랭킹 1위`,
+              imageUrl: topRanking.thumbnailUrl,
+              venue: topRanking.venueName,
+              date: formatEventDateRange(topRanking.eventStartAt, topRanking.eventEndAt)
+            });
+          }
+        }
+      });
+
+      return banners;
     },
-    staleTime: 1000,
+    staleTime: 1000 * 60 * 5, // 5분
   });
 };
 
@@ -105,5 +135,16 @@ export const useHomeUpcoming = () => {
       }) as PerformanceData);
     },
     staleTime: 1000,
+  });
+};
+
+export const useHomeCategories = () => {
+  return useQuery({
+    queryKey: ['homeCategories'],
+    queryFn: async () => {
+      const response = await fetchCategories();
+      return response.data.categories;
+    },
+    staleTime: 1000 * 60 * 60, // 1시간
   });
 };

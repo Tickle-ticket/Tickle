@@ -6,7 +6,9 @@ import { InfoCard } from '@/src/shared/components/InfoCard';
 import { useSearchData } from '@/src/features/search/api/useSearchData';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
+import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SearchContentProps {
   query: string;
@@ -17,7 +19,8 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
   const { data: searchResults, isLoading: isSearchLoading } = useSearchData(query);
   const { clearSearch } = useSearchStore();
   const { openDetail } = useDetailStore();
-  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(new Set());
+  const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
+  const queryClient = useQueryClient();
 
   const handleCardClick = (id: string, layoutId: string) => {
     clearSearch();
@@ -26,23 +29,30 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
+    const isWishlisted = !!wishlistMap[eventId];
+    
+    // 낙관적 업데이트
+    if (isWishlisted) {
+      removeWishlist(eventId);
+    } else {
+      addWishlist(eventId);
+    }
+
     try {
-      if (wishlistedIds.has(eventId)) {
-        await deleteFavorite(eventId);
+      if (isWishlisted) {
+        await deleteFavorite(Number(eventId));
       } else {
-        await createFavorite(eventId);
+        await createFavorite(Number(eventId));
       }
-      setWishlistedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(eventId)) {
-          next.delete(eventId);
-        } else {
-          next.add(eventId);
-        }
-        return next;
-      });
+      queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
     } catch (error) {
       console.error('찜 등록/취소 실패:', error);
+      // 실패시 롤백
+      if (isWishlisted) {
+        addWishlist(eventId);
+      } else {
+        removeWishlist(eventId);
+      }
     }
   };
 
@@ -69,7 +79,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
           ))
         ) : searchResults && searchResults.length > 0 ? (
           searchResults.map((item) => {
-            const isWishlisted = wishlistedIds.has(item.id);
+            const isWishlisted = !!wishlistMap[item.id];
             return (
               <div
                 key={item.id}
