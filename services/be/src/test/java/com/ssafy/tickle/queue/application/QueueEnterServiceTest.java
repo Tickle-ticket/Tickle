@@ -5,6 +5,7 @@ import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.queue.application.service.QueueEnterService;
 import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.domain.QueueRequestStatus;
+import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.infrastructure.cache.model.SessionOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.store.SessionOpenInfoStore;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
@@ -97,7 +98,7 @@ class QueueEnterServiceTest {
             QueueEnterResponse response = queueEnterService.enter(sessionId, new QueueEnterRequest(userId));
 
             assertThat(response.requestId()).isNotBlank();
-            assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + sessionId + ":" + userId))
+            assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + "BOOKING:" + sessionId + ":" + userId))
                     .isEqualTo(response.requestId());
         }
 
@@ -127,8 +128,9 @@ class QueueEnterServiceTest {
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(matchingRecord).isPresent();
-            assertThat(matchingRecord.get().key()).isEqualTo(String.valueOf(sessionId));
+            assertThat(matchingRecord.get().key()).isEqualTo("BOOKING:" + sessionId);
             assertThat(matchingRecord.get().value()).contains("\"userId\":" + userId);
+            assertThat(matchingRecord.get().value()).contains("\"scope\":\"BOOKING\"");
             assertThat(matchingRecord.get().value()).contains("\"sessionId\":" + sessionId);
 
             consumer.close();
@@ -151,6 +153,25 @@ class QueueEnterServiceTest {
             assertThat(first.requestId()).isNotBlank();
             assertThat(second.requestId()).isEqualTo(first.requestId());
             assertThat(second.status()).isEqualTo(QueueRequestStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("같은 사용자와 회차라도 scope가 다르면 서로 다른 requestId를 반환한다")
+        void enter_allowsSeparateRequestIdByScope() {
+            long sessionId = 15L;
+            long userId = 1L;
+            sessionOpenInfoStore.save(new SessionOpenInfo(
+                    sessionId,
+                    Instant.now().minusSeconds(60),
+                    Instant.now().plusSeconds(600)
+            ));
+
+            QueueEnterResponse booking = queueEnterService.enter(QueueScope.BOOKING, sessionId, new QueueEnterRequest(userId));
+            QueueEnterResponse cancellationWait = queueEnterService.enter(QueueScope.CANCELLATION_WAIT, sessionId, new QueueEnterRequest(userId));
+
+            assertThat(booking.requestId()).isNotBlank();
+            assertThat(cancellationWait.requestId()).isNotBlank();
+            assertThat(cancellationWait.requestId()).isNotEqualTo(booking.requestId());
         }
 
         @Test
