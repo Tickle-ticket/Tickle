@@ -1,0 +1,14 @@
+services:
+  tickle-fe:
+    container_name: tickle-fe
+    build:
+      context: ./view/fe/tickle
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    restart: always
+    env_file:
+      - ./view/fe/tickle/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
