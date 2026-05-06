@@ -245,8 +245,9 @@ public class CancellationRedistributionService {
             throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표 제안만 거절할 수 있습니다.");
         }
 
-        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
-            return; // 이미 처리된 제안이면 무시
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED && 
+            offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
+            return; // 이미 만료되었거나 다른 상태면 무시
         }
 
         log.info("취소표 제안 거절(Pass) 처리: offerId={}, userId={}", offerId, userId);
@@ -282,9 +283,11 @@ public class CancellationRedistributionService {
         Optional<CancellationOffer> activeOffer = offerRepository.findLatestBySessionSeatId(seat.getId());
         if (activeOffer.isPresent()) {
             CancellationOffer offer = activeOffer.get();
-            if (offer.getOfferStatus() == CancellationOffer.OfferStatus.UNACCEPTED && 
-                Instant.now().isBefore(offer.getOfferExpiresAt())) {
-                log.info("이미 진행 중인 유효한 제안이 있어 재배분을 중단합니다. seatId={}, offerId={}", seat.getId(), offer.getId());
+            // 결정 대기 중(UNACCEPTED)이거나 이미 결제 진행 중(ACCEPTED)이면 재배분 중단
+            if ((offer.getOfferStatus() == CancellationOffer.OfferStatus.UNACCEPTED && Instant.now().isBefore(offer.getOfferExpiresAt())) ||
+                offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED) {
+                log.info("이미 유효한 제안이 진행 중(상태: {})이므로 재배분을 중단합니다. seatId={}, offerId={}", 
+                        offer.getOfferStatus(), seat.getId(), offer.getId());
                 return;
             }
         }
