@@ -276,8 +276,8 @@ export const HomeView = () => {
       {/* Left Column: 배너 슬라이드 */}
       <aside
         className={`hidden lg:block h-full relative transition-[width,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded
-            ? 'w-0 min-w-0 opacity-0'
-            : 'w-2/5 min-w-[40%] opacity-100'
+          ? 'w-0 min-w-0 opacity-0'
+          : 'w-2/5 min-w-[40%] opacity-100'
           }`}
       >
         <motion.div
@@ -312,8 +312,8 @@ export const HomeView = () => {
                           setCurrentBanner(idx);
                         }}
                         className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 shadow-md ${currentBanner === idx
-                            ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)] z-10'
-                            : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'
+                          ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.5)] z-10'
+                          : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'
                           }`}
                         aria-label={`${idx + 1}번 배너로 이동`}
                       >
@@ -376,7 +376,7 @@ export const HomeView = () => {
               <section className="mt-4">
                 <div className="flex items-center mb-4">
                   <Title
-                    title="인기 순위"
+                    title="인기 랭킹"
                     bottomBorder={false}
                     className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
                   />
