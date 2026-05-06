@@ -62,7 +62,8 @@ pipeline {
                             package.json \
                             pnpm-lock.yaml \
                             next.config.ts \
-                            Dockerfile
+                            Dockerfile \
+                            .dockerignore
                     """
 
                     // 2. 서버 폴더 준비 및 소유권 설정
