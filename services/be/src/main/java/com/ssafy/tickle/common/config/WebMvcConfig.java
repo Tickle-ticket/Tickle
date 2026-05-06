@@ -39,7 +39,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(internalSecretInterceptor)
-                .addPathPatterns("/internal/**");
+                .addPathPatterns(
+                        "/internal/**",
+                        "/api/v1/cancellations/*/notify"
+                );
 
         registry.addInterceptor(blacklistInterceptor)
                 .addPathPatterns(
