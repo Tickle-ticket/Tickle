@@ -24,11 +24,11 @@ public class BehaviorEventController {
     @PostMapping("/events")
     public ResponseEntity<IngestAcceptedResponse> ingestBehaviorEvent(
             @RequestHeader("access-token") @NotBlank String accessToken,
-            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "X-Internal-Secret", required = false) String internalSecret,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
             @Valid @RequestBody BehaviorEventRequest request
     ) {
-        behaviorEventProducer.send(request, accessToken, requestId);
+        behaviorEventProducer.send(request, accessToken, internalSecret, requestId);
 
         IngestAcceptedResponse response = new IngestAcceptedResponse(
                 HttpStatus.ACCEPTED.value(),

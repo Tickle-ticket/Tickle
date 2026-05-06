@@ -1,0 +1,10 @@
+# Keep Linux/CI/Docker-friendly line endings for scripts that run inside containers.
+# (Without this, Windows CRLF can break shebang execution in Alpine/BusyBox shells.)
+
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Docker build files are commonly executed/parsed in Linux environments.
+Dockerfile text eol=lf
+Dockerfile.* text eol=lf
+

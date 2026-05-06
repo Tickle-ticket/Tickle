@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS behavior_feature_records (
     record_id VARCHAR(64) NOT NULL UNIQUE,
 
     type VARCHAR(32) NOT NULL,
-    schedule_id VARCHAR(64),
-    name VARCHAR(255),
+    schedule_id BIGINT,
+    event_id BIGINT,
     event_date DATE,
     created_at_client TIMESTAMPTZ,
 
@@ -28,6 +28,9 @@ ON behavior_feature_records (type);
 
 CREATE INDEX IF NOT EXISTS idx_behavior_feature_records_schedule_id
 ON behavior_feature_records (schedule_id);
+
+CREATE INDEX IF NOT EXISTS idx_behavior_feature_records_event_id
+ON behavior_feature_records (event_id);
 
 CREATE INDEX IF NOT EXISTS idx_behavior_feature_records_event_date
 ON behavior_feature_records (event_date);

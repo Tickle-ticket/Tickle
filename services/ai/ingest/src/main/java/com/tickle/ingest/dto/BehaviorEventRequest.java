@@ -1,6 +1,6 @@
 package com.tickle.ingest.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotEmpty;
@@ -11,22 +11,20 @@ public record BehaviorEventRequest(
         @NotBlank
         String type,
 
-        @JsonProperty("schedule_id")
-        @NotBlank
-        String scheduleId,
+        @JsonAlias("schedule_id")
+        Long scheduleId,
 
-        @NotBlank
-        String name,
+        @JsonAlias("event_id")
+        Long eventId,
 
-        @JsonProperty("event_date")
-        @NotBlank
+        @JsonAlias("event_date")
         String eventDate,
 
         @NotBlank
         String createdAt,
 
         @NotNull
-        @NotEmpty
+        @NotEmpty(message = "features empty")
         Map<String, Object> features
 ) {
 }
