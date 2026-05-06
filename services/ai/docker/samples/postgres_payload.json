@@ -3,8 +3,8 @@
   "record_id": "rec_20260430_000001",
 
   "type": "booking",
-  "schedule_id": "1",
-  "name": "임영웅콘서트",
+  "schedule_id": 1,
+  "event_id": 1,
   "event_date": "2026-04-30",
   "createdAt": "2026-04-30T15:10:13.123+09:00",
 

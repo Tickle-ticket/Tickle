@@ -29,6 +29,7 @@ public class BehaviorEventProducer {
     public void send(
             BehaviorEventRequest request,
             String accessToken,
+            String internalSecret,
             String requestId
     ) {
         try {
@@ -41,6 +42,10 @@ public class BehaviorEventProducer {
                     .setHeader(KafkaHeaders.KEY, key)
                     .setHeader("access-token", accessToken);
 
+            if (internalSecret != null && !internalSecret.isBlank()) {
+                messageBuilder.setHeader("X-Internal-Secret", internalSecret);
+            }
+
             if (requestId != null && !requestId.isBlank()) {
                 messageBuilder.setHeader("X-Request-Id", requestId);
             }
@@ -52,6 +57,8 @@ public class BehaviorEventProducer {
     }
 
     private String buildKey(BehaviorEventRequest request) {
-        return request.type() + ":" + request.scheduleId() + ":" + request.createdAt();
+        String scheduleId = request.scheduleId() != null ? request.scheduleId().toString() : "null";
+        String eventId = request.eventId() != null ? request.eventId().toString() : "null";
+        return request.type() + ":" + scheduleId + ":" + eventId + ":" + request.createdAt();
     }
 }
