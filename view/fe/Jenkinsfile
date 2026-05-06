@@ -119,6 +119,7 @@ pipeline {
                             docker ps --format "table {{.Names}}\\t{{.Ports}}\\t{{.Status}}"
 
                             echo "===== FE container check ====="
+                            sleep 10
                             curl -I http://localhost:3000
 
                             echo "===== Host Nginx proxy check ====="
