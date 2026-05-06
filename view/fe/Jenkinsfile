@@ -56,7 +56,7 @@ pipeline {
                     echo "===== [3/5] 빌드 파일 압축 및 전송 ====="
                     
                     // 배포에 필요한 파일들만 압축 (서버에 있는 .env를 유지하기 위해 .env는 제외)
-                    sh "tar -czf deploy.tar.gz .next public package.json pnpm-lock.yaml next.config.mjs"
+                    sh "tar -czf deploy.tar.gz .next public package.json pnpm-lock.yaml next.config.ts"
 
                     sshagent([SSH_CREDENTIAL_ID]) {
                         // EC2 서버로 파일 전송
