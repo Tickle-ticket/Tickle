@@ -82,13 +82,13 @@ pipeline {
     post {
         success {
             script {
-                def message = "✅ **Withy 프론트 배포 성공!**\n- 빌드 번호: #${env.BUILD_NUMBER}\n- 접속 주소: http://${env.EC2_IP}:3000"
+                def message = "✅ **Tickle 프론트 배포 성공!**\n- 빌드 번호: #${env.BUILD_NUMBER}\n- 접속 주소: http://${env.EC2_IP}:3000"
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"${message}\"}' https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr"
             }
         }
         failure {
             script {
-                def message = "🚨 **Withy 프론트 배포 실패!**\n- 로그 확인: ${env.BUILD_URL}"
+                def message = "🚨 **Tickle 프론트 배포 실패!**\n- 로그 확인: ${env.BUILD_URL}"
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"${message}\"}' https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr"
             }
         }
