@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -50,4 +52,36 @@ public interface CancellationOfferRepository extends JpaRepository<CancellationO
             limit 1
             """)
     Optional<CancellationOffer> findLatestBySessionSeatId(@Param("sessionSeatId") Long sessionSeatId);
+
+    /**
+     * 특정 예매 대기 신청에 연결된 제안 존재 여부를 조회합니다.
+     *
+     * @param candidateId 예매 대기 후보 식별자
+     * @return 제안 존재 여부
+     */
+    boolean existsByCancellationCandidateId(Long candidateId);
+
+    /**
+     * 사용자가 유효한 미수락 제안을 받은 회차 좌석 식별자를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionSeatIds 회차 좌석 식별자 목록
+     * @param offerStatus 제안 상태
+     * @param now 현재 시각
+     * @return 유효한 제안이 있는 회차 좌석 식별자 목록
+     */
+    @Query("""
+            select co.cancellationCandidate.sessionSeat.id
+            from CancellationOffer co
+            where co.cancellationCandidate.user.id = :userId
+              and co.cancellationCandidate.sessionSeat.id in :sessionSeatIds
+              and co.offerStatus = :offerStatus
+              and co.offerExpiresAt > :now
+            """)
+    List<Long> findActiveSessionSeatIdsByUserIdAndSessionSeatIds(
+            @Param("userId") Long userId,
+            @Param("sessionSeatIds") List<Long> sessionSeatIds,
+            @Param("offerStatus") CancellationOffer.OfferStatus offerStatus,
+            @Param("now") Instant now
+    );
 }
