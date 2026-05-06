@@ -52,11 +52,11 @@ class BeCallbackClient:
         body = {
             "result": label,
             "type": payload.get("type"),
-            "schedule_id": payload.get("schedule_id"),
+            "schedule_id": payload.get("scheduleId") or payload.get("schedule_id"),
             # TODO: 현재 Kafka payload의 name 필드를 임시로 event_id에 매핑한다.
             # 추후 FE, BE 스키마 확정 시 event_id 필드를 분리한다.
-            "event_id": payload.get("name"),
-            "event_date": payload.get("event_date"),
+            "event_id": payload.get("eventId") or payload.get("event_id") or payload.get("name"),
+            "event_date": payload.get("eventDate") or payload.get("event_date"),
             "p_macro": p_macro,
             "description": "1차 ML 모델 결과",
             "createdAt": datetime.now(timezone.utc).isoformat(),

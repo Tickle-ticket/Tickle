@@ -1,8 +1,8 @@
 {
   "type": "booking",
-  "schedule_id": "1",
-  "name": "임영웅콘서트",
-  "event_date": "2026-04-30",
+  "scheduleId": 1,
+  "eventId": 1,
+  "eventDate": "2026-04-30",
   "createdAt": "2026-04-30T15:10:13.123+09:00",
   "features": {
     "time_to_first_click_ms": 1523,

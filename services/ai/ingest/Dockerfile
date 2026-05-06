@@ -6,6 +6,7 @@ COPY build.gradle settings.gradle ./
 COPY gradlew ./
 COPY gradle ./gradle
 
+RUN sed -i 's/\r$//' ./gradlew
 RUN chmod +x ./gradlew
 RUN ./gradlew dependencies --no-daemon || true
 
