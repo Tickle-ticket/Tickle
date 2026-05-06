@@ -25,7 +25,7 @@ public class BotDetectionResultController {
         System.out.println("body: " + request);
         System.out.println("===========================================================");
 
-        if (!request.result().equals("allow") && !request.result().equals("block")) {
+        if (!request.result().equalsIgnoreCase("allow") && !request.result().equalsIgnoreCase("block")) {
             ApiResponse<Void> response = new ApiResponse<>(
                     HttpStatus.BAD_REQUEST.value(),
                     "result는 allow 또는 block 중 하나여야 합니다.",

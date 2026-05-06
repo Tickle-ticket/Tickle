@@ -1,7 +1,7 @@
 {
-  "type": "booking",
-  "scheduleId": 1,
-  "eventId": 1,
+  "type": "BOOKING",
+  "scheduleId": 11001,
+  "eventId": 6001,
   "eventDate": "2026-04-30",
   "createdAt": "2026-04-30T15:10:13.123+09:00",
   "features": {

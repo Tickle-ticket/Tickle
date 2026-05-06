@@ -27,4 +27,9 @@ public record BehaviorEventRequest(
         @NotEmpty(message = "features empty")
         Map<String, Object> features
 ) {
+    public BehaviorEventRequest {
+        if (type != null) {
+            type = type.toUpperCase();
+        }
+    }
 }

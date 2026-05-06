@@ -55,7 +55,7 @@ def send_be_callbacks(
         return 0, len(detection_results), 0
 
     for result in detection_results:
-        if result.label == "review":
+        if result.label == "REVIEW":
             skipped_count += 1
             continue
 

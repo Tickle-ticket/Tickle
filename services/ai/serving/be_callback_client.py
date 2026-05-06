@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
 
@@ -8,6 +9,8 @@ import requests
 BE_BOT_DETECTION_RESULT_URL = os.getenv("BE_BOT_DETECTION_RESULT_URL", "")
 BE_CALLBACK_TIMEOUT_SEC = float(os.getenv("BE_CALLBACK_TIMEOUT_SEC", "2.0"))
 BE_INTERNAL_SERVICE_TOKEN = os.getenv("BE_INTERNAL_SERVICE_TOKEN", "")
+BE_INTERNAL_SECRET = os.getenv("BE_INTERNAL_SECRET", "")
+BE_CALLBACK_USER_ID = os.getenv("BE_CALLBACK_USER_ID", "1001")
 
 
 class BeCallbackClient:
@@ -40,7 +43,9 @@ class BeCallbackClient:
             "Content-Type": "application/json",
         }
 
-        if self.internal_service_token:
+        if BE_INTERNAL_SECRET:
+            headers["X-Internal-Secret"] = BE_INTERNAL_SECRET
+        elif self.internal_service_token:
             headers["Authorization"] = f"Bearer {self.internal_service_token}"
 
         if access_token:
@@ -49,21 +54,23 @@ class BeCallbackClient:
         if request_id:
             headers["X-Request-Id"] = request_id
 
+        target_url = add_query_param(self.result_url, "userId", str(BE_CALLBACK_USER_ID))
+
         body = {
-            "result": label,
+            "result": str(label).upper(),
             "type": payload.get("type"),
-            "schedule_id": payload.get("scheduleId") or payload.get("schedule_id"),
-            # TODO: 현재 Kafka payload의 name 필드를 임시로 event_id에 매핑한다.
-            # 추후 FE, BE 스키마 확정 시 event_id 필드를 분리한다.
-            "event_id": payload.get("eventId") or payload.get("event_id") or payload.get("name"),
-            "event_date": payload.get("eventDate") or payload.get("event_date"),
-            "p_macro": p_macro,
-            "description": "1차 ML 모델 결과",
-            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "scheduleId": payload.get("scheduleId") or payload.get("schedule_id"),
+            "eventId": payload.get("eventId") or payload.get("event_id") or payload.get("name"),
+            "eventDate": payload.get("eventDate") or payload.get("event_date"),
+            "pMacro": p_macro,
+            "description": payload.get("description") or "1차 ML 모델 결과",
+            "createdAt": payload.get("createdAt")
+            or payload.get("created_at")
+            or datetime.now(timezone.utc).isoformat(),
         }
 
         response = requests.post(
-            self.result_url,
+            target_url,
             headers=headers,
             json=body,
             timeout=self.timeout_sec,
@@ -83,3 +90,10 @@ def create_be_callback_client() -> BeCallbackClient:
         timeout_sec=BE_CALLBACK_TIMEOUT_SEC,
         internal_service_token=BE_INTERNAL_SERVICE_TOKEN,
     )
+
+
+def add_query_param(url: str, key: str, value: str) -> str:
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query[key] = value
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
