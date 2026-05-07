@@ -113,7 +113,7 @@ export const UpcomingWishlistView = () => {
                     place={item.venue}
                     day={item.date}
                     disabled={true}
-                    showTime={true}
+                    showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
                     targetDate={item.openDate}
                     isWishlisted={!isRemoved}
                     onWishlistToggle={(e) => handleToggle(e, item.id)}

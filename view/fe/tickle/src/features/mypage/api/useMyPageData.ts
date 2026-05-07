@@ -25,7 +25,7 @@ export const useMyUpcomingWishlist = () => {
         venue: item.venueLocation,
         date: `${new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '')} ~ ${new Date(item.eventEndAt).toLocaleDateString().replace(/\s/g, '')}`,
         badges: item.metadata?.tags ? [...item.metadata.tags] : [],
-        openDate: item.eventStartAt,
+        openDate: item.salesStartAt || undefined,
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
     },

@@ -5,7 +5,7 @@ import { BehaviorEventPayload, SendBehaviorEventInput, BehaviorEventResponse } f
 const BEHAVIOR_EVENTS_PATH = '/api/behavior/events';
 
 const buildBehaviorEventsUrl = () => {
-  const baseUrl = process.env.NEXT_PUBLIC_AI_INGEST_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+  const baseUrl = process.env.NEXT_PUBLIC_AI_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
   return `${baseUrl}${BEHAVIOR_EVENTS_PATH}`;
 };
 
@@ -64,6 +64,7 @@ export const sendBehaviorEvent = async ({
         'Content-Type': 'application/json',
         'access-token': accessToken,
         'X-Request-Id': requestId ?? createRequestId(),
+        ...(process.env.NEXT_PUBLIC_INTERNAL_SECRET && { 'X-Internal-Secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET }),
       },
       body: JSON.stringify(body),
     });

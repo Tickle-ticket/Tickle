@@ -49,7 +49,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const isCancelMode = mode === 'CANCEL';
 
   const { data: userProfile } = useUserProfile();
-  const { data: eventDetail, isLoading: isEventLoading } = useEventDetail(eventId); // 이벤트 ID 연동
+  const { data: eventDetail, isLoading: isEventLoading, isError: isEventError } = useEventDetail(eventId); // 이벤트 ID 연동
 
   const selectedDate = useBookStore(s => s.selectedDate);
   const setSelectedDate = useBookStore(s => s.setSelectedDate);
@@ -98,8 +98,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     enabled: mode === 'BOOK' || mode === 'WAITLIST',
     userId: userProfile?.userId,
     behaviorEvent: {
-      scheduleId,
-      name: eventDetail?.title ?? eventId,
+      eventId: Number(eventId),
+      scheduleId: Number(scheduleId) || undefined,
       eventDate: toBehaviorEventDate(confirmedSchedule?.date),
     },
   });
@@ -123,7 +123,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           setVenues(res.data.venues);
         }
       })
-      .catch(() => console.error('Failed to fetch venues'));
+      .catch(() => console.warn('Failed to fetch venues'));
   }, []);
 
   const [viewMode, setViewMode] = useState<'grade' | 'congestion'>('grade');
@@ -280,6 +280,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   }, [seatError, onClose]);
 
   if (isEventLoading || !eventDetail) {
+    if (isEventError) {
+      return (
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 gap-4">
+          <p className="text-red-500 font-medium">예매 정보를 불러오는데 실패했습니다.</p>
+          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">닫기</button>
+        </div>
+      );
+    }
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 dark:bg-zinc-950 gap-4">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />

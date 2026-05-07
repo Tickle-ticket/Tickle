@@ -5,9 +5,9 @@ export type BehaviorEventType = TrialStage | 'booking' | string;
 
 export interface BehaviorEventPayload {
   type: BehaviorEventType;
-  schedule_id: string;
-  name: string;
-  event_date: string;
+  scheduleId?: number;
+  eventId?: number;
+  eventDate?: string;
   createdAt: string;
   features: Partial<TrialMetrics>;
 }

@@ -13,8 +13,8 @@ export interface SeatStatusData {
 export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
 
 export const useSeatData = (
-  eventId: string | null, 
-  scheduleId: string | null, 
+  eventId: string | null,
+  scheduleId: string | null,
   enableWs: boolean = true,
   mode: 'BOOKING' | 'WAITLIST' = 'BOOKING',
   admitToken: string | null = null
@@ -44,7 +44,7 @@ export const useSeatData = (
       try {
         const userId = localStorage.getItem('userId') || '1'; // or using getUserId()
         let response;
-        
+
         if (mode === 'WAITLIST') {
           if (!admitToken) {
             throw new Error('예매 대기 모드에서는 admitToken이 필요합니다.');
@@ -56,7 +56,7 @@ export const useSeatData = (
 
         if (response.data && response.data.sections && isMounted) {
           const initialMap: SeatAvailabilityResponse = {};
-          
+
           response.data.sections.forEach(section => {
             section.seats.forEach(seat => {
               // Map seatLabel (e.g. A1, B2) to the SVG ID
@@ -114,7 +114,7 @@ export const useSeatData = (
       } else {
         streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/seats/stream`;
       }
-      
+
       // EventSource를 사용하여 SSE 스트림 연결
       eventSource = new EventSource(streamUrl, { withCredentials: true });
 
@@ -123,7 +123,7 @@ export const useSeatData = (
       eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           if (message && message.seatLabel) {
             setSeatAvailability(prev => {
               if (!prev) return prev;
@@ -147,7 +147,7 @@ export const useSeatData = (
       };
 
       eventSource.onerror = (error) => {
-        console.error('SSE Error:', error);
+        console.error('Seat SSE Error (Expected WS instead):', error);
       };
     };
 

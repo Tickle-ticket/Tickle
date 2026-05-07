@@ -85,12 +85,12 @@ export function LoginPageClient() {
         router.push('/');
       }
     } catch (error) {
-      console.error('Login failed', error);
-      setPasswordError(
-        error instanceof ApiError && error.status === 404
-          ? '로그인 API가 연결되지 않았습니다. 인증 서버 주소와 라우트를 확인해주세요.'
-          : '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.'
-      );
+      console.warn('Login failed:', error instanceof Error ? error.message : 'Unknown error');
+      let errorMessage = '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.';
+      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
+        errorMessage = error.message;
+      }
+      setPasswordError(errorMessage);
     } finally {
       setIsLoading(false);
     }
