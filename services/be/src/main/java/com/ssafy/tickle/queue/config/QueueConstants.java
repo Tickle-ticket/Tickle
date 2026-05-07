@@ -28,6 +28,8 @@ public final class QueueConstants {
     public static final String ADMISSION_HISTORY_KEY_PREFIX = "queue:admission:history:";
     public static final String ADMIT_TOKEN_KEY_PREFIX = "queue:token:admit:";
     public static final String QUEUE_TOKEN_REQUEST_KEY_PREFIX = "queue:token:request:";
+    public static final String WAITING_EVENTS_KEY = "queue:events:waiting";
+    public static final String ADMITTED_EVENTS_KEY = "queue:events:admitted";
 
     private QueueConstants() {
     }

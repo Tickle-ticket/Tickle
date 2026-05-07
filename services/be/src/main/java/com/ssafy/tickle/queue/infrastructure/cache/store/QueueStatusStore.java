@@ -65,6 +65,8 @@ public class QueueStatusStore {
 
         // 해당 공연에서 현재 순번을 계산할 때 사용
         stringRedisTemplate.opsForZSet().add(waitingKey(scope, eventId), queueToken, registeredAt.toEpochMilli());
+        // KEYS * 없이 active event 목록을 추적하기 위해 별도 Set에 등록한다.
+        stringRedisTemplate.opsForSet().add(QueueConstants.WAITING_EVENTS_KEY, toEventKey(scope, eventId));
     }
 
     /**
@@ -141,14 +143,21 @@ public class QueueStatusStore {
      * 현재 ADMITTED 사용자가 존재하는 공연 목록을 조회합니다.
      */
     public Set<QueueTarget> findAdmittedTargets() {
-        Set<String> keys = stringRedisTemplate.keys(QueueConstants.ADMITTED_KEY_PREFIX + "*");
-        if (keys == null || keys.isEmpty()) {
+        Set<String> eventKeys = stringRedisTemplate.opsForSet().members(QueueConstants.ADMITTED_EVENTS_KEY);
+        if (eventKeys == null || eventKeys.isEmpty()) {
             return Set.of();
         }
 
         Set<QueueTarget> targets = new java.util.HashSet<>();
-        for (String key : keys) {
-            parseTarget(key, QueueConstants.ADMITTED_KEY_PREFIX).ifPresent(targets::add);
+        for (String key : eventKeys) {
+            parseEventKey(key).ifPresent(target -> {
+                if (countAdmitted(target.scope(), target.eventId()) > 0) {
+                    targets.add(target);
+                } else {
+                    // admitted ZSet이 비어 있으면 stale 항목 제거
+                    stringRedisTemplate.opsForSet().remove(QueueConstants.ADMITTED_EVENTS_KEY, key);
+                }
+            });
         }
         return targets;
     }
@@ -236,23 +245,30 @@ public class QueueStatusStore {
             stringRedisTemplate.opsForZSet().remove(waitingKey(scope, eventId), queueToken);
             stringRedisTemplate.opsForZSet().add(admittedKey(scope, eventId), queueToken, admittedAt.toEpochMilli());
             stringRedisTemplate.opsForZSet().add(admissionHistoryKey(scope, eventId), queueToken, admittedAt.toEpochMilli());
+            // KEYS * 없이 admitted event 목록을 추적하기 위해 별도 Set에 등록한다.
+            stringRedisTemplate.opsForSet().add(QueueConstants.ADMITTED_EVENTS_KEY, toEventKey(scope, eventId));
         }
     }
 
     /**
      * waiting 사용자가 존재하는 공연 목록을 조회합니다.
-     *
-     * @return waiting zset이 존재하는 공연 식별자 목록
      */
     public Set<QueueTarget> findWaitingTargets() {
-        Set<String> keys = stringRedisTemplate.keys(QueueConstants.WAITING_KEY_PREFIX + "*");
-        if (keys == null || keys.isEmpty()) {
+        Set<String> eventKeys = stringRedisTemplate.opsForSet().members(QueueConstants.WAITING_EVENTS_KEY);
+        if (eventKeys == null || eventKeys.isEmpty()) {
             return Set.of();
         }
 
         Set<QueueTarget> targets = new java.util.HashSet<>();
-        for (String key : keys) {
-            parseTarget(key, QueueConstants.WAITING_KEY_PREFIX).ifPresent(targets::add);
+        for (String key : eventKeys) {
+            parseEventKey(key).ifPresent(target -> {
+                if (countWaiting(target.scope(), target.eventId()) > 0) {
+                    targets.add(target);
+                } else {
+                    // waiting ZSet이 비어 있으면 stale 항목 제거
+                    stringRedisTemplate.opsForSet().remove(QueueConstants.WAITING_EVENTS_KEY, key);
+                }
+            });
         }
         return targets;
     }
@@ -346,14 +362,20 @@ public class QueueStatusStore {
         }
     }
 
-    private Optional<QueueTarget> parseTarget(String key, String prefix) {
-        String raw = key.substring(prefix.length());
-        String[] parts = raw.split(":");
-        if (parts.length == 1) {
-            return Optional.of(new QueueTarget(QueueScope.BOOKING, Long.parseLong(parts[0])));
-        }
+    private String toEventKey(QueueScope scope, Long eventId) {
+        return scope.name() + ":" + eventId;
+    }
 
-        return Optional.of(new QueueTarget(QueueScope.valueOf(parts[0]), Long.parseLong(parts[1])));
+    private Optional<QueueTarget> parseEventKey(String key) {
+        String[] parts = key.split(":");
+        try {
+            if (parts.length == 1) {
+                return Optional.of(new QueueTarget(QueueScope.BOOKING, Long.parseLong(parts[0])));
+            }
+            return Optional.of(new QueueTarget(QueueScope.valueOf(parts[0]), Long.parseLong(parts[1])));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     private void deleteAdmitToken(String admitToken) {

@@ -53,12 +53,12 @@ public class QueueSseHandler {
             SseEmitter emitter = entry.getValue();
             try {
                 QueueStatusResponse response = queueStatusService.getStatusByQueueToken(queueToken);
-                if (response.status() == com.ssafy.tickle.queue.domain.QueueRequestStatus.LEFT) {
+                send(queueToken, emitter, response);
+                if (response.status() == com.ssafy.tickle.queue.domain.QueueRequestStatus.LEFT
+                        || response.status() == com.ssafy.tickle.queue.domain.QueueRequestStatus.EXPIRED) {
                     emitters.remove(queueToken);
                     emitter.complete();
-                    continue;
                 }
-                send(queueToken, emitter, response);
             } catch (RuntimeException exception) {
                 // 상태 조회나 전송이 실패한 emitter는 즉시 제거.
                 emitters.remove(queueToken);
