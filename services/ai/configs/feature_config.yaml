@@ -138,3 +138,8 @@ input_features_gyeom:
   - mouse_avg_speed_px_per_ms
   - mouse_acceleration_mean
   - mouse_max_speed_px_per_ms
+
+# 319 final pool: 320 평가 결과 robust(jerk) + borderline(max_speed) 채택
+input_features_gyeom_final_pool:
+  - mouse_jerk_mean
+  - mouse_max_speed_px_per_ms
