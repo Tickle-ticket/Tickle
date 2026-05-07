@@ -222,20 +222,21 @@ class EventServiceTest {
         @Test
         @DisplayName("캐시에 회차 목록이 없으면 DB에서 조회하고 캐시에 저장한다")
         void getEventSessions_cacheMiss_fallsBackToDatabase() {
+            Instant futureStart = Instant.now().plus(30, ChronoUnit.DAYS);
             Event event = eventRepository.save(createEvent(
                     "Session Fallback Event",
                     concertCategory,
-                    Instant.parse("2026-05-01T10:00:00Z")
+                    futureStart
             ));
             EventSession later = eventSessionRepository.save(createSession(
                     event,
                     2,
-                    Instant.parse("2026-05-02T10:00:00Z")
+                    futureStart.plus(1, ChronoUnit.DAYS)
             ));
             EventSession earlier = eventSessionRepository.save(createSession(
                     event,
                     1,
-                    Instant.parse("2026-05-01T10:00:00Z")
+                    futureStart
             ));
 
             EventSessionsResponse response = eventService.getEventSessions(event.getId());
