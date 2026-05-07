@@ -3,6 +3,7 @@ package com.ssafy.tickle.common.config;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
+import org.redisson.config.ReadMode;
 import org.redisson.config.SentinelServersConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,7 +28,8 @@ public class RedissonConfig {
 
         SentinelServersConfig sentinelConfig = config.useSentinelServers()
                 .setMasterName(masterName)
-                .addSentinelAddress(addresses);
+                .addSentinelAddress(addresses)
+                .setReadMode(ReadMode.MASTER);
 
         if (password != null && !password.isBlank()) {
             sentinelConfig.setPassword(password);
