@@ -34,10 +34,12 @@ public class QueueSseHandler {
         SseEmitter emitter = new SseEmitter(QueueConstants.SSE_TIMEOUT_MILLIS);
 
         // queueToken 기준으로 emitter를 보관해두고, 이후 scheduler가 같은 사용자에게 상태를 push.
+        // SSE 연결 끊김은 단순 map 정리만 수행한다.
+        // 대기열 이탈은 FE가 명시적으로 /leave를 호출해야 처리되므로 여기서 leave()를 호출하면 안 된다.
         emitters.put(queueToken, emitter);
-        emitter.onCompletion(() -> leaveAndRemove(queueToken, emitter));
-        emitter.onTimeout(() -> leaveAndRemove(queueToken, emitter));
-        emitter.onError(exception -> leaveAndRemove(queueToken, emitter));
+        emitter.onCompletion(() -> emitters.remove(queueToken));
+        emitter.onTimeout(() -> emitters.remove(queueToken));
+        emitter.onError(exception -> emitters.remove(queueToken));
 
         send(queueToken, emitter, initialStatus);
         return emitter;
@@ -74,17 +76,7 @@ public class QueueSseHandler {
                     .id(queueToken)
                     .data(response));
         } catch (IOException | IllegalStateException exception) {
-            leaveAndRemove(queueToken, emitter);
+            emitters.remove(queueToken);
         }
-    }
-
-    private void leaveAndRemove(String queueToken, SseEmitter emitter) {
-        if (emitters.remove(queueToken) == null) {
-            return;
-        }
-
-        // SSE 연결 종료를 사용자의 이탈 신호로 보고 대기열 상태도 함께 정리한다.
-        queueStatusService.leave(queueToken);
-        emitter.complete();
     }
 }
