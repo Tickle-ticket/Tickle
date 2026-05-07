@@ -5,7 +5,6 @@ export const getUserApiBaseUrl = () => {
     process.env.NEXT_PUBLIC_USER_API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.NEXT_PUBLIC_AUTH_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL1 ||
     '';
 
   return trimTrailingSlash(baseUrl);
