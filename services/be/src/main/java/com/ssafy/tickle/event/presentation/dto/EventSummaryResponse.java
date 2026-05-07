@@ -12,6 +12,7 @@ import java.time.Instant;
  * @param venueLocation 공연장 위치
  * @param eventStartAt 공연 시작 시각
  * @param eventEndAt 공연 종료 시각
+ * @param salesStartAt 판매 오픈 시각
  * @param categoryName 카테고리명
  * @param thumbnailUrl 대표 이미지 URL
  * @param metadata 메타데이터
@@ -23,6 +24,7 @@ public record EventSummaryResponse(
         String venueLocation,
         Instant eventStartAt,
         Instant eventEndAt,
+        Instant salesStartAt,
         String categoryName,
         String thumbnailUrl,
         Event.EventMetadata metadata,
@@ -44,6 +46,7 @@ public record EventSummaryResponse(
                 event.getVenue().getAddress(),
                 event.getEventStartAt(),
                 event.getEventEndAt(),
+                event.getSalesStartAt(),
                 event.getCategory().getCategoryName(),
                 thumbnailUrl,
                 metadataOrEmpty(event),
