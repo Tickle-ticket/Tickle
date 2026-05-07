@@ -88,20 +88,7 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
       collector.addPaste(trackId);
     };
 
-    // 페이지 이탈 시 전송 시도
-    const handleBeforeUnload = () => {
-      if (collectorRef.current) {
-        const trial = collectorRef.current.finalize();
-        if (!trial) return;
-        // navigator.sendBeacon for reliability on page unload
-        try {
-          const blob = new Blob([JSON.stringify(trial)], { type: 'application/json' });
-          navigator.sendBeacon('/api/v1/trials', blob);
-        } catch {
-          console.warn('[TrialCollector] sendBeacon failed');
-        }
-      }
-    };
+
 
     // ── Register Listeners ──────────────────────────────────
     window.addEventListener('mousemove', handleMousemove);
@@ -111,7 +98,6 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
     window.addEventListener('keyup', handleKeyup);
     document.addEventListener('focusin', handleFocus as EventListener);
     document.addEventListener('paste', handlePaste as EventListener);
-    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('mousemove', handleMousemove);
@@ -121,7 +107,6 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
       window.removeEventListener('keyup', handleKeyup);
       document.removeEventListener('focusin', handleFocus as EventListener);
       document.removeEventListener('paste', handlePaste as EventListener);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
 
       collector.destroy();
       collectorRef.current = null;
