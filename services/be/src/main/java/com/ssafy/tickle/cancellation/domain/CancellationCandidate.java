@@ -78,7 +78,63 @@ public class CancellationCandidate {
 
     public enum Status {
         WAITING,
+        OFFERED,
+        PURCHASED,
+        PASSED,
+        EXPIRED,
         CANCELLED
+    }
+
+    /**
+     * 취소표 제안을 받은 상태로 전환합니다.
+     *
+     * @param offeredAt 제안 시각
+     */
+    public void offer(Instant offeredAt) {
+        if (this.status != Status.WAITING) {
+            return;
+        }
+        this.status = Status.OFFERED;
+        this.updatedAt = offeredAt;
+    }
+
+    /**
+     * 취소표 구매를 시작한 상태로 전환합니다.
+     *
+     * @param purchasedAt 구매 시작 시각
+     */
+    public void purchase(Instant purchasedAt) {
+        if (this.status != Status.OFFERED) {
+            return;
+        }
+        this.status = Status.PURCHASED;
+        this.updatedAt = purchasedAt;
+    }
+
+    /**
+     * 취소표 제안을 거절한 상태로 전환합니다.
+     *
+     * @param passedAt 거절 시각
+     */
+    public void pass(Instant passedAt) {
+        if (this.status != Status.OFFERED) {
+            return;
+        }
+        this.status = Status.PASSED;
+        this.updatedAt = passedAt;
+    }
+
+    /**
+     * 취소표 제안 만료 상태로 전환합니다.
+     *
+     * @param expiredAt 만료 처리 시각
+     */
+    public void expire(Instant expiredAt) {
+        if (this.status != Status.OFFERED) {
+            return;
+        }
+        this.status = Status.EXPIRED;
+        this.updatedAt = expiredAt;
     }
 
     /**

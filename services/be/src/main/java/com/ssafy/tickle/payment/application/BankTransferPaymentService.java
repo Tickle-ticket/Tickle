@@ -1,5 +1,8 @@
 package com.ssafy.tickle.payment.application;
 
+import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
+import com.ssafy.tickle.cancellation.domain.CancellationErrorCode;
+import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.EventSession;
@@ -45,12 +48,19 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class BankTransferPaymentService {
 
+    private static final int MAX_BOOKING_AND_WAITING_COUNT = 4;
+    private static final List<BookingTicket.Status> OWNED_TICKET_STATUSES = List.of(
+            BookingTicket.Status.PENDING_PAYMENT,
+            BookingTicket.Status.BOOKED
+    );
+
     private final EventSessionRepository eventSessionRepository;
     private final UserRepository userRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final BookingTicketStatusHistoryRepository bookingTicketStatusHistoryRepository;
+    private final CancellationCandidateRepository cancellationCandidateRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
 
@@ -158,6 +168,9 @@ public class BankTransferPaymentService {
                 .sorted()
                 .toList();
 
+        // 결제 진입 직전에도 취소표 WAITING/OFFERED 점유와 합산해 4매 제한을 다시 확인합니다.
+        validateBookingAndWaitingLimit(booking, tickets.size());
+
         // 결제 확정 시점에도 Redis hold 키가 아직 살아 있는지 먼저 확인한다.
         validateHeldSeatsInRedis(booking.getSession().getId(), booking.getUser().getId(), seatIds);
 
@@ -228,6 +241,23 @@ public class BankTransferPaymentService {
                                 .build())
                         .toList()
         );
+    }
+
+    private void validateBookingAndWaitingLimit(Booking booking, int newTicketCount) {
+        long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                OWNED_TICKET_STATUSES
+        );
+        long activeCandidateCount = cancellationCandidateRepository.countByUserIdAndSessionIdAndStatuses(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
+        );
+
+        if (ownedTicketCount + activeCandidateCount + newTicketCount > MAX_BOOKING_AND_WAITING_COUNT) {
+            throw new BaseException(CancellationErrorCode.CANDIDATE_LIMIT_EXCEEDED);
+        }
     }
 
     /**

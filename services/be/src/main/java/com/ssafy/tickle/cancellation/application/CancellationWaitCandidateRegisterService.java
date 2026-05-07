@@ -29,12 +29,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 예매 대기 신청의 DB 검증과 저장을 하나의 트랜잭션으로 처리하는 서비스 클래스입니다.
+ * 좌석 단위 예매 대기 신청 등록을 처리하는 서비스 클래스입니다.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class CancellationWaitCandidateTxService {
+public class CancellationWaitCandidateRegisterService {
 
     private static final int MAX_BOOKING_AND_WAITING_COUNT = 4;
     private static final Set<SessionSeat.SaleStatus> WAITABLE_SEAT_STATUSES = EnumSet.of(
@@ -64,7 +64,7 @@ public class CancellationWaitCandidateTxService {
      * @return 생성된 예매 대기 신청 정보
      */
     @Transactional
-    public CancellationWaitCandidateCreateResponse createCandidatesInTransaction(
+    public CancellationWaitCandidateCreateResponse registerCandidates(
             Long eventId,
             Long scheduleId,
             Long userId,
@@ -73,7 +73,9 @@ public class CancellationWaitCandidateTxService {
         EventSession session = getSession(eventId, scheduleId);
         User user = getUser(userId);
 
+        // 같은 좌석의 WAITING/OFFERED candidate를 중복으로 봅니다.
         validateDuplicateCandidates(userId, requestedSeatIds);
+        // 이미 결제 진행 중이거나 확정 예매한 좌석은 예매 대기 대상으로 삼을 수 없습니다.
         validateNotOwnedSeats(userId, requestedSeatIds);
         // 확정 예매 티켓과 활성 예매 대기를 회차 기준으로 합산해 사용자별 4매 제한을 적용합니다.
         validateBookingAndWaitingLimit(userId, scheduleId, requestedSeatIds.size());
@@ -83,6 +85,7 @@ public class CancellationWaitCandidateTxService {
                 requestedSeatIds
         );
         validateRequestedSeats(requestedSeatIds, seats);
+        // AVAILABLE 좌석은 일반 예매 대상이므로 취소 가능성이 있는 판매 상태만 대기 신청을 허용합니다.
         validateWaitableSeats(seats);
 
         List<CancellationCandidate> candidates = seats.stream()
@@ -142,15 +145,15 @@ public class CancellationWaitCandidateTxService {
      * @param newCandidateCount 신규 신청 좌석 수
      */
     private void validateBookingAndWaitingLimit(Long userId, Long sessionId, int newCandidateCount) {
-        long confirmedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatus(
+        // 4매 제한은 확정/결제진행 티켓 + WAITING/OFFERED 대기 신청 + 이번 신청 수를 집계합니다.
+        long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
                 userId,
                 sessionId,
-                BookingTicket.Status.BOOKED
+                OWNED_TICKET_STATUSES
         );
-        // 취소/만료된 신청은 사용자의 현재 점유 가능 수량에 영향을 주지 않으므로 WAITING만 집계합니다.
         long activeCandidateCount = cancellationCandidateRepository.countActiveByUserIdAndSessionId(userId, sessionId);
 
-        if (confirmedTicketCount + activeCandidateCount + newCandidateCount > MAX_BOOKING_AND_WAITING_COUNT) {
+        if (ownedTicketCount + activeCandidateCount + newCandidateCount > MAX_BOOKING_AND_WAITING_COUNT) {
             throw new BaseException(CancellationErrorCode.CANDIDATE_LIMIT_EXCEEDED);
         }
     }
@@ -166,7 +169,7 @@ public class CancellationWaitCandidateTxService {
             throw new BaseException(SeatErrorCode.SEAT_NOT_FOUND);
         }
 
-        // 조회 수량만으로는 다른 회차 좌석 누락을 설명하기 어려워 요청 ID별 포함 여부를 한 번 더 확인합니다.
+        // 조회 수량만으로는 다른 회차 좌석이 섞인 상황을 구분하기 어려워 ID 포함 여부를 다시 확인합니다.
         Map<Long, SessionSeat> seatById = seats.stream()
                 .collect(Collectors.toMap(SessionSeat::getId, seat -> seat));
         for (Long requestedSeatId : requestedSeatIds) {
@@ -182,7 +185,6 @@ public class CancellationWaitCandidateTxService {
      * @param seats 예매 대기 신청 대상 좌석 목록
      */
     private void validateWaitableSeats(List<SessionSeat> seats) {
-        // 예매 가능한 좌석은 일반 예매 흐름 대상이므로 취소 가능성이 있는 판매 상태만 대기 신청을 허용합니다.
         boolean hasNotWaitableSeat = seats.stream()
                 .anyMatch(seat -> !WAITABLE_SEAT_STATUSES.contains(seat.getSaleStatus()));
         if (hasNotWaitableSeat) {
@@ -199,6 +201,7 @@ public class CancellationWaitCandidateTxService {
     private void validateDuplicateCandidates(Long userId, List<Long> sessionSeatIds) {
         List<Long> duplicatedSeatIds = cancellationCandidateRepository
                 .findActiveSessionSeatIdsByUserIdAndSessionSeatIds(userId, sessionSeatIds);
+        // WAITING/OFFERED candidate를 한 번에 조회해 같은 좌석 재신청을 막습니다.
         if (!duplicatedSeatIds.isEmpty()) {
             throw new BaseException(CancellationErrorCode.CANDIDATE_DUPLICATE_SEAT);
         }

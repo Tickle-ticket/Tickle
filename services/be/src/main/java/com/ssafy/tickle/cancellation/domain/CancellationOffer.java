@@ -97,12 +97,15 @@ public class CancellationOffer {
             Instant acceptedAt,
             Instant passedAt
     ) {
+        Instant now = Instant.now();
         this.cancellationCandidate = cancellationCandidate;
         this.offeredAt = offeredAt;
         this.offerExpiresAt = offerExpiresAt;
         this.offerStatus = offerStatus;
         this.acceptedAt = acceptedAt;
         this.passedAt = passedAt;
+        this.createdAt = now;
+        this.updatedAt = now;
     }
 
     /**
@@ -130,18 +133,22 @@ public class CancellationOffer {
 
     /**
      * 제안을 만료 처리합니다.
+     *
+     * @param expiredAt 만료 처리 시각
      */
-    public void expire() {
+    public void expire(Instant expiredAt) {
         this.offerStatus = OfferStatus.EXPIRED;
-        this.updatedAt = Instant.now();
+        this.updatedAt = expiredAt;
     }
 
     /**
      * 제안을 거절(패스) 처리합니다.
+     *
+     * @param passedAt 패스 시각
      */
-    public void pass() {
+    public void pass(Instant passedAt) {
         this.offerStatus = OfferStatus.PASSED;
-        this.passedAt = Instant.now();
-        this.updatedAt = Instant.now();
+        this.passedAt = passedAt;
+        this.updatedAt = passedAt;
     }
 }

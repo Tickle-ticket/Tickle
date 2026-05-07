@@ -54,6 +54,8 @@ public record AiInferenceCallbackRequest(
      * AI 추론 대상 플로우 유형입니다.
      */
     public enum InferenceType {
-        BOOKING
+        BOOKING,
+        CAPTCHA,
+        DETAIL
     }
 }

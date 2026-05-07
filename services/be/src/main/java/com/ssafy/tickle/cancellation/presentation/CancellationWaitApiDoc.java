@@ -3,6 +3,7 @@ package com.ssafy.tickle.cancellation.presentation;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
+import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateListResponse;
 import com.ssafy.tickle.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -58,4 +59,31 @@ public interface CancellationWaitApiDoc {
             String admitToken,
             CancellationWaitCandidateCreateRequest request
     );
+
+    /**
+     * 사용자의 활성 예매 대기 신청 목록을 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @return 예매 대기 신청 목록
+     */
+    @Operation(
+            summary = "내 예매 대기 목록 조회",
+            description = "사용자의 활성 예매 대기 신청 목록을 공연명, 좌석 정보, 현재 순위와 함께 조회합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "예매 대기 목록 조회 성공")
+    ResponseEntity<BaseResponse<CancellationWaitCandidateListResponse>> getMyCandidates(Long userId);
+
+    /**
+     * 사용자의 예매 대기 신청을 취소합니다.
+     *
+     * @param candidateId 예매 대기 신청 식별자
+     * @param userId 사용자 식별자
+     * @return 취소 결과
+     */
+    @Operation(
+            summary = "예매 대기 취소",
+            description = "아직 취소표 제안을 받지 않은 사용자의 예매 대기 신청만 취소합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "예매 대기 취소 성공")
+    ResponseEntity<BaseResponse<Void>> cancelCandidate(Long candidateId, Long userId);
 }

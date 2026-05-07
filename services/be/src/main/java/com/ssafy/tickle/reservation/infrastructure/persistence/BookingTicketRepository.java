@@ -54,6 +54,27 @@ public interface BookingTicketRepository extends JpaRepository<BookingTicket, Lo
     );
 
     /**
+     * 사용자와 회차 기준으로 특정 상태들의 티켓 수를 조회합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param sessionId 회차 식별자
+     * @param ticketStatuses 티켓 상태 목록
+     * @return 조건에 맞는 티켓 수
+     */
+    @Query("""
+            select count(bt.id)
+            from BookingTicket bt
+            where bt.booking.user.id = :userId
+              and bt.booking.session.id = :sessionId
+              and bt.ticketStatus in :ticketStatuses
+            """)
+    long countByUserIdAndSessionIdAndTicketStatusIn(
+            @Param("userId") Long userId,
+            @Param("sessionId") Long sessionId,
+            @Param("ticketStatuses") List<BookingTicket.Status> ticketStatuses
+    );
+
+    /**
      * 사용자가 특정 상태로 보유 중인 회차 좌석 식별자를 조회합니다.
      *
      * @param userId 사용자 식별자

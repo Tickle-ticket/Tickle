@@ -130,15 +130,19 @@ public class ReservationService {
             seats.forEach(SessionSeat::cancelForReallocation);
             nextSeatStatus = SessionSeat.SaleStatus.REALLOCATING;
             
-            // 만약 취소표 예매였다면, 관련 제안을 PASSED로 바꾸고 다음 사람에게 즉시 넘긴다
-            if (isCancellationOffer) {
-                cancellationRedistributionService.passOffer(booking.getCancellationOfferId(), userId);
-            }
         }
 
         tickets.forEach(ticket -> ticket.cancel(now));
         booking.cancel(now);
         sessionSeatRepository.saveAll(seats);
+
+        // 취소표 구매로 만들어진 예매라면 티켓 취소 후 ACCEPTED offer를 닫고 다음 대기자에게 기회를 넘깁니다.
+        if (isCancellationOffer) {
+            cancellationRedistributionService.releaseAcceptedOfferAfterReservationCancel(
+                    booking.getCancellationOfferId(),
+                    userId
+            );
+        }
 
         // WebSocket 브로드캐스트 — 커밋 후 @TransactionalEventListener 처리
         eventPublisher.publishEvent(new SeatStatusChangedEvent(
