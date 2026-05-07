@@ -21,7 +21,7 @@ import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
 import { PerformanceScheduleAddedModal } from '@/src/shared/components/PerformanceScheduleAddedModal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
-import { STAGE_1_SEAT_IDS as SSAFY_18_SEAT_IDS } from '@/src/shared/components/Stage_1';
+import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 
 const FIXED_ORGANIZER_ID = 2001;
 const FIXED_VENUE_ID = 2001;
@@ -119,7 +119,7 @@ const seatPolicyGradeToApiGrade: Record<
   restricted: 'RESTRICTED_VIEW',
 };
 
-const mockSeatIdByLabel = new Map(SSAFY_18_SEAT_IDS.map((seatLabel, index) => [seatLabel, index + 1]));
+const mockSeatIdByLabel = new Map(STAGE_4001_SEAT_IDS.map((seatLabel, index) => [seatLabel, index + 1]));
 const fallbackVenueOption: VenueOption = {
   value: FIXED_VENUE_ID,
   label: '공연장 선택',
@@ -1275,7 +1275,7 @@ export default function AgencyRegistrationPage() {
 
     const seatGroups = (['VIP', 'R', 'S', 'A', 'RESTRICTED_VIEW'] as const)
       .map((priceGrade) => {
-        const seatIds = SSAFY_18_SEAT_IDS.flatMap((seatLabel) => {
+        const seatIds = STAGE_4001_SEAT_IDS.flatMap((seatLabel) => {
           const assignment = seatPolicy[seatLabel];
 
           if (!assignment || assignment === 'disabled') {

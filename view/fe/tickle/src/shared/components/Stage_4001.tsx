@@ -3,7 +3,7 @@ import { drawSeat, getSeatColors } from './seatRenderer';
 import { Stage } from './Stage';
 import type { SeatColor, SeatStatus, CongestionLevel } from './types';
 
-export interface Stage_1_Props {
+export interface Stage_4001_Props {
   seatsData?: Record<string, { color?: SeatColor; status?: SeatStatus; isSelected?: boolean; congestion?: CongestionLevel }>;
   onSeatClick?: (seatId: string, e: React.MouseEvent<HTMLCanvasElement>) => void;
   onSeatPointerDown?: (seatId: string, event: React.PointerEvent<HTMLCanvasElement>) => void;
@@ -25,33 +25,33 @@ const upperRight = [
 ];
 
 const lowerLeft = [
-  [null, 'G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7'],
-  [null, 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7'],
-  [null, 'I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7'],
-  [null, 'J1', 'J2', 'J3', 'J4', 'J5', 'J6', 'J7'],
+  ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8'],
+  ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8'],
+  ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'],
+  ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8'],
+  ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8'],
+  ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8'],
+  ['J1', 'J2', 'J3', 'J4', 'J5', 'J6', 'J7', 'J8'],
   ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7', 'K8'],
   ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8'],
   ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'],
-  ['N1', 'N2', 'N3', 'N4', 'N5', 'N6', 'N7', 'N8'],
-  ['O1', 'O2', 'O3', 'O4', 'O5', 'O6', 'O7', 'O8'],
-  ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'],
 ];
 
 const lowerRight = [
-  ['G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', null],
-  ['H8', 'H9', 'H10', 'H11', 'H12', 'H13', 'H14', null],
-  ['I8', 'I9', 'I10', 'I11', 'I12', 'I13', 'I14', null],
-  ['J8', 'J9', 'J10', 'J11', 'J12', 'J13', 'J14', null],
+  ['D8', 'D9', 'D10', 'D11', 'D12', 'D13', 'D14', 'D16'],
+  ['E8', 'E9', 'E10', 'E11', 'E12', 'E13', 'E14', 'E16'],
+  ['F8', 'F9', 'F10', 'F11', 'F12', 'F13', 'F14', 'F16'],
+  ['G8', 'G9', 'G10', 'G11', 'G12', 'G13', 'G14', 'G16'],
+  ['H9', 'H10', 'H11', 'H12', 'H13', 'H14', 'H15', 'H16'],
+  ['I9', 'I10', 'I11', 'I12', 'I13', 'I14', 'I15', 'I16'],
+  ['J9', 'J10', 'J11', 'J12', 'J13', 'J14', 'J15', 'J16'],
   ['K9', 'K10', 'K11', 'K12', 'K13', 'K14', 'K15', 'K16'],
   ['L9', 'L10', 'L11', 'L12', 'L13', 'L14', 'L15', 'L16'],
   ['M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'],
-  ['N9', 'N10', 'N11', 'N12', 'N13', 'N14', 'N15', 'N16'],
-  ['O9', 'O10', 'O11', 'O12', 'O13', 'O14', 'O15', 'O16'],
-  ['P9', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16'],
 ];
 
 const seatSections = [upperLeft, upperRight, lowerLeft, lowerRight];
-export const STAGE_1_SEAT_IDS = seatSections.flatMap((section) =>
+export const STAGE_4001_SEAT_IDS = seatSections.flatMap((section) =>
   section.flatMap((row) => row.filter((seatId): seatId is string => seatId !== null)),
 );
 
@@ -63,14 +63,14 @@ interface SeatRect {
   height: number;
 }
 
-export const Stage_1 = ({
+export const Stage_4001 = ({
   seatsData = {},
   onSeatClick,
   onSeatPointerDown,
   onSeatPointerEnter,
   onSeatPointerUp,
   className = '',
-}: Stage_1_Props) => {
+}: Stage_4001_Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredSeat, setHoveredSeat] = useState<string | null>(null);
 
@@ -119,7 +119,7 @@ export const Stage_1 = ({
             break;
           }
         }
-        
+
         const rowY = COL_HEADER_H + r * (SEAT_H + GAP_Y);
         gLabels.push({ text: rowLabel, x: ROW_HEADER_W - 4, y: rowY + SEAT_H / 2 + 4, align: 'right' });
 
@@ -146,7 +146,7 @@ export const Stage_1 = ({
     const lowerWidth = ll.w + 40 + lr.w;
 
     const cW = Math.max(upperWidth, lowerWidth);
-    
+
     // 중앙 정렬을 위한 오프셋
     const upperOffsetX = (cW - upperWidth) / 2;
     const lowerOffsetX = (cW - lowerWidth) / 2;
@@ -231,11 +231,11 @@ export const Stage_1 = ({
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    
+
     // CSS Transform(Scale)이 적용되었을 때의 실제 렌더링 좌표 보정
     const scaleX = canvas.offsetWidth / rect.width;
     const scaleY = canvas.offsetHeight / rect.height;
-    
+
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
@@ -249,7 +249,7 @@ export const Stage_1 = ({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const hit = getHitSeat(e);
-    
+
     if (hit !== hoveredSeat) {
       setHoveredSeat(hit);
       if (hit && onSeatPointerEnter) {

@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Stage_1 } from './Stage_1';
+import { Stage_4001 } from './Stage_4001';
 import type { SeatColor, SeatStatus } from './types';
 import { useState } from 'react';
 
 const meta = {
-  title: 'Shared/Stage_1',
-  component: Stage_1,
+  title: 'Shared/Stage_4001',
+  component: Stage_4001,
   parameters: {
     layout: 'fullscreen',
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof Stage_1>;
+} satisfies Meta<typeof Stage_4001>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -37,7 +37,7 @@ const generateMockSeatsData = () => {
   return data;
 };
 
-const InteractiveStage_1 = () => {
+const InteractiveStage_4001 = () => {
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
   const baseData = generateMockSeatsData();
 
@@ -64,7 +64,7 @@ const InteractiveStage_1 = () => {
 
   return (
     <div className="w-full h-screen bg-gray-100 overflow-auto flex items-start justify-center p-8">
-      <Stage_1 
+      <Stage_4001 
         seatsData={seatsData} 
         onSeatClick={handleSeatClick} 
       />
@@ -73,5 +73,5 @@ const InteractiveStage_1 = () => {
 };
 
 export const Default: Story = {
-  render: () => <InteractiveStage_1 />,
+  render: () => <InteractiveStage_4001 />,
 };
