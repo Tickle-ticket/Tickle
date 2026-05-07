@@ -115,8 +115,6 @@ public class KakaoPayPaymentService {
 
         // 카카오페이 결제 시도 기준이 되는 티켓 스냅샷을 먼저 조회한다.
         List<BookingTicket> tickets = bookingTicketRepository.findByBookingId(booking.getId());
-        // ready 단계에서 취소표 WAITING/OFFERED 점유와 합산해 4매 제한을 다시 확인합니다.
-        validateBookingAndWaitingLimit(booking, tickets.size());
 
         // partnerOrderId를 paymentId로 보내기 위해 내부 결제를 먼저 만든다.
         Payment payment = paymentRepository.save(
