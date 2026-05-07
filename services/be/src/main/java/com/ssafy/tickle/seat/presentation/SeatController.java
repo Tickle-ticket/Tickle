@@ -1,5 +1,6 @@
 package com.ssafy.tickle.seat.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
@@ -49,7 +50,7 @@ public class SeatController implements SeatApiDoc {
     public ResponseEntity<BaseResponse<SeatHoldResponse>> holdSeats(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @RequestParam String admitToken,
             @Valid @RequestBody SeatHoldRequest request
     ) {
@@ -65,7 +66,7 @@ public class SeatController implements SeatApiDoc {
     public ResponseEntity<BaseResponse<Void>> releaseSeats(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId
+            @UserId Long userId
     ) {
         seatService.releaseSeats(eventId, scheduleId, userId);
         return ResponseEntity

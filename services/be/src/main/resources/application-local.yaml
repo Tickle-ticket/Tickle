@@ -94,6 +94,10 @@ internal:
   # Auth 서버와 공유하는 내부 통신 시크릿 키
   secret: ${INTERNAL_SECRET}
 
+jwt:
+  # Auth 서버와 공유하는 JWT 서명 시크릿 키 (HS256, 32자 이상 권장)
+  secret: ${JWT_SECRET}
+
 cloud:
   aws:
     s3:

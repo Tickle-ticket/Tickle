@@ -1,7 +1,9 @@
 package com.ssafy.tickle.common.interceptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.common.util.JwtProvider;
 import com.ssafy.tickle.user.domain.User;
 import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
@@ -14,23 +16,18 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.Optional;
-
 /**
  * 관리자 권한을 검증하는 인터셉터입니다.
  *
- * <p>/api/v1/admin/** 경로에 적용되며, 요청자가 ADMIN 역할을 가진 사용자인지 검증합니다.
- * userId는 요청 파라미터 "userId" 또는 헤더 "X-User-Id"에서 추출합니다.</p>
+ * <p>/api/v1/admin/** 경로에 적용되며, Bearer 토큰에서 추출한 userId가 ADMIN 역할인지 검증합니다.</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AdminAuthInterceptor implements HandlerInterceptor {
 
-    private static final String USER_ID_PARAM = "userId";
-    private static final String USER_ID_HEADER = "X-User-Id";
-
     private final UserRepository userRepository;
+    private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
 
     /**
@@ -45,48 +42,31 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
 
-        String userIdStr = resolveUserId(request);
-
-        if (userIdStr == null || userIdStr.isBlank()) {
-            log.warn("관리자 인증 실패 - userId 없음: uri={}", request.getRequestURI());
-            return writeForbidden(response, "관리자 인증이 필요합니다.");
-        }
-
         Long userId;
         try {
-            userId = Long.parseLong(userIdStr);
-        } catch (NumberFormatException e) {
-            log.warn("관리자 인증 실패 - userId 형식 오류: userIdStr={}, uri={}", userIdStr, request.getRequestURI());
+            userId = jwtProvider.extractUserIdFromRequest(request).orElse(null);
+        } catch (BaseException e) {
+            log.warn("관리자 인증 실패 - 유효하지 않은 토큰: uri={}", request.getRequestURI());
             return writeForbidden(response, "관리자 인증이 필요합니다.");
         }
 
-        Optional<User> userOptional = userRepository.findById(userId);
-        if (userOptional.isEmpty()) {
+        if (userId == null) {
+            log.warn("관리자 인증 실패 - 토큰 없음: uri={}", request.getRequestURI());
+            return writeForbidden(response, "관리자 인증이 필요합니다.");
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
             log.warn("관리자 인증 실패 - 사용자 없음: userId={}, uri={}", userId, request.getRequestURI());
             return writeForbidden(response, "관리자 인증이 필요합니다.");
         }
 
-        User user = userOptional.get();
         if (user.getRole() != UserRole.ADMIN) {
             log.warn("관리자 인증 실패 - 권한 부족: userId={}, role={}, uri={}", userId, user.getRole(), request.getRequestURI());
             return writeForbidden(response, "관리자 권한이 필요합니다.");
         }
 
         return true;
-    }
-
-    /**
-     * 요청 파라미터 "userId"를 우선 확인하고, 없으면 헤더 "X-User-Id"를 확인합니다.
-     *
-     * @param request HTTP 요청
-     * @return 사용자 ID 문자열, 없으면 null
-     */
-    private String resolveUserId(HttpServletRequest request) {
-        String paramUserId = request.getParameter(USER_ID_PARAM);
-        if (paramUserId != null && !paramUserId.isBlank()) {
-            return paramUserId;
-        }
-        return request.getHeader(USER_ID_HEADER);
     }
 
     /**

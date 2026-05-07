@@ -2,7 +2,6 @@ package com.ssafy.tickle.queue.presentation;
 
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.domain.QueueScope;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
@@ -23,7 +22,9 @@ public interface QueueApiDoc {
     /**
      * 대기열 진입 등록 API 문서 정의입니다.
      *
-     * @param request 대기열 진입 요청
+     * @param eventId 공연 식별자
+     * @param scope   대기열 목적
+     * @param userId  JWT에서 추출한 사용자 식별자
      * @return 대기열 진입 접수 응답
      */
     @Operation(
@@ -44,7 +45,7 @@ public interface QueueApiDoc {
             description = "대기열 진입용 공연 오픈 정보를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(Long eventId, QueueScope scope, QueueEnterRequest request);
+    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(Long eventId, QueueScope scope, Long userId);
 
     /**
      * requestId 기반 최초 queueToken 발급 API 문서 정의입니다.

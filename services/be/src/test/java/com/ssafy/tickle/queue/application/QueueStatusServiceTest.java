@@ -10,7 +10,6 @@ import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
@@ -79,7 +78,7 @@ class QueueStatusServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
 
             QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
@@ -98,7 +97,7 @@ class QueueStatusServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
 
             QueueTokenResponse first = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
             QueueTokenResponse second = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
@@ -133,7 +132,7 @@ class QueueStatusServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
             QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
             QueueStatusResponse statusResponse = queueStatusService.getStatusByQueueToken(eventId, tokenResponse.queueToken());
@@ -158,7 +157,7 @@ class QueueStatusServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
             QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
             queueAdmissionScheduler.admitWaitingUsers();
@@ -190,7 +189,7 @@ class QueueStatusServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
             QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
             queueStatusService.leave(eventId, tokenResponse.queueToken());
@@ -213,7 +212,7 @@ class QueueStatusServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
             QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
             queueAdmissionScheduler.admitWaitingUsers();
 
