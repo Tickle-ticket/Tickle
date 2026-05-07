@@ -64,7 +64,7 @@ export const sendBehaviorEvent = async ({
         'Content-Type': 'application/json',
         'access-token': accessToken,
         'X-Request-Id': requestId ?? createRequestId(),
-        ...(process.env.NEXT_PUBLIC_INTERNAL_SECRET && { 'X-Internal-Secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET }),
+        'X-Internal-Secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET || '',
       },
       body: JSON.stringify(body),
     });
