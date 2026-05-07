@@ -1,5 +1,6 @@
 package com.ssafy.tickle.common.config;
 
+import com.ssafy.tickle.common.auth.UserIdArgumentResolver;
 import com.ssafy.tickle.common.interceptor.AdminAuthInterceptor;
 import com.ssafy.tickle.common.interceptor.BlacklistInterceptor;
 import com.ssafy.tickle.common.interceptor.InternalSecretInterceptor;
@@ -7,8 +8,11 @@ import com.ssafy.tickle.common.interceptor.IpRateLimitInterceptor;
 import com.ssafy.tickle.common.interceptor.SuspiciousPatternInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.List;
 
 /**
  * Spring MVC 설정 클래스입니다.
@@ -30,6 +34,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final IpRateLimitInterceptor ipRateLimitInterceptor;
     private final SuspiciousPatternInterceptor suspiciousPatternInterceptor;
     private final AdminAuthInterceptor adminAuthInterceptor;
+    private final UserIdArgumentResolver userIdArgumentResolver;
 
     /**
      * 인터셉터를 경로별로 등록합니다.
@@ -67,5 +72,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         registry.addInterceptor(adminAuthInterceptor)
                 .addPathPatterns("/api/v1/admin/**");
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(userIdArgumentResolver);
     }
 }

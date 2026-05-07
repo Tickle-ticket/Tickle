@@ -1,5 +1,6 @@
 package com.ssafy.tickle.user.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.user.application.UserService;
@@ -29,13 +30,13 @@ public class UserController implements UserApiDoc {
     /**
      * 현재 로그인한 사용자의 정보를 조회합니다.
      *
-     * @param userId 사용자 식별자 쿼리 파라미터
+     * @param userId JWT에서 추출한 사용자 식별자
      * @return 내 정보 응답
      */
     @Override
     @GetMapping("/me")
     public ResponseEntity<BaseResponse<MyInfoResponse>> getMyInfo(
-            @RequestParam(required = false) Long userId
+            @UserId Long userId
     ) {
         return ResponseEntity
                 .ok()
@@ -47,7 +48,7 @@ public class UserController implements UserApiDoc {
      *
      * <p>multipart/form-data 형식으로 프로필 이미지 파일, 닉네임, 전화번호를 받는다.</p>
      *
-     * @param userId       사용자 식별자
+     * @param userId       JWT에서 추출한 사용자 식별자
      * @param profileImage 프로필 이미지 파일 (선택)
      * @param nickname     닉네임 (선택)
      * @param phoneNumber  전화번호 (선택)
@@ -56,7 +57,7 @@ public class UserController implements UserApiDoc {
     @Override
     @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BaseResponse<MyInfoResponse>> updateMyInfo(
-            @RequestParam(required = false) Long userId,
+            @UserId Long userId,
             @RequestPart(required = false) MultipartFile profileImage,
             @RequestParam(required = false) String nickname,
             @RequestParam(required = false) String phoneNumber
@@ -70,13 +71,13 @@ public class UserController implements UserApiDoc {
     /**
      * 현재 로그인한 사용자를 탈퇴 처리합니다.
      *
-     * @param userId 사용자 식별자 쿼리 파라미터
+     * @param userId JWT에서 추출한 사용자 식별자
      * @return 회원 탈퇴 응답
      */
     @Override
     @DeleteMapping("/me")
     public ResponseEntity<BaseResponse<Void>> withdrawMyInfo(
-            @RequestParam(required = false) Long userId
+            @UserId Long userId
     ) {
         userService.withdrawMyInfo(userId);
 

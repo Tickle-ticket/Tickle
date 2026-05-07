@@ -8,7 +8,6 @@ import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterMessage;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueEnterRequestStore;
 import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.messaging.producer.QueueEnterProducer;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,14 +30,14 @@ public class QueueEnterService {
      * 사용자의 대기열 진입 등록 요청을 접수합니다.
      *
      * @param eventId 예매 대상 공연 식별자
-     * @param request 대기열 진입 요청
+     * @param userId  사용자 식별자 (JWT에서 추출)
      * @return 접수된 요청 식별자
      */
-    public QueueEnterResponse enter(Long eventId, QueueEnterRequest request) {
-        return enter(QueueScope.BOOKING, eventId, request);
+    public QueueEnterResponse enter(Long eventId, Long userId) {
+        return enter(QueueScope.BOOKING, eventId, userId);
     }
 
-    public QueueEnterResponse enter(QueueScope scope, Long eventId, QueueEnterRequest request) {
+    public QueueEnterResponse enter(QueueScope scope, Long eventId, Long userId) {
         // queue enter는 DB를 직접 보지 않고 미리 적재된 공연 오픈 정보를 기준으로만 검증한다.
         EventOpenInfo eventOpenInfo = eventOpenInfoStore.findByEventId(eventId)
                 .orElseThrow(() -> new BaseException(
@@ -47,17 +46,17 @@ public class QueueEnterService {
 
         validateQueueEntry(eventOpenInfo, Instant.now());
 
-        String existingRequestId = queueEnterRequestStore.findRequestId(scope, request.userId(), eventId)
+        String existingRequestId = queueEnterRequestStore.findRequestId(scope, userId, eventId)
                 .orElse(null);
         if (existingRequestId != null) {
             return QueueEnterResponse.pending(existingRequestId);
         }
 
         String requestId = UUID.randomUUID().toString();
-        boolean saved = queueEnterRequestStore.saveIfAbsent(scope, request.userId(), eventId, requestId);
+        boolean saved = queueEnterRequestStore.saveIfAbsent(scope, userId, eventId, requestId);
         if (!saved) {
             // setIfAbsent 경합에서 졌다면, 먼저 저장된 requestId를 그대로 재사용한다.
-            String duplicatedRequestId = queueEnterRequestStore.findRequestId(scope, request.userId(), eventId)
+            String duplicatedRequestId = queueEnterRequestStore.findRequestId(scope, userId, eventId)
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
         }
@@ -66,14 +65,14 @@ public class QueueEnterService {
             // requestId는 Redis에 고정해두고, 실제 대기열 등록은 Kafka 비동기 소비 단계로 넘긴다.
             queueEnterProducer.publish(new QueueEnterMessage(
                     requestId,
-                    request.userId(),
+                    userId,
                     scope,
                     eventId,
                     Instant.now()
             ));
         } catch (RuntimeException exception) {
             // Kafka 적재에 실패하면 중복 진입 방지 키도 함께 제거해 재시도를 허용한다.
-            queueEnterRequestStore.delete(scope, request.userId(), eventId, requestId);
+            queueEnterRequestStore.delete(scope, userId, eventId, requestId);
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "대기열 진입 요청 적재에 실패했습니다.");
         }
 

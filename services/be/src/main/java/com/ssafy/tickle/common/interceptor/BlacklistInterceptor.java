@@ -3,7 +3,9 @@ package com.ssafy.tickle.common.interceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.tickle.blacklist.domain.BlacklistErrorCode;
 import com.ssafy.tickle.blacklist.infrastructure.persistence.BlacklistRepository;
+import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.common.util.JwtProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,24 +18,22 @@ import org.springframework.web.servlet.HandlerInterceptor;
 /**
  * 블랙리스트에 등록된 사용자의 요청을 차단하는 인터셉터입니다.
  *
- * <p>요청 파라미터 "userId" 또는 헤더 "X-User-Id"에서 사용자 ID를 추출하여
- * 블랙리스트 여부를 확인합니다. 인증되지 않은 요청(userId 없음)은 통과시킵니다.</p>
+ * <p>Authorization 헤더의 Bearer 토큰에서 userId를 추출하여 블랙리스트 여부를 확인합니다.
+ * 토큰이 없거나 유효하지 않으면 통과시킵니다.</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class BlacklistInterceptor implements HandlerInterceptor {
 
-    private static final String USER_ID_PARAM = "userId";
-    private static final String USER_ID_HEADER = "X-User-Id";
-
     private final BlacklistRepository blacklistRepository;
+    private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
 
     /**
      * 블랙리스트 사용자 여부를 검증합니다.
      *
-     * <p>userId가 없으면 통과, 블랙리스트에 등록된 경우 403 응답을 반환합니다.</p>
+     * <p>토큰이 없으면 통과, 블랙리스트에 등록된 경우 403 응답을 반환합니다.</p>
      *
      * @param request  HTTP 요청
      * @param response HTTP 응답
@@ -44,16 +44,16 @@ public class BlacklistInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
 
-        String userIdStr = resolveUserId(request);
-
-        if (userIdStr == null || userIdStr.isBlank()) {
+        Long userId;
+        try {
+            userId = jwtProvider.extractUserIdFromRequest(request).orElse(null);
+        } catch (BaseException e) {
+            // 토큰이 있으나 유효하지 않은 경우도 블랙리스트 체크 없이 통과시킨다.
+            // 유효하지 않은 토큰 거부는 UserIdArgumentResolver에서 처리한다.
             return true;
         }
 
-        Long userId;
-        try {
-            userId = Long.parseLong(userIdStr);
-        } catch (NumberFormatException e) {
+        if (userId == null) {
             return true;
         }
 
@@ -75,19 +75,5 @@ public class BlacklistInterceptor implements HandlerInterceptor {
         }
 
         return true;
-    }
-
-    /**
-     * 요청 파라미터 "userId"를 우선 확인하고, 없으면 헤더 "X-User-Id"를 확인합니다.
-     *
-     * @param request HTTP 요청
-     * @return 사용자 ID 문자열, 없으면 null
-     */
-    private String resolveUserId(HttpServletRequest request) {
-        String paramUserId = request.getParameter(USER_ID_PARAM);
-        if (paramUserId != null && !paramUserId.isBlank()) {
-            return paramUserId;
-        }
-        return request.getHeader(USER_ID_HEADER);
     }
 }

@@ -1,14 +1,9 @@
 package com.ssafy.tickle.queue.presentation.dto;
 
-import jakarta.validation.constraints.NotNull;
-
 /**
  * 대기열 진입 등록 요청 DTO입니다.
  *
- * @param userId 사용자 식별자
+ * <p>userId는 Authorization 헤더의 JWT에서 추출하므로 요청 바디에 포함하지 않습니다.</p>
  */
-public record QueueEnterRequest(
-        @NotNull(message = "사용자 식별자는 필수입니다.")
-        Long userId
-) {
+public record QueueEnterRequest() {
 }

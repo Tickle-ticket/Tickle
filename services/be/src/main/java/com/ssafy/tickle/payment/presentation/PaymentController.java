@@ -1,5 +1,6 @@
 package com.ssafy.tickle.payment.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.payment.application.BankTransferPaymentService;
@@ -16,9 +17,9 @@ import com.ssafy.tickle.payment.presentation.dto.PaymentStatusResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,7 +47,7 @@ public class PaymentController implements PaymentApiDoc {
     public ResponseEntity<BaseResponse<PaymentMethodSelectionResponse>> selectPaymentMethod(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @Valid @RequestBody PaymentMethodSelectionRequest request
     ) {
         return ResponseEntity.ok(
@@ -62,7 +63,7 @@ public class PaymentController implements PaymentApiDoc {
     public ResponseEntity<BaseResponse<BankTransferPrepareResponse>> confirmBankTransferPayment(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @Valid @RequestBody BankTransferPrepareRequest request
     ) {
         return ResponseEntity.ok(
@@ -78,7 +79,7 @@ public class PaymentController implements PaymentApiDoc {
     public ResponseEntity<BaseResponse<KakaoPayReadyResponse>> readyKakaoPay(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @Valid @RequestBody KakaoPayReadyRequest request
     ) {
         return ResponseEntity.ok(

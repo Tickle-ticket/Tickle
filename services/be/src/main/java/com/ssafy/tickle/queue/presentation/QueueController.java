@@ -1,16 +1,15 @@
 package com.ssafy.tickle.queue.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.application.service.QueueEnterService;
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.application.service.QueueSseHandler;
 import com.ssafy.tickle.queue.domain.QueueScope;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,9 +45,9 @@ public class QueueController implements QueueApiDoc {
     public ResponseEntity<BaseResponse<QueueEnterResponse>> enter(
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
-            @Valid @RequestBody QueueEnterRequest request
+            @UserId Long userId
     ) {
-        QueueEnterResponse response = queueEnterService.enter(scope, eventId, request);
+        QueueEnterResponse response = queueEnterService.enter(scope, eventId, userId);
 
         return ResponseEntity
                 .status(SuccessCode.CREATED.getStatus())
