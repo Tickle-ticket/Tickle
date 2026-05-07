@@ -70,11 +70,11 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   const scheduleId = confirmedSchedule
     ? confirmedSchedule.scheduleId
-      ?? eventDetail?.schedules
-        .find(schedule => schedule.date === confirmedSchedule.date)
-        ?.times.find(time => time.time === confirmedSchedule.time)
-        ?.scheduleId
-      ?? `${confirmedSchedule.date}-${confirmedSchedule.time}`
+    ?? eventDetail?.schedules
+      .find(schedule => schedule.date === confirmedSchedule.date)
+      ?.times.find(time => time.time === confirmedSchedule.time)
+      ?.scheduleId
+    ?? `${confirmedSchedule.date}-${confirmedSchedule.time}`
     : null;
 
   const enableWs = !isCancelMode || isModifyModeActive;
@@ -93,9 +93,15 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     }
   };
 
+  const { fetchOptions, submitPreorder, isOptionsLoading, isPreorderLoading, optionsData } = useBookingPreorder();
+
+  const bookingStep = useBookStore(s => s.bookingStep);
+  const setBookingStep = useBookStore(s => s.setBookingStep);
+
   // ── Trial Collector (행동 데이터 수집) ──────────────────────
   const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({
-    enabled: mode === 'BOOK' || mode === 'WAITLIST',
+    // 인원 선택 버튼을 누르기 전(CAPTCHA, SEAT)까지만 활성화
+    enabled: (mode === 'BOOK' || mode === 'WAITLIST') && (!isBotVerified || bookingStep === 'SEAT'),
     userId: userProfile?.userId,
     behaviorEvent: {
       eventId: Number(eventId),
@@ -103,13 +109,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       eventDate: toBehaviorEventDate(confirmedSchedule?.date),
     },
   });
-
-  const { fetchOptions, submitPreorder, isOptionsLoading, isPreorderLoading, optionsData } = useBookingPreorder();
-
-  const bookingStep = useBookStore(s => s.bookingStep);
-  const setBookingStep = useBookStore(s => s.setBookingStep);
   const setGradeTicketCounts = useBookStore(s => s.setGradeTicketCounts);
-  
+
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
 
@@ -166,10 +167,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   useEffect(() => {
     if (!isBotVerified) {
       setTrialStage('captcha');
-    } else {
-      if (bookingStep === 'SEAT') setTrialStage('booking');
-      else if (bookingStep === 'TICKET_TYPE') setTrialStage('ticket_type');
-      else if (bookingStep === 'PAYMENT' || bookingStep === 'PAY_METHOD') setTrialStage('payment');
+    } else if (bookingStep === 'SEAT') {
+      setTrialStage('booking');
     }
   }, [isBotVerified, bookingStep, setTrialStage]);
 
@@ -252,10 +251,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   };
 
   const { data: seatAvailability, isLoading: isSeatsLoading, error: seatError } = useSeatData(
-    eventDetail?.eventId || null, 
-    scheduleId, 
-    enableWs, 
-    mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING', 
+    eventDetail?.eventId || null,
+    scheduleId,
+    enableWs,
+    mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING',
     admitToken || null
   );
 
@@ -385,9 +384,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
     const userId = userProfile?.userId;
     if (!userId) {
-      setErrorModalConfig({ 
-        isOpen: true, 
-        title: '로그인 필요', 
+      setErrorModalConfig({
+        isOpen: true,
+        title: '로그인 필요',
         message: '로그인이 필요한 서비스입니다.',
         confirmText: '로그인 하기',
         showCancelButton: true,
@@ -412,7 +411,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         if (sessionSeatIds.length > 0) {
           // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
           await seatApi.holdSeat(eventDetail.eventId, scheduleId!, userId, { sessionSeatIds });
-          
+
           // 선점 성공 시 옵션(권종/할인) 데이터 조회
           await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), userId, sessionSeatIds);
         }
@@ -427,6 +426,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           initial[grade] = {};
         });
         setGradeTicketCounts(initial);
+
+        // 🔥 인원 선택(권종) 단계로 넘어가기 직전에 데이터 수집 완전 종료 및 전송!
+        await finalizeTrial();
+
         setBookingStep('TICKET_TYPE');
       }
     } catch (err: any) {
@@ -467,8 +470,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           errorModalConfig={errorModalConfig}
           handleCancelExit={handleCancelExit}
           handleConfirmExit={handleConfirmExit}
-          handleCloseWaitlistComplete={() => {}}
-          handleCloseConflictModal={() => {}}
+          handleCloseWaitlistComplete={() => { }}
+          handleCloseConflictModal={() => { }}
           handleCloseErrorModal={() => setErrorModalConfig(prev => ({ ...prev, isOpen: false }))}
         />
       </div>
@@ -558,9 +561,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               onSubmitPreorder={async (seatIds, optionSelections) => {
                 const userId = userProfile?.userId;
                 if (!userId) {
-                  setErrorModalConfig({ 
-                    isOpen: true, 
-                    title: '로그인 필요', 
+                  setErrorModalConfig({
+                    isOpen: true,
+                    title: '로그인 필요',
                     message: '로그인이 필요한 서비스입니다.',
                     confirmText: '로그인 하기',
                     showCancelButton: true,

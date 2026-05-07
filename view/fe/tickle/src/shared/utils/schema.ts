@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 // ─── Enums & Literals ───────────────────────────────────────
-export const TrialStageSchema = Schema.Literal('captcha', 'booking', 'ticket_type', 'payment');
+export const TrialStageSchema = Schema.Literal('captcha', 'booking', 'ticket_type', 'payment', 'detail');
 export const TrialLabelSchema = Schema.Literal('human', 'macro', 'none');
 
 // ─── Summary ───────────────────────────────────────────────

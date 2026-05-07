@@ -1,7 +1,7 @@
 import type { ApiResponse } from '../types';
 import type { TrialMetrics, TrialStage } from '@/src/shared/utils/schema';
 
-export type BehaviorEventType = TrialStage | 'booking' | string;
+export type BehaviorEventType = 'DETAIL' | 'CAPTCHA' | 'BOOKING';
 
 export interface BehaviorEventPayload {
   type: BehaviorEventType;
