@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @Validated
 @RestController
@@ -16,9 +17,11 @@ import org.springframework.web.bind.annotation.*;
 public class BehaviorEventController {
 
     private final BehaviorEventProducer behaviorEventProducer;
+    private final String expectedInternalSecret;
 
     public BehaviorEventController(BehaviorEventProducer behaviorEventProducer) {
         this.behaviorEventProducer = behaviorEventProducer;
+        this.expectedInternalSecret = System.getenv().getOrDefault("INGEST_INTERNAL_SECRET", "tickle-internal");
     }
 
     @PostMapping("/events")
@@ -28,6 +31,16 @@ public class BehaviorEventController {
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
             @Valid @RequestBody BehaviorEventRequest request
     ) {
+        if (!expectedInternalSecret.isBlank()) {
+            if (internalSecret == null || internalSecret.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "missing internal secret");
+            }
+
+            if (!expectedInternalSecret.equals(internalSecret)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid internal secret");
+            }
+        }
+
         behaviorEventProducer.send(request, accessToken, internalSecret, requestId);
 
         IngestAcceptedResponse response = new IngestAcceptedResponse(
