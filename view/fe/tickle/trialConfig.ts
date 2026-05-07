@@ -33,4 +33,9 @@ export const TRIAL_CONFIG = {
 
   /** 매크로/봇 접근 시 차단 페이지(/blocked)로 강제 이동시킬지 여부 (기본: true) */
   ENABLE_BOT_DETECTOR: true,
+
+  // ── 데이터 전송 기준 (Data Submission) ──
+
+  /** 세션 종료 시 서버로 전송할 최근 행동 이벤트의 최대 개수 (기본: 100개) */
+  RECENT_EVENT_WINDOW_SIZE: 100,
 };

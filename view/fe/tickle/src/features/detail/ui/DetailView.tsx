@@ -28,6 +28,7 @@ import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { getUserId } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
+import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -71,6 +72,20 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
   const queryClient = useQueryClient();
 
+  const { setStage, finalize } = useTrialCollector({
+    enabled: flowState === 'NONE',
+    userId: getUserId(),
+    behaviorEvent: {
+      eventId: activeEventId ? Number(activeEventId) : null,
+      scheduleId: null,
+      eventDate: null,
+    }
+  });
+
+  useEffect(() => {
+    setStage('detail');
+  }, [setStage]);
+
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK') => {
     if (!getUserId()) {
       setModalConfig({ 
@@ -83,6 +98,10 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       });
       return;
     }
+
+    // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 지금까지 수집된 DETAIL 데이터 전송
+    finalize();
+    
     setFlowState(state);
   };
 

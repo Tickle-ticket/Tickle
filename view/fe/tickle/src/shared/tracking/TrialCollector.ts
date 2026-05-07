@@ -57,6 +57,7 @@ const {
   RECLICK_THRESHOLD_MS,
   PRE_CLICK_WINDOW_MS,
   EDGE_MARGIN_PX,
+  RECENT_EVENT_WINDOW_SIZE,
 } = TRIAL_CONFIG;
 
 export class TrialCollector {
@@ -349,17 +350,19 @@ export class TrialCollector {
 
     const durationMs = Date.now() - this.startTs;
 
+    const recentEvents = this.eventRows.slice(-RECENT_EVENT_WINDOW_SIZE);
+
     const summary: TrialSummary = {
       stage: this.stage,
       durationMs,
-      clickCount: this.clickCount,
-      eventCount: this.eventRows.length,
+      clickCount: recentEvents.filter(e => e.event_type === 'click').length,
+      eventCount: recentEvents.length,
       windowCount: this.windowRows.length,
       selectedSeats: [...this.selectedSeats],
       label: this.label,
     };
 
-    const metrics = this.computeMetrics(durationMs);
+    const metrics = this.computeMetricsFromEvents(recentEvents, durationMs);
 
     const rawTrial = {
       trialId: this.trialId,
@@ -368,7 +371,7 @@ export class TrialCollector {
       label: this.label,
       summary,
       metrics,
-      eventRows: this.eventRows,
+      eventRows: recentEvents,
       windowRows: this.windowRows,
     };
 
@@ -380,7 +383,7 @@ export class TrialCollector {
    */
   flushStage(): TrialJSON | null {
     const currentStage = this.stage;
-    const stageEvents = this.eventRows.filter(e => e.stage === currentStage);
+    const stageEvents = this.eventRows.filter(e => e.stage === currentStage).slice(-RECENT_EVENT_WINDOW_SIZE);
     const stageWindows = this.windowRows.filter(w => w.stage === currentStage);
 
     if (stageEvents.length === 0) return null;

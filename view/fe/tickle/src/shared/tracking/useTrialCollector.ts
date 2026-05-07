@@ -1,14 +1,7 @@
-/**
- * useTrialCollector — BookView에서 사용하는 행동 데이터 수집 훅
- *
- * window 이벤트 리스너를 등록/해제하고
- * TrialCollector 인스턴스의 생명주기를 관리합니다.
- */
-
 import { useRef, useEffect, useCallback } from 'react';
 import { TrialCollector } from './TrialCollector';
-import { submitTrial } from '@/src/shared/api/trialApi';
 import { sendBehaviorEvent } from '@/src/shared/api/behaviorApi';
+import type { BehaviorEventType } from '@/src/shared/api/types/behavior.types';
 import type { TrialStage, TrialJSON } from '../utils/schema';
 
 interface UseTrialCollectorOptions {
@@ -35,8 +28,16 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
   const sendBehaviorEventFromTrial = useCallback((trial: TrialJSON) => {
     const metadata = behaviorEventRef.current;
 
+    let behaviorType: BehaviorEventType | null = null;
+    const stage = trial.summary.stage.toLowerCase();
+    if (stage === 'detail') behaviorType = 'DETAIL';
+    else if (stage === 'captcha') behaviorType = 'CAPTCHA';
+    else if (stage === 'booking') behaviorType = 'BOOKING';
+
+    if (!behaviorType) return; // 알 수 없는 stage면 전송 안 함
+
     void sendBehaviorEvent({
-      type: trial.summary.stage,
+      type: behaviorType,
       eventId: metadata?.eventId ?? undefined,
       scheduleId: metadata?.scheduleId ?? undefined,
       eventDate: metadata?.eventDate ?? undefined,
