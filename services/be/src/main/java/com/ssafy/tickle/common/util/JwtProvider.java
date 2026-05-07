@@ -26,7 +26,6 @@ import java.util.Optional;
 public class JwtProvider {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final String USER_ID_CLAIM = "userId";
 
     private final String secret;
 
@@ -43,11 +42,11 @@ public class JwtProvider {
      */
     public Long extractUserId(String token) {
         Claims claims = parseClaims(token.startsWith(BEARER_PREFIX) ? token.substring(BEARER_PREFIX.length()) : token);
-        Object userIdObj = claims.get(USER_ID_CLAIM);
-        if (userIdObj == null) {
+        String subject = claims.getSubject();
+        if (subject == null) {
             throw new BaseException(AuthErrorCode.INVALID_TOKEN);
         }
-        return ((Number) userIdObj).longValue();
+        return Long.parseLong(subject);
     }
 
     /**
