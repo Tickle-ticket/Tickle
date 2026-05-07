@@ -1,6 +1,9 @@
 package com.ssafy.tickle.payment.application;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
+import com.ssafy.tickle.cancellation.domain.CancellationErrorCode;
+import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.payment.config.PaymentConstants;
@@ -47,11 +50,18 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class KakaoPayPaymentService {
 
+    private static final int MAX_BOOKING_AND_WAITING_COUNT = 4;
+    private static final List<BookingTicket.Status> OWNED_TICKET_STATUSES = List.of(
+            BookingTicket.Status.PENDING_PAYMENT,
+            BookingTicket.Status.BOOKED
+    );
+
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final BookingTicketStatusHistoryRepository bookingTicketStatusHistoryRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final CancellationCandidateRepository cancellationCandidateRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final SeatHoldKeyStore seatHoldKeyStore;
     private final ApplicationEventPublisher eventPublisher;
@@ -105,6 +115,8 @@ public class KakaoPayPaymentService {
 
         // 카카오페이 결제 시도 기준이 되는 티켓 스냅샷을 먼저 조회한다.
         List<BookingTicket> tickets = bookingTicketRepository.findByBookingId(booking.getId());
+        // ready 단계에서 취소표 WAITING/OFFERED 점유와 합산해 4매 제한을 다시 확인합니다.
+        validateBookingAndWaitingLimit(booking, tickets.size());
 
         // partnerOrderId를 paymentId로 보내기 위해 내부 결제를 먼저 만든다.
         Payment payment = paymentRepository.save(
@@ -330,6 +342,23 @@ public class KakaoPayPaymentService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    private void validateBookingAndWaitingLimit(Booking booking, int newTicketCount) {
+        long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                OWNED_TICKET_STATUSES
+        );
+        long activeCandidateCount = cancellationCandidateRepository.countByUserIdAndSessionIdAndStatuses(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
+        );
+
+        if (ownedTicketCount + activeCandidateCount + newTicketCount > MAX_BOOKING_AND_WAITING_COUNT) {
+            throw new BaseException(CancellationErrorCode.CANDIDATE_LIMIT_EXCEEDED);
+        }
+    }
+
     /**
      * 카카오페이 승인 성공에 따라 결제, 예매, 티켓, 좌석 상태를 함께 확정합니다.
      *
@@ -349,6 +378,9 @@ public class KakaoPayPaymentService {
     ) {
         Booking booking = payment.getBooking();
         List<BookingTicketStatusHistory> statusHistories = new ArrayList<>();
+
+        // 승인 직전에도 다른 대기/제안이 늘어난 경우를 막아 최종 BOOKED 수량 정합성을 보장합니다.
+        validateBookingAndWaitingLimit(booking, tickets.size());
 
         // 상위 결제가 승인되면 예매도 최종 확정 상태로 함께 전이한다.
         payment.approve(payment.getOrderAmount());
@@ -513,9 +545,9 @@ public class KakaoPayPaymentService {
      *
      * @param cid 가맹점 코드
      * @param tid 카카오페이 거래 ID
-     * @param partner_order_id 내부 결제 식별자 기반 주문 번호
-     * @param partner_user_id 내부 사용자 식별자
-     * @param pg_token 카카오페이 승인 토큰
+     * @param partnerOrderId 내부 결제 식별자 기반 주문 번호
+     * @param partnerUserId 내부 사용자 식별자
+     * @param pgToken 카카오페이 승인 토큰
      */
     private record KakaoPayApproveApiRequest(
             String cid,

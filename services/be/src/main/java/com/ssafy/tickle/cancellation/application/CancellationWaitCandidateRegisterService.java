@@ -2,10 +2,8 @@ package com.ssafy.tickle.cancellation.application;
 
 import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
 import com.ssafy.tickle.cancellation.domain.CancellationErrorCode;
-import com.ssafy.tickle.cancellation.domain.CancellationOffer;
 import com.ssafy.tickle.cancellation.domain.CancellationWaitSeatChangedEvent;
 import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
-import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationOfferRepository;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateSeatResponse;
 import com.ssafy.tickle.common.exception.BaseException;
@@ -24,7 +22,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +52,6 @@ public class CancellationWaitCandidateRegisterService {
     private final SessionSeatRepository sessionSeatRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final CancellationCandidateRepository cancellationCandidateRepository;
-    private final CancellationOfferRepository cancellationOfferRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -77,7 +73,7 @@ public class CancellationWaitCandidateRegisterService {
         EventSession session = getSession(eventId, scheduleId);
         User user = getUser(userId);
 
-        // 같은 좌석의 WAITING 신청과 유효 제안을 모두 중복으로 봅니다.
+        // 같은 좌석의 WAITING/OFFERED candidate를 중복으로 봅니다.
         validateDuplicateCandidates(userId, requestedSeatIds);
         // 이미 결제 진행 중이거나 확정 예매한 좌석은 예매 대기 대상으로 삼을 수 없습니다.
         validateNotOwnedSeats(userId, requestedSeatIds);
@@ -149,7 +145,7 @@ public class CancellationWaitCandidateRegisterService {
      * @param newCandidateCount 신규 신청 좌석 수
      */
     private void validateBookingAndWaitingLimit(Long userId, Long sessionId, int newCandidateCount) {
-        // 4매 제한은 확정/결제진행 티켓 + WAITING 대기 신청 + 이번 신청 수만 집계합니다.
+        // 4매 제한은 확정/결제진행 티켓 + WAITING/OFFERED 대기 신청 + 이번 신청 수를 집계합니다.
         long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
                 userId,
                 sessionId,
@@ -205,14 +201,8 @@ public class CancellationWaitCandidateRegisterService {
     private void validateDuplicateCandidates(Long userId, List<Long> sessionSeatIds) {
         List<Long> duplicatedSeatIds = cancellationCandidateRepository
                 .findActiveSessionSeatIdsByUserIdAndSessionSeatIds(userId, sessionSeatIds);
-        // OFFERED candidate는 WAITING 조회에서 빠지므로 유효 제안 테이블까지 확인해야 같은 좌석 재신청을 막을 수 있습니다.
-        List<Long> offeredSeatIds = cancellationOfferRepository.findActiveSessionSeatIdsByUserIdAndSessionSeatIds(
-                userId,
-                sessionSeatIds,
-                CancellationOffer.OfferStatus.UNACCEPTED,
-                Instant.now()
-        );
-        if (!duplicatedSeatIds.isEmpty() || !offeredSeatIds.isEmpty()) {
+        // WAITING/OFFERED candidate를 한 번에 조회해 같은 좌석 재신청을 막습니다.
+        if (!duplicatedSeatIds.isEmpty()) {
             throw new BaseException(CancellationErrorCode.CANDIDATE_DUPLICATE_SEAT);
         }
     }
