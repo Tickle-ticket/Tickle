@@ -17,7 +17,6 @@ import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
 import com.ssafy.tickle.payment.infrastructure.persistence.PaymentTransactionRepository;
 import com.ssafy.tickle.payment.presentation.dto.KakaoPayReadyRequest;
 import com.ssafy.tickle.payment.presentation.dto.KakaoPayReadyResponse;
-import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
 import com.ssafy.tickle.reservation.domain.BookingTicketStatusHistory;
@@ -29,7 +28,6 @@ import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.ssafy.tickle.cancellation.presentation.dto.CancellationOfferDetailResponse;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +49,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CancellationRedistributionService {
+
+    private static final int MAX_BOOKING_AND_WAITING_COUNT = 4;
+    private static final List<BookingTicket.Status> OWNED_TICKET_STATUSES = List.of(
+            BookingTicket.Status.PENDING_PAYMENT,
+            BookingTicket.Status.BOOKED
+    );
 
     private final CancellationOfferRepository offerRepository;
     private final BookingRepository bookingRepository;
@@ -108,9 +112,14 @@ public class CancellationRedistributionService {
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "제안을 찾을 수 없습니다."));
 
         validateOfferOwnershipAndTimer(offer, userId);
+        // 제안 이후 사용자가 일반 예매를 늘렸을 수 있으므로 구매 진입 직전 4매 제한을 다시 확인합니다.
+        validateBookingAndWaitingLimit(offer.getCancellationCandidate());
 
         // 1. 제안 수락
-        offer.accept(Instant.now());
+        Instant acceptedAt = Instant.now();
+        offer.accept(acceptedAt);
+        // 구매 단계부터는 BookingTicket의 PENDING_PAYMENT/BOOKED가 4매 제한을 담당하므로 candidate 점유를 해제합니다.
+        offer.getCancellationCandidate().purchase(acceptedAt);
 
         SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
         
@@ -219,6 +228,25 @@ public class CancellationRedistributionService {
         return ticketPriceAmount.multiply(PaymentConstants.TICKET_SERVICE_FEE_RATE).setScale(0, RoundingMode.DOWN);
     }
 
+    private void validateBookingAndWaitingLimit(CancellationCandidate candidate) {
+        Long userId = candidate.getUser().getId();
+        Long sessionId = candidate.getSessionSeat().getSession().getId();
+        long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
+                userId,
+                sessionId,
+                OWNED_TICKET_STATUSES
+        );
+        long activeCandidateCount = candidateRepository.countByUserIdAndSessionIdAndStatuses(
+                userId,
+                sessionId,
+                List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
+        );
+
+        if (ownedTicketCount + activeCandidateCount > MAX_BOOKING_AND_WAITING_COUNT) {
+            throw new BaseException(GlobalErrorCode.CONFLICT, "회차별 예매 가능 수량을 초과했습니다.");
+        }
+    }
+
     private String generateBookingNo() {
         return "BK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
     }
@@ -246,15 +274,39 @@ public class CancellationRedistributionService {
             throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표 제안만 거절할 수 있습니다.");
         }
 
-        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED && 
-            offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
             return; // 이미 만료되었거나 다른 상태면 무시
         }
 
         log.info("취소표 제안 거절(Pass) 처리: offerId={}, userId={}", offerId, userId);
-        offer.pass();
+        Instant passedAt = Instant.now();
+        offer.pass(passedAt);
+        // PASSED candidate는 더 이상 대기/제안 점유 수량으로 보지 않습니다.
+        offer.getCancellationCandidate().pass(passedAt);
 
         // 즉시 다음 사람에게 기회 부여
+        processRedistribution(offer.getCancellationCandidate().getSessionSeat());
+    }
+
+    /**
+     * 취소표 제안 수락 후 생성된 예매가 취소되면, 해당 제안의 점유를 종료하고 다음 대기자에게 넘깁니다.
+     */
+    @Transactional
+    public void releaseAcceptedOfferAfterReservationCancel(Long offerId, Long userId) {
+        CancellationOffer offer = offerRepository.findByIdWithDetails(offerId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "제안을 찾을 수 없습니다."));
+
+        if (!offer.getCancellationCandidate().getUser().getId().equals(userId)) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표 제안만 정리할 수 있습니다.");
+        }
+
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
+            return;
+        }
+
+        Instant releasedAt = Instant.now();
+        // 예매 취소로 티켓 점유는 이미 해제됐으므로, ACCEPTED offer를 종료 상태로 바꿔 다음 재배분을 허용합니다.
+        offer.pass(releasedAt);
         processRedistribution(offer.getCancellationCandidate().getSessionSeat());
     }
 
@@ -270,7 +322,10 @@ public class CancellationRedistributionService {
         for (CancellationOffer offer : expiredOffers) {
             log.info("취소표 제안 만료 처리: offerId={}, userId={}", offer.getId(),
                     offer.getCancellationCandidate().getUser().getId());
-            offer.expire();
+            Instant expiredAt = Instant.now();
+            offer.expire(expiredAt);
+            // EXPIRED candidate는 더 이상 대기/제안 점유 수량으로 보지 않습니다.
+            offer.getCancellationCandidate().expire(expiredAt);
             processRedistribution(offer.getCancellationCandidate().getSessionSeat());
         }
     }
