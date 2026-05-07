@@ -84,8 +84,8 @@ class QueueSseHandlerTest {
     }
 
     @Test
-    @DisplayName("내부 종료 정리 로직은 사용자를 leave 처리한다")
-    void leaveAndRemove_callsLeave() {
+    @DisplayName("SSE 연결 끊김 시 emitter를 map에서 제거하지만 leave()는 호출하지 않는다")
+    void onCompletion_removesEmitterWithoutCallingLeave() {
         String queueToken = "queue-token";
         QueueStatusService queueStatusService = mock(QueueStatusService.class);
         QueueSseHandler queueSseHandler = new QueueSseHandler(queueStatusService);
@@ -99,10 +99,15 @@ class QueueSseHandlerTest {
                         Instant.now()
                 ));
 
-        SseEmitter emitter = queueSseHandler.connect(queueToken);
-        ReflectionTestUtils.invokeMethod(queueSseHandler, "leaveAndRemove", queueToken, emitter);
+        queueSseHandler.connect(queueToken);
+        // emitters map에서 직접 제거 (onCompletion 콜백 동작과 동일)
+        ReflectionTestUtils.invokeMethod(
+                ReflectionTestUtils.getField(queueSseHandler, "emitters"),
+                "remove",
+                queueToken
+        );
 
-        verify(queueStatusService, times(1)).leave(queueToken);
+        verify(queueStatusService, times(0)).leave(queueToken);
         assertThat(emitters(queueSseHandler)).doesNotContainKey(queueToken);
     }
 
