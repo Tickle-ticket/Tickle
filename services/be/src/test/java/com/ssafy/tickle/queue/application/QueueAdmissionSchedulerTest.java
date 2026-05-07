@@ -8,7 +8,6 @@ import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -73,7 +72,7 @@ class QueueAdmissionSchedulerTest {
 
         List<String> queueTokens = new ArrayList<>();
         for (long userId = 1L; userId <= 101L; userId++) {
-            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
             QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
             queueTokens.add(tokenResponse.queueToken());
 

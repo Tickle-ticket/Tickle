@@ -8,7 +8,6 @@ import com.ssafy.tickle.queue.config.QueueConstants;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
 import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
 import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -71,7 +70,7 @@ class QueueStatusCleanupSchedulerTest {
                 Instant.now().plusSeconds(600)
         ));
 
-        QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+        QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
         QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
         stringRedisTemplate.opsForHash().put(
@@ -98,7 +97,7 @@ class QueueStatusCleanupSchedulerTest {
                 Instant.now().plusSeconds(600)
         ));
 
-        QueueEnterResponse enterResponse = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+        QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
         QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
         queueAdmissionScheduler.admitWaitingUsers();
 

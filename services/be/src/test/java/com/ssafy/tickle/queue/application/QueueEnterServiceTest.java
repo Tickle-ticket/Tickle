@@ -8,7 +8,6 @@ import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.infrastructure.cache.model.EventOpenInfo;
 import com.ssafy.tickle.queue.infrastructure.cache.store.EventOpenInfoStore;
-import com.ssafy.tickle.queue.presentation.dto.QueueEnterRequest;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -79,7 +78,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse response = queueEnterService.enter(eventId, userId);
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(response.status()).isEqualTo(QueueRequestStatus.PENDING);
@@ -97,7 +96,7 @@ class QueueEnterServiceTest {
                     salesEndAt
             ));
 
-            QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse response = queueEnterService.enter(eventId, userId);
 
             assertThat(response.requestId()).isNotBlank();
             assertThat(stringRedisTemplate.opsForValue().get(QueueConstants.ENTER_KEY_PREFIX + "BOOKING:" + eventId + ":" + userId))
@@ -121,7 +120,7 @@ class QueueEnterServiceTest {
             Consumer<String, String> consumer = createConsumer();
             embeddedKafkaBroker.consumeFromAnEmbeddedTopic(consumer, QueueConstants.ENTER_REQUEST_TOPIC);
 
-            QueueEnterResponse response = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse response = queueEnterService.enter(eventId, userId);
 
             // getSingleRecord 대신 getRecords로 조회 후 해당 requestId 포함 여부 검증
             var records = KafkaTestUtils.getRecords(consumer, java.time.Duration.ofSeconds(3));
@@ -152,8 +151,8 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse first = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
-            QueueEnterResponse second = queueEnterService.enter(eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse first = queueEnterService.enter(eventId, userId);
+            QueueEnterResponse second = queueEnterService.enter(eventId, userId);
 
             assertThat(first.requestId()).isNotBlank();
             assertThat(second.requestId()).isEqualTo(first.requestId());
@@ -171,8 +170,8 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            QueueEnterResponse booking = queueEnterService.enter(QueueScope.BOOKING, eventId, new QueueEnterRequest(userId));
-            QueueEnterResponse cancellationWait = queueEnterService.enter(QueueScope.CANCELLATION_WAIT, eventId, new QueueEnterRequest(userId));
+            QueueEnterResponse booking = queueEnterService.enter(QueueScope.BOOKING, eventId, userId);
+            QueueEnterResponse cancellationWait = queueEnterService.enter(QueueScope.CANCELLATION_WAIT, eventId, userId);
 
             assertThat(booking.requestId()).isNotBlank();
             assertThat(cancellationWait.requestId()).isNotBlank();
@@ -189,7 +188,7 @@ class QueueEnterServiceTest {
                     Instant.now().plusSeconds(600)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
+            assertThatThrownBy(() -> queueEnterService.enter(eventId, 1L))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
@@ -205,7 +204,7 @@ class QueueEnterServiceTest {
                     Instant.now().minusSeconds(60)
             ));
 
-            assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
+            assertThatThrownBy(() -> queueEnterService.enter(eventId, 1L))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
@@ -216,7 +215,7 @@ class QueueEnterServiceTest {
         void enter_missingEventOpenInfo_failsFastWithoutFallback() {
             long eventId = 13L;
 
-            assertThatThrownBy(() -> queueEnterService.enter(eventId, new QueueEnterRequest(1L)))
+            assertThatThrownBy(() -> queueEnterService.enter(eventId, 1L))
                     .isInstanceOf(BaseException.class)
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
