@@ -11,28 +11,37 @@ import {
 } from './types/reservation.types';
 
 export const reservationApi = {
-  fetchReservations: async (): Promise<ApiResponse<ReservationListResponse>> => {
+  fetchReservations: async (userId: number): Promise<ApiResponse<ReservationListResponse>> => {
     return apiClient<ApiResponse<ReservationListResponse>>(
       '/api/v1/reservations',
-      { method: 'GET' },
+      { 
+        method: 'GET',
+        params: { userId }
+      },
       false,
       createApiResponseSchema(ReservationListResponseSchema)
     );
   },
 
-  getReservationDetail: async (reservationId: string | number): Promise<ApiResponse<ReservationDetail>> => {
+  getReservationDetail: async (reservationId: string | number, userId: number): Promise<ApiResponse<ReservationDetail>> => {
     return apiClient<ApiResponse<ReservationDetail>>(
       `/api/v1/reservations/${reservationId}`,
-      { method: 'GET' },
+      { 
+        method: 'GET',
+        params: { userId }
+      },
       false,
       createApiResponseSchema(ReservationDetailSchema)
     );
   },
 
-  cancelReservation: async (reservationId: string | number): Promise<ApiResponse<null>> => {
+  cancelReservation: async (reservationId: string | number, userId: number): Promise<ApiResponse<null>> => {
     return apiClient<ApiResponse<null>>(
       `/api/v1/reservations/${reservationId}`,
-      { method: 'DELETE' }
+      { 
+        method: 'DELETE',
+        params: { userId }
+      }
     );
   },
 };

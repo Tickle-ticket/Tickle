@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { getUserId } from '@/src/shared/api/tokenManager';
 
 export interface TrackingEvent {
   type: 'mousemove' | 'click' | 'mousedown' | 'mouseup';
@@ -38,11 +39,40 @@ export const useMouseTracking = ({
         timestamp: Date.now(),
       };
 
-      // TODO: 백엔드 API 연동 시 실제 fetch 로직으로 대체
-      console.log(
-        `[Bot Detection] Flushing ${payload.events.length} events for session ${payload.sessionId || 'unknown'}:`,
-        payload
-      );
+      // AI 서버를 대신하여 프론트엔드에서 직접 내부 콜백 API를 호출하는 임시 Mock 로직
+      const userId = getUserId();
+      if (!userId) {
+        bufferRef.current = [];
+        return;
+      }
+
+      const isBot = bufferRef.current.length > 50; // 임의의 봇 판별 로직
+
+      // BLOCK 판정만 블랙리스트 등록 대상이며, 그 외 판정은 무시합니다.
+      if (isBot) {
+        const botPayload = {
+          result: 'BLOCK',
+          type: 'BOOKING',
+          scheduleId: 0,
+          eventId: 0,
+          eventDate: new Date().toISOString().split('T')[0],
+          pMacro: 0.99,
+          description: `Frontend Mock: Detected ${bufferRef.current.length} events`,
+          createdAt: new Date().toISOString()
+        };
+
+        fetch(`/internal/ai/v1/bot-detection/result?userId=${userId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET || 'internal-secret-token',
+            'X-Request-Id': `req-${Date.now()}`
+          },
+          body: JSON.stringify(botPayload)
+        }).catch(err => {
+          console.warn('[Bot Detection Mock] API 전송 실패:', err);
+        });
+      }
 
       // 버퍼 초기화
       bufferRef.current = [];

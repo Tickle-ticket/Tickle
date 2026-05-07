@@ -59,7 +59,6 @@ export type ReservationDetail = Schema.Schema.Type<typeof ReservationDetailSchem
 
 export const ReservationListResponseSchema = Schema.Struct({
   items: Schema.Array(ReservationItemSchema),
-  totalElements: Schema.Number,
 });
 
 export type ReservationListResponse = Schema.Schema.Type<typeof ReservationListResponseSchema>;

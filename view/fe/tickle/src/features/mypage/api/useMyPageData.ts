@@ -4,6 +4,7 @@ import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
+import { getCancellationWaitCandidates, cancelCancellationWaitCandidate } from '@/src/shared/api/cancellationApi';
 import { getUserId } from '@/src/shared/api/tokenManager';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
@@ -24,7 +25,7 @@ export const useMyUpcomingWishlist = () => {
         venue: item.venueLocation,
         date: `${new Date(item.eventStartAt).toLocaleDateString().replace(/\s/g, '')} ~ ${new Date(item.eventEndAt).toLocaleDateString().replace(/\s/g, '')}`,
         badges: item.metadata?.tags ? [...item.metadata.tags] : [],
-        openDate: item.eventStartAt,
+        openDate: item.salesStartAt || undefined,
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
     },
@@ -50,11 +51,15 @@ export interface WaitlistSeatData {
 
 export interface WaitlistBookingData {
   id: string;
+  eventId: string;
   imageUrl: string;
   title: string;
   venue: string;
+  date: string;
+  time: string;
   performanceDate: string;
   waitDate: string;
+  initialSeats: string[];
   seats: WaitlistSeatData[];
 }
 
@@ -62,11 +67,13 @@ export const useMyBookings = () => {
   return useQuery({
     queryKey: ['myBookings'],
     queryFn: async () => {
-      const response = await reservationApi.fetchReservations();
+      const userId = getUserId();
+      if (!userId) return [] as BookingData[];
+      const response = await reservationApi.fetchReservations(userId);
       return response.data.items.map((r) => ({
         id: String(r.bookingId),
-        eventId: '1', // 명세에 eventId가 없으므로 임의 처리 (상세조회 시 필요)
-        imageUrl: '/images/posters/poster1.png', // 명세에 썸네일 없음
+        eventId: '',
+        imageUrl: '',
         title: r.eventTitle,
         venue: r.venueName,
         performanceDate: r.sessionStartAt,
@@ -83,10 +90,13 @@ export const useBookingDetail = (bookingId: string | null) => {
     queryKey: ['bookingDetail', bookingId],
     queryFn: async () => {
       if (!bookingId) return null;
-      const response = await reservationApi.getReservationDetail(bookingId);
+      const userId = getUserId();
+      if (!userId) throw new Error('로그인이 필요합니다.');
+      const response = await reservationApi.getReservationDetail(bookingId, userId);
       return response.data;
     },
     enabled: !!bookingId,
+    retry: false,
   });
 };
 
@@ -104,8 +114,42 @@ export const useWaitlistBookings = () => {
   return useQuery({
     queryKey: ['waitlistBookings'],
     queryFn: async () => {
-      const response = await http.get<ApiResponse<WaitlistBookingData[]>>('/api/v1/mypage/waitlist');
-      return response.data;
+      const userId = getUserId();
+      if (!userId) return [] as WaitlistBookingData[];
+      
+      const response = await getCancellationWaitCandidates(userId);
+      const candidates = response.data.candidates;
+      
+      // Group by scheduleId
+      const grouped = candidates.reduce((acc: any, curr: any) => {
+        if (!acc[curr.scheduleId]) {
+          acc[curr.scheduleId] = {
+            id: String(curr.scheduleId), // Use scheduleId as grouped waitlist ID
+            eventId: String(curr.eventId),
+            imageUrl: '', // Requires event detail fetch to show image, assuming mock for now
+            title: curr.eventTitle,
+            venue: '공연장 정보', // Venue is not in summary response
+            performanceDate: curr.sessionStartAt,
+            date: new Date(curr.sessionStartAt).toLocaleDateString().replace(/\s/g, ''),
+            time: new Date(curr.sessionStartAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            waitDate: curr.createdAt,
+            initialSeats: [],
+            seats: [],
+          };
+        }
+        
+        const seatInfo = `${curr.sectionName} ${curr.rowLabel}열 ${curr.seatNumber}번`;
+        acc[curr.scheduleId].initialSeats.push(curr.seatLabel);
+        acc[curr.scheduleId].seats.push({
+          id: String(curr.cancellationCandidateId),
+          info: seatInfo,
+          waitlistNumber: curr.currentRank,
+        });
+        
+        return acc;
+      }, {});
+
+      return Object.values(grouped) as WaitlistBookingData[];
     },
   });
 };
@@ -115,11 +159,29 @@ export const useCancelBooking = () => {
   
   return useMutation({
     mutationFn: async (bookingId: string) => {
-      const response = await reservationApi.cancelReservation(bookingId);
+      const userId = getUserId();
+      if (!userId) throw new Error('로그인이 필요합니다.');
+      const response = await reservationApi.cancelReservation(bookingId, userId);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+    },
+  });
+};
+
+export const useCancelWaitlist = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (candidateId: string) => {
+      const userId = getUserId();
+      if (!userId) throw new Error('로그인이 필요합니다.');
+      const response = await cancelCancellationWaitCandidate(candidateId, userId);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waitlistBookings'] });
     },
   });
 };

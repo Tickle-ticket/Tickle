@@ -18,8 +18,8 @@ interface UseTrialCollectorOptions {
   userId?: number | null;
   /** AI Ingest Server 행동 이벤트 전송용 메타데이터 */
   behaviorEvent?: {
-    scheduleId?: string | null;
-    name?: string | null;
+    eventId?: number | null;
+    scheduleId?: number | null;
     eventDate?: string | null;
   };
 }
@@ -34,15 +34,12 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
 
   const sendBehaviorEventFromTrial = useCallback((trial: TrialJSON) => {
     const metadata = behaviorEventRef.current;
-    const scheduleId = metadata?.scheduleId || '';
-    const name = metadata?.name || '';
-    const eventDate = metadata?.eventDate || '';
 
     void sendBehaviorEvent({
       type: trial.summary.stage,
-      schedule_id: scheduleId,
-      name,
-      event_date: eventDate,
+      eventId: metadata?.eventId ?? undefined,
+      scheduleId: metadata?.scheduleId ?? undefined,
+      eventDate: metadata?.eventDate ?? undefined,
       features: trial.metrics,
     });
   }, []);
@@ -139,12 +136,7 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
       console.log(`[TrialCollector] Stage "${flushed.sessionId}" flushed:`, flushed);
       console.log(`  → ${flushed.eventRows.length} events, ${flushed.summary.clickCount} clicks in ${flushed.summary.durationMs}ms`);
 
-      try {
-        await submitTrial(flushed);
-        console.log(`[TrialCollector] Stage "${flushed.sessionId}" submitted ✅`);
-      } catch (err) {
-        console.error(`[TrialCollector] Stage "${flushed.sessionId}" submit failed:`, err);
-      }
+      // (legacy) submitTrial was removed because the backend doesn't have /api/v1/trials
 
       sendBehaviorEventFromTrial(flushed);
     }
@@ -161,17 +153,6 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
 
     const trial = collectorRef.current.finalize();
     if (!trial) return null; // 이미 finalize된 경우
-
-    console.log('[TrialCollector] Trial JSON generated:', trial);
-    console.log(`  → ${trial.eventRows.length} events, ${trial.windowRows.length} windows`);
-    console.log(`  → ${trial.summary.clickCount} clicks in ${trial.summary.durationMs}ms`);
-
-    try {
-      await submitTrial(trial);
-      console.log('[TrialCollector] Trial submitted successfully');
-    } catch (err) {
-      console.error('[TrialCollector] Trial submit failed:', err);
-    }
 
     sendBehaviorEventFromTrial(trial);
 

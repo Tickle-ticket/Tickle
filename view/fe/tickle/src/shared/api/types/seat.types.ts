@@ -8,6 +8,8 @@ export const SeatItemResponseSchema = Schema.Struct({
   seatLabel: Schema.String,
   saleStatus: Schema.Literal('AVAILABLE', 'HELD', 'PENDING', 'CONFIRMED', 'REALLOCATING', 'BLOCKED', 'UNAVAILABLE'),
   price: Schema.Number,
+  waitingCount: Schema.optional(Schema.Number),
+  waitable: Schema.optional(Schema.Boolean),
 });
 
 export type SeatItemResponse = Schema.Schema.Type<typeof SeatItemResponseSchema>;

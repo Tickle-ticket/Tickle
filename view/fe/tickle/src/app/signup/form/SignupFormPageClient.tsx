@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
+import { ApiError } from '@/src/shared/api/types';
 import { setTokens } from '@/src/shared/api/tokenManager';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
@@ -100,7 +101,7 @@ const sanitizeInputValue = (name: string, value: string) => {
     case 'verificationCode':
       return value.replace(/\D/g, '').slice(0, 6);
     case 'birthDate':
-      return value.replace(/\D/g, '').slice(0, 6);
+      return value.replace(/\D/g, '').slice(0, 8);
     default:
       return value;
   }
@@ -114,19 +115,16 @@ const getTodayDate = () => {
   return `${year}-${month}-${day}`;
 };
 
-const convertBirthDateToApiFormat = (yyMMdd: string) => {
-  if (yyMMdd.length !== 6) return '';
-  const yyStr = yyMMdd.slice(0, 2);
-  const yy = parseInt(yyStr, 10);
-  const mm = yyMMdd.slice(2, 4);
-  const dd = yyMMdd.slice(4, 6);
-  // Current year is 2026, so 2000s up to 2040, 1900s for > 40
-  const prefix = yy > 40 ? '19' : '20';
-  return `${prefix}${yyStr}-${mm}-${dd}`;
+const convertBirthDateToApiFormat = (yyyyMMdd: string) => {
+  if (yyyyMMdd.length !== 8) return '';
+  const yyyy = yyyyMMdd.slice(0, 4);
+  const mm = yyyyMMdd.slice(4, 6);
+  const dd = yyyyMMdd.slice(6, 8);
+  return `${yyyy}-${mm}-${dd}`;
 };
 
 const isValidBirthDate = (value: string) => {
-  if (!/^\d{6}$/.test(value)) {
+  if (!/^\d{8}$/.test(value)) {
     return false;
   }
 
@@ -226,9 +224,8 @@ function AgencyDropdownField({
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
-          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-2 text-[16px] text-gray-900 outline-none transition-colors disabled:cursor-not-allowed disabled:text-gray-400 ${
-            isOpen ? 'border-blue-500' : error ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-2 text-[16px] text-gray-900 outline-none transition-colors disabled:cursor-not-allowed disabled:text-gray-400 ${isOpen ? 'border-blue-500' : error ? 'border-red-500' : 'border-gray-300'
+            }`}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           disabled={isDisabled}
@@ -264,9 +261,8 @@ function AgencyDropdownField({
                   <button
                     key={agency.id}
                     type="button"
-                    className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${
-                      isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
-                    }`}
+                    className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
                     role="option"
                     aria-selected={isSelected}
                     onClick={() => {
@@ -456,13 +452,15 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     setIsSendingCode(true);
 
     try {
-      // API 호출 우회 (Bypass)
-      // await authApi.sendPhoneCode({ phoneNumber: formData.phone });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await authApi.sendPhoneCode({ phoneNumber: formData.phone });
       setIsCodeSent(true);
     } catch (error) {
-      console.error('sendPhoneCode failed', error);
-      setErrors((prev) => ({ ...prev, phone: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.' }));
+      console.warn('sendPhoneCode failed:', error instanceof Error ? error.message : 'Unknown error');
+      let errorMessage = '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
+        errorMessage = error.message;
+      }
+      setErrors((prev) => ({ ...prev, phone: errorMessage }));
     } finally {
       setIsSendingCode(false);
     }
@@ -478,13 +476,15 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     setIsVerifyingCode(true);
 
     try {
-      // API 호출 우회 (Bypass) - 아무 숫자나 입력해도 통과되도록 처리
-      // await authApi.verifyPhoneCode({ phoneNumber: formData.phone, code: verificationCode });
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await authApi.verifyPhoneCode({ phoneNumber: formData.phone, code: verificationCode });
       setIsPhoneVerified(true);
     } catch (error) {
-      console.error('verifyPhoneCode failed', error);
-      setErrors((prev) => ({ ...prev, verificationCode: '인증번호가 일치하지 않거나 만료되었습니다.' }));
+      console.warn('verifyPhoneCode failed:', error instanceof Error ? error.message : 'Unknown error');
+      let errorMessage = '인증번호가 일치하지 않거나 만료되었습니다.';
+      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
+        errorMessage = error.message;
+      }
+      setErrors((prev) => ({ ...prev, verificationCode: errorMessage }));
     } finally {
       setIsVerifyingCode(false);
     }
@@ -530,8 +530,12 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         router.push('/');
       }
     } catch (error) {
-      console.error('Signup failed', error);
-      setErrors((prev) => ({ ...prev, submit: '회원가입에 실패했습니다. 입력값을 확인한 뒤 다시 시도해 주세요.' }));
+      console.warn('Signup failed:', error instanceof Error ? error.message : 'Unknown error');
+      let errorMessage = '회원가입에 실패했습니다. 입력값을 확인한 뒤 다시 시도해 주세요.';
+      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
+        errorMessage = error.message;
+      }
+      setErrors((prev) => ({ ...prev, submit: errorMessage }));
     } finally {
       setIsSubmitting(false);
     }
@@ -656,7 +660,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                         label="생년월일"
                         type="text"
                         name="birthDate"
-                        placeholder="예: 900101 (6자리)"
+                        placeholder="예: 19900101 (8자리)"
                         inputMode="numeric"
                         fullWidth
                         required
@@ -844,16 +848,24 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
           {errors.submit ? <p className="text-sm font-medium text-red-500">{errors.submit}</p> : null}
 
-          <div className="flex gap-3 pt-1">
+          <div className="flex gap-3 pt-1 pb-4">
             {currentStep > 1 ? (
-              <div className="flex-1 -mt-17.5">
-                <Button type="button" variant="weak" color="dark" display="block" size="xlarge" onClick={handlePrev}>
+              <div className="flex-1">
+                <Button 
+                  type="button" 
+                  variant="weak" 
+                  color="light" 
+                  display="block" 
+                  size="xlarge" 
+                  onClick={handlePrev}
+                  className="!border !border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-50"
+                >
                   이전
                 </Button>
               </div>
             ) : null}
 
-            <div className="flex-1 -mt-17.5">
+            <div className="flex-1">
               {currentStep < totalSteps ? (
                 <Button type="button" display="block" size="xlarge" color="dark" onClick={handleNext}>
                   다음

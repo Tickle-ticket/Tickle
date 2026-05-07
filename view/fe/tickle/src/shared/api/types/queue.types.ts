@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 
 export const QueueEnterResponseDataSchema = Schema.Struct({
   requestId: Schema.String,
-  status: Schema.Literal('PENDING', 'WAITING', 'ADMITTED'),
+  status: Schema.Literal('PENDING', 'WAITING', 'ADMITTED', 'LEFT', 'EXPIRED'),
 });
 
 export type QueueEnterResponseData = Schema.Schema.Type<typeof QueueEnterResponseDataSchema>;
@@ -16,7 +16,7 @@ export type QueueTokenResponseData = Schema.Schema.Type<typeof QueueTokenRespons
 
 export const QueueStatusResponseDataSchema = Schema.Struct({
   queueToken: Schema.String,
-  status: Schema.Literal('WAITING', 'ADMITTED'),
+  status: Schema.Literal('PENDING', 'WAITING', 'ADMITTED', 'LEFT', 'EXPIRED'),
   rank: Schema.Union(Schema.Number, Schema.Null),
   waitingCount: Schema.Union(Schema.Number, Schema.Null),
   estimatedWaitSeconds: Schema.Union(Schema.Number, Schema.Null),

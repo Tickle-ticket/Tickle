@@ -20,6 +20,24 @@ export const seatApi = {
     );
   },
 
+  // 예매 대기 좌석 정보 조회
+  fetchCancellationWaitSeats: async (
+    eventId: string | number, 
+    scheduleId: string | number,
+    userId: string | number,
+    admitToken: string
+  ): Promise<ApiResponse<SeatMapResponse>> => {
+    return apiClient<ApiResponse<SeatMapResponse>>(
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/cancellation-wait/seats`, 
+      { 
+        method: 'GET',
+        params: { userId, admitToken }
+      },
+      false,
+      createApiResponseSchema(SeatMapResponseSchema)
+    );
+  },
+
   // 좌석 선점 요청
   holdSeat: async (
     eventId: string | number,

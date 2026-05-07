@@ -6,11 +6,19 @@ export interface SeatStatusData {
   isAvailable: boolean;
   sessionSeatId?: number; // Backend sessionSeatId
   detailedInfo?: string;
+  waitingCount?: number;
+  waitable?: boolean;
 }
 
 export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
 
-export const useSeatData = (eventId: string | null, scheduleId: string | null, enableWs: boolean = true) => {
+export const useSeatData = (
+  eventId: string | null,
+  scheduleId: string | null,
+  enableWs: boolean = true,
+  mode: 'BOOKING' | 'WAITLIST' = 'BOOKING',
+  admitToken: string | null = null
+) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
@@ -34,10 +42,21 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
     const fetchInitialSeats = async () => {
       setIsLoading(true);
       try {
-        const response = await seatApi.fetchSeats(eventId, scheduleId);
+        const userId = localStorage.getItem('userId') || '1'; // or using getUserId()
+        let response;
+
+        if (mode === 'WAITLIST') {
+          if (!admitToken) {
+            throw new Error('예매 대기 모드에서는 admitToken이 필요합니다.');
+          }
+          response = await seatApi.fetchCancellationWaitSeats(eventId, scheduleId, userId, admitToken);
+        } else {
+          response = await seatApi.fetchSeats(eventId, scheduleId);
+        }
+
         if (response.data && response.data.sections && isMounted) {
           const initialMap: SeatAvailabilityResponse = {};
-          
+
           response.data.sections.forEach(section => {
             section.seats.forEach(seat => {
               // Map seatLabel (e.g. A1, B2) to the SVG ID
@@ -64,6 +83,8 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
                 isAvailable: seat.saleStatus === 'AVAILABLE',
                 sessionSeatId: seat.sessionSeatId,
                 detailedInfo,
+                waitingCount: seat.waitingCount,
+                waitable: seat.waitable,
               };
             });
           });
@@ -81,8 +102,19 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
 
     const connectSSE = () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/seats/stream`;
-      
+      const userId = localStorage.getItem('userId') || '1';
+      let streamUrl = '';
+
+      if (mode === 'WAITLIST') {
+        if (!admitToken) {
+          console.error('SSE 연결 실패: admitToken이 없습니다.');
+          return;
+        }
+        streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/cancellation-wait/seats/stream?userId=${userId}&admitToken=${admitToken}`;
+      } else {
+        streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/seats/stream`;
+      }
+
       // EventSource를 사용하여 SSE 스트림 연결
       eventSource = new EventSource(streamUrl, { withCredentials: true });
 
@@ -91,7 +123,7 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
       eventSource.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           if (message && message.seatLabel) {
             setSeatAvailability(prev => {
               if (!prev) return prev;
@@ -102,7 +134,9 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
                 ...prev,
                 [message.seatLabel]: {
                   ...prevSeat,
-                  isAvailable: message.saleStatus === 'AVAILABLE'
+                  isAvailable: message.saleStatus === 'AVAILABLE',
+                  waitingCount: message.waitingCount !== undefined ? message.waitingCount : prevSeat.waitingCount,
+                  waitable: message.waitable !== undefined ? message.waitable : prevSeat.waitable,
                 }
               };
             });
@@ -113,7 +147,7 @@ export const useSeatData = (eventId: string | null, scheduleId: string | null, e
       };
 
       eventSource.onerror = (error) => {
-        console.error('SSE Error:', error);
+        console.error('Seat SSE Error (Expected WS instead):', error);
       };
     };
 

@@ -506,6 +506,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView
             sessionId={data?.eventId || '1'}
+            scope={(flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') ? 'CANCELLATION_WAIT' : 'BOOKING'}
             onAdmitted={(token) => {
               setAdmitToken(token);
               if (flowState === 'TEST_WAITLIST_QUEUE') setFlowState('TEST_WAITLIST_BOOK');
@@ -517,7 +518,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView eventId={activeEventId} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={activeEventId} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} admitToken={admitToken || undefined} onClose={() => setFlowState('NONE')} />
         </div>
       )}
 

@@ -390,7 +390,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                 }}
                 className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
               >
-                {isWaitlistMode ? '예약하기' : '인원 선택'}
+                {isWaitlistMode ? '예매 대기 신청' : '인원 선택'}
               </button>
             </>
           )}
