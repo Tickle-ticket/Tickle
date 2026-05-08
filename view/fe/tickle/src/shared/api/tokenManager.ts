@@ -36,8 +36,6 @@ export const getRefreshToken = () => {
   return null;
 };
 
-
-
 export const setTokens = (accessToken: string, refreshToken: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('accessToken', normalizeToken(accessToken));
@@ -49,6 +47,7 @@ export const clearTokens = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+
   }
 };
 

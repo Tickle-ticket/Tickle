@@ -84,7 +84,7 @@ export function KakaoCallbackClient() {
         }
 
         clearKakaoSignUpToken();
-        setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
+        setTokens(response.data.accessToken, response.data.refreshToken);
         router.replace('/');
       } catch (err) {
         clearKakaoSignUpToken();

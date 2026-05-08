@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent
 import { authApi } from '@/src/shared/api/authApi';
 import { ApiError } from '@/src/shared/api/types';
 import { setTokens } from '@/src/shared/api/tokenManager';
-import { ApiError } from '@/src/shared/api/types';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';

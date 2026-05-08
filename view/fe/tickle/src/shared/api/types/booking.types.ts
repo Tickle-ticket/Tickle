@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 
 export interface PaymentOptionSelectionRequest {
   sessionSeatId: number;
-  discountName: string;
+  discountName: string | null;
 }
 
 export interface BookingPreorderRequest {

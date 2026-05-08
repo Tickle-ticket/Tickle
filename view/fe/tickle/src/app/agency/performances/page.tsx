@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { http } from '@/src/shared/api/http';
-import { getUserId } from '@/src/shared/api/tokenManager';
 import type { ApiResponse } from '@/src/shared/api/types';
 import { Badge } from '@/src/shared/components/Badge';
 import { Box } from '@/src/shared/components/Box';
@@ -159,19 +158,10 @@ export default function AgencyPerformancesPage() {
   } = useQuery({
     queryKey: performancesQueryKey,
     queryFn: async () => {
-      const userId = getUserId();
-
-      if (userId === null) {
-        throw new Error('Current userId is missing.');
-      }
-
       const response = await http.get<ApiResponse<AgencyEventListResponseData>>('/api/v1/agency/events', {
         params: {
           page: 0,
           size: LIST_FETCH_SIZE,
-        },
-        headers: {
-          'X-User-Id': String(userId),
         },
       });
 
