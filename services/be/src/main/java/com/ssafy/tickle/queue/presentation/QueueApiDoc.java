@@ -138,6 +138,7 @@ public interface QueueApiDoc {
             Long eventId,
             QueueScope scope,
             @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
-            String queueToken
+            String queueToken,
+            jakarta.servlet.http.HttpServletResponse response
     );
 }

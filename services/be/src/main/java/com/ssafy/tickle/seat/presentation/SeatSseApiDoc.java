@@ -16,6 +16,7 @@ public interface SeatSseApiDoc {
     @ApiResponse(responseCode = "200", description = "SSE 스트림 연결 성공")
     SseEmitter subscribeSeats(
             @Parameter(description = "이벤트 식별자") Long eventId,
-            @Parameter(description = "회차 식별자") Long scheduleId
+            @Parameter(description = "회차 식별자") Long scheduleId,
+            jakarta.servlet.http.HttpServletResponse response
     );
 }
