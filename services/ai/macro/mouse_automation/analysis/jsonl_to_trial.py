@@ -564,6 +564,14 @@ def main():
             "예: 'support_production' (ticket 319 phase 2.5 Support 풀 일괄 변환)"
         ),
     )
+    parser.add_argument(
+        "--source-filter",
+        default=None,
+        help=(
+            "jsonl 첫 줄 source 필드와 일치하는 파일만 변환. 미지정 시 전체. "
+            "예: 'pyautogui_lv4_collector' (ticket 319 phase 3 lv4 만 선별 변환)"
+        ),
+    )
     parser.add_argument("--config", type=Path, default=None, help="feature_config.yaml 경로")
     parser.add_argument("--dry-run", action="store_true", help="파일 안 쓰고 카운트만")
     parser.add_argument(
@@ -596,6 +604,26 @@ def main():
     if not jsonl_files:
         print(f"입력 파일 없음: {input_dir}")
         return
+
+    if args.source_filter:
+        before = len(jsonl_files)
+        filtered: list[Path] = []
+        for path in jsonl_files:
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    first_line = f.readline().strip()
+                if not first_line:
+                    continue
+                first = json.loads(first_line)
+                if first.get("source") == args.source_filter:
+                    filtered.append(path)
+            except (OSError, json.JSONDecodeError):
+                continue
+        jsonl_files = filtered
+        print(f"source filter '{args.source_filter}': {before} -> {len(jsonl_files)} files")
+        if not jsonl_files:
+            print("source filter 결과 0 — 변환 중단")
+            return
 
     print(f"입력 파일 수: {len(jsonl_files)}")
     print(f"출력 폴더: {output_dir}")
