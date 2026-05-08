@@ -8,6 +8,7 @@ Phase A: trial_*.json 로더 + eventRows DataFrame 변환 + 그룹 샘플링.
   - lv2_macro        : trialId 900001~909999 AND label == "macro"
   - balabit          : trialId 910001~910500
   - lv3_balabit_kde  : trialId 930001~930050 (label="macro", algorithm_type="lv3_balabit_kde")
+  - lv4_aggressive   : trialId 940001~949999 (label="macro", algorithm_type="lv4_aggressive", ticket 319 phase 3)
   - chan_browser     : trialId 1~324 (label="macro" or "human", services/ai/data/behavior_chan/behavior/, browser_automation/collector_api 출력)
 
 user_id 정규화 (Balabit_human ↔ lv3_balabit_kde 비교용 동일 namespace 'userN'):
@@ -36,15 +37,17 @@ DATA_DIR_CHAN_BROWSER = ROOT.parent.parent / "data" / "behavior_chan" / "behavio
 LV2_RANGE = (900001, 909999)
 BALABIT_RANGE = (910001, 910500)
 LV3_BALABIT_KDE_RANGE = (930001, 930050)
+LV4_AGGRESSIVE_RANGE = (940001, 949999)
 CHAN_BROWSER_RANGE = (1, 324)
-GROUPS = ("lv2_human", "lv2_macro", "balabit", "lv3_balabit_kde", "chan_browser")
+GROUPS = ("lv2_human", "lv2_macro", "balabit", "lv3_balabit_kde", "lv4_aggressive", "chan_browser")
 
 DEFAULT_SAMPLE_N = {
     "lv2_human": 16,
     "lv2_macro": 16,
     "balabit": 20,
-    "lv3_balabit_kde": 50,  # 50 trial 전체 사용 (모집단 작음)
-    "chan_browser": 324,    # 324 trial 전체 사용 (외부 검증)
+    "lv3_balabit_kde": 50,   # 50 trial 전체 사용 (모집단 작음)
+    "lv4_aggressive": 102,   # 102 trial 전체 사용 (ticket 319 phase 3 학습 풀 통합)
+    "chan_browser": 324,     # 324 trial 전체 사용 (외부 검증)
 }
 
 _BALABIT_USER_RE = re.compile(r"^balabit_(user\d+)_")
@@ -109,6 +112,8 @@ def list_trials_by_group(group: str, data_dir: Path | None = None) -> list[dict]
         if group == "balabit" and not _in_range(trial_id, BALABIT_RANGE):
             continue
         if group == "lv3_balabit_kde" and not _in_range(trial_id, LV3_BALABIT_KDE_RANGE):
+            continue
+        if group == "lv4_aggressive" and not _in_range(trial_id, LV4_AGGRESSIVE_RANGE):
             continue
         if group == "chan_browser" and not _in_range(trial_id, CHAN_BROWSER_RANGE):
             continue

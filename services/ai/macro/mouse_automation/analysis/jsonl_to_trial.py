@@ -59,6 +59,7 @@ MACRO_ALGORITHM_TYPES = frozenset({
     "lv3_random_walk",
     "lv3_balabit_kde",
     "support_production",  # ticket 319 phase 2.5: tickle-ticket.co.kr 타겟 production 매크로 (v1/v1b/v2a/v2b 합산)
+    "lv4_aggressive",      # ticket 319 phase 3: 압도적 매크로 (직선 + fixed timing + 노이즈 0)
 })
 
 # user_id prefix ↔ algorithm_type 매핑 (정합성 검증용)
