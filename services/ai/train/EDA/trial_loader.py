@@ -8,6 +8,8 @@ Phase A: trial_*.json 로더 + eventRows DataFrame 변환 + 그룹 샘플링.
   - lv2_macro        : trialId 900001~909999 AND label == "macro"
   - balabit          : trialId 910001~910500
   - lv3_balabit_kde  : trialId 930001~930050 (label="macro", algorithm_type="lv3_balabit_kde")
+  - lv4_aggressive   : trialId 940001~949999 (label="macro", algorithm_type="lv4_aggressive", ticket 319 phase 3)
+  - chan_browser     : trialId 1~324 (label="macro" or "human", services/ai/data/behavior_chan/behavior/, browser_automation/collector_api 출력)
 
 user_id 정규화 (Balabit_human ↔ lv3_balabit_kde 비교용 동일 namespace 'userN'):
   - balabit (Balabit_human): summary.session_id 가
@@ -30,17 +32,22 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT.parent.parent / "data" / "behavior"
+DATA_DIR_CHAN_BROWSER = ROOT.parent.parent / "data" / "behavior_chan" / "behavior"
 
 LV2_RANGE = (900001, 909999)
 BALABIT_RANGE = (910001, 910500)
 LV3_BALABIT_KDE_RANGE = (930001, 930050)
-GROUPS = ("lv2_human", "lv2_macro", "balabit", "lv3_balabit_kde")
+LV4_AGGRESSIVE_RANGE = (940001, 949999)
+CHAN_BROWSER_RANGE = (1, 324)
+GROUPS = ("lv2_human", "lv2_macro", "balabit", "lv3_balabit_kde", "lv4_aggressive", "chan_browser")
 
 DEFAULT_SAMPLE_N = {
     "lv2_human": 16,
     "lv2_macro": 16,
     "balabit": 20,
-    "lv3_balabit_kde": 50,  # 50 trial 전체 사용 (모집단 작음)
+    "lv3_balabit_kde": 50,   # 50 trial 전체 사용 (모집단 작음)
+    "lv4_aggressive": 102,   # 102 trial 전체 사용 (ticket 319 phase 3 학습 풀 통합)
+    "chan_browser": 324,     # 324 trial 전체 사용 (외부 검증)
 }
 
 _BALABIT_USER_RE = re.compile(r"^balabit_(user\d+)_")
@@ -82,12 +89,18 @@ def _in_range(trial_id: int, rng: tuple[int, int]) -> bool:
     return rng[0] <= trial_id <= rng[1]
 
 
-def list_trials_by_group(group: str, data_dir: Path = DATA_DIR) -> list[dict]:
+def _resolve_data_dir(group: str, data_dir: Path | None) -> Path:
+    if data_dir is not None:
+        return Path(data_dir)
+    return DATA_DIR_CHAN_BROWSER if group == "chan_browser" else DATA_DIR
+
+
+def list_trials_by_group(group: str, data_dir: Path | None = None) -> list[dict]:
     """그룹별 trial 메타 리스트. eventRows 는 읽지 않음 (가벼운 indexing)."""
     if group not in GROUPS:
         raise ValueError(f"unknown group {group!r}, expected one of {GROUPS}")
 
-    data_dir = Path(data_dir)
+    data_dir = _resolve_data_dir(group, data_dir)
     metas: list[dict] = []
     for path in sorted(data_dir.glob("trial_*.json")):
         trial_id = _trial_id_from_path(path)
@@ -99,6 +112,10 @@ def list_trials_by_group(group: str, data_dir: Path = DATA_DIR) -> list[dict]:
         if group == "balabit" and not _in_range(trial_id, BALABIT_RANGE):
             continue
         if group == "lv3_balabit_kde" and not _in_range(trial_id, LV3_BALABIT_KDE_RANGE):
+            continue
+        if group == "lv4_aggressive" and not _in_range(trial_id, LV4_AGGRESSIVE_RANGE):
+            continue
+        if group == "chan_browser" and not _in_range(trial_id, CHAN_BROWSER_RANGE):
             continue
 
         try:
@@ -162,7 +179,7 @@ def sample_trials(
     group: str,
     n: int | None = None,
     seed: int = 42,
-    data_dir: Path = DATA_DIR,
+    data_dir: Path | None = None,
 ) -> list[dict]:
     """그룹 sampling. lv2_*: random. balabit: user 별 stratified (각 user 2 trial 우선)."""
     metas = list_trials_by_group(group, data_dir=data_dir)
