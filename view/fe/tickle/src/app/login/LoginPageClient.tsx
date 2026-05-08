@@ -3,13 +3,13 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
-import { buildAuthApiUrl } from '@/src/shared/api/authConfig';
 import { setTokens } from '@/src/shared/api/tokenManager';
 import { ApiError } from '@/src/shared/api/types';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { KakaoLoginButton } from '@/src/shared/components/KakaoLoginButton';
 import { type AuthNavigationItem, UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
+import { clearKakaoSignUpToken } from '@/src/shared/lib/kakaoSignupToken';
 
 type LoginMode = 'audience' | 'agency';
 
@@ -59,15 +59,15 @@ export function LoginPageClient() {
     let hasError = false;
 
     if (!email) {
-      setEmailError('이메일을 입력해주세요.');
+      setEmailError('이메일을 입력해 주세요.');
       hasError = true;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('올바른 이메일 형식을 입력해주세요.');
+      setEmailError('올바른 이메일 형식을 입력해 주세요.');
       hasError = true;
     }
 
     if (!password) {
-      setPasswordError('비밀번호를 입력해주세요.');
+      setPasswordError('비밀번호를 입력해 주세요.');
       hasError = true;
     }
 
@@ -85,19 +85,20 @@ export function LoginPageClient() {
         router.push('/');
       }
     } catch (error) {
-      console.warn('Login failed:', error instanceof Error ? error.message : 'Unknown error');
-      let errorMessage = '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해주세요.';
-      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
-        errorMessage = error.message;
-      }
-      setPasswordError(errorMessage);
+      console.error('Login failed', error);
+      setPasswordError(
+        error instanceof ApiError && error.status === 404
+          ? '로그인 API에 연결할 수 없습니다. 인증 서버 주소를 확인해 주세요.'
+          : '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해 주세요.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKakaoLogin = () => {
-    window.location.href = buildAuthApiUrl('/api/v1/auth/kakao');
+    clearKakaoSignUpToken();
+    window.location.href = '/api/v1/auth/kakao';
   };
 
   return (
@@ -108,7 +109,7 @@ export function LoginPageClient() {
             label="이메일"
             type="email"
             name="email"
-            placeholder="이메일을 입력해주세요."
+            placeholder="이메일을 입력해 주세요."
             autoComplete="email"
             fullWidth
             value={email}
@@ -125,7 +126,7 @@ export function LoginPageClient() {
             label="비밀번호"
             type="password"
             name="password"
-            placeholder="비밀번호를 입력해주세요."
+            placeholder="비밀번호를 입력해 주세요."
             autoComplete="current-password"
             fullWidth
             value={password}

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent
 import { authApi } from '@/src/shared/api/authApi';
 import { ApiError } from '@/src/shared/api/types';
 import { setTokens } from '@/src/shared/api/tokenManager';
+import { ApiError } from '@/src/shared/api/types';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
@@ -455,12 +456,11 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
       await authApi.sendPhoneCode({ phoneNumber: formData.phone });
       setIsCodeSent(true);
     } catch (error) {
-      console.warn('sendPhoneCode failed:', error instanceof Error ? error.message : 'Unknown error');
-      let errorMessage = '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.';
-      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
-        errorMessage = error.message;
-      }
-      setErrors((prev) => ({ ...prev, phone: errorMessage }));
+      console.error('sendPhoneCode failed', error);
+      setErrors((prev) => ({
+        ...prev,
+        phone: error instanceof ApiError ? error.message : '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      }));
     } finally {
       setIsSendingCode(false);
     }
@@ -521,7 +521,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         birthDate: isAgencySignup ? undefined : convertBirthDateToApiFormat(formData.birthDate),
         phoneNumber: formData.phone,
         role: isAgencySignup ? 'ORGANIZER' : 'USER',
-        organizerId: isAgencySignup && selectedAgencyId ? Number(selectedAgencyId) : undefined,
         organizerName: isAgencySignup ? selectedAgency?.name : undefined,
       });
 
@@ -530,12 +529,11 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         router.push('/');
       }
     } catch (error) {
-      console.warn('Signup failed:', error instanceof Error ? error.message : 'Unknown error');
-      let errorMessage = '회원가입에 실패했습니다. 입력값을 확인한 뒤 다시 시도해 주세요.';
-      if (error instanceof ApiError && error.message && !error.message.includes('No static resource')) {
-        errorMessage = error.message;
-      }
-      setErrors((prev) => ({ ...prev, submit: errorMessage }));
+      console.error('Signup failed', error);
+      setErrors((prev) => ({
+        ...prev,
+        submit: error instanceof ApiError ? error.message : '회원가입에 실패했습니다. 입력값을 확인한 뒤 다시 시도해 주세요.',
+      }));
     } finally {
       setIsSubmitting(false);
     }

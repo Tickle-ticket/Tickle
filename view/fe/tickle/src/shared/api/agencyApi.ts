@@ -1,18 +1,13 @@
 import { apiClient } from './client';
+import { getUserId } from './tokenManager';
 import { ApiResponse } from './types';
 import {
-  AgencySeatGrade,
   AgencySummary,
-  AgencyLookupItem,
   AgencyLookupResponseData,
   AgencyCreateEventBasicRequest,
   AgencyCreateEventResponseData,
-  AgencyDiscountInfoRequest,
-  AgencyCreateEventPricePolicyRequest,
   AgencyCreateEventPricePoliciesRequest,
-  AgencyCreateEventSessionRequest,
   AgencyCreateEventSessionsRequest,
-  AgencyCreateEventSeatGroupRequest,
   AgencyCreateEventSeatsRequest,
   AgencyRegistrationFlowRequest,
   AgencyRegistrationFlowResult,
@@ -38,6 +33,18 @@ function normalizeAgencyList(data: AgencyLookupResponseData): AgencySummary[] {
     .filter((agency): agency is AgencySummary => agency !== null);
 }
 
+const getRequiredAgencyHeaders = () => {
+  const userId = getUserId();
+
+  if (userId === null) {
+    throw new Error('Current userId is missing.');
+  }
+
+  return {
+    'X-User-Id': String(userId),
+  };
+};
+
 export const fetchAgencies = async (): Promise<AgencySummary[]> => {
   const response = await apiClient<ApiResponse<AgencyLookupResponseData>>('/api/v1/organizers', {
     method: 'GET',
@@ -48,10 +55,22 @@ export const fetchAgencies = async (): Promise<AgencySummary[]> => {
 
 export const createAgencyEvent = async (
   request: AgencyCreateEventBasicRequest,
+  posterImage: File,
+  detailImages: File[],
 ): Promise<ApiResponse<AgencyCreateEventResponseData>> => {
+  const formData = new FormData();
+
+  formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+  formData.append('posterImage', posterImage);
+
+  detailImages.forEach((detailImage) => {
+    formData.append('detailImages', detailImage);
+  });
+
   return apiClient<ApiResponse<AgencyCreateEventResponseData>>('/api/v1/agency/events', {
     method: 'POST',
-    body: request,
+    body: formData,
+    headers: getRequiredAgencyHeaders(),
   });
 };
 
@@ -88,7 +107,7 @@ export const createAgencyEventSeats = async (
 export const submitAgencyEventRegistration = async (
   request: AgencyRegistrationFlowRequest,
 ): Promise<AgencyRegistrationFlowResult> => {
-  const eventResponse = await createAgencyEvent(request.basicEvent);
+  const eventResponse = await createAgencyEvent(request.basicEvent, request.posterImage, request.detailImages);
   const eventId = eventResponse.data.eventId;
 
   await createAgencyEventPricePolicies(eventId, request.pricePolicies);
