@@ -1,6 +1,7 @@
 package com.ssafy.tickle.payment.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.payment.config.PaymentConstants;
 import com.ssafy.tickle.payment.domain.Payment;
 import com.ssafy.tickle.payment.domain.PaymentErrorCode;
@@ -33,10 +34,12 @@ public class PaymentQueryService {
      * <p>결제 단건 조회에 필요한 결제/티켓 정보를 모아 응답 DTO로 변환합니다.</p>
      *
      * @param paymentId 결제 식별자
+     * @param userId 조회 요청 사용자 식별자
      * @return 결제 상태 응답
      */
-    public PaymentStatusResponse getPaymentStatus(Long paymentId) {
+    public PaymentStatusResponse getPaymentStatus(Long paymentId, Long userId) {
         Payment payment = getPayment(paymentId);
+        validatePaymentOwnership(payment, userId);
         // 좌석별 가격 요약을 함께 내려주기 위해 티켓 목록도 같이 조회한다.
         List<BookingTicket> tickets = bookingTicketRepository.findByBookingId(payment.getBooking().getId());
         return PaymentStatusResponse.from(payment, tickets, getDepositDeadline(payment));
@@ -51,6 +54,12 @@ public class PaymentQueryService {
     private Payment getPayment(Long paymentId) {
         return paymentRepository.findDetailById(paymentId)
                 .orElseThrow(() -> new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+    }
+
+    private void validatePaymentOwnership(Payment payment, Long userId) {
+        if (!payment.getBooking().getUser().getId().equals(userId)) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 결제 상태만 조회할 수 있습니다.");
+        }
     }
 
     /**
