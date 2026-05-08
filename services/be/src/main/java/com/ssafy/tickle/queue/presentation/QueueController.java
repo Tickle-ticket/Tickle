@@ -10,6 +10,7 @@ import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -123,8 +124,11 @@ public class QueueController implements QueueApiDoc {
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
             @UserId Long userId,
-            @RequestParam String queueToken
+            @RequestParam String queueToken,
+            HttpServletResponse response
     ) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
         queueStatusService.getStatusByQueueToken(scope, eventId, userId, queueToken);
         return queueSseHandler.connect(queueToken);
     }

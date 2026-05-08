@@ -1,6 +1,7 @@
 package com.ssafy.tickle.seat.presentation;
 
 import com.ssafy.tickle.seat.infrastructure.sse.SeatSseEmitterRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,8 +33,11 @@ public class SeatSseController implements SeatSseApiDoc {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribeSeats(
             @PathVariable Long eventId,
-            @PathVariable Long scheduleId
+            @PathVariable Long scheduleId,
+            HttpServletResponse response
     ) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
         SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
         sseEmitterRepository.add(scheduleId, emitter);
 
