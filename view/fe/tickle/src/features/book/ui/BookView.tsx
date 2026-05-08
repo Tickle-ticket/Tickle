@@ -7,7 +7,7 @@ import { seatApi } from '@/src/shared/api/seatApi';
 import { bookingApi } from '@/src/shared/api/bookingApi';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
-import { fetchVenues } from '@/src/shared/api/venueApi';
+
 
 import { PriceLegend } from '@/src/shared/components/PriceLegend';
 import { InteractiveMapViewer } from '@/src/shared/components/InteractiveMapViewer';
@@ -114,26 +114,15 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
 
-  // 공연장 목록 (API 연동)
-  const [venues, setVenues] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchVenues()
-      .then(res => {
-        if (res.data && res.data.venues) {
-          setVenues(res.data.venues);
-        }
-      })
-      .catch(() => console.warn('Failed to fetch venues'));
-  }, []);
-
-  const [viewMode, setViewMode] = useState<'grade' | 'congestion'>('grade');
-
-  const resetStore = useBookStore(s => s.resetStore);
+  const { data: seatAvailability, venueId, isLoading: isSeatsLoading, error: seatError } = useSeatData(
+    eventDetail?.eventId || null,
+    scheduleId,
+    enableWs,
+    mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING',
+    admitToken || null
+  );
 
   // 공연장 도면 동적 로딩 (Hook 규칙 준수를 위해 컴포넌트 최상단 렌더 영역에 선언)
-  const currentVenue = venues.find(v => v.venueName === eventDetail?.venue);
-  const venueId = currentVenue?.venueId;
 
   const StageComponent = React.useMemo(() => {
     if (!venueId) return null;
@@ -149,6 +138,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         }))
     );
   }, [venueId]);
+
+  const [viewMode, setViewMode] = useState<'grade' | 'congestion'>('grade');
+
+  const resetStore = useBookStore(s => s.resetStore);
 
   useEffect(() => {
     resetStore({
@@ -193,7 +186,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
       try {
         if (userProfile?.userId) {
-          await seatApi.releaseSeat(eventDetail.eventId, scheduleId, userProfile.userId);
+          await seatApi.releaseSeat(eventDetail.eventId, scheduleId);
         }
       } catch (err: any) {
         console.error('Failed to release seats on exit', err);
@@ -233,7 +226,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   useEffect(() => {
     if (timeLeft === 0 && bookingStep !== 'SEAT' && !isModifyModeActive) {
       if (scheduleId && eventDetail && userProfile?.userId) {
-        seatApi.releaseSeat(eventDetail.eventId, scheduleId, userProfile.userId).catch(console.error);
+        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
       }
       setErrorModalConfig({
         isOpen: true,
@@ -250,13 +243,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const { data: seatAvailability, isLoading: isSeatsLoading, error: seatError } = useSeatData(
-    eventDetail?.eventId || null,
-    scheduleId,
-    enableWs,
-    mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING',
-    admitToken || null
-  );
+
 
   useEffect(() => {
     if (seatError) {
@@ -404,16 +391,16 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         if (!admitToken) {
           throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
         }
-        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, userId, admitToken, { sessionSeatIds });
+        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
         await finalizeTrial();
         setIsWaitlistCompleteModalOpen(true);
       } else {
         if (sessionSeatIds.length > 0) {
           // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
-          await seatApi.holdSeat(eventDetail.eventId, scheduleId!, userId, { sessionSeatIds });
+          await seatApi.holdSeat(eventDetail.eventId, scheduleId!, admitToken || '', { sessionSeatIds });
 
           // 선점 성공 시 옵션(권종/할인) 데이터 조회
-          await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), userId, sessionSeatIds);
+          await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), sessionSeatIds);
         }
 
         const gradeCounts: Record<string, number> = {};
@@ -575,7 +562,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   const res = await submitPreorder(
                     parseInt(eventDetail.eventId, 10),
                     parseInt(scheduleId!, 10),
-                    userId,
                     seatIds,
                     optionSelections
                   );
@@ -597,7 +583,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               onCancel={async () => {
                 if (scheduleId) {
                   try {
-                    await seatApi.releaseSeat(eventDetail.eventId, scheduleId, '1');
+                    await seatApi.releaseSeat(eventDetail.eventId, scheduleId);
                   } catch (err) {
                     console.error('Failed to release seats', err);
                   }

@@ -82,7 +82,7 @@ export const sendBehaviorEvent = async ({
 
     return data as BehaviorEventResponse;
   } catch (error) {
-    console.warn('[BehaviorEvent] submit failed:', error);
+    // 봇 탐지 서버(AI)가 다운되어 있거나 연결할 수 없는 경우 에러 로그를 남기지 않고 조용히 무시합니다.
     return null;
   }
 };

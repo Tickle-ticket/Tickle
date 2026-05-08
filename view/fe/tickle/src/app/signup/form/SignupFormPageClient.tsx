@@ -526,7 +526,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
       });
 
       if (response.data) {
-        setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
+        setTokens(response.data.accessToken, response.data.refreshToken);
         router.push('/');
       }
     } catch (error) {

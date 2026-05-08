@@ -19,11 +19,10 @@ export const paymentApi = {
   selectPaymentMethod: async (
     eventId: number | string,
     scheduleId: number | string,
-    userId: number | string,
     request: PaymentMethodSelectionRequest
   ): Promise<ApiResponse<PaymentMethodSelectionResponse>> => {
     return apiClient<ApiResponse<PaymentMethodSelectionResponse>>(
-      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/select-method?userId=${userId}`,
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/select-method`,
       {
         method: 'POST',
         body: request,
@@ -36,11 +35,10 @@ export const paymentApi = {
   confirmBankTransferPayment: async (
     eventId: number | string,
     scheduleId: number | string,
-    userId: number | string,
     request: BankTransferPrepareRequest
   ): Promise<ApiResponse<BankTransferPrepareResponse>> => {
     return apiClient<ApiResponse<BankTransferPrepareResponse>>(
-      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/bank-transfer?userId=${userId}`,
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/bank-transfer`,
       {
         method: 'POST',
         body: request,
@@ -53,11 +51,10 @@ export const paymentApi = {
   readyKakaoPay: async (
     eventId: number | string,
     scheduleId: number | string,
-    userId: number | string,
     request: KakaoPayReadyRequest
   ): Promise<ApiResponse<KakaoPayReadyResponse>> => {
     return apiClient<ApiResponse<KakaoPayReadyResponse>>(
-      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/kakaopay/ready?userId=${userId}`,
+      `/api/v1/events/${eventId}/schedules/${scheduleId}/payments/kakaopay/ready`,
       {
         method: 'POST',
         body: request,

@@ -167,7 +167,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       const selectRes = await paymentApi.selectPaymentMethod(
         eventId,
         scheduleId,
-        userId,
         { bookingId: preorderBookingId, paymentMethod }
       );
 
@@ -177,7 +176,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         const bankRes = await paymentApi.confirmBankTransferPayment(
           eventId,
           scheduleId,
-          userId,
           { bookingId: preorderBookingId }
         );
         if (bankRes.data) {
@@ -189,7 +187,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         const kakaoRes = await paymentApi.readyKakaoPay(
           eventId,
           scheduleId,
-          userId,
           { bookingId: preorderBookingId }
         );
         if (kakaoRes.data?.nextRedirectPcUrl) {

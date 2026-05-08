@@ -25,7 +25,7 @@ import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
-import { getUserId } from '@/src/shared/api/tokenManager';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
@@ -74,7 +74,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
 
   const { setStage, finalize } = useTrialCollector({
     enabled: flowState === 'NONE',
-    userId: getUserId(),
+
     behaviorEvent: {
       eventId: activeEventId ? Number(activeEventId) : null,
       scheduleId: null,
@@ -87,7 +87,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   }, [setStage]);
 
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK') => {
-    if (!getUserId()) {
+    if (!getAccessToken()) {
       setModalConfig({ 
         isOpen: true, 
         title: '로그인 필요', 
@@ -121,7 +121,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const handleFavoriteToggle = async () => {
     if (!activeEventId) return;
 
-    if (!getUserId()) {
+    if (!getAccessToken()) {
       setModalConfig({ 
         isOpen: true, 
         title: '로그인 필요', 

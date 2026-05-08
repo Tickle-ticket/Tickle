@@ -11,7 +11,6 @@ export const useBookingPreorder = () => {
   const fetchOptions = async (
     eventId: number,
     sessionId: number,
-    userId: number,
     seatIds: number[]
   ) => {
     setIsOptionsLoading(true);
@@ -19,7 +18,6 @@ export const useBookingPreorder = () => {
       const response = await bookingApi.getBookingOptions({
         eventId,
         sessionId,
-        userId,
         seatIds,
       });
       if (response.data) {
@@ -37,7 +35,6 @@ export const useBookingPreorder = () => {
   const submitPreorder = async (
     eventId: number,
     sessionId: number,
-    userId: number,
     seatIds: number[],
     optionSelections: { sessionSeatId: number; discountName: string }[]
   ) => {
@@ -46,7 +43,6 @@ export const useBookingPreorder = () => {
       const response = await bookingApi.preorder({
         eventId,
         sessionId,
-        userId,
         sessionSeatIds: seatIds,
         optionSelections,
       });

@@ -51,7 +51,6 @@ export const purchaseCancellation = async (
 export const createCancellationWaitCandidates = async (
   eventId: number | string,
   scheduleId: number | string,
-  userId: number | string,
   admitToken: string,
   request: CancellationWaitCandidateCreateRequest
 ): Promise<ApiResponse<CancellationWaitCandidateCreateResponse>> => {
@@ -59,7 +58,7 @@ export const createCancellationWaitCandidates = async (
     `/api/v1/events/${eventId}/schedules/${scheduleId}/cancellation-wait/candidates`,
     {
       method: 'POST',
-      params: { userId, admitToken },
+      params: { admitToken },
       body: request,
     }
   );
@@ -71,14 +70,12 @@ export const createCancellationWaitCandidates = async (
  * @param userId 사용자 식별자
  * @returns 예매 대기 신청 목록
  */
-export const getCancellationWaitCandidates = async (
-  userId: number | string
-): Promise<ApiResponse<CancellationWaitCandidateListResponse>> => {
+export const getCancellationWaitCandidates = async (): Promise<ApiResponse<CancellationWaitCandidateListResponse>> => {
   return apiClient<ApiResponse<CancellationWaitCandidateListResponse>>(
     `/api/v1/cancellation-wait/candidates`,
     {
       method: 'GET',
-      params: { userId },
+      params: {},
     }
   );
 };
@@ -90,14 +87,13 @@ export const getCancellationWaitCandidates = async (
  * @param userId 사용자 식별자
  */
 export const cancelCancellationWaitCandidate = async (
-  candidateId: number | string,
-  userId: number | string
+  candidateId: number | string
 ): Promise<ApiResponse<void>> => {
   return apiClient<ApiResponse<void>>(
     `/api/v1/cancellation-wait/candidates/${candidateId}`,
     {
       method: 'DELETE',
-      params: { userId },
+      params: {},
     }
   );
 };

@@ -64,22 +64,22 @@ export const fetchEventDetail = async (eventId: number | string): Promise<ApiRes
   );
 };
 
-export const fetchRanking = async (categoryId?: number, userId?: number): Promise<ApiResponse<CategoryRankingResponseData>> => {
+export const fetchRanking = async (categoryId?: number): Promise<ApiResponse<CategoryRankingResponseData>> => {
   return apiClient<ApiResponse<CategoryRankingResponseData>>(
     '/api/v1/events/ranking', 
     {
-      params: { ...(categoryId !== undefined && { categoryId }), ...(userId !== undefined && { userId }) },
+      params: { ...(categoryId !== undefined && { categoryId }) },
     },
     false,
     createApiResponseSchema(CategoryRankingResponseDataSchema)
   );
 };
 
-export const fetchOpeningSoonEvents = async (userId?: number): Promise<ApiResponse<OpeningSoonEventsResponseData>> => {
+export const fetchOpeningSoonEvents = async (): Promise<ApiResponse<OpeningSoonEventsResponseData>> => {
   return apiClient<ApiResponse<OpeningSoonEventsResponseData>>(
     '/api/v1/events/opening-soon', 
     {
-      params: { ...(userId !== undefined && { userId }) },
+      params: {},
     },
     false,
     createApiResponseSchema(OpeningSoonEventsResponseDataSchema)

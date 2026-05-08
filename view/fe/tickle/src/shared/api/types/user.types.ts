@@ -1,7 +1,6 @@
 import { Schema } from 'effect';
 
 export interface UpdateMyInfoRequest {
-  userId: number;
   phoneNumber?: string;
   nickname?: string;
   profileImage?: File | null;

@@ -5,18 +5,18 @@ import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { getCancellationWaitCandidates, cancelCancellationWaitCandidate } from '@/src/shared/api/cancellationApi';
-import { getUserId } from '@/src/shared/api/tokenManager';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
     queryFn: async () => {
-      const userId = getUserId();
+      const token = getAccessToken();
 
-      if (userId === null) {
+      if (!token) {
         return [] as PerformanceData[];
       }
 
-      const response = await getFavoriteEvents(0, 100, userId);
+      const response = await getFavoriteEvents(0, 100);
       const data = response.data;
       return data.items.map((item) => ({
         id: String(item.eventId),
@@ -67,9 +67,7 @@ export const useMyBookings = () => {
   return useQuery({
     queryKey: ['myBookings'],
     queryFn: async () => {
-      const userId = getUserId();
-      if (!userId) return [] as BookingData[];
-      const response = await reservationApi.fetchReservations(userId);
+      const response = await reservationApi.fetchReservations();
       return response.data.items.map((r) => ({
         id: String(r.bookingId),
         eventId: '',
@@ -90,9 +88,7 @@ export const useBookingDetail = (bookingId: string | null) => {
     queryKey: ['bookingDetail', bookingId],
     queryFn: async () => {
       if (!bookingId) return null;
-      const userId = getUserId();
-      if (!userId) throw new Error('로그인이 필요합니다.');
-      const response = await reservationApi.getReservationDetail(bookingId, userId);
+      const response = await reservationApi.getReservationDetail(bookingId);
       return response.data;
     },
     enabled: !!bookingId,
@@ -114,10 +110,10 @@ export const useWaitlistBookings = () => {
   return useQuery({
     queryKey: ['waitlistBookings'],
     queryFn: async () => {
-      const userId = getUserId();
-      if (!userId) return [] as WaitlistBookingData[];
+      const token = getAccessToken();
+      if (!token) return [] as WaitlistBookingData[];
       
-      const response = await getCancellationWaitCandidates(userId);
+      const response = await getCancellationWaitCandidates();
       const candidates = response.data.candidates;
       
       // Group by scheduleId
@@ -158,10 +154,8 @@ export const useCancelBooking = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (bookingId: string) => {
-      const userId = getUserId();
-      if (!userId) throw new Error('로그인이 필요합니다.');
-      const response = await reservationApi.cancelReservation(bookingId, userId);
+    mutationFn: async ({ bookingId }: { bookingId: number | string }) => {
+      const response = await reservationApi.cancelReservation(bookingId);
       return response.data;
     },
     onSuccess: () => {
@@ -175,9 +169,9 @@ export const useCancelWaitlist = () => {
   
   return useMutation({
     mutationFn: async (candidateId: string) => {
-      const userId = getUserId();
-      if (!userId) throw new Error('로그인이 필요합니다.');
-      const response = await cancelCancellationWaitCandidate(candidateId, userId);
+      const token = getAccessToken();
+      if (!token) throw new Error('로그인이 필요합니다.');
+      const response = await cancelCancellationWaitCandidate(candidateId);
       return response.data;
     },
     onSuccess: () => {
