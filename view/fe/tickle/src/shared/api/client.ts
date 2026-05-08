@@ -67,7 +67,8 @@ export const apiClient = async <T, A = any, I = any>(
     const isAuthEndpoint = AUTH_ENDPOINT_PATTERNS.some((pattern) => path.includes(pattern));
 
     // 401 또는 302(리다이렉트) 발생 시 인증 만료로 간주하여 TokenManager 핸들러로 위임
-    if (!isAuthEndpoint && (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302)) {
+    // 단, accessToken이 없는 비회원 상태에서는 토큰 갱신을 시도하지 않음
+    if (!isAuthEndpoint && accessToken && (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302)) {
       return handle401<T>(path, options, _isRetry);
     }
 

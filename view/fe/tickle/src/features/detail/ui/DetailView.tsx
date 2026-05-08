@@ -502,6 +502,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                   sizes="100vw"
                   style={{ width: '100%', height: 'auto' }}
                   className="w-full h-auto object-cover rounded-xl"
+                  unoptimized={true}
                   onError={() => setDetailImageFailed(true)}
                 />
               ) : (
@@ -524,7 +525,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView
-            sessionId={data?.eventId || '1'}
+            eventId={data?.eventId || '1'}
             scope={(flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') ? 'CANCELLATION_WAIT' : 'BOOKING'}
             onAdmitted={(token) => {
               setAdmitToken(token);

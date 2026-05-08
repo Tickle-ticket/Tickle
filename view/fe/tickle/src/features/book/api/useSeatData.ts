@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { seatApi } from '@/src/shared/api/seatApi';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
 
 export interface SeatStatusData {
@@ -40,7 +39,7 @@ export const useSeatData = (
     }
 
     let isMounted = true;
-    let ctrl: AbortController | null = null;
+    let source: EventSource | null = null;
 
     const fetchInitialSeats = async () => {
       setIsLoading(true);
@@ -108,7 +107,7 @@ export const useSeatData = (
     };
 
     const connectSSE = () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
       let streamUrl = '';
 
       if (mode === 'WAITLIST') {
@@ -121,57 +120,54 @@ export const useSeatData = (
         streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/seats/stream`;
       }
 
-      // EventSource를 사용하여 SSE 스트림 연결
-      ctrl = new AbortController();
       const token = getAccessToken();
+      let finalUrl = streamUrl;
+      if (token) {
+        const separator = finalUrl.includes('?') ? '&' : '?';
+        finalUrl = `${finalUrl}${separator}token=${token}`;
+      }
 
-      fetchEventSource(streamUrl, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        signal: ctrl.signal,
-        onmessage(event) {
-          try {
-            const message = JSON.parse(event.data);
+      source = new EventSource(finalUrl);
 
-            if (message && message.seatLabel) {
-              const normalizedLabel = message.seatLabel.replace('-', '');
-              setSeatAvailability(prev => {
-                if (!prev) return prev;
-                const prevSeat = prev[normalizedLabel];
-                if (!prevSeat) return prev;
+      source.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
 
-                return {
-                  ...prev,
-                  [normalizedLabel]: {
-                    ...prevSeat,
-                    isAvailable: message.saleStatus === 'AVAILABLE',
-                    waitingCount: message.waitingCount !== undefined ? message.waitingCount : prevSeat.waitingCount,
-                    waitable: message.waitable !== undefined ? message.waitable : prevSeat.waitable,
-                  }
-                };
-              });
-            }
-          } catch (e) {
-            console.error('SSE message parse error', e);
+          if (message && message.seatLabel) {
+            const normalizedLabel = message.seatLabel.replace('-', '');
+            setSeatAvailability(prev => {
+              if (!prev) return prev;
+              const prevSeat = prev[normalizedLabel];
+              if (!prevSeat) return prev;
+
+              return {
+                ...prev,
+                [normalizedLabel]: {
+                  ...prevSeat,
+                  isAvailable: message.saleStatus === 'AVAILABLE',
+                  waitingCount: message.waitingCount !== undefined ? message.waitingCount : prevSeat.waitingCount,
+                  waitable: message.waitable !== undefined ? message.waitable : prevSeat.waitable,
+                }
+              };
+            });
           }
-        },
-        onerror(error) {
-          console.error('Seat SSE Error:', error);
-          throw error;
+        } catch (e) {
+          console.error('SSE message parse error', e);
         }
-      }).catch((err) => {
-        console.error('FetchEventSource error', err);
-      });
+      };
+
+      source.onerror = (error) => {
+        console.error('Seat SSE Error:', error);
+        source?.close();
+      };
     };
 
     fetchInitialSeats();
 
     return () => {
       isMounted = false;
-      if (ctrl) {
-        ctrl.abort();
+      if (source) {
+        source.close();
       }
     };
   }, [eventId, scheduleId, enableWs]);
