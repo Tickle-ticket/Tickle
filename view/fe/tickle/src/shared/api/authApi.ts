@@ -2,8 +2,27 @@ import { apiClient } from './client';
 import { buildAuthApiUrl } from './authConfig';
 import { ApiResponse } from './types';
 
-import { TokenResponse, SignUpRequest, LoginRequest, ReissueRequest, TokenResponseSchema } from './types/auth.types';
+import {
+  TokenResponse,
+  SignUpRequest,
+  LoginRequest,
+  ReissueRequest,
+  TokenResponseSchema,
+  KakaoLoginRequest,
+  KakaoLoginResponse,
+  KakaoLoginResponseSchema,
+  KakaoSignUpRequest,
+  PhoneCodeVerifyRequest,
+} from './types/auth.types';
 import { createApiResponseSchema } from '../utils/schema';
+
+const buildLocalAuthUrl = (path: string) => {
+  if (typeof window === 'undefined') {
+    return path;
+  }
+
+  return `${window.location.origin}${path}`;
+};
 
 export const authApi = {
   login: async (request: LoginRequest): Promise<ApiResponse<TokenResponse>> => {
@@ -48,11 +67,24 @@ export const authApi = {
     );
   },
 
-  kakaoCallback: async (code: string): Promise<ApiResponse<TokenResponse>> => {
-    return apiClient<ApiResponse<TokenResponse>>(
-      buildAuthApiUrl(`/api/v1/auth/kakao/callback?code=${code}`),
+  kakaoLogin: async (request: KakaoLoginRequest): Promise<ApiResponse<KakaoLoginResponse>> => {
+    return apiClient<ApiResponse<KakaoLoginResponse>>(
+      buildLocalAuthUrl('/api/v1/auth/kakao/login'),
       {
-        method: 'GET',
+        method: 'POST',
+        body: request,
+      },
+      false,
+      createApiResponseSchema(KakaoLoginResponseSchema)
+    );
+  },
+
+  kakaoSignup: async (request: KakaoSignUpRequest): Promise<ApiResponse<TokenResponse>> => {
+    return apiClient<ApiResponse<TokenResponse>>(
+      buildAuthApiUrl('/api/v1/auth/kakao/signup'),
+      {
+        method: 'POST',
+        body: request,
       },
       false,
       createApiResponseSchema(TokenResponseSchema)
@@ -66,7 +98,7 @@ export const authApi = {
     });
   },
 
-  verifyPhoneCode: async (request: { phoneNumber: string; code: string }): Promise<ApiResponse<void>> => {
+  verifyPhoneCode: async (request: PhoneCodeVerifyRequest): Promise<ApiResponse<void>> => {
     return apiClient<ApiResponse<void>>(buildAuthApiUrl('/api/v1/auth/phone/verify'), {
       method: 'POST',
       body: request,
