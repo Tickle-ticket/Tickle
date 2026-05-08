@@ -54,7 +54,12 @@ def resolve_collection_pipeline(source: str) -> str:
 
 
 # 정합성 제약: macro 라벨은 이 algorithm_type 집합에만 속해야 함
-MACRO_ALGORITHM_TYPES = frozenset({"lv2_bezier", "lv3_random_walk", "lv3_balabit_kde"})
+MACRO_ALGORITHM_TYPES = frozenset({
+    "lv2_bezier",
+    "lv3_random_walk",
+    "lv3_balabit_kde",
+    "support_production",  # ticket 319 phase 2.5: tickle-ticket.co.kr 타겟 production 매크로 (v1/v1b/v2a/v2b 합산)
+})
 
 # user_id prefix ↔ algorithm_type 매핑 (정합성 검증용)
 USER_PREFIX_BY_ALGORITHM = {
@@ -444,12 +449,17 @@ def jsonl_to_trial(
     trial_id: int,
     all_features: list[str],
     user_id_for_human: str = "lv2_001",
+    algorithm_type_override: str | None = None,
 ) -> dict | None:
     """jsonl 1개 → trial dict. 빈 파일/라벨 없음 시 None.
 
     ADR-016 메타 backfill:
       - root: coord_domain, screen_width, screen_height, algorithm_type, user_id
       - eventRows[*]: nx, ny (mouse_* 이벤트만)
+
+    algorithm_type_override (ticket 319 phase 2.5): sidecar 부재 시 sidecar 없이도
+      algorithm_type 메타 명시 가능 (예: Support production 풀 일괄 'support_production').
+      sidecar 가 있으면 sidecar 우선 (기존 동작 유지).
     """
     events = load_jsonl(jsonl_path)
     if not events:
@@ -491,7 +501,7 @@ def jsonl_to_trial(
         else:
             user_id = sidecar_user_id  # macro: sidecar 명시 X 면 None
     else:
-        algorithm_type = resolve_algorithm_type(label, source)
+        algorithm_type = algorithm_type_override or resolve_algorithm_type(label, source)
         user_id = user_id_for_human if label == "human" else None
 
     event_rows = [
@@ -545,6 +555,15 @@ def main():
         default="lv2_001",
         help="lv2_human (label=human) 의 user_id (기본 lv2_001, 보겸 단일 사용자 가정)",
     )
+    parser.add_argument(
+        "--algorithm-type",
+        default=None,
+        help=(
+            "macro algorithm_type override (sidecar 부재 시 사용). "
+            "MACRO_ALGORITHM_TYPES 집합 안의 값만 허용. "
+            "예: 'support_production' (ticket 319 phase 2.5 Support 풀 일괄 변환)"
+        ),
+    )
     parser.add_argument("--config", type=Path, default=None, help="feature_config.yaml 경로")
     parser.add_argument("--dry-run", action="store_true", help="파일 안 쓰고 카운트만")
     parser.add_argument(
@@ -593,7 +612,13 @@ def main():
     next_id = args.start
 
     for path in jsonl_files:
-        trial = jsonl_to_trial(path, next_id, all_features, user_id_for_human=args.user_id)
+        trial = jsonl_to_trial(
+            path,
+            next_id,
+            all_features,
+            user_id_for_human=args.user_id,
+            algorithm_type_override=args.algorithm_type,
+        )
         if trial is None:
             events = load_jsonl(path)
             if not events:
