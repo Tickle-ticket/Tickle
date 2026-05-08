@@ -8,14 +8,14 @@ import { Modal } from './Modal';
 import { Stage_4001, STAGE_4001_SEAT_IDS } from './Stage_4001';
 import type { SeatColor, SeatStatus } from './types';
 
-export type AgencySeatAssignmentMode = 'VIP' | 'R' | 'S' | 'A' | 'restricted' | 'disabled';
+export type AgencySeatAssignmentMode = 'VIP' | 'R' | 'S' | 'A' | 'disabled';
 export type AgencySeatPolicy = Record<string, AgencySeatAssignmentMode>;
 
 type SeatTool = {
   key: AgencySeatAssignmentMode;
   label: string;
   description: string;
-  badgeColor: 'red' | 'blue' | 'green' | 'grey' | 'purple';
+  badgeColor: 'red' | 'blue' | 'green' | 'grey';
 };
 
 const seatToolOptions: SeatTool[] = [
@@ -23,12 +23,6 @@ const seatToolOptions: SeatTool[] = [
   { key: 'R', label: 'R석', description: '주요 시야 구역으로 지정', badgeColor: 'blue' },
   { key: 'S', label: 'S석', description: '일반 판매 구역으로 지정', badgeColor: 'green' },
   { key: 'A', label: 'A석', description: '입문형 좌석으로 지정', badgeColor: 'grey' },
-  {
-    key: 'restricted',
-    label: '시야제한석',
-    description: '시야 제한이 있는 좌석으로 지정',
-    badgeColor: 'purple',
-  },
   { key: 'disabled', label: '비활성 적용', description: '선택한 좌석을 판매 제외 상태로 바꿉니다', badgeColor: 'grey' },
 ];
 
@@ -46,7 +40,6 @@ const assignmentToSeatAppearance: Record<
   R: { color: 'yellow', status: 'selectable' },
   S: { color: 'orange', status: 'selectable' },
   A: { color: 'blue', status: 'selectable' },
-  restricted: { color: 'purple', status: 'selectable' },
   disabled: { color: 'gray', status: 'disabled' },
 };
 
@@ -89,8 +82,6 @@ export const getAgencySeatPolicySummary = (seatPolicy: AgencySeatPolicy) =>
         summary.s += 1;
       } else if (assignment === 'A') {
         summary.a += 1;
-      } else if (assignment === 'restricted') {
-        summary.restricted += 1;
       } else if (assignment === 'disabled') {
         summary.disabled += 1;
       }
@@ -102,7 +93,6 @@ export const getAgencySeatPolicySummary = (seatPolicy: AgencySeatPolicy) =>
       r: 0,
       s: 0,
       a: 0,
-      restricted: 0,
       disabled: 0,
       total: STAGE_4001_SEAT_IDS.length,
     },
@@ -398,12 +388,6 @@ export const AgencySeatPolicyModal = ({
                   <div className="flex items-center justify-between gap-3">
                     <Badge color="grey" size="small">A석</Badge>
                     <span className="text-sm font-black text-slate-950">{seatPolicySummary.a}석</span>
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <Badge color="purple" size="small">시야제한석</Badge>
-                    <span className="text-sm font-black text-slate-950">{seatPolicySummary.restricted}석</span>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">

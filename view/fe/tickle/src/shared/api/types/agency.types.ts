@@ -26,7 +26,6 @@ export type AgencyLookupResponseData =
     };
 
 export interface AgencyCreateEventBasicRequest {
-  organizerId: number;
   venueId: number;
   categoryId: number;
   title: string;
@@ -34,8 +33,6 @@ export interface AgencyCreateEventBasicRequest {
   eventEndAt: string;
   tags: string[];
   notice: string;
-  posterImageUrl: string;
-  detailImageUrls: string[];
 }
 
 export interface AgencyCreateEventResponseData {
@@ -83,6 +80,8 @@ export interface AgencyCreateEventSeatsRequest {
 
 export interface AgencyRegistrationFlowRequest {
   basicEvent: AgencyCreateEventBasicRequest;
+  posterImage: File;
+  detailImages: File[];
   pricePolicies: AgencyCreateEventPricePoliciesRequest;
   sessions: AgencyCreateEventSessionsRequest;
   seats: AgencyCreateEventSeatsRequest;
