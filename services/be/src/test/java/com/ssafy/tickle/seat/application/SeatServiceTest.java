@@ -168,7 +168,7 @@ class SeatServiceTest {
         }
 
         @Test
-        @DisplayName("좌석 응답에 가격과 좌석 라벨이 포함된다")
+        @DisplayName("좌석 응답에 등급, 가격과 좌석 라벨이 포함된다")
         void getSeatMap_containsPriceAndLabel() {
             // given
             EventSection section = eventSectionRepository.save(createSection(event, "S구역", 1));
@@ -181,6 +181,7 @@ class SeatServiceTest {
             // then
             assertThat(response.sections()).hasSize(1);
             var seatItem = response.sections().get(0).seats().get(0);
+            assertThat(seatItem.grade()).isEqualTo(SeatGrade.R);
             assertThat(seatItem.price()).isNotNull();
             assertThat(seatItem.rowLabel()).isEqualTo("A");
             assertThat(seatItem.seatNumber()).isEqualTo("1");
