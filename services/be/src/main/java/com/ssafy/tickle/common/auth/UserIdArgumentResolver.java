@@ -42,6 +42,11 @@ public class UserIdArgumentResolver implements HandlerMethodArgumentResolver {
         HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
         String token = jwtProvider.resolveToken(request);
 
+        // EventSource는 Authorization 헤더를 지원하지 않으므로 쿼리 파라미터로 fallback
+        if (token == null) {
+            token = request.getParameter("token");
+        }
+
         boolean required = parameter.getParameterAnnotation(UserId.class).required();
 
         if (token == null) {
