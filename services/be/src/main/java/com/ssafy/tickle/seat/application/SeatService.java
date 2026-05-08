@@ -100,7 +100,6 @@ public class SeatService {
      */
     @Transactional
     public SeatHoldResponse holdSeats(Long eventId, Long scheduleId, Long userId, SeatHoldRequest request) {
-        validateSession(eventId, scheduleId);
 
         String lockKey = LOCK_KEY_PREFIX + scheduleId;
         if (!redisLockManager.tryLock(lockKey)) {
