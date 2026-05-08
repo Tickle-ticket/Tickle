@@ -48,7 +48,7 @@ public class QueueSseHandler {
     /**
      * SSE 연결 사용자에게 현재 대기 상태를 주기적으로 push 합니다.
      */
-    @Scheduled(fixedDelay = 1000)
+    @Scheduled(fixedDelay = QueueConstants.SCHEDULER_INTERVAL_MILLIS)
     public void pushStatus() {
         for (Map.Entry<String, SseEmitter> entry : emitters.entrySet()) {
             String queueToken = entry.getKey();

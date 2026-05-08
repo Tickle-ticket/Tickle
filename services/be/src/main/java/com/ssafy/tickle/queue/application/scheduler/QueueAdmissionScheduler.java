@@ -25,7 +25,7 @@ public class QueueAdmissionScheduler {
     /**
      * 공연별 available slot만큼 waiting 상위 사용자를 admission 처리합니다.
      */
-    @Scheduled(fixedDelay = 1000L)
+    @Scheduled(fixedDelay = QueueConstants.SCHEDULER_INTERVAL_MILLIS)
     public void admitWaitingUsers() {
         Instant admittedAt = Instant.now();
 

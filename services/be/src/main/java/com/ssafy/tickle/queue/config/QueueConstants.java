@@ -10,6 +10,7 @@ public final class QueueConstants {
     public static final long SLOT_LIMIT = 100L;
     public static final long SSE_TIMEOUT_MILLIS = 30L * 60L * 1000L;
     public static final long DEFAULT_ADMISSION_RATE_PER_MINUTE = 30L;
+    public static final long SCHEDULER_INTERVAL_MILLIS = 500L;
 
     public static final Duration REQUEST_TTL = Duration.ofMinutes(5);
     public static final Duration QUEUE_TOKEN_TTL = Duration.ofHours(3);
