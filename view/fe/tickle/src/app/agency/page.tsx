@@ -4,13 +4,19 @@ import Image from 'next/image';
 import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import {
   AgencySeatPolicyModal,
+  type AgencySeatPolicy,
   type AgencySeatAssignmentMode,
   createDefaultAgencySeatPolicy,
   getAgencySeatPolicySummary,
 } from '@/src/shared/components/AgencySeatPolicyModal';
-import { submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
-import type { AgencyRegistrationFlowRequest, AgencySeatGrade } from '@/src/shared/api/types/agency.types';
-import { uploadImage, uploadImages } from '@/src/shared/api/uploadApi';
+import { fetchAgencyVenueTemplate, submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
+import { fetchCategories } from '@/src/shared/api/eventApi';
+import type {
+  AgencyRegistrationFlowRequest,
+  AgencySeatGrade,
+  AgencyVenueTemplate,
+} from '@/src/shared/api/types/agency.types';
+import type { Category } from '@/src/shared/api/types/event.types';
 import { ApiError } from '@/src/shared/api/types';
 import { useVenues } from '@/src/shared/api/useVenues';
 import { Badge } from '@/src/shared/components/Badge';
@@ -23,30 +29,8 @@ import { PerformanceScheduleAddedModal } from '@/src/shared/components/Performan
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 
-const FIXED_ORGANIZER_ID = 2001;
-const FIXED_VENUE_ID = 2001;
 const DEFAULT_PERFORMANCE_TITLE = '뮤지컬 Tikkle Original2';
 const DEFAULT_SESSION_DURATION_MINUTES = 60;
-
-type PerformanceTypeValue = 'musical' | 'concert' | 'play' | 'classic' | 'sports' | 'fanmeeting';
-
-const performanceTypeOptions: Array<{ label: string; value: PerformanceTypeValue }> = [
-  { label: '뮤지컬', value: 'musical' },
-  { label: '콘서트', value: 'concert' },
-  { label: '연극', value: 'play' },
-  { label: '클래식', value: 'classic' },
-  { label: '스포츠', value: 'sports' },
-  { label: '팬미팅', value: 'fanmeeting' },
-];
-
-const performanceTypeCategoryIds: Record<PerformanceTypeValue, number> = {
-  musical: 1,
-  concert: 2,
-  play: 3,
-  classic: 4,
-  sports: 5,
-  fanmeeting: 6,
-};
 
 type VenueOption = {
   value: number;
@@ -59,7 +43,7 @@ const registrationStepItems = [
   {
     title: '노출/기본 정보',
     sections: '노출 콘텐츠, 기본 정보',
-    detail: '공연 유형을 포함한 기본 정보를 먼저 입력합니다.',
+    detail: '카테고리를 포함한 기본 정보를 먼저 입력합니다.',
   },
   {
     title: '티켓/공연 일정',
@@ -73,19 +57,10 @@ const registrationStepItems = [
   },
 ];
 
-const initialVenueOptions: VenueOption[] = [
-  {
-    value: FIXED_VENUE_ID,
-    label: '블루스퀘어 마스터카드홀',
-    region: '서울 용산구',
-    capacity: '1,766석',
-  },
-];
-
 const maxPerformanceHashtagCount = 3;
 
-type SeatGradeKey = 'vip' | 'r' | 's' | 'a' | 'restricted';
-type SupportedAgencySeatGrade = Exclude<AgencySeatGrade, 'B'>;
+type SeatGradeKey = 'vip' | 'r' | 's' | 'a';
+type SupportedAgencySeatGrade = Exclude<AgencySeatGrade, 'B' | 'RESTRICTED_VIEW'>;
 
 const seatGradeFields: Array<{
   key: SeatGradeKey;
@@ -97,7 +72,6 @@ const seatGradeFields: Array<{
   { key: 'r', label: 'R석', badgeColor: 'blue', description: '무대 중심 시야 구간' },
   { key: 's', label: 'S석', badgeColor: 'green', description: '일반 판매 핵심 구간' },
   { key: 'a', label: 'A석', badgeColor: 'grey', description: '입문형 가격대 좌석' },
-  { key: 'restricted', label: '시야제한석', badgeColor: 'purple', description: '시야 제한이 있는 좌석 구간' },
 ];
 
 const seatPriceGradeToApiGrade: Record<SeatGradeKey, SupportedAgencySeatGrade> = {
@@ -105,7 +79,6 @@ const seatPriceGradeToApiGrade: Record<SeatGradeKey, SupportedAgencySeatGrade> =
   r: 'R',
   s: 'S',
   a: 'A',
-  restricted: 'RESTRICTED_VIEW',
 };
 
 const seatPolicyGradeToApiGrade: Record<
@@ -116,13 +89,75 @@ const seatPolicyGradeToApiGrade: Record<
   R: 'R',
   S: 'S',
   A: 'A',
-  restricted: 'RESTRICTED_VIEW',
 };
 
-const mockSeatIdByLabel = new Map(STAGE_4001_SEAT_IDS.map((seatLabel, index) => [seatLabel, index + 1]));
+type VenueTemplateSeatState = {
+  seatPolicy: AgencySeatPolicy | null;
+  seatIdByLabel: Map<string, number>;
+};
+
+const stageSeatIdSet = new Set(STAGE_4001_SEAT_IDS);
 const fallbackVenueOption: VenueOption = {
-  value: FIXED_VENUE_ID,
+  value: 0,
   label: '공연장 선택',
+};
+
+const normalizeTemplateSeatLabel = (seatLabel: string) => seatLabel.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+const resolveTemplateSeatStageId = (seatLabel: string, rowLabel: string, seatNumber: string) => {
+  const normalizedSeatLabel = normalizeTemplateSeatLabel(seatLabel);
+
+  if (normalizedSeatLabel.length > 0) {
+    return normalizedSeatLabel;
+  }
+
+  return normalizeTemplateSeatLabel(`${rowLabel}${seatNumber}`);
+};
+
+const createDisabledSeatPolicy = (): AgencySeatPolicy =>
+  Object.fromEntries(STAGE_4001_SEAT_IDS.map((seatId) => [seatId, 'disabled']));
+
+const buildSeatTemplateState = (template: AgencyVenueTemplate): VenueTemplateSeatState => {
+  const nextSeatPolicy = createDisabledSeatPolicy();
+  const seatIdByLabel = new Map<string, number>();
+  let assignedSeatCount = 0;
+
+  template.sections.forEach((section) => {
+    section.seats.forEach((seat) => {
+      const stageSeatId = resolveTemplateSeatStageId(seat.seatLabel, seat.rowLabel, seat.seatNumber);
+
+      if (!stageSeatIdSet.has(stageSeatId)) {
+        return;
+      }
+
+      const assignment =
+        seat.seatGrade === 'VIP' || seat.seatGrade === 'R' || seat.seatGrade === 'S' || seat.seatGrade === 'A'
+          ? seat.seatGrade
+          : 'disabled';
+
+      nextSeatPolicy[stageSeatId] = assignment;
+      seatIdByLabel.set(stageSeatId, seat.venueSeatId);
+      assignedSeatCount += 1;
+    });
+  });
+
+  return {
+    seatPolicy: assignedSeatCount > 0 ? nextSeatPolicy : null,
+    seatIdByLabel,
+  };
+};
+
+const resolveDefaultCategoryId = (categories: Category[]) => {
+  if (categories.length === 0) {
+    return '';
+  }
+
+  const preferredCategory = categories.find((category) => {
+    const normalizedName = category.categoryName.trim().toLowerCase();
+    return normalizedName === '뮤지컬' || normalizedName === 'musical';
+  });
+
+  return String(preferredCategory?.categoryId ?? categories[0]?.categoryId ?? '');
 };
 
 const formatDateKey = (value: Date) => {
@@ -656,8 +691,11 @@ export default function AgencyRegistrationPage() {
   const { data: venueList = [], isLoading: isVenueListLoading } = useVenues();
   const [activeRegistrationStep, setActiveRegistrationStep] = useState(0);
   const [performanceTitle, setPerformanceTitle] = useState(DEFAULT_PERFORMANCE_TITLE);
-  const [performanceType, setPerformanceType] = useState<PerformanceTypeValue>('musical');
-  const [selectedVenue, setSelectedVenue] = useState<number>(FIXED_VENUE_ID);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [isCategoryListLoading, setIsCategoryListLoading] = useState(true);
+  const [categoryListErrorMessage, setCategoryListErrorMessage] = useState<string | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<number | null>(null);
   const [isVenueOpen, setIsVenueOpen] = useState(false);
   const [ticketOpenRule, setTicketOpenRule] = useState<TicketScheduleRule>({
     days: 14,
@@ -683,7 +721,6 @@ export default function AgencyRegistrationPage() {
     r: '140000',
     s: '110000',
     a: '80000',
-    restricted: '60000',
   });
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null);
   const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
@@ -693,6 +730,11 @@ export default function AgencyRegistrationPage() {
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
+  const [seatPolicyVenueId, setSeatPolicyVenueId] = useState<number | null>(null);
+  const [isSeatPolicyDirty, setIsSeatPolicyDirty] = useState(false);
+  const [seatTemplate, setSeatTemplate] = useState<AgencyVenueTemplate | null>(null);
+  const [isSeatTemplateLoading, setIsSeatTemplateLoading] = useState(false);
+  const [seatTemplateErrorMessage, setSeatTemplateErrorMessage] = useState<string | null>(null);
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [registrationErrorMessage, setRegistrationErrorMessage] = useState<string | null>(null);
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
@@ -703,6 +745,63 @@ export default function AgencyRegistrationPage() {
   const introImageInputRef = useRef<HTMLInputElement | null>(null);
   const introImageRegistryRef = useRef<IntroImageItem[]>([]);
   const introImageDragDepthRef = useRef(0);
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        label: category.categoryName,
+        value: String(category.categoryId),
+      })),
+    [categories],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCategories = async () => {
+      setIsCategoryListLoading(true);
+      setCategoryListErrorMessage(null);
+
+      try {
+        const response = await fetchCategories();
+        if (cancelled) {
+          return;
+        }
+
+        const nextCategories = Array.from(response.data.categories);
+        setCategories(nextCategories);
+        setSelectedCategoryId((current) => {
+          if (current && nextCategories.some((category) => String(category.categoryId) === current)) {
+            return current;
+          }
+
+          return resolveDefaultCategoryId(nextCategories);
+        });
+
+        if (nextCategories.length === 0) {
+          setCategoryListErrorMessage('카테고리 목록이 비어 있습니다.');
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setCategoryListErrorMessage(
+          error instanceof ApiError ? error.message : '카테고리 목록을 불러오지 못했습니다.',
+        );
+      } finally {
+        if (!cancelled) {
+          setIsCategoryListLoading(false);
+        }
+      }
+    };
+
+    void loadCategories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const venueOptions = useMemo<VenueOption[]>(
     () =>
       venueList.map((venue) => ({
@@ -711,13 +810,13 @@ export default function AgencyRegistrationPage() {
       })),
     [venueList],
   );
-  const resolvedSelectedVenue = useMemo(
-    () =>
-      venueOptions.some((venue) => venue.value === selectedVenue)
-        ? selectedVenue
-        : venueOptions[0]?.value ?? initialVenueOptions[0]?.value ?? FIXED_VENUE_ID,
-    [selectedVenue, venueOptions],
-  );
+  const resolvedSelectedVenue = useMemo(() => {
+    if (selectedVenue !== null && venueOptions.some((venue) => venue.value === selectedVenue)) {
+      return selectedVenue;
+    }
+
+    return venueOptions[0]?.value ?? null;
+  }, [selectedVenue, venueOptions]);
 
   const selectedDateLabel = useMemo(() => {
     if (!selectedScheduleDate) {
@@ -765,10 +864,45 @@ export default function AgencyRegistrationPage() {
     () =>
       venueOptions.find((venue) => venue.value === resolvedSelectedVenue) ??
       venueOptions[0] ??
-      initialVenueOptions[0] ??
       fallbackVenueOption,
     [resolvedSelectedVenue, venueOptions],
   );
+  const selectedCategoryInfo = useMemo(
+    () => categories.find((category) => String(category.categoryId) === selectedCategoryId) ?? null,
+    [categories, selectedCategoryId],
+  );
+  const loadSeatTemplate = async (venueId: number) => {
+    setIsSeatTemplateLoading(true);
+    setSeatTemplateErrorMessage(null);
+
+    try {
+      const template = await fetchAgencyVenueTemplate(venueId);
+      const templateState = buildSeatTemplateState(template);
+
+      setSeatTemplate(template);
+
+      if (seatPolicyVenueId !== venueId || !isSeatPolicyDirty) {
+        setSeatPolicy(templateState.seatPolicy ?? createDisabledSeatPolicy());
+        setSeatPolicyVenueId(venueId);
+        setIsSeatPolicyDirty(false);
+      }
+
+      return template;
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : '공연장 좌석 골격을 불러오지 못했습니다.';
+
+      setSeatTemplateErrorMessage(message);
+      throw error;
+    } finally {
+      setIsSeatTemplateLoading(false);
+    }
+  };
+
   const registeredTicketSchedulePreviews = useMemo<TicketSchedulePreview[]>(
     () =>
       Object.entries(performanceSchedules)
@@ -887,6 +1021,11 @@ export default function AgencyRegistrationPage() {
   );
 
   const seatPolicySummary = useMemo(() => getAgencySeatPolicySummary(seatPolicy), [seatPolicy]);
+  const seatPolicyModalKey = useMemo(
+    () =>
+      `${resolvedSelectedVenue ?? 'none'}:${STAGE_4001_SEAT_IDS.map((seatId) => seatPolicy[seatId] ?? 'disabled').join('|')}`,
+    [resolvedSelectedVenue, seatPolicy],
+  );
   const introImageCountLabel =
     introImages.length > 0 ? `등록된 이미지 ${introImages.length}장` : '아직 등록된 이미지가 없습니다.';
   const posterImageLabel = posterImage ? '포스터 이미지가 등록되었습니다.' : '아직 등록된 포스터가 없습니다.';
@@ -896,9 +1035,13 @@ export default function AgencyRegistrationPage() {
   const isLastRegistrationStep = activeRegistrationStep === registrationStepItems.length - 1;
   const canSubmitRegistration =
     performanceTitle.trim().length > 0 &&
+    selectedCategoryId.length > 0 &&
+    resolvedSelectedVenue !== null &&
     posterImage !== null &&
     registeredTicketSchedulePreviews.length > 0 &&
-    !hasInvalidTicketWindow;
+    !hasInvalidTicketWindow &&
+    !isVenueListLoading &&
+    !isCategoryListLoading;
   const canAddHashtag =
     formattedHashtagInput.length > 1 &&
     performanceHashtags.length < maxPerformanceHashtagCount &&
@@ -1249,6 +1392,7 @@ export default function AgencyRegistrationPage() {
 
   const handleRegistrationSubmit = async () => {
     const normalizedPerformanceTitle = performanceTitle.trim();
+    const resolvedSelectedCategoryId = Number(selectedCategoryId);
 
     setRegistrationErrorMessage(null);
     setRegistrationSuccessMessage(null);
@@ -1268,22 +1412,58 @@ export default function AgencyRegistrationPage() {
       return;
     }
 
-    if (!posterImage) {
-      setRegistrationErrorMessage('Poster image is required.');
+    if (!Number.isInteger(resolvedSelectedCategoryId) || resolvedSelectedCategoryId <= 0) {
+      setRegistrationErrorMessage('카테고리를 선택해 주세요.');
       return;
     }
 
-    const seatGroups = (['VIP', 'R', 'S', 'A', 'RESTRICTED_VIEW'] as const)
+    if (resolvedSelectedVenue === null) {
+      setRegistrationErrorMessage('공연장을 선택해 주세요.');
+      return;
+    }
+
+    if (!posterImage) {
+      setRegistrationErrorMessage('포스터 이미지를 등록해 주세요.');
+      return;
+    }
+
+    const venueTemplate =
+      seatTemplate?.venueId === resolvedSelectedVenue
+        ? seatTemplate
+        : await loadSeatTemplate(resolvedSelectedVenue);
+    const templateSeatState = buildSeatTemplateState(venueTemplate);
+    const { seatIdByLabel } = templateSeatState;
+    const effectiveSeatPolicy =
+      seatPolicyVenueId === resolvedSelectedVenue
+        ? seatPolicy
+        : templateSeatState.seatPolicy ?? createDisabledSeatPolicy();
+    const missingSeatLabels = STAGE_4001_SEAT_IDS.filter((seatLabel) => {
+      const assignment = effectiveSeatPolicy[seatLabel];
+
+      return Boolean(assignment && assignment !== 'disabled' && !seatIdByLabel.has(seatLabel));
+    });
+
+    if (missingSeatLabels.length > 0) {
+      const previewLabels = missingSeatLabels.slice(0, 5).join(', ');
+      const suffix = missingSeatLabels.length > 5 ? ' ...' : '';
+
+      setRegistrationErrorMessage(
+        `공연장 좌석 골격에 없는 좌석이 포함되어 있습니다. ${previewLabels}${suffix}`,
+      );
+      return;
+    }
+
+    const seatGroups = (['VIP', 'R', 'S', 'A'] as const)
       .map((priceGrade) => {
         const seatIds = STAGE_4001_SEAT_IDS.flatMap((seatLabel) => {
-          const assignment = seatPolicy[seatLabel];
+          const assignment = effectiveSeatPolicy[seatLabel];
 
           if (!assignment || assignment === 'disabled') {
             return [];
           }
 
           return seatPolicyGradeToApiGrade[assignment] === priceGrade
-            ? [mockSeatIdByLabel.get(seatLabel) ?? -1]
+            ? [seatIdByLabel.get(seatLabel) ?? -1]
             : [];
         }).filter((seatId) => seatId > 0);
 
@@ -1335,21 +1515,18 @@ export default function AgencyRegistrationPage() {
     setIsSubmittingRegistration(true);
 
     try {
-      const posterImageUrl = await uploadImage(posterImage.file);
-      const detailImageUrls = await uploadImages(introImages.map((image) => image.file));
       const request: AgencyRegistrationFlowRequest = {
         basicEvent: {
-          organizerId: FIXED_ORGANIZER_ID,
           venueId: resolvedSelectedVenue,
-          categoryId: performanceTypeCategoryIds[performanceType],
+          categoryId: resolvedSelectedCategoryId,
           title: normalizedPerformanceTitle,
           eventStartAt: earliestTicketOpenAt.toISOString(),
           eventEndAt: latestTicketCloseAt.toISOString(),
           tags: performanceHashtags,
           notice: noticeText.trim(),
-          posterImageUrl,
-          detailImageUrls,
         },
+        posterImage: posterImage.file,
+        detailImages: introImages.map((image) => image.file),
         pricePolicies: {
           pricePolicies,
         },
@@ -1712,7 +1889,7 @@ export default function AgencyRegistrationPage() {
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  공연명, 공연장, 공연 유형과 운영 기간을 입력합니다.
+                  공연명, 공연장, 카테고리와 운영 기간을 입력합니다.
                 </p>
               </div>
             </div>
@@ -1781,6 +1958,10 @@ export default function AgencyRegistrationPage() {
                               aria-selected={isSelected}
                               onClick={() => {
                                 setSelectedVenue(venue.value);
+                                setSeatTemplate(null);
+                                setSeatTemplateErrorMessage(null);
+                                setSeatPolicyVenueId(null);
+                                setIsSeatPolicyDirty(false);
                                 setIsVenueOpen(false);
                               }}
                             >
@@ -1815,24 +1996,28 @@ export default function AgencyRegistrationPage() {
                   <div className="flex min-h-[268px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-slate-500">공연 유형</p>
+                        <p className="text-sm font-bold text-slate-500">카테고리</p>
                         <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
-                          판매 정책 전에 공연 유형을 먼저 선택합니다.
+                          공연 등록에 사용할 카테고리를 먼저 선택합니다.
                         </p>
                       </div>
                       <Badge color="blue" variant="outline">
-                        {performanceTypeOptions.find((option) => option.value === performanceType)?.label}
+                        {selectedCategoryInfo?.categoryName ?? (isCategoryListLoading ? '불러오는 중' : '미선택')}
                       </Badge>
                     </div>
                     <SegmentedControl
-                      options={performanceTypeOptions}
-                      value={performanceType}
-                      onChange={(nextValue) => setPerformanceType(nextValue as PerformanceTypeValue)}
-                      columns={3}
-                      rows={2}
+                      options={categoryOptions}
+                      value={selectedCategoryId}
+                      onChange={setSelectedCategoryId}
+                      columns={Math.min(Math.max(categoryOptions.length, 1), 3)}
+                      rows={Math.max(1, Math.ceil(categoryOptions.length / 3))}
                       size="large"
+                      isLoading={isCategoryListLoading}
                       className="mt-2 flex-1"
                     />
+                    {categoryListErrorMessage ? (
+                      <p className="mt-3 text-sm font-medium text-red-500">{categoryListErrorMessage}</p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1971,7 +2156,7 @@ export default function AgencyRegistrationPage() {
             <div>
               <h2 className="text-[18px] font-black text-slate-950">판매 정책</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                VIP / R / S / A / 시야제한석 좌석별 금액을 직접 입력합니다.
+                VIP / R / S / A 좌석별 금액을 직접 입력합니다.
               </p>
             </div>
 
@@ -2043,14 +2228,30 @@ export default function AgencyRegistrationPage() {
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">좌석 등급/비활성 설정</h2>
                 <p className="mt-1 text-sm font-medium text-slate-500">
-                  좌석도에서 어떤 좌석을 VIP, R, S, A, 시야제한석으로 운영할지와 판매 제외 좌석을 직접 지정합니다.
+                  좌석도에서 어떤 좌석을 VIP, R, S, A로 운영할지와 판매 제외 좌석을 직접 지정합니다.
                 </p>
+                {seatTemplateErrorMessage ? (
+                  <p className="mt-2 text-xs font-semibold text-red-600">
+                    {seatTemplateErrorMessage}
+                  </p>
+                ) : null}
               </div>
               <Button
                 color="primary"
                 variant="weak"
                 size="medium"
-                onClick={() => setIsSeatPolicyModalOpen(true)}
+                isLoading={isSeatTemplateLoading}
+                onClick={async () => {
+                  setIsSeatPolicyModalOpen(true);
+
+                  if (resolvedSelectedVenue !== null) {
+                    try {
+                      await loadSeatTemplate(resolvedSelectedVenue);
+                    } catch {
+                      // Keep the modal usable even when template loading fails.
+                    }
+                  }
+                }}
               >
                 좌석 등급 설정 열기
               </Button>
@@ -2099,17 +2300,6 @@ export default function AgencyRegistrationPage() {
                   <span className="ml-1 text-lg font-bold text-slate-500">석</span>
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-500">입문형 가격대 좌석</p>
-              </div>
-
-              <div className="rounded-3xl border border-purple-100 bg-purple-50/70 p-5">
-                <div className="flex items-center">
-                  <Badge color="purple" size="small">시야제한석</Badge>
-                </div>
-                <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
-                  {seatPolicySummary.restricted}
-                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
-                </p>
-                <p className="mt-2 text-sm font-medium text-slate-500">시야 제한이 있는 좌석</p>
               </div>
 
               <div className="rounded-3xl border border-slate-300 bg-white p-5">
@@ -2427,10 +2617,15 @@ export default function AgencyRegistrationPage() {
 
       {isSeatPolicyModalOpen ? (
         <AgencySeatPolicyModal
+          key={seatPolicyModalKey}
           isOpen={isSeatPolicyModalOpen}
           onClose={() => setIsSeatPolicyModalOpen(false)}
           seatPolicy={seatPolicy}
-          onConfirm={setSeatPolicy}
+          onConfirm={(nextSeatPolicy) => {
+            setSeatPolicy(nextSeatPolicy);
+            setSeatPolicyVenueId(resolvedSelectedVenue);
+            setIsSeatPolicyDirty(true);
+          }}
         />
       ) : null}
 

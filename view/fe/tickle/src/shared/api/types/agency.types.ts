@@ -26,7 +26,6 @@ export type AgencyLookupResponseData =
     };
 
 export interface AgencyCreateEventBasicRequest {
-  organizerId: number;
   venueId: number;
   categoryId: number;
   title: string;
@@ -34,8 +33,6 @@ export interface AgencyCreateEventBasicRequest {
   eventEndAt: string;
   tags: string[];
   notice: string;
-  posterImageUrl: string;
-  detailImageUrls: string[];
 }
 
 export interface AgencyCreateEventResponseData {
@@ -81,8 +78,57 @@ export interface AgencyCreateEventSeatsRequest {
   seats: AgencyCreateEventSeatGroupRequest[];
 }
 
+export type AgencyVenueTemplateSeatResponse = {
+  venueSeatId?: string | number;
+  rowLabel?: string;
+  seatNumber?: string | number;
+  seatLabel?: string;
+  seatGrade?: AgencySeatGrade;
+};
+
+export type AgencyVenueTemplateSectionResponse = {
+  venueSectionId?: string | number;
+  sectionName?: string;
+  displayOrder?: string | number;
+  seats?: AgencyVenueTemplateSeatResponse[];
+};
+
+export interface AgencyVenueTemplateSeat {
+  venueSeatId: number;
+  rowLabel: string;
+  seatNumber: string;
+  seatLabel: string;
+  seatGrade: AgencySeatGrade;
+}
+
+export interface AgencyVenueTemplateSection {
+  venueSectionId: number;
+  sectionName: string;
+  displayOrder: number;
+  seats: AgencyVenueTemplateSeat[];
+}
+
+export interface AgencyVenueTemplate {
+  venueId: number;
+  venueName: string;
+  sections: AgencyVenueTemplateSection[];
+}
+
+export type AgencyVenueTemplateResponseData =
+  | {
+      venueId?: string | number;
+      venueName?: string;
+      sections?: AgencyVenueTemplateSectionResponse[];
+    }
+  | {
+      template?: AgencyVenueTemplateResponseData;
+      seatTemplate?: AgencyVenueTemplateResponseData;
+    };
+
 export interface AgencyRegistrationFlowRequest {
   basicEvent: AgencyCreateEventBasicRequest;
+  posterImage: File;
+  detailImages: File[];
   pricePolicies: AgencyCreateEventPricePoliciesRequest;
   sessions: AgencyCreateEventSessionsRequest;
   seats: AgencyCreateEventSeatsRequest;
