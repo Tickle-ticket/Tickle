@@ -81,7 +81,7 @@ export function LoginPageClient() {
       const response = await authApi.login({ email, password });
 
       if (response.data) {
-        setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
+        setTokens(response.data.accessToken, response.data.refreshToken);
         router.push('/');
       }
     } catch (error) {

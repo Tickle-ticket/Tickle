@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { enterQueue, getQueueToken, leaveQueue, getQueueStreamUrl, getQueueStatus } from '@/src/shared/api/queueApi';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
 import { Modal } from '@/src/shared/components/Modal';
@@ -51,7 +53,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
       return;
     }
 
-    let eventSource: EventSource | null = null;
+    let ctrl: AbortController | null = null;
     let isCancelled = false;
 
     const startQueue = async (attempt = 1): Promise<void> => {
@@ -70,7 +72,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
 
       try {
         // 1. Enter Queue
-        const enterRes = await enterQueue(sessionId, userId, scope);
+        const enterRes = await enterQueue(sessionId, scope);
         if (isCancelled) return;
         const { requestId } = enterRes.data;
 
@@ -103,37 +105,46 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
         }
 
         // 4. Setup SSE
-        eventSource = new EventSource(getQueueStreamUrl(sessionId, queueToken, scope));
+        ctrl = new AbortController();
+        const token = getAccessToken();
 
-        eventSource.addEventListener('queue-status', (event: MessageEvent) => {
-          try {
-            const data = JSON.parse(event.data);
-            
-            if (data.status === 'WAITING') {
-              setRank(data.rank);
-              setWaitingCount(data.waitingCount);
-              setEstimatedWaitSeconds(data.estimatedWaitSeconds);
-            } else if (data.status === 'ADMITTED') {
-              if (eventSource) {
-                eventSource.close();
+        fetchEventSource(getQueueStreamUrl(sessionId, queueToken, scope), {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: ctrl.signal,
+          onmessage(event) {
+            try {
+              const data = JSON.parse(event.data);
+              
+              if (data.status === 'WAITING') {
+                setRank(data.rank);
+                setWaitingCount(data.waitingCount);
+                setEstimatedWaitSeconds(data.estimatedWaitSeconds);
+              } else if (data.status === 'ADMITTED') {
+                if (ctrl) ctrl.abort();
+                
+                if (isExitModalOpenRef.current) {
+                  pendingAdmitTokenRef.current = data.admitToken;
+                } else {
+                  onAdmitted(data.admitToken);
+                }
+              } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
+                setStatus('ERROR');
+                if (ctrl) ctrl.abort();
               }
-              if (isExitModalOpenRef.current) {
-                pendingAdmitTokenRef.current = data.admitToken;
-              } else {
-                onAdmitted(data.admitToken);
-              }
-            } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
-              setStatus('ERROR');
-              if (eventSource) eventSource.close();
+            } catch (e) {
+              console.error('SSE parsing error', e);
             }
-          } catch (e) {
-            console.error('SSE parsing error', e);
+          },
+          onerror(err) {
+            console.warn('EventSource connection error', err);
+            throw err; // Stop retrying on error
           }
+        }).catch((err) => {
+          console.error('FetchEventSource error', err);
         });
-
-        eventSource.onerror = () => {
-          console.warn('EventSource connection error');
-        };
 
       } catch (err: any) {
         if (err.status === 400) {
@@ -169,8 +180,8 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
 
     return () => {
       isCancelled = true;
-      if (eventSource) {
-        eventSource.close();
+      if (ctrl) {
+        ctrl.abort();
       }
       if (queueTokenRef.current && !isLeavingRef.current) {
         leaveQueue(sessionId, queueTokenRef.current, scope).catch(() => {});

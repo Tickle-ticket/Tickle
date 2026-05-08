@@ -34,7 +34,7 @@ export const UserManagementView = () => {
     const file = e.target.files?.[0];
     if (file && data?.userId) {
       updateProfileMutation.mutate(
-        { userId: data.userId, profileImage: file },
+        { profileImage: file },
         {
           onError: (err: any) => {
             if (err.status === 400) {
@@ -104,7 +104,7 @@ export const UserManagementView = () => {
                 onClick={() => {
                   if (isEditingNickname && data?.userId) {
                     updateProfileMutation.mutate(
-                      { userId: data.userId, nickname },
+                      { nickname },
                       {
                         onError: (err: any) => {
                           if (err.status === 400) {
@@ -160,7 +160,7 @@ export const UserManagementView = () => {
                 onClick={() => {
                   if (isEditingPhone && data?.userId) {
                     updateProfileMutation.mutate(
-                      { userId: data.userId, phoneNumber },
+                      { phoneNumber },
                       {
                         onError: (err: any) => {
                           if (err.status === 400) {
@@ -231,9 +231,8 @@ export const UserManagementView = () => {
         confirmText="탈퇴하기"
         cancelText="취소"
         onConfirm={() => {
-          if (data?.userId) {
-            withdrawMutation.mutate(data.userId, {
-              onSuccess: () => {
+          withdrawMutation.mutate(undefined, {
+            onSuccess: () => {
                 setIsWithdrawModalOpen(false);
               },
               onError: (err: any) => {
@@ -247,10 +246,6 @@ export const UserManagementView = () => {
                 }
               }
             });
-          } else {
-            setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '사용자 정보를 불러올 수 없습니다.' });
-            setIsWithdrawModalOpen(false);
-          }
         }}
         isLoading={withdrawMutation.isPending}
       />

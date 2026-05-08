@@ -8,7 +8,6 @@ export interface PaymentOptionSelectionRequest {
 export interface BookingPreorderRequest {
   eventId: number;
   sessionId: number;
-  userId: number;
   sessionSeatIds: number[];
   optionSelections: PaymentOptionSelectionRequest[];
 }
@@ -37,7 +36,6 @@ export type BookingPreorderResponse = Schema.Schema.Type<typeof BookingPreorderR
 export interface BookingOptionsRequest {
   eventId: number;
   sessionId: number;
-  userId: number;
   seatIds: number[];
 }
 
@@ -61,7 +59,6 @@ export const BookingSeatOptionResponseSchema = Schema.Struct({
 export const BookingOptionsResponseSchema = Schema.Struct({
   eventId: Schema.Union(Schema.Number, Schema.NumberFromString),
   sessionId: Schema.Union(Schema.Number, Schema.NumberFromString),
-  userId: Schema.Union(Schema.Number, Schema.NumberFromString),
   currencyCode: Schema.String,
   totalTicketPriceAmount: Schema.Number,
   seats: Schema.Array(BookingSeatOptionResponseSchema),

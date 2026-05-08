@@ -24,6 +24,7 @@ export const SeatSectionResponseSchema = Schema.Struct({
 export type SeatSectionResponse = Schema.Schema.Type<typeof SeatSectionResponseSchema>;
 
 export const SeatMapResponseSchema = Schema.Struct({
+  venueId: Schema.Number,
   sections: Schema.Array(SeatSectionResponseSchema),
 });
 

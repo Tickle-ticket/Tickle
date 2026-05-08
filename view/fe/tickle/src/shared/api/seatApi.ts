@@ -24,14 +24,13 @@ export const seatApi = {
   fetchCancellationWaitSeats: async (
     eventId: string | number, 
     scheduleId: string | number,
-    userId: string | number,
     admitToken: string
   ): Promise<ApiResponse<SeatMapResponse>> => {
     return apiClient<ApiResponse<SeatMapResponse>>(
       `/api/v1/events/${eventId}/schedules/${scheduleId}/cancellation-wait/seats`, 
       { 
         method: 'GET',
-        params: { userId, admitToken }
+        params: { admitToken }
       },
       false,
       createApiResponseSchema(SeatMapResponseSchema)
@@ -42,14 +41,14 @@ export const seatApi = {
   holdSeat: async (
     eventId: string | number,
     scheduleId: string | number,
-    userId: string | number,
+    admitToken: string,
     request: SeatHoldRequest
   ): Promise<ApiResponse<SeatHoldResponse>> => {
     return apiClient<ApiResponse<SeatHoldResponse>>(
       `/api/v1/events/${eventId}/schedules/${scheduleId}/seats/hold`, 
       {
         method: 'POST',
-        params: { userId },
+        params: { admitToken },
         body: request,
       },
       false,
@@ -60,14 +59,13 @@ export const seatApi = {
   // 좌석 선점 해제
   releaseSeat: async (
     eventId: string | number,
-    scheduleId: string | number,
-    userId: string | number
+    scheduleId: string | number
   ): Promise<ApiResponse<void>> => {
     return apiClient<ApiResponse<void>>(
       `/api/v1/events/${eventId}/schedules/${scheduleId}/seats/hold`, 
       {
         method: 'DELETE',
-        params: { userId },
+        params: {},
       }
     );
   },

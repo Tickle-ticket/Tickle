@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { getUserId } from '@/src/shared/api/tokenManager';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 
 export interface TrackingEvent {
   type: 'mousemove' | 'click' | 'mousedown' | 'mouseup';
@@ -40,8 +40,8 @@ export const useMouseTracking = ({
       };
 
       // AI 서버를 대신하여 프론트엔드에서 직접 내부 콜백 API를 호출하는 임시 Mock 로직
-      const userId = getUserId();
-      if (!userId) {
+      const token = getAccessToken();
+      if (!token) {
         bufferRef.current = [];
         return;
       }
@@ -61,7 +61,7 @@ export const useMouseTracking = ({
           createdAt: new Date().toISOString()
         };
 
-        fetch(`/internal/ai/v1/bot-detection/result?userId=${userId}`, {
+        fetch(`/internal/ai/v1/bot-detection/result`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

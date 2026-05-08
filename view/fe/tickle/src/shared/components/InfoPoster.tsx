@@ -71,6 +71,7 @@ export const InfoPoster = ({
           alt={alt} 
           fill
           priority={priority}
+          unoptimized={true}
           sizes="(max-width: 768px) 240px, 280px"
           className={`object-cover transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`} 
           onError={() => setImgFailed(true)}

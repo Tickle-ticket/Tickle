@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { seatApi } from '@/src/shared/api/seatApi';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 
 export interface SeatStatusData {
   grade: string;
@@ -22,6 +24,7 @@ export const useSeatData = (
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
+  const [venueId, setVenueId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!eventId || !scheduleId) {
@@ -37,24 +40,26 @@ export const useSeatData = (
     }
 
     let isMounted = true;
-    let eventSource: EventSource | null = null;
+    let ctrl: AbortController | null = null;
 
     const fetchInitialSeats = async () => {
       setIsLoading(true);
       try {
-        const userId = localStorage.getItem('userId') || '1'; // or using getUserId()
         let response;
 
         if (mode === 'WAITLIST') {
           if (!admitToken) {
             throw new Error('예매 대기 모드에서는 admitToken이 필요합니다.');
           }
-          response = await seatApi.fetchCancellationWaitSeats(eventId, scheduleId, userId, admitToken);
+          response = await seatApi.fetchCancellationWaitSeats(eventId, scheduleId, admitToken);
         } else {
           response = await seatApi.fetchSeats(eventId, scheduleId);
         }
 
         if (response.data && response.data.sections && isMounted) {
+          if (response.data.venueId) {
+            setVenueId(response.data.venueId);
+          }
           const initialMap: SeatAvailabilityResponse = {};
 
           response.data.sections.forEach(section => {
@@ -78,7 +83,9 @@ export const useSeatData = (
               // 예: "1층 A구역 A열 1번" (sectionName이 "1층 A구역"인 경우)
               const detailedInfo = `${section.sectionName} ${seat.rowLabel}열 ${seat.seatNumber}번`;
 
-              initialMap[seat.seatLabel] = {
+              const normalizedSeatLabel = seat.seatLabel.replace('-', '');
+
+              initialMap[normalizedSeatLabel] = {
                 grade,
                 isAvailable: seat.saleStatus === 'AVAILABLE',
                 sessionSeatId: seat.sessionSeatId,
@@ -102,7 +109,6 @@ export const useSeatData = (
 
     const connectSSE = () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const userId = localStorage.getItem('userId') || '1';
       let streamUrl = '';
 
       if (mode === 'WAITLIST') {
@@ -110,54 +116,65 @@ export const useSeatData = (
           console.error('SSE 연결 실패: admitToken이 없습니다.');
           return;
         }
-        streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/cancellation-wait/seats/stream?userId=${userId}&admitToken=${admitToken}`;
+        streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/cancellation-wait/seats/stream?admitToken=${admitToken}`;
       } else {
         streamUrl = `${apiUrl}/api/v1/events/${eventId}/schedules/${scheduleId}/seats/stream`;
       }
 
       // EventSource를 사용하여 SSE 스트림 연결
-      eventSource = new EventSource(streamUrl, { withCredentials: true });
+      ctrl = new AbortController();
+      const token = getAccessToken();
 
-      // 커스텀 이벤트 타입이 있다면 eventSource.addEventListener('이름', ...) 으로 변경 가능
-      // 여기서는 기본 onmessage 사용 (백엔드에서 데이터 전송 시 'message' 이벤트라고 가정)
-      eventSource.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
+      fetchEventSource(streamUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        signal: ctrl.signal,
+        onmessage(event) {
+          try {
+            const message = JSON.parse(event.data);
 
-          if (message && message.seatLabel) {
-            setSeatAvailability(prev => {
-              if (!prev) return prev;
-              const prevSeat = prev[message.seatLabel];
-              if (!prevSeat) return prev;
+            if (message && message.seatLabel) {
+              const normalizedLabel = message.seatLabel.replace('-', '');
+              setSeatAvailability(prev => {
+                if (!prev) return prev;
+                const prevSeat = prev[normalizedLabel];
+                if (!prevSeat) return prev;
 
-              return {
-                ...prev,
-                [message.seatLabel]: {
-                  ...prevSeat,
-                  isAvailable: message.saleStatus === 'AVAILABLE',
-                  waitingCount: message.waitingCount !== undefined ? message.waitingCount : prevSeat.waitingCount,
-                  waitable: message.waitable !== undefined ? message.waitable : prevSeat.waitable,
-                }
-              };
-            });
+                return {
+                  ...prev,
+                  [normalizedLabel]: {
+                    ...prevSeat,
+                    isAvailable: message.saleStatus === 'AVAILABLE',
+                    waitingCount: message.waitingCount !== undefined ? message.waitingCount : prevSeat.waitingCount,
+                    waitable: message.waitable !== undefined ? message.waitable : prevSeat.waitable,
+                  }
+                };
+              });
+            }
+          } catch (e) {
+            console.error('SSE message parse error', e);
           }
-        } catch (e) {
-          console.error('SSE message parse error', e);
+        },
+        onerror(error) {
+          console.error('Seat SSE Error:', error);
+          throw error;
         }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('Seat SSE Error (Expected WS instead):', error);
-      };
+      }).catch((err) => {
+        console.error('FetchEventSource error', err);
+      });
     };
 
     fetchInitialSeats();
 
     return () => {
       isMounted = false;
-      if (eventSource) eventSource.close();
+      if (ctrl) {
+        ctrl.abort();
+      }
     };
   }, [eventId, scheduleId, enableWs]);
 
-  return { data: seatAvailability, isLoading, error };
+  return { data: seatAvailability, venueId, isLoading, error };
 };

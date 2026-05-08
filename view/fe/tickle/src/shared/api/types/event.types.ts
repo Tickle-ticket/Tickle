@@ -3,7 +3,6 @@ import { Schema } from 'effect';
 export interface EventListRequestParams {
   keyword?: string;
   categoryId?: number;
-  userId?: number;
   page?: number;
   size?: number;
 }

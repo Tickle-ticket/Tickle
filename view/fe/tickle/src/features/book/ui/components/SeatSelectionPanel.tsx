@@ -146,7 +146,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                       : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-700'
                       }`}
                   >
-                    <span className="text-[14px]">{idx + 1}회차 - {timeObj.time}</span>
+                    <span className="text-[16px]">{timeObj.time}</span>
                     <div className="flex flex-wrap gap-1.5 justify-center mt-0.5">
                       {timeObj.remainingSeats.map((seat: any) => {
                         const gradeColors: Record<string, string> = {

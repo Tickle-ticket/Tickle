@@ -8,7 +8,7 @@ import { http } from '@/src/shared/api/http';
 import { getFavoriteEvents, createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { getBadgeColor } from '@/src/shared/utils/badgeColor';
-import { getUserId } from '@/src/shared/api/tokenManager';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { BannerTitle } from '@/src/shared/components/BannerTitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
@@ -224,7 +224,7 @@ export const HomeView = () => {
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
 
-    if (!getUserId()) {
+    if (!getAccessToken()) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',

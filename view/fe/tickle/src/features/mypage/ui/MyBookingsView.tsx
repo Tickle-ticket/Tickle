@@ -102,7 +102,7 @@ export const MyBookingsView = () => {
 
   const handleConfirmCancel = () => {
     if (selectedBookingForCancel) {
-      cancelBooking(selectedBookingForCancel.id, {
+      cancelBooking({ bookingId: selectedBookingForCancel.id }, {
         onSuccess: () => {
           handleCloseCancelModal();
         },

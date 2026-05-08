@@ -1,34 +1,24 @@
 import { apiClient } from './client';
-import { getUserId } from './tokenManager';
 import { buildUserApiUrl } from './userConfig';
 import { ApiResponse } from './types';
 import { createApiResponseSchema } from '../utils/schema';
 import { MyInfoResponseData, UpdateMyInfoRequest, MyInfoResponseDataSchema } from './types/user.types';
 
-const getRequiredUserId = () => {
-  const userId = getUserId();
 
-  if (userId === null) {
-    throw new Error('Current userId is missing.');
-  }
-
-  return userId;
-};
 
 export const fetchMyInfo = async (): Promise<ApiResponse<MyInfoResponseData>> => {
-  const userId = getRequiredUserId();
   return apiClient<ApiResponse<MyInfoResponseData>>(
     buildUserApiUrl('/api/v1/users/me'),
-    { params: { userId } },
+    { params: {} },
     false,
     createApiResponseSchema(MyInfoResponseDataSchema)
   );
 };
 
 export const updateMyInfo = async (request: UpdateMyInfoRequest): Promise<ApiResponse<MyInfoResponseData>> => {
-  const { userId, nickname, phoneNumber, profileImage } = request;
+  const { nickname, phoneNumber, profileImage } = request;
   
-  const params: Record<string, string> = { userId: String(userId) };
+  const params: Record<string, string> = {};
   if (nickname) params.nickname = nickname;
   if (phoneNumber) params.phoneNumber = phoneNumber;
 
@@ -49,9 +39,9 @@ export const updateMyInfo = async (request: UpdateMyInfoRequest): Promise<ApiRes
   );
 };
 
-export const withdrawMyInfo = async (userId: number): Promise<ApiResponse<void>> => {
+export const withdrawMyInfo = async (): Promise<ApiResponse<void>> => {
   return apiClient<ApiResponse<void>>(buildUserApiUrl('/api/v1/users/me'), {
     method: 'DELETE',
-    params: { userId },
+    params: {},
   });
 };

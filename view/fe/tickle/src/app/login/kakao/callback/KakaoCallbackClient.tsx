@@ -44,7 +44,7 @@ export function KakaoCallbackClient() {
     const tokenPayload = readTokensFromHash();
 
     if (tokenPayload) {
-      setTokens(tokenPayload.accessToken, tokenPayload.refreshToken, tokenPayload.userId);
+      setTokens(tokenPayload.accessToken, tokenPayload.refreshToken);
       router.replace('/');
       return;
     }
@@ -70,7 +70,7 @@ export function KakaoCallbackClient() {
         const response = await authApi.kakaoCallback(code);
 
         if (response.data) {
-          setTokens(response.data.accessToken, response.data.refreshToken, response.data.userId);
+          setTokens(response.data.accessToken, response.data.refreshToken);
           router.replace('/');
         }
       } catch (err) {

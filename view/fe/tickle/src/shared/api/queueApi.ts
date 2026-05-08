@@ -10,12 +10,11 @@ import {
   QueueStatusResponseDataSchema,
 } from './types/queue.types';
 
-export const enterQueue = async (sessionId: number | string, userId: number, scope?: 'BOOKING' | 'CANCELLATION_WAIT'): Promise<ApiResponse<QueueEnterResponseData>> => {
+export const enterQueue = async (sessionId: number | string, scope?: 'BOOKING' | 'CANCELLATION_WAIT'): Promise<ApiResponse<QueueEnterResponseData>> => {
   return apiClient<ApiResponse<QueueEnterResponseData>>(
     `/api/v1/queues/${sessionId}/enter`, 
     { 
       method: 'POST',
-      body: { userId },
       params: scope ? { scope } : undefined
     },
     false,
