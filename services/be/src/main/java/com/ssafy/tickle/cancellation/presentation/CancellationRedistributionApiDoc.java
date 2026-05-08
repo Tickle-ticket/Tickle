@@ -3,6 +3,7 @@ package com.ssafy.tickle.cancellation.presentation;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationOfferDetailResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseResponse;
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,7 +23,7 @@ public interface CancellationRedistributionApiDoc {
             @ApiResponse(responseCode = "403", description = "자신의 취소표가 아님")
     })
     ResponseEntity<BaseResponse<CancellationOfferDetailResponse>> getCancellationDetail(
-            @Parameter(hidden = true) Long userId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
             @Parameter(description = "취소표 제안 ID") Long cancellationId
     );
 
@@ -32,7 +33,7 @@ public interface CancellationRedistributionApiDoc {
             @ApiResponse(responseCode = "409", description = "유효한 구매 가능 시간이 지났거나 상태 오류")
     })
     ResponseEntity<BaseResponse<CancellationPurchaseResponse>> purchaseCancellation(
-            @Parameter(hidden = true) Long userId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
             @Parameter(description = "취소표 제안 ID") Long cancellationId,
             @RequestBody(description = "구매 요청 정보") CancellationPurchaseRequest request
     );

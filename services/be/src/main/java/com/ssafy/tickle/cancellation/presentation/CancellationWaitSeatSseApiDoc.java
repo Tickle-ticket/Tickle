@@ -1,6 +1,8 @@
 package com.ssafy.tickle.cancellation.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -28,6 +30,8 @@ public interface CancellationWaitSeatSseApiDoc {
     SseEmitter subscribeCancellationWaitSeats(
             Long eventId,
             Long scheduleId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId
             Long userId,
             String admitToken
     );

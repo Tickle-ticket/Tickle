@@ -1,9 +1,11 @@
 package com.ssafy.tickle.reservation.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.reservation.presentation.dto.BookingOptionsRequest;
 import com.ssafy.tickle.reservation.presentation.dto.BookingOptionsResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +36,7 @@ public interface BookingApiDoc {
             @ApiResponse(responseCode = "409", description = "좌석 hold가 유효하지 않음")
     })
     ResponseEntity<BaseResponse<BookingOptionsResponse>> getBookingOptions(
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
             @Valid @RequestBody BookingOptionsRequest request
     );
 }

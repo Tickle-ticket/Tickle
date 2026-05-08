@@ -1,5 +1,6 @@
 package com.ssafy.tickle.reservation.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.reservation.application.BookingPreorderService;
@@ -28,10 +29,11 @@ public class BookingPreorderController implements BookingPreorderApiDoc {
     @Override
     @PostMapping("/bookings/preorder")
     public ResponseEntity<BaseResponse<BookingPreorderResponse>> preorder(
+            @UserId Long userId,
             @Valid @RequestBody BookingPreorderRequest request
     ) {
         return ResponseEntity.ok(
-                BaseResponse.success(SuccessCode.OK, bookingPreorderService.preorder(request))
+                BaseResponse.success(SuccessCode.OK, bookingPreorderService.preorder(userId, request))
         );
     }
 }

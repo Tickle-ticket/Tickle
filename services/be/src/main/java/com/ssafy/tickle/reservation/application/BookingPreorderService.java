@@ -57,10 +57,10 @@ public class BookingPreorderService {
      * @return 예매 초안 응답
      */
     @Transactional
-    public BookingPreorderResponse preorder(BookingPreorderRequest request) {
+    public BookingPreorderResponse preorder(Long userId, BookingPreorderRequest request) {
         EventSession session = getSession(request.eventId(), request.sessionId());
 
-        User user = getUser(request.userId());
+        User user = getUser(userId);
 
         List<Long> seatIds = request.sessionSeatIds();
 
@@ -71,7 +71,7 @@ public class BookingPreorderService {
         validateHeldSeats(session.getId(), user.getId(), seatIds);
 
         List<SessionSeat> seats = sessionSeatRepository.findAllWithPricePolicyBySessionIdAndIdIn(session.getId(), seatIds);
-        validateSeats(request.userId(), seatIds, seats);
+        validateSeats(userId, seatIds, seats);
 
         Map<Long, PaymentOptionSelectionRequest> selectionBySeatId = request.optionSelections().stream()
                 .collect(Collectors.toMap(

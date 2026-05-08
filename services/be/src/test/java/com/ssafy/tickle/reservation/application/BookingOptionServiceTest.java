@@ -115,10 +115,10 @@ class BookingOptionServiceTest {
 
             // when
             BookingOptionsResponse response = bookingOptionService.getBookingOptions(
+                    user.getId(),
                     new BookingOptionsRequest(
                             event.getId(),
                             session.getId(),
-                            user.getId(),
                             List.of(firstSeat.getId(), secondSeat.getId())
                     )
             );
@@ -142,10 +142,10 @@ class BookingOptionServiceTest {
 
             // when & then
             assertThatThrownBy(() -> bookingOptionService.getBookingOptions(
+                    user.getId(),
                     new BookingOptionsRequest(
                             event.getId(),
                             session.getId(),
-                            user.getId(),
                             List.of(seat.getId())
                     )
             )).isInstanceOf(BaseException.class);

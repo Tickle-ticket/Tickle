@@ -1,6 +1,7 @@
 package com.ssafy.tickle.cancellation.presentation;
 
 import com.ssafy.tickle.cancellation.application.CancellationWaitSeatSseService;
+import com.ssafy.tickle.common.auth.UserId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +35,7 @@ public class CancellationWaitSeatSseController implements CancellationWaitSeatSs
     public SseEmitter subscribeCancellationWaitSeats(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @RequestParam String admitToken
     ) {
         return cancellationWaitSeatSseService.subscribe(eventId, scheduleId, userId, admitToken);

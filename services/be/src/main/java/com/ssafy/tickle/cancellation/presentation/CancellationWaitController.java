@@ -6,6 +6,7 @@ import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateC
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateListResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapResponse;
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import jakarta.validation.Valid;
@@ -45,7 +46,7 @@ public class CancellationWaitController implements CancellationWaitApiDoc {
     public ResponseEntity<BaseResponse<CancellationWaitSeatMapResponse>> getSeats(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @RequestParam String admitToken
     ) {
         CancellationWaitSeatMapResponse response = cancellationWaitSeatService.getSeats(
@@ -75,7 +76,7 @@ public class CancellationWaitController implements CancellationWaitApiDoc {
     public ResponseEntity<BaseResponse<CancellationWaitCandidateCreateResponse>> createCandidates(
             @PathVariable Long eventId,
             @PathVariable Long scheduleId,
-            @RequestParam Long userId,
+            @UserId Long userId,
             @RequestParam String admitToken,
             @Valid @RequestBody CancellationWaitCandidateCreateRequest request
     ) {
@@ -101,7 +102,7 @@ public class CancellationWaitController implements CancellationWaitApiDoc {
     @Override
     @GetMapping("/cancellation-wait/candidates")
     public ResponseEntity<BaseResponse<CancellationWaitCandidateListResponse>> getMyCandidates(
-            @RequestParam Long userId
+            @UserId Long userId
     ) {
         CancellationWaitCandidateListResponse response = cancellationWaitCandidateService.getMyCandidates(userId);
 
@@ -121,7 +122,7 @@ public class CancellationWaitController implements CancellationWaitApiDoc {
     @DeleteMapping("/cancellation-wait/candidates/{candidateId}")
     public ResponseEntity<BaseResponse<Void>> cancelCandidate(
             @PathVariable Long candidateId,
-            @RequestParam Long userId
+            @UserId Long userId
     ) {
         cancellationWaitCandidateService.cancelCandidate(candidateId, userId);
 

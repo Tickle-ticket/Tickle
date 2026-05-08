@@ -14,7 +14,6 @@ import java.util.List;
  *
  * @param eventId 공연 식별자
  * @param sessionId 회차 식별자
- * @param userId 사용자 식별자
  * @param sessionSeatIds 초안에 포함할 회차 좌석 ID 목록
  * @param optionSelections 좌석별 선택 권종/할인 정보
  */
@@ -23,8 +22,6 @@ public record BookingPreorderRequest(
         Long eventId,
         @NotNull(message = "sessionId는 필수입니다.")
         Long sessionId,
-        @NotNull(message = "userId는 필수입니다.")
-        Long userId,
         @NotEmpty(message = "sessionSeatIds는 최소 1개 이상이어야 합니다.")
         List<Long> sessionSeatIds,
         @NotEmpty(message = "optionSelections는 최소 1개 이상이어야 합니다.")

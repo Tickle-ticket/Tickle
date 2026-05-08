@@ -354,10 +354,10 @@ class PaymentServiceTest {
 
     private BookingPreorderResponse createPreorder(SessionSeat seat, String discountName) {
         return bookingPreorderService.preorder(
+                user.getId(),
                 new BookingPreorderRequest(
                         event.getId(),
                         session.getId(),
-                        user.getId(),
                         List.of(seat.getId()),
                         List.of(new PaymentOptionSelectionRequest(seat.getId(), discountName))
                 )

@@ -1,5 +1,6 @@
 package com.ssafy.tickle.payment.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareRequest;
 import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareResponse;
@@ -47,8 +48,8 @@ public interface PaymentApiDoc {
             @PathVariable Long eventId,
             @Parameter(description = "회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId,
-            @Parameter(description = "사용자 식별자", required = true, example = "1")
-            @RequestParam Long userId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId Long userId,
             @Valid @RequestBody PaymentMethodSelectionRequest request
     );
 
@@ -75,8 +76,8 @@ public interface PaymentApiDoc {
             @PathVariable Long eventId,
             @Parameter(description = "회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId,
-            @Parameter(description = "사용자 식별자", required = true, example = "1")
-            @RequestParam Long userId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId Long userId,
             @Valid @RequestBody BankTransferPrepareRequest request
     );
 
@@ -104,8 +105,8 @@ public interface PaymentApiDoc {
             @PathVariable Long eventId,
             @Parameter(description = "회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId,
-            @Parameter(description = "사용자 식별자", required = true, example = "1")
-            @RequestParam Long userId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId Long userId,
             @Valid @RequestBody KakaoPayReadyRequest request
     );
 

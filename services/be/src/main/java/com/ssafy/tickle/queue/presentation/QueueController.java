@@ -65,9 +65,10 @@ public class QueueController implements QueueApiDoc {
     public ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
+            @UserId Long userId,
             @RequestParam String requestId
     ) {
-        QueueTokenResponse response = queueStatusService.getQueueToken(scope, eventId, requestId);
+        QueueTokenResponse response = queueStatusService.getQueueToken(scope, eventId, userId, requestId);
 
         return ResponseEntity
                 .ok()
@@ -85,9 +86,10 @@ public class QueueController implements QueueApiDoc {
     public ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
+            @UserId Long userId,
             @RequestParam String queueToken
     ) {
-        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(scope, eventId, queueToken);
+        QueueStatusResponse response = queueStatusService.getStatusByQueueToken(scope, eventId, userId, queueToken);
 
         return ResponseEntity
                 .ok()
@@ -99,9 +101,10 @@ public class QueueController implements QueueApiDoc {
     public ResponseEntity<BaseResponse<Void>> leave(
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
+            @UserId Long userId,
             @RequestParam String queueToken
     ) {
-        queueStatusService.leave(scope, eventId, queueToken);
+        queueStatusService.leave(scope, eventId, userId, queueToken);
 
         return ResponseEntity
                 .ok()
@@ -119,9 +122,10 @@ public class QueueController implements QueueApiDoc {
     public SseEmitter stream(
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "BOOKING") QueueScope scope,
+            @UserId Long userId,
             @RequestParam String queueToken
     ) {
-        queueStatusService.getStatusByQueueToken(scope, eventId, queueToken);
+        queueStatusService.getStatusByQueueToken(scope, eventId, userId, queueToken);
         return queueSseHandler.connect(queueToken);
     }
 }

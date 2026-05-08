@@ -1,5 +1,6 @@
 package com.ssafy.tickle.seat.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.seat.presentation.dto.SeatHoldRequest;
 import com.ssafy.tickle.seat.presentation.dto.SeatHoldResponse;
@@ -82,8 +83,8 @@ public interface SeatApiDoc {
             @PathVariable Long eventId,
             @Parameter(description = "회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId,
-            @Parameter(description = "사용자 식별자", required = true, example = "1")
-            @RequestParam Long userId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId Long userId,
             @Parameter(description = "BOOKING 대기열 입장 허용 토큰", required = true)
             @RequestParam String admitToken,
             @Valid @RequestBody SeatHoldRequest request
@@ -108,7 +109,7 @@ public interface SeatApiDoc {
             @PathVariable Long eventId,
             @Parameter(description = "회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId,
-            @Parameter(description = "사용자 식별자", required = true, example = "1")
-            @RequestParam Long userId
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId Long userId
     );
 }

@@ -4,7 +4,9 @@ import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapRes
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateCreateResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitCandidateListResponse;
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +35,8 @@ public interface CancellationWaitApiDoc {
     ResponseEntity<BaseResponse<CancellationWaitSeatMapResponse>> getSeats(
             Long eventId,
             Long scheduleId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId
             Long userId,
             String admitToken
     );
@@ -55,6 +59,8 @@ public interface CancellationWaitApiDoc {
     ResponseEntity<BaseResponse<CancellationWaitCandidateCreateResponse>> createCandidates(
             Long eventId,
             Long scheduleId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId
             Long userId,
             String admitToken,
             CancellationWaitCandidateCreateRequest request
@@ -71,7 +77,9 @@ public interface CancellationWaitApiDoc {
             description = "사용자의 활성 예매 대기 신청 목록을 공연명, 좌석 정보, 현재 순위와 함께 조회합니다."
     )
     @ApiResponse(responseCode = "200", description = "예매 대기 목록 조회 성공")
-    ResponseEntity<BaseResponse<CancellationWaitCandidateListResponse>> getMyCandidates(Long userId);
+    ResponseEntity<BaseResponse<CancellationWaitCandidateListResponse>> getMyCandidates(
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId
+    );
 
     /**
      * 사용자의 예매 대기 신청을 취소합니다.
@@ -85,5 +93,8 @@ public interface CancellationWaitApiDoc {
             description = "아직 취소표 제안을 받지 않은 사용자의 예매 대기 신청만 취소합니다."
     )
     @ApiResponse(responseCode = "200", description = "예매 대기 취소 성공")
-    ResponseEntity<BaseResponse<Void>> cancelCandidate(Long candidateId, Long userId);
+    ResponseEntity<BaseResponse<Void>> cancelCandidate(
+            Long candidateId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId
+    );
 }

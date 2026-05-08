@@ -121,6 +121,7 @@ class SeatServiceTest {
             SeatMapResponse response = seatService.getSeatMap(event.getId(), session.getId());
 
             // then
+            assertThat(response.venueId()).isEqualTo(venue.getId());
             assertThat(response.sections()).hasSize(2);
             SeatSectionResponse firstSection = response.sections().get(0);
             assertThat(firstSection.sectionName()).isEqualTo("A구역");
@@ -134,6 +135,7 @@ class SeatServiceTest {
             SeatMapResponse response = seatService.getSeatMap(event.getId(), session.getId());
 
             // then
+            assertThat(response.venueId()).isEqualTo(venue.getId());
             assertThat(response.sections()).isEmpty();
         }
 
