@@ -73,9 +73,8 @@ export function KakaoCallbackClient() {
       try {
         const response = await authApi.kakaoLogin({ code, state });
 
-        if (response.data) {
-          setTokens(response.data.accessToken, response.data.refreshToken);
-          router.replace('/');
+        if (!response.data) {
+          throw new Error('Kakao login response is missing.');
         }
 
         if (response.data.isNewUser) {

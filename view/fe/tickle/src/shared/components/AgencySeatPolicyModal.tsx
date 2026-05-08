@@ -227,7 +227,7 @@ export const AgencySeatPolicyModal = ({
   };
 
   const handleReset = () => {
-    setDraftSeatPolicy(createDefaultAgencySeatPolicy());
+    setDraftSeatPolicy({ ...seatPolicy });
     setSelectedTool('VIP');
     setLastEditedSeatId(null);
   };

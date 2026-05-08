@@ -4,13 +4,18 @@ import Image from 'next/image';
 import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import {
   AgencySeatPolicyModal,
+  type AgencySeatPolicy,
   type AgencySeatAssignmentMode,
   createDefaultAgencySeatPolicy,
   getAgencySeatPolicySummary,
 } from '@/src/shared/components/AgencySeatPolicyModal';
-import { submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
+import { fetchAgencyVenueTemplate, submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
 import { fetchCategories } from '@/src/shared/api/eventApi';
-import type { AgencyRegistrationFlowRequest, AgencySeatGrade } from '@/src/shared/api/types/agency.types';
+import type {
+  AgencyRegistrationFlowRequest,
+  AgencySeatGrade,
+  AgencyVenueTemplate,
+} from '@/src/shared/api/types/agency.types';
 import type { Category } from '@/src/shared/api/types/event.types';
 import { ApiError } from '@/src/shared/api/types';
 import { useVenues } from '@/src/shared/api/useVenues';
@@ -55,7 +60,7 @@ const registrationStepItems = [
 const maxPerformanceHashtagCount = 3;
 
 type SeatGradeKey = 'vip' | 'r' | 's' | 'a';
-type SupportedAgencySeatGrade = Exclude<AgencySeatGrade, 'B'>;
+type SupportedAgencySeatGrade = Exclude<AgencySeatGrade, 'B' | 'RESTRICTED_VIEW'>;
 
 const seatGradeFields: Array<{
   key: SeatGradeKey;
@@ -86,10 +91,60 @@ const seatPolicyGradeToApiGrade: Record<
   A: 'A',
 };
 
-const mockSeatIdByLabel = new Map(STAGE_4001_SEAT_IDS.map((seatLabel, index) => [seatLabel, index + 1]));
+type VenueTemplateSeatState = {
+  seatPolicy: AgencySeatPolicy | null;
+  seatIdByLabel: Map<string, number>;
+};
+
+const stageSeatIdSet = new Set(STAGE_4001_SEAT_IDS);
 const fallbackVenueOption: VenueOption = {
   value: 0,
   label: '공연장 선택',
+};
+
+const normalizeTemplateSeatLabel = (seatLabel: string) => seatLabel.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+const resolveTemplateSeatStageId = (seatLabel: string, rowLabel: string, seatNumber: string) => {
+  const normalizedSeatLabel = normalizeTemplateSeatLabel(seatLabel);
+
+  if (normalizedSeatLabel.length > 0) {
+    return normalizedSeatLabel;
+  }
+
+  return normalizeTemplateSeatLabel(`${rowLabel}${seatNumber}`);
+};
+
+const createDisabledSeatPolicy = (): AgencySeatPolicy =>
+  Object.fromEntries(STAGE_4001_SEAT_IDS.map((seatId) => [seatId, 'disabled']));
+
+const buildSeatTemplateState = (template: AgencyVenueTemplate): VenueTemplateSeatState => {
+  const nextSeatPolicy = createDisabledSeatPolicy();
+  const seatIdByLabel = new Map<string, number>();
+  let assignedSeatCount = 0;
+
+  template.sections.forEach((section) => {
+    section.seats.forEach((seat) => {
+      const stageSeatId = resolveTemplateSeatStageId(seat.seatLabel, seat.rowLabel, seat.seatNumber);
+
+      if (!stageSeatIdSet.has(stageSeatId)) {
+        return;
+      }
+
+      const assignment =
+        seat.seatGrade === 'VIP' || seat.seatGrade === 'R' || seat.seatGrade === 'S' || seat.seatGrade === 'A'
+          ? seat.seatGrade
+          : 'disabled';
+
+      nextSeatPolicy[stageSeatId] = assignment;
+      seatIdByLabel.set(stageSeatId, seat.venueSeatId);
+      assignedSeatCount += 1;
+    });
+  });
+
+  return {
+    seatPolicy: assignedSeatCount > 0 ? nextSeatPolicy : null,
+    seatIdByLabel,
+  };
 };
 
 const resolveDefaultCategoryId = (categories: Category[]) => {
@@ -675,6 +730,11 @@ export default function AgencyRegistrationPage() {
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
+  const [seatPolicyVenueId, setSeatPolicyVenueId] = useState<number | null>(null);
+  const [isSeatPolicyDirty, setIsSeatPolicyDirty] = useState(false);
+  const [seatTemplate, setSeatTemplate] = useState<AgencyVenueTemplate | null>(null);
+  const [isSeatTemplateLoading, setIsSeatTemplateLoading] = useState(false);
+  const [seatTemplateErrorMessage, setSeatTemplateErrorMessage] = useState<string | null>(null);
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [registrationErrorMessage, setRegistrationErrorMessage] = useState<string | null>(null);
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
@@ -707,7 +767,7 @@ export default function AgencyRegistrationPage() {
           return;
         }
 
-        const nextCategories = response.data.categories;
+        const nextCategories = Array.from(response.data.categories);
         setCategories(nextCategories);
         setSelectedCategoryId((current) => {
           if (current && nextCategories.some((category) => String(category.categoryId) === current)) {
@@ -811,6 +871,38 @@ export default function AgencyRegistrationPage() {
     () => categories.find((category) => String(category.categoryId) === selectedCategoryId) ?? null,
     [categories, selectedCategoryId],
   );
+  const loadSeatTemplate = async (venueId: number) => {
+    setIsSeatTemplateLoading(true);
+    setSeatTemplateErrorMessage(null);
+
+    try {
+      const template = await fetchAgencyVenueTemplate(venueId);
+      const templateState = buildSeatTemplateState(template);
+
+      setSeatTemplate(template);
+
+      if (seatPolicyVenueId !== venueId || !isSeatPolicyDirty) {
+        setSeatPolicy(templateState.seatPolicy ?? createDisabledSeatPolicy());
+        setSeatPolicyVenueId(venueId);
+        setIsSeatPolicyDirty(false);
+      }
+
+      return template;
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : '공연장 좌석 골격을 불러오지 못했습니다.';
+
+      setSeatTemplateErrorMessage(message);
+      throw error;
+    } finally {
+      setIsSeatTemplateLoading(false);
+    }
+  };
+
   const registeredTicketSchedulePreviews = useMemo<TicketSchedulePreview[]>(
     () =>
       Object.entries(performanceSchedules)
@@ -929,6 +1021,11 @@ export default function AgencyRegistrationPage() {
   );
 
   const seatPolicySummary = useMemo(() => getAgencySeatPolicySummary(seatPolicy), [seatPolicy]);
+  const seatPolicyModalKey = useMemo(
+    () =>
+      `${resolvedSelectedVenue ?? 'none'}:${STAGE_4001_SEAT_IDS.map((seatId) => seatPolicy[seatId] ?? 'disabled').join('|')}`,
+    [resolvedSelectedVenue, seatPolicy],
+  );
   const introImageCountLabel =
     introImages.length > 0 ? `등록된 이미지 ${introImages.length}장` : '아직 등록된 이미지가 없습니다.';
   const posterImageLabel = posterImage ? '포스터 이미지가 등록되었습니다.' : '아직 등록된 포스터가 없습니다.';
@@ -1330,17 +1427,43 @@ export default function AgencyRegistrationPage() {
       return;
     }
 
+    const venueTemplate =
+      seatTemplate?.venueId === resolvedSelectedVenue
+        ? seatTemplate
+        : await loadSeatTemplate(resolvedSelectedVenue);
+    const templateSeatState = buildSeatTemplateState(venueTemplate);
+    const { seatIdByLabel } = templateSeatState;
+    const effectiveSeatPolicy =
+      seatPolicyVenueId === resolvedSelectedVenue
+        ? seatPolicy
+        : templateSeatState.seatPolicy ?? createDisabledSeatPolicy();
+    const missingSeatLabels = STAGE_4001_SEAT_IDS.filter((seatLabel) => {
+      const assignment = effectiveSeatPolicy[seatLabel];
+
+      return Boolean(assignment && assignment !== 'disabled' && !seatIdByLabel.has(seatLabel));
+    });
+
+    if (missingSeatLabels.length > 0) {
+      const previewLabels = missingSeatLabels.slice(0, 5).join(', ');
+      const suffix = missingSeatLabels.length > 5 ? ' ...' : '';
+
+      setRegistrationErrorMessage(
+        `공연장 좌석 골격에 없는 좌석이 포함되어 있습니다. ${previewLabels}${suffix}`,
+      );
+      return;
+    }
+
     const seatGroups = (['VIP', 'R', 'S', 'A'] as const)
       .map((priceGrade) => {
         const seatIds = STAGE_4001_SEAT_IDS.flatMap((seatLabel) => {
-          const assignment = seatPolicy[seatLabel];
+          const assignment = effectiveSeatPolicy[seatLabel];
 
           if (!assignment || assignment === 'disabled') {
             return [];
           }
 
           return seatPolicyGradeToApiGrade[assignment] === priceGrade
-            ? [mockSeatIdByLabel.get(seatLabel) ?? -1]
+            ? [seatIdByLabel.get(seatLabel) ?? -1]
             : [];
         }).filter((seatId) => seatId > 0);
 
@@ -1835,6 +1958,10 @@ export default function AgencyRegistrationPage() {
                               aria-selected={isSelected}
                               onClick={() => {
                                 setSelectedVenue(venue.value);
+                                setSeatTemplate(null);
+                                setSeatTemplateErrorMessage(null);
+                                setSeatPolicyVenueId(null);
+                                setIsSeatPolicyDirty(false);
                                 setIsVenueOpen(false);
                               }}
                             >
@@ -2103,12 +2230,28 @@ export default function AgencyRegistrationPage() {
                 <p className="mt-1 text-sm font-medium text-slate-500">
                   좌석도에서 어떤 좌석을 VIP, R, S, A로 운영할지와 판매 제외 좌석을 직접 지정합니다.
                 </p>
+                {seatTemplateErrorMessage ? (
+                  <p className="mt-2 text-xs font-semibold text-red-600">
+                    {seatTemplateErrorMessage}
+                  </p>
+                ) : null}
               </div>
               <Button
                 color="primary"
                 variant="weak"
                 size="medium"
-                onClick={() => setIsSeatPolicyModalOpen(true)}
+                isLoading={isSeatTemplateLoading}
+                onClick={async () => {
+                  setIsSeatPolicyModalOpen(true);
+
+                  if (resolvedSelectedVenue !== null) {
+                    try {
+                      await loadSeatTemplate(resolvedSelectedVenue);
+                    } catch {
+                      // Keep the modal usable even when template loading fails.
+                    }
+                  }
+                }}
               >
                 좌석 등급 설정 열기
               </Button>
@@ -2474,10 +2617,15 @@ export default function AgencyRegistrationPage() {
 
       {isSeatPolicyModalOpen ? (
         <AgencySeatPolicyModal
+          key={seatPolicyModalKey}
           isOpen={isSeatPolicyModalOpen}
           onClose={() => setIsSeatPolicyModalOpen(false)}
           seatPolicy={seatPolicy}
-          onConfirm={setSeatPolicy}
+          onConfirm={(nextSeatPolicy) => {
+            setSeatPolicy(nextSeatPolicy);
+            setSeatPolicyVenueId(resolvedSelectedVenue);
+            setIsSeatPolicyDirty(true);
+          }}
         />
       ) : null}
 
