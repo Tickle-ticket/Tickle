@@ -1,9 +1,7 @@
 package com.ssafy.tickle.seat.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
-import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.RedisLockManager;
-import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.seat.domain.EventSection;
 import com.ssafy.tickle.seat.domain.SeatErrorCode;
@@ -18,7 +16,6 @@ import com.ssafy.tickle.seat.presentation.dto.SeatMapResponse;
 import com.ssafy.tickle.seat.presentation.dto.SeatSectionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -100,6 +97,7 @@ public class SeatService {
      */
     @Transactional
     public SeatHoldResponse holdSeats(Long eventId, Long scheduleId, Long userId, SeatHoldRequest request) {
+        List<Long> seatIds = request.sessionSeatIds();
 
         String lockKey = LOCK_KEY_PREFIX + scheduleId;
         if (!redisLockManager.tryLock(lockKey)) {
@@ -107,25 +105,20 @@ public class SeatService {
         }
 
         try {
-            List<SessionSeat> seats = loadSeats(request.sessionSeatIds());
+            // 단일 batch UPDATE — SELECT + N×UPDATE → UPDATE 1회로 단축 (All-or-Nothing)
+            int updated = sessionSeatRepository.holdBatch(seatIds, userId, Instant.now());
+            if (updated != seatIds.size()) {
+                throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
+            }
 
-            // All-or-Nothing: 모든 좌석 선점 시도 (AVAILABLE 아니면 내부에서 예외 발생)
-            seats.forEach(seat -> seat.hold(userId));
-            sessionSeatRepository.saveAll(seats);
-
-            // Redis TTL 키 등록 (15분)
             Instant expiresAt = Instant.now().plus(HOLD_MINUTES, ChronoUnit.MINUTES);
-            seatHoldKeyStore.registerHeld(scheduleId, userId, request.sessionSeatIds());
+            seatHoldKeyStore.registerHeld(scheduleId, userId, seatIds);
 
-            // 트랜잭션 커밋 후 WebSocket 브로드캐스트
             eventPublisher.publishEvent(
-                    new SeatStatusChangedEvent(this, scheduleId, request.sessionSeatIds(), SessionSeat.SaleStatus.HELD)
+                    new SeatStatusChangedEvent(this, scheduleId, seatIds, SessionSeat.SaleStatus.HELD)
             );
 
-            return new SeatHoldResponse(request.sessionSeatIds(), expiresAt);
-        } catch (ObjectOptimisticLockingFailureException e) {
-            // 락-커밋 타이밍 갭에서 @Version 충돌 발생 시 409로 변환
-            throw new BaseException(SeatErrorCode.SEAT_LOCK_FAILED);
+            return new SeatHoldResponse(seatIds, expiresAt);
         } finally {
             redisLockManager.unlock(lockKey);
         }

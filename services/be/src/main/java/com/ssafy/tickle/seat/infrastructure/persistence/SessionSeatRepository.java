@@ -44,6 +44,27 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
     List<SessionSeat> findAllByIdIn(@Param("ids") List<Long> ids);
 
     /**
+     * 좌석 선점을 단일 배치 UPDATE로 처리합니다.
+     *
+     * <p>AVAILABLE 상태인 좌석만 HELD로 전환합니다.
+     * 반환된 업데이트 건수가 요청 건수와 다르면 이미 선점된 좌석이 포함된 것입니다.</p>
+     *
+     * @param ids    선점할 sessionSeatId 목록
+     * @param userId 선점 사용자 식별자
+     * @param now    선점 시각
+     * @return 실제 HELD 전환된 좌석 수
+     */
+    @Modifying(clearAutomatically = true)
+    @Query(value = """
+            UPDATE session_seats
+            SET sale_status = 'HELD', held_by_user_id = :userId,
+                version_no = version_no + 1, updated_at = :now
+            WHERE session_seat_id IN :ids AND sale_status = 'AVAILABLE'
+            """, nativeQuery = true)
+    int holdBatch(@Param("ids") List<Long> ids, @Param("userId") Long userId,
+                  @Param("now") java.time.Instant now);
+
+    /**
      * 회차와 좌석 ID 목록으로 가격 정책까지 함께 조회합니다.
      *
      * @param sessionId 회차 식별자
