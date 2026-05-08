@@ -37,7 +37,11 @@ public class RedissonConfig {
                                     .map(node -> "redis://" + node.trim())
                                     .toArray(String[]::new)
                     )
-                    .setReadMode(ReadMode.MASTER);
+                    .setReadMode(ReadMode.MASTER)
+                    .setConnectTimeout(1000)
+                    .setTimeout(1000)
+                    .setRetryAttempts(1)
+                    .setRetryInterval(200);
 
             if (password != null && !password.isBlank()) {
                 sentinelConfig.setPassword(password);
