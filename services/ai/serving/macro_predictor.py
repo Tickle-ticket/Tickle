@@ -62,11 +62,11 @@ class MacroPredictor:
         return [(self.to_label(p_macro), p_macro) for p_macro in p_macros]
 
     def to_label(self, p_macro: float) -> str:
-        if p_macro <= self.allow_max_score:
-            return "ALLOW"
-
         if p_macro >= self.block_min_score:
             return "BLOCK"
+        
+        if p_macro <= self.allow_max_score:
+            return "ALLOW"
 
         return "REVIEW"
 
