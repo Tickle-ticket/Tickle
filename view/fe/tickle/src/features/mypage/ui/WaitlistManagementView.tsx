@@ -13,7 +13,7 @@ import { CancellationDetailView } from '@/src/features/cancellation/ui/Cancellat
 
 export const WaitlistManagementView = () => {
   const { data: waitlist, isLoading } = useWaitlistBookings();
-  
+
   // Cancel Flow State
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedWaitlistForCancel, setSelectedWaitlistForCancel] = useState<any | null>(null);
@@ -45,7 +45,7 @@ export const WaitlistManagementView = () => {
 
   const handleConfirmCancel = async () => {
     try {
-      const cancelPromises = Array.from(selectedSeatsToCancel).map(id => 
+      const cancelPromises = Array.from(selectedSeatsToCancel).map(id =>
         cancelWaitlistMutation.mutateAsync(id)
       );
       await Promise.all(cancelPromises);
@@ -63,8 +63,8 @@ export const WaitlistManagementView = () => {
     // 여기서는 임시로 인덱스를 사용해 매핑
     const parsedSeats = item.seats.map((s: any, i: number) => {
       const match = s.info.match(/([A-Z]+)석/);
-      const grade = match ? match[1] : 'VIP';
-      return `${grade}${i+1}`;
+      const priceGrade = match ? match[1] : 'VIP';
+      return `${priceGrade}${i + 1}`;
     });
 
     setSelectedWaitlistForModify({
@@ -144,16 +144,16 @@ export const WaitlistManagementView = () => {
                         </span>
                       </div>
                       <div className="h-px w-full bg-white/10 mb-1" />
-                      
+
                       {/* 다중 좌석 대기열 */}
                       <div className="flex flex-col gap-2">
                         {item.seats && item.seats.map((seat: any) => {
                           const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
-                          
+
                           // 혼잡도/대기열 색상 (파-초-노-빨 순서 - 인원이 많을수록 빨간색)
                           let badgeClass = '';
                           let barClass = '';
-                          
+
                           if (seat.waitlistNumber <= 0) {
                             badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.6)] animate-pulse';
                             barClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
@@ -204,13 +204,13 @@ export const WaitlistManagementView = () => {
 
                     {/* 액션 버튼들 */}
                     <div className="flex gap-2 mt-2 w-full">
-                      <button 
+                      <button
                         onClick={() => handleOpenCancelModal(item)}
                         className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-md text-white text-[12px] font-bold rounded-xl border border-white/20 transition-colors shadow-sm"
                       >
                         취소하기
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleOpenModifyFlow(item)}
                         className="flex-1 py-2.5 bg-purple-500/80 hover:bg-purple-600/80 active:bg-purple-700/80 backdrop-blur-md text-white text-[12px] font-bold rounded-xl border border-purple-500/50 transition-colors shadow-sm"
                       >
@@ -238,8 +238,8 @@ export const WaitlistManagementView = () => {
 
       {modifyFlowState === 'QUEUE' && selectedWaitlistForModify && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <QueueView 
-            eventId={selectedWaitlistForModify.eventId?.toString()!} 
+          <QueueView
+            eventId={selectedWaitlistForModify.eventId?.toString()}
             scope="CANCELLATION_WAIT"
             onAdmitted={(token) => {
               setAdmitToken(token);
@@ -252,16 +252,16 @@ export const WaitlistManagementView = () => {
 
       {modifyFlowState === 'BOOK' && selectedWaitlistForModify && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView 
+          <BookView
             eventId={selectedWaitlistForModify.eventId}
-            mode="WAITLIST" 
+            mode="WAITLIST"
             initialSchedule={{ date: selectedWaitlistForModify.date, time: selectedWaitlistForModify.time }}
             initialSeats={selectedWaitlistForModify.initialSeats}
             initialModifyModeActive={true}
             admitToken={admitToken || undefined}
             onClose={() => {
               handleCloseModifyFlow();
-            }} 
+            }}
           />
         </div>
       )}
@@ -281,8 +281,8 @@ export const WaitlistManagementView = () => {
           {selectedWaitlistForCancel?.seats.map((seat: any) => {
             const isSelected = selectedSeatsToCancel.has(seat.id);
             return (
-              <div 
-                key={seat.id} 
+              <div
+                key={seat.id}
                 onClick={() => {
                   setSelectedSeatsToCancel(prev => {
                     const next = new Set(prev);
@@ -291,16 +291,14 @@ export const WaitlistManagementView = () => {
                     return next;
                   });
                 }}
-                className={`flex justify-between items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  isSelected 
-                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20' 
+                className={`flex justify-between items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected
+                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
                     : 'border-gray-100 hover:border-gray-200 dark:border-zinc-800'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                    isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
-                  }`}>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+                    }`}>
                     {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                   </div>
                   <div className="flex flex-col gap-1">

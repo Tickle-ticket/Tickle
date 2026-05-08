@@ -12,10 +12,10 @@ export interface DetailData {
   venue: string;
   venueAddress: string;
   notice: string;
-  zonePrices: { grade: string; price: number }[];
+  zonePrices: { priceGrade: string; price: number }[];
   schedules: {
     date: string;
-    times: { time: string; remainingSeats: { grade: string; count: number }[] }[];
+    times: { time: string; remainingSeats: { priceGrade: string; count: number }[] }[];
   }[];
   detailImageUrl: string;
   isFavorite: boolean;
@@ -23,7 +23,7 @@ export interface DetailData {
 }
 
 type RemainingSeat = {
-  grade: string;
+  priceGrade: string;
   count: number;
 };
 
@@ -78,7 +78,7 @@ export const useDetailData = (eventId: string | null | undefined) => {
         venueAddress: data.venueAddress,
         notice: data.notice || '',
         zonePrices: data.pricePolicies.map((pricePolicy) => ({
-          grade: pricePolicy.grade || '일반',
+          priceGrade: pricePolicy.priceGrade || '일반',
           price: getEventPriceAmount(pricePolicy),
         })),
         schedules,

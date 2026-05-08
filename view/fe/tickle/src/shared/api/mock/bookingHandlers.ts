@@ -25,7 +25,7 @@ export const bookingHandlers = [
             rowLabel: 'A',
             seatNumber: '1',
             eventPricePolicyId: 11,
-            grade: 'VIP',
+            priceGrade: 'VIP',
             priceAmount: 90000,
             discountInfo: [
               {
@@ -46,7 +46,7 @@ export const bookingHandlers = [
             rowLabel: 'A',
             seatNumber: '2',
             eventPricePolicyId: 11,
-            grade: 'VIP',
+            priceGrade: 'VIP',
             priceAmount: 90000,
             discountInfo: [
               {

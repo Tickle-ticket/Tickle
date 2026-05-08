@@ -3,7 +3,7 @@ import { seatApi } from '@/src/shared/api/seatApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
 
 export interface SeatStatusData {
-  grade: string;
+  priceGrade: string;
   isAvailable: boolean;
   sessionSeatId?: number; // Backend sessionSeatId
   detailedInfo?: string;
@@ -64,8 +64,8 @@ export const useSeatData = (
           response.data.sections.forEach(section => {
             section.seats.forEach(seat => {
               // Map seatLabel (e.g. A1, B2) to the SVG ID
-              // 백엔드에서 전달받은 좌석 등급(grade)을 직접 사용합니다.
-              const grade = seat.grade;
+              // 백엔드에서 전달받은 좌석 등급(priceGrade)을 직접 사용합니다.
+              const priceGrade = seat.priceGrade;
 
               // 백엔드에서 전달받은 구역, 열, 번호를 조합하여 상세 정보 생성
               // 예: "1층 A구역 A열 1번" (sectionName이 "1층 A구역"인 경우)
@@ -74,7 +74,7 @@ export const useSeatData = (
               const normalizedSeatLabel = seat.seatLabel.replace('-', '');
 
               initialMap[normalizedSeatLabel] = {
-                grade,
+                priceGrade,
                 isAvailable: seat.saleStatus === 'AVAILABLE',
                 sessionSeatId: seat.sessionSeatId,
                 detailedInfo,

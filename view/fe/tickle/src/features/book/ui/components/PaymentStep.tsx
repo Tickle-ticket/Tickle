@@ -17,7 +17,7 @@ interface PaymentStepProps {
   onError: (title: string, message: string) => void;
 }
 
-const gradeDotColors: Record<string, string> = {
+const priceGradeDotColors: Record<string, string> = {
   'VIP': 'grade-dot-vip',
   'R': 'grade-dot-r',
   'S': 'grade-dot-s',
@@ -37,11 +37,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
-  const gradeTicketCounts = useBookStore((s: any) => s.gradeTicketCounts);
+  const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
 
-  const [buyerName, setBuyerName] = useState(userProfile?.nickname || '');
-  const [buyerEmail, setBuyerEmail] = useState('');
-  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerName, setBuyerName] = useState(userProfile?.name || userProfile?.nickname || '');
+  const [buyerEmail, setBuyerEmail] = useState(userProfile?.email || '');
+  const [buyerPhone, setBuyerPhone] = useState(userProfile?.phoneNumber || '');
 
   const [agreeAll, setAgreeAll] = useState(false);
   const [agreeTerm1, setAgreeTerm1] = useState(false);
@@ -51,27 +51,28 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
   const [payCategory, setPayCategory] = useState<'pay' | 'other'>('pay');
   const [selectedPayMethod, setSelectedPayMethod] = useState<string | null>(null);
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (userProfile) {
-      setBuyerName(userProfile.nickname || '');
+      setBuyerName(userProfile.name || userProfile.nickname || '');
+      setBuyerEmail(userProfile.email || '');
+      setBuyerPhone(userProfile.phoneNumber || '');
     }
   }, [userProfile]);
 
-  // 등급별 좌석 그룹화 (UI 용)
-  const gradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, any[]> = {};
   optionsData.seats.forEach(seat => {
-    if (!gradeSeats[seat.grade]) gradeSeats[seat.grade] = [];
-    gradeSeats[seat.grade].push(seat);
+    if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
+    priceGradeSeats[seat.priceGrade].push(seat);
   });
 
-  const ticketPrice = Object.entries(gradeSeats).reduce((sum, [grade, seats]) => {
+  const ticketPrice = Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
     const baseSeat = seats[0];
     const types = baseSeat.discountInfo;
-      
-    const counts = gradeTicketCounts[grade] || {};
+
+    const counts = priceGradeTicketCounts[priceGrade] || {};
     return sum + Object.entries(counts).reduce((s, [typeId, count]: [string, any]) => {
       const type = types.find((t: any) => t.discountName === typeId);
       const typePrice = type ? type.ticketPriceAmount : baseSeat.priceAmount;
@@ -120,7 +121,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       disabled: true
     },
   ];
-  
+
   const otherMethods = [
     {
       id: 'credit',
@@ -159,7 +160,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       window.location.href = '/login';
       return;
     }
-    
+
     setIsProcessing(true);
     try {
       const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
@@ -197,7 +198,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       }
     } catch (err: any) {
       console.error('Payment failed', err);
-      
+
       if (err.status === 400) {
         onError('요청 오류', '지원하지 않는 결제 수단이거나 잘못된 요청입니다.');
       } else if (err.status === 404) {
@@ -207,7 +208,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       } else {
         onError('결제 오류', err.message || '결제 처리 중 오류가 발생했습니다.');
       }
-      
+
       setIsProcessing(false);
     }
   };
@@ -386,11 +387,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                             disabled={m.disabled}
                             onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
                             className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
-                                ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
-                                : `hover:z-10 ${selectedPayMethod === m.id
-                                  ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                  : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
-                                }`
+                              ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
+                              : `hover:z-10 ${selectedPayMethod === m.id
+                                ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
+                                : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
+                              }`
                               }`}
                           >
                             {m.icon}
@@ -427,11 +428,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                             disabled={m.disabled}
                             onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
                             className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
-                                ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
-                                : `hover:z-10 ${selectedPayMethod === m.id
-                                  ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                  : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
-                                }`
+                              ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
+                              : `hover:z-10 ${selectedPayMethod === m.id
+                                ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
+                                : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
+                              }`
                               }`}
                           >
                             {m.icon}
@@ -457,10 +458,10 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">좌석 정보</h3>
             </div>
             <div className="divide-y divide-gray-100 dark:divide-zinc-800">
-              {Object.entries(gradeSeats).map(([grade, seats]) => {
-                const dotClass = gradeDotColors[grade] || 'bg-gray-400';
-                const counts = gradeTicketCounts[grade] || {};
-                let gradeTotalPrice = 0;
+              {Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
+                const dotClass = priceGradeDotColors[priceGrade] || 'bg-gray-400';
+                const counts = priceGradeTicketCounts[priceGrade] || {};
+                let priceGradeTotalPrice = 0;
 
                 const baseSeat = seats[0];
                 const types = baseSeat.discountInfo;
@@ -468,16 +469,16 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 Object.entries(counts).forEach(([typeId, count]: [string, any]) => {
                   const typeInfo = types.find((t: any) => t.discountName === typeId);
                   if (typeInfo) {
-                    gradeTotalPrice += (count as number) * typeInfo.ticketPriceAmount;
+                    priceGradeTotalPrice += (count as number) * typeInfo.ticketPriceAmount;
                   }
                 });
 
                 return (
-                  <div key={grade} className="px-6 py-4 flex items-center justify-between">
+                  <div key={priceGrade} className="px-6 py-4 flex items-center justify-between">
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
                         <span className={`w-3 h-3 rounded-full ${dotClass}`} />
-                        <span className="font-bold text-gray-900 dark:text-white text-[15px]">{grade}석</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-[15px]">{priceGrade}석</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2.5 ml-5 mt-0.5">
                         <span className="text-[13px] text-gray-500 leading-none">{seats.map(s => s.seatLabel).join(', ')}</span>
@@ -493,7 +494,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                       </div>
                     </div>
                     <span className="font-extrabold text-gray-900 dark:text-white text-sm">
-                      {gradeTotalPrice > 0 ? `${gradeTotalPrice.toLocaleString()}원` : ''}
+                      {priceGradeTotalPrice > 0 ? `${priceGradeTotalPrice.toLocaleString()}원` : ''}
                     </span>
                   </div>
                 );

@@ -8,7 +8,7 @@ export const SeatItemResponseSchema = Schema.Struct({
   seatLabel: Schema.String,
   saleStatus: Schema.Literal('AVAILABLE', 'HELD', 'PENDING', 'CONFIRMED', 'REALLOCATING', 'BLOCKED', 'UNAVAILABLE'),
   price: Schema.Number,
-  grade: Schema.String,
+  priceGrade: Schema.String,
   waitingCount: Schema.optional(Schema.Number),
   waitable: Schema.optional(Schema.Boolean),
 });

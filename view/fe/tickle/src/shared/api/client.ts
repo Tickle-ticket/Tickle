@@ -8,6 +8,7 @@ import {
   clearWaitQueue,
   refreshAccessToken,
   getAccessToken,
+  clearTokens,
 } from './tokenManager';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -149,13 +150,21 @@ const handle401 = async <T>(
       // 내 원래 요청도 재시도
       return apiClient<T>(path, options, true);
     } else {
-      // 갱신 실패 시 큐 비우고 에러 투척
+      // 갱신 실패 시 큐 비우고, 로컬 스토리지 비우고, 로그인 페이지로 강제 이동
       clearWaitQueue();
-      throw new ApiError('리프레시 토큰이 만료되었습니다.', 401);
+      clearTokens();
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+      throw new ApiError('리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.', 401);
     }
   } catch (error) {
     setIsRefreshing(false);
     clearWaitQueue();
+    clearTokens();
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
     throw error;
   }
 };

@@ -36,8 +36,8 @@ interface BookingState {
 
   // Ticket Types (counts per grade per type)
   // e.g. { 'R': { 'adult': 2, 'child': 1 } }
-  gradeTicketCounts: Record<string, Record<string, number>>;
-  setGradeTicketCounts: (counts: Record<string, Record<string, number>> | ((prev: Record<string, Record<string, number>>) => Record<string, Record<string, number>>)) => void;
+  priceGradeTicketCounts: Record<string, Record<string, number>>;
+  setPriceGradeTicketCounts: (counts: Record<string, Record<string, number>> | ((prev: Record<string, Record<string, number>>) => Record<string, Record<string, number>>)) => void;
 
   // Payment Form
   buyerName: string;
@@ -72,7 +72,7 @@ const initialState = {
   selectedSeats: new Set<string>(),
   selectedSeatsToCancel: new Set<string>(),
   isModifyModeActive: false,
-  gradeTicketCounts: {},
+  priceGradeTicketCounts: {},
   buyerName: '',
   buyerEmail: '',
   buyerPhone: '',
@@ -111,8 +111,8 @@ export const useBookStore = create<BookingState>((set, get) => ({
   
   setIsModifyModeActive: (isActive) => set({ isModifyModeActive: isActive }),
 
-  setGradeTicketCounts: (updater) => set((state) => ({
-    gradeTicketCounts: typeof updater === 'function' ? updater(state.gradeTicketCounts) : updater
+  setPriceGradeTicketCounts: (updater) => set((state) => ({
+    priceGradeTicketCounts: typeof updater === 'function' ? updater(state.priceGradeTicketCounts) : updater
   })),
 
   setBuyerName: (name) => set({ buyerName: name }),

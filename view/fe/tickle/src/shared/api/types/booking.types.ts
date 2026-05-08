@@ -15,7 +15,7 @@ export interface BookingPreorderRequest {
 export const BookingPreorderSeatResponseSchema = Schema.Struct({
   sessionSeatId: Schema.Number,
   seatLabel: Schema.String,
-  discountName: Schema.String,
+  discountName: Schema.NullOr(Schema.String),
   ticketPriceAmount: Schema.Number,
   serviceFeeAmount: Schema.Number,
   finalPriceAmount: Schema.Number,
@@ -45,39 +45,16 @@ export const DiscountOptionResponseSchema = Schema.Struct({
   ticketPriceAmount: Schema.Number,
 });
 
-export const BookingSeatOptionResponseSchema = Schema.transform(
-  Schema.Struct({
-    sessionSeatId: Schema.Number,
-    seatLabel: Schema.String,
-    rowLabel: Schema.optional(Schema.String),
-    seatNumber: Schema.optional(Schema.String),
-    eventPricePolicyId: Schema.optional(Schema.Number),
-    grade: Schema.optional(Schema.String),
-    priceGrade: Schema.optional(Schema.String),
-    priceAmount: Schema.Number,
-    discountInfo: Schema.Array(DiscountOptionResponseSchema),
-  }),
-  Schema.Struct({
-    sessionSeatId: Schema.Number,
-    seatLabel: Schema.String,
-    rowLabel: Schema.optional(Schema.String),
-    seatNumber: Schema.optional(Schema.String),
-    eventPricePolicyId: Schema.optional(Schema.Number),
-    grade: Schema.String,
-    priceAmount: Schema.Number,
-    discountInfo: Schema.Array(DiscountOptionResponseSchema),
-  }),
-  {
-    decode: (input: any) => ({
-      ...input,
-      grade: input.grade || input.priceGrade || '일반'
-    }),
-    encode: (output: any) => ({
-      ...output,
-      priceGrade: output.grade
-    })
-  }
-);
+export const BookingSeatOptionResponseSchema = Schema.Struct({
+  sessionSeatId: Schema.Number,
+  seatLabel: Schema.String,
+  rowLabel: Schema.optional(Schema.String),
+  seatNumber: Schema.optional(Schema.String),
+  eventPricePolicyId: Schema.optional(Schema.Number),
+  priceGrade: Schema.String,
+  priceAmount: Schema.Number,
+  discountInfo: Schema.Array(DiscountOptionResponseSchema),
+});
 
 export const BookingOptionsResponseSchema = Schema.Struct({
   eventId: Schema.Union(Schema.Number, Schema.NumberFromString),
@@ -88,3 +65,4 @@ export const BookingOptionsResponseSchema = Schema.Struct({
 });
 
 export type BookingOptionsResponse = Schema.Schema.Type<typeof BookingOptionsResponseSchema>;
+export type BookingSeatOptionResponse = Schema.Schema.Type<typeof BookingSeatOptionResponseSchema>;

@@ -6,14 +6,14 @@ import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
 interface TicketTypeStepProps {
   optionsData: BookingOptionsResponse;
   onSubmitPreorder: (
-    seatIds: number[], 
-    optionSelections: { sessionSeatId: number; discountName: string }[]
+    seatIds: number[],
+    optionSelections: { sessionSeatId: number; discountName: string | null }[]
   ) => Promise<any>;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
-const gradeDotColors: Record<string, string> = {
+const priceGradeDotColors: Record<string, string> = {
   'VIP': 'grade-dot-vip',
   'R': 'grade-dot-r',
   'S': 'grade-dot-s',
@@ -26,32 +26,35 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   onCancel,
   isSubmitting = false,
 }) => {
-  const gradeTicketCounts = useBookStore((s: any) => s.gradeTicketCounts);
-  const setGradeTicketCounts = useBookStore((s: any) => s.setGradeTicketCounts);
+  const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
+  const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
 
-  const [openGrade, setOpenGrade] = useState<string | null>(null);
+  const [openPriceGrade, setOpenPriceGrade] = useState<string | null>(null);
 
   // Group seats by grade from the backend optionsData
-  const gradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, any[]> = {};
   optionsData.seats.forEach(seat => {
-    if (!gradeSeats[seat.grade]) gradeSeats[seat.grade] = [];
-    gradeSeats[seat.grade].push(seat);
+    if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
+    priceGradeSeats[seat.priceGrade].push(seat);
   });
 
-  const getGradeTotal = (grade: string) => {
-    const counts = gradeTicketCounts[grade] || {};
+  const getPriceGradeTotal = (priceGrade: string) => {
+    const counts = priceGradeTicketCounts[priceGrade] || {};
     return Object.values(counts).reduce((s: number, n: any) => s + (n as number), 0);
   };
 
-  const getGradePrice = (grade: string) => {
-    const seatsInGrade = gradeSeats[grade] || [];
+  const getPriceGradePrice = (priceGrade: string) => {
+    const seatsInGrade = priceGradeSeats[priceGrade] || [];
     if (seatsInGrade.length === 0) return 0;
-    
+
     // We assume all seats in the same grade share the same base price and discounts
     const baseSeat = seatsInGrade[0];
-    const types = baseSeat.discountInfo;
-      
-    const counts = gradeTicketCounts[grade] || {};
+    let types = baseSeat.discountInfo || [];
+    if (types.length === 0) {
+      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: baseSeat.priceAmount }];
+    }
+
+    const counts = priceGradeTicketCounts[priceGrade] || {};
     return Object.entries(counts).reduce((sum, [typeId, count]: [string, any]) => {
       const type = types.find((t: any) => t.discountName === typeId);
       const typePrice = type ? type.ticketPriceAmount : baseSeat.priceAmount;
@@ -59,44 +62,44 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
     }, 0);
   };
 
-  const totalPrice = Object.keys(gradeSeats).reduce((sum, grade) => sum + getGradePrice(grade), 0);
+  const totalPrice = Object.keys(priceGradeSeats).reduce((sum, priceGrade) => sum + getPriceGradePrice(priceGrade), 0);
   const originalPrice = optionsData.seats.reduce((sum, seat) => sum + seat.priceAmount, 0);
   const discountAmount = originalPrice - totalPrice;
 
-  const handleCount = (grade: string, typeId: string, delta: number) => {
-    setGradeTicketCounts((prev: any) => {
-      const gradeCounts = { ...(prev[grade] || {}) };
-      const current = gradeCounts[typeId] || 0;
+  const handleCount = (priceGrade: string, typeId: string, delta: number) => {
+    setPriceGradeTicketCounts((prev: any) => {
+      const priceGradeCounts = { ...(prev[priceGrade] || {}) };
+      const current = priceGradeCounts[typeId] || 0;
       const newVal = Math.max(0, current + delta);
-      const maxForGrade = gradeSeats[grade].length;
-      
-      const otherTotal = Object.entries(gradeCounts)
+      const maxForPriceGrade = priceGradeSeats[priceGrade].length;
+
+      const otherTotal = Object.entries(priceGradeCounts)
         .filter(([id]) => id !== typeId)
         .reduce((s: number, [, n]: [string, any]) => s + (n as number), 0);
-        
-      if (otherTotal + newVal > maxForGrade) return prev;
-      
-      gradeCounts[typeId] = newVal;
-      return { ...prev, [grade]: gradeCounts };
+
+      if (otherTotal + newVal > maxForPriceGrade) return prev;
+
+      priceGradeCounts[typeId] = newVal;
+      return { ...prev, [priceGrade]: priceGradeCounts };
     });
   };
 
   const handleSubmit = () => {
-    // Convert gradeTicketCounts into optionSelections array expected by backend
-    const optionSelections: { sessionSeatId: number; discountName: string }[] = [];
+    // Convert priceGradeTicketCounts into optionSelections array expected by backend
+    const optionSelections: { sessionSeatId: number; discountName: string | null }[] = [];
     const seatIds = optionsData.seats.map(s => s.sessionSeatId);
-    
+
     // Distribute selected discount types to the seats in each grade
-    Object.entries(gradeSeats).forEach(([grade, seats]) => {
-      const counts = gradeTicketCounts[grade] || {};
+    Object.entries(priceGradeSeats).forEach(([priceGrade, seats]) => {
+      const counts = priceGradeTicketCounts[priceGrade] || {};
       let seatIndex = 0;
-      
+
       Object.entries(counts).forEach(([discountName, count]: [string, any]) => {
         for (let i = 0; i < (count as number); i++) {
           if (seatIndex < seats.length) {
             optionSelections.push({
               sessionSeatId: seats[seatIndex].sessionSeatId,
-              discountName
+              discountName: discountName === '일반' ? null : discountName
             });
             seatIndex++;
           }
@@ -107,7 +110,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
     onSubmitPreorder(seatIds, optionSelections);
   };
 
-  const isAllSeatsAssigned = Object.keys(gradeSeats).every(g => getGradeTotal(g) === gradeSeats[g].length);
+  const isAllSeatsAssigned = Object.keys(priceGradeSeats).every(g => getPriceGradeTotal(g) === priceGradeSeats[g].length);
 
   return (
     <div className="absolute inset-0 bg-gray-50 dark:bg-zinc-950 flex flex-col z-30 animate-fade-in">
@@ -130,22 +133,22 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       <div className="flex-1 overflow-y-auto px-3 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <p className="text-sm text-gray-500 mb-5 px-3">좌석 등급별로 관람 인원 유형을 선택해주세요.</p>
         <div className="flex flex-col gap-3">
-          {Object.entries(gradeSeats).map(([grade, seats]) => {
+          {Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
             const maxCount = seats.length;
-            const currentTotal = getGradeTotal(grade);
-            const dotClass = gradeDotColors[grade] || 'bg-gray-400';
+            const currentTotal = getPriceGradeTotal(priceGrade);
+            const dotClass = priceGradeDotColors[priceGrade] || 'bg-gray-400';
             const isFull = currentTotal >= maxCount;
 
             return (
-              <div key={grade} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+              <div key={priceGrade} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
                 <Accordion
-                  isOpen={openGrade === grade}
-                  onToggle={(isOpen) => setOpenGrade(isOpen ? grade : null)}
+                  isOpen={openPriceGrade === priceGrade}
+                  onToggle={(isOpen) => setOpenPriceGrade(isOpen ? priceGrade : null)}
                   title={
                     <div className="flex items-center justify-between w-full pr-2">
                       <div className="flex items-center gap-3">
                         <span className={`w-3.5 h-3.5 rounded-full ${dotClass}`} />
-                        <span className="font-bold text-gray-900 dark:text-white text-[15px]">{grade}석</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-[15px]">{priceGrade}석</span>
                         <span className="text-xs text-gray-400 font-medium">{seats.map(s => s.seatLabel).join(', ')}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -162,10 +165,19 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                   <div className="flex flex-col gap-2 px-1">
                     {(() => {
                       const baseSeat = seats[0];
-                      const types = baseSeat.discountInfo;
+                      let types = baseSeat.discountInfo || [];
+                      
+                      // 백엔드에서 할인 정보나 기본 '일반' 권종을 안 내려줬을 경우를 위한 방어 로직
+                      if (types.length === 0) {
+                        types = [{
+                          discountName: '일반',
+                          discountRate: 0,
+                          ticketPriceAmount: baseSeat.priceAmount
+                        }];
+                      }
 
                       return types.map((type: any) => {
-                        const count = gradeTicketCounts[grade]?.[type.discountName] || 0;
+                        const count = priceGradeTicketCounts[priceGrade]?.[type.discountName] || 0;
                         const typePrice = type.ticketPriceAmount;
                         const canAdd = currentTotal < maxCount;
                         const canRemove = count > 0;
@@ -193,7 +205,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                             </div>
                             <div className="flex items-center gap-3">
                               <button
-                                onClick={() => handleCount(grade, type.discountName, -1)}
+                                onClick={() => handleCount(priceGrade, type.discountName, -1)}
                                 disabled={!canRemove}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold transition-all ${canRemove
                                   ? 'bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 active:scale-90'
@@ -205,7 +217,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                               <span className={`w-6 text-center font-extrabold text-[16px] ${count > 0 ? 'text-blue-600' : 'text-gray-400'
                                 }`}>{count}</span>
                               <button
-                                onClick={() => handleCount(grade, type.discountName, 1)}
+                                onClick={() => handleCount(priceGrade, type.discountName, 1)}
                                 disabled={!canAdd}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold transition-all ${canAdd
                                   ? 'bg-blue-500 text-white hover:bg-blue-600 active:scale-90'

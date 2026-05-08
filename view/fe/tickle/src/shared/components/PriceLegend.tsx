@@ -2,7 +2,7 @@ import React from 'react';
 import type { DiscountInfo } from '@/src/shared/api/types/event.types';
 
 export interface GradePrice {
-  grade: string;
+  priceGrade: string;
   price: number;
   discountInfo?: DiscountInfo[];
 }
@@ -43,8 +43,8 @@ export const PriceLegend = ({ prices, viewMode = 'grade' }: PriceLegendProps) =>
               {prices.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
-                    <span className={`block w-3 h-3 shrink-0 rounded-full ${GRADE_COLORS[item.grade] || 'bg-[var(--seat-gray-top)]'}`}></span>
-                    <span className="font-bold text-gray-700 dark:text-gray-300">{item.grade}석</span>
+                    <span className={`block w-3 h-3 shrink-0 rounded-full ${GRADE_COLORS[item.priceGrade] || 'bg-[var(--seat-gray-top)]'}`}></span>
+                    <span className="font-bold text-gray-700 dark:text-gray-300">{item.priceGrade}석</span>
                   </div>
                   <span className="font-bold">{item.price.toLocaleString()}원</span>
                 </div>

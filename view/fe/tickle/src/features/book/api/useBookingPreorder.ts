@@ -36,7 +36,7 @@ export const useBookingPreorder = () => {
     eventId: number,
     sessionId: number,
     seatIds: number[],
-    optionSelections: { sessionSeatId: number; discountName: string }[]
+    optionSelections: { sessionSeatId: number; discountName: string | null }[]
   ) => {
     setIsPreorderLoading(true);
     try {

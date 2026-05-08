@@ -1052,13 +1052,13 @@ export default function AgencyRegistrationPage() {
   };
 
   const handleSeatPriceChange =
-    (grade: SeatGradeKey) =>
+    (priceGrade: SeatGradeKey) =>
     (event: ChangeEvent<HTMLInputElement>) => {
       const digitsOnly = event.target.value.replace(/\D/g, '');
 
       setSeatPrices((current) => ({
         ...current,
-        [grade]: digitsOnly,
+        [priceGrade]: digitsOnly,
       }));
     };
 
@@ -1274,7 +1274,7 @@ export default function AgencyRegistrationPage() {
     }
 
     const seatGroups = (['VIP', 'R', 'S', 'A', 'RESTRICTED_VIEW'] as const)
-      .map((grade) => {
+      .map((priceGrade) => {
         const seatIds = STAGE_4001_SEAT_IDS.flatMap((seatLabel) => {
           const assignment = seatPolicy[seatLabel];
 
@@ -1282,13 +1282,13 @@ export default function AgencyRegistrationPage() {
             return [];
           }
 
-          return seatPolicyGradeToApiGrade[assignment] === grade
+          return seatPolicyGradeToApiGrade[assignment] === priceGrade
             ? [mockSeatIdByLabel.get(seatLabel) ?? -1]
             : [];
         }).filter((seatId) => seatId > 0);
 
         return {
-          grade,
+          priceGrade,
           seatIds,
         };
       })
@@ -1299,7 +1299,7 @@ export default function AgencyRegistrationPage() {
       return;
     }
 
-    const usedPriceGrades = new Set(seatGroups.map((seatGroup) => seatGroup.grade));
+    const usedPriceGrades = new Set(seatGroups.map((seatGroup) => seatGroup.priceGrade));
     const missingPriceField = seatGradeFields.find(
       ({ key }) =>
         usedPriceGrades.has(seatPriceGradeToApiGrade[key]) &&
@@ -1314,7 +1314,7 @@ export default function AgencyRegistrationPage() {
     const pricePolicies = seatGradeFields
       .filter(({ key }) => usedPriceGrades.has(seatPriceGradeToApiGrade[key]))
       .map(({ key }, index) => ({
-        grade: seatPriceGradeToApiGrade[key],
+        priceGrade: seatPriceGradeToApiGrade[key],
         priceAmount: Number(seatPrices[key]),
         discountInfo: [],
         currencyCode: 'KRW',
