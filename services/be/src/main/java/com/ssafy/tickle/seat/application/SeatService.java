@@ -1,6 +1,7 @@
 package com.ssafy.tickle.seat.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.RedisLockManager;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
