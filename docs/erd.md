@@ -41,8 +41,8 @@
 | title | VARCHAR(255) | ✅ | |
 | event_start_at | TIMESTAMP | ✅ | |
 | event_end_at | TIMESTAMP | ✅ | |
-| sales_start_at | TIMESTAMP | ✅ | |
-| sales_end_at | TIMESTAMP | ✅ | |
+| sales_start_at | TIMESTAMP | ❌ | |
+| sales_end_at | TIMESTAMP | ❌ | |
 | metadata | TEXT | ❌ | |
 | notice | TEXT | ❌ | |
 | status | VARCHAR(30) | ✅ | DEFAULT 'PENDING' / PENDING, OPENED, CLOSED, FINISHED, CANCELLED |
