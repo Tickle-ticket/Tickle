@@ -426,8 +426,8 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                           };
                           return (
                             <div className="flex items-center gap-3">
-                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.grade] || 'bg-gray-200'}`} />
-                              <Text typography="t5" fontWeight="bold" color="primary">{row.grade}</Text>
+                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.priceGrade] || 'bg-gray-200'}`} />
+                              <Text typography="t5" fontWeight="bold" color="primary">{row.priceGrade}</Text>
                             </div>
                           );
                         }
@@ -525,7 +525,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView
-            eventId={data?.eventId || '1'}
+            eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
             scope={(flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') ? 'CANCELLATION_WAIT' : 'BOOKING'}
             onAdmitted={(token) => {
               setAdmitToken(token);

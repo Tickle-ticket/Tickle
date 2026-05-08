@@ -84,6 +84,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const [isHolding, setIsHolding] = useState(false);
   const [errorModalConfig, setErrorModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm?: () => void, confirmText?: string, showCancelButton?: boolean }>({ isOpen: false, title: '', message: '' });
 
   const handleCloseErrorModal = () => {
@@ -109,7 +110,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       eventDate: toBehaviorEventDate(confirmedSchedule?.date),
     },
   });
-  const setGradeTicketCounts = useBookStore(s => s.setGradeTicketCounts);
+  const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
 
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
@@ -314,7 +315,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       if (bookingStep === 'TICKET_TYPE' && !isSelected) {
         seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
       } else {
-        const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode) ? 'disabled' : info.grade.toLowerCase());
+        const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode) ? 'disabled' : info.priceGrade.toLowerCase());
         const finalColor = (viewMode === 'congestion' && congestion !== 'none') ? congestion : gradeColor;
         seatsData[seatId] = { status, isSelected, color: finalColor as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
       }
@@ -324,14 +325,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const getSeatInfo = (seatId: string) => {
     if (initialSeats.includes(seatId)) {
       const match = seatId.match(/^[a-zA-Z]+/);
-      let grade = match ? match[0].toUpperCase() : 'VIP';
-      if (grade === 'V') grade = 'VIP';
-      const price = eventDetail?.zonePrices.find(p => p.grade === grade)?.price || 0;
-      return { grade, price };
+      let priceGrade = match ? match[0].toUpperCase() : 'VIP';
+      if (priceGrade === 'V') priceGrade = 'VIP';
+      const price = eventDetail?.zonePrices.find(p => p.priceGrade === priceGrade)?.price || 0;
+      return { priceGrade, price };
     }
-    const grade = seatAvailability?.[seatId]?.grade || '일반';
-    const price = eventDetail?.zonePrices.find(p => p.grade === grade)?.price || 0;
-    return { grade, price };
+    const priceGrade = seatAvailability?.[seatId]?.priceGrade || '일반';
+    const price = eventDetail?.zonePrices.find(p => p.priceGrade === priceGrade)?.price || 0;
+    return { priceGrade, price };
   };
 
   const getDetailedSeatInfo = (seatId: string) => {
@@ -383,6 +384,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     }
 
     try {
+      setIsHolding(true);
       const sessionSeatIds = Array.from(selectedSeats)
         .map(seatId => seatsData[seatId]?.sessionSeatId)
         .filter(Boolean) as number[];
@@ -405,14 +407,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
         const gradeCounts: Record<string, number> = {};
         Array.from(selectedSeats).forEach(seatId => {
-          const { grade } = getSeatInfo(seatId);
-          gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
+          const { priceGrade } = getSeatInfo(seatId);
+          gradeCounts[priceGrade] = (gradeCounts[priceGrade] || 0) + 1;
         });
         const initial: Record<string, Record<string, number>> = {};
-        Object.entries(gradeCounts).forEach(([grade]) => {
-          initial[grade] = {};
+        Object.entries(gradeCounts).forEach(([priceGrade]) => {
+          initial[priceGrade] = {};
         });
-        setGradeTicketCounts(initial);
+        setPriceGradeTicketCounts(initial);
 
         // 🔥 인원 선택(권종) 단계로 넘어가기 직전에 데이터 수집 완전 종료 및 전송!
         await finalizeTrial();
@@ -429,6 +431,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       } else {
         setErrorModalConfig({ isOpen: true, title: '오류 발생', message: err.message || '좌석 옵션 정보를 불러오는 데 실패했습니다.' });
       }
+    } finally {
+      setIsHolding(false);
     }
   };
 
@@ -537,6 +541,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               effectiveSeatsToCancel={effectiveSeatsToCancel}
               scheduleId={scheduleId}
               onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
+              isSubmitting={isHolding || isOptionsLoading}
             />
           )}
 

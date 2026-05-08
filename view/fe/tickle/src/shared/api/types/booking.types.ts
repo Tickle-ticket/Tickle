@@ -15,7 +15,7 @@ export interface BookingPreorderRequest {
 export const BookingPreorderSeatResponseSchema = Schema.Struct({
   sessionSeatId: Schema.Number,
   seatLabel: Schema.String,
-  discountName: Schema.String,
+  discountName: Schema.NullOr(Schema.String),
   ticketPriceAmount: Schema.Number,
   serviceFeeAmount: Schema.Number,
   finalPriceAmount: Schema.Number,
@@ -65,3 +65,4 @@ export const BookingOptionsResponseSchema = Schema.Struct({
 });
 
 export type BookingOptionsResponse = Schema.Schema.Type<typeof BookingOptionsResponseSchema>;
+export type BookingSeatOptionResponse = Schema.Schema.Type<typeof BookingSeatOptionResponseSchema>;

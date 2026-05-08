@@ -6,11 +6,11 @@ const buildRemainingSeats = (date: string, time: string) => {
   const mockSeats = getMockSeatsForSchedule(scheduleId);
   const counts: Record<string, number> = { VIP: 0, R: 0, S: 0, A: 0 };
   Object.values(mockSeats).forEach(seat => {
-    if (seat.isAvailable && counts[seat.grade] !== undefined) {
-      counts[seat.grade]++;
+    if (seat.isAvailable && counts[seat.priceGrade] !== undefined) {
+      counts[seat.priceGrade]++;
     }
   });
-  return Object.entries(counts).map(([grade, count]) => ({ grade, count }));
+  return Object.entries(counts).map(([priceGrade, count]) => ({ priceGrade, count }));
 };
 
 export const eventHandlers = [

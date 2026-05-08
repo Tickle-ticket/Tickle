@@ -31,16 +31,16 @@ const SEAT_GRADE_MAP: Record<string, string> = {
 };
 
 // 회차별 좌석 상태를 저장하는 메모리 저장소
-export const scheduleMockSeats: Record<string, Record<string, { grade: string; isAvailable: boolean }>> = {};
+export const scheduleMockSeats: Record<string, Record<string, { priceGrade: string; isAvailable: boolean }>> = {};
 
 export const getMockSeatsForSchedule = (scheduleId: string) => {
   if (!scheduleMockSeats[scheduleId]) {
-    const mockSeats: Record<string, { grade: string; isAvailable: boolean }> = {};
+    const mockSeats: Record<string, { priceGrade: string; isAvailable: boolean }> = {};
     // 회차마다 다른 예약 확률을 적용하여 다르게 보이도록 함 (20% ~ 60% 랜덤)
     const bookedRatio = 0.2 + Math.random() * 0.4;
     
-    Object.entries(SEAT_GRADE_MAP).forEach(([seatId, grade]) => {
-      mockSeats[seatId] = { grade, isAvailable: Math.random() > bookedRatio };
+    Object.entries(SEAT_GRADE_MAP).forEach(([seatId, priceGrade]) => {
+      mockSeats[seatId] = { priceGrade, isAvailable: Math.random() > bookedRatio };
     });
     scheduleMockSeats[scheduleId] = mockSeats;
   }
@@ -93,24 +93,24 @@ export const seatHandlers = [
       const rowLabel = seatLabel.match(/^[a-zA-Z]+/)?.[0] || 'A';
       const seatNumber = seatLabel.replace(/^[a-zA-Z]+/, '');
       
-      if (!sectionsRecord[info.grade]) {
-        sectionsRecord[info.grade] = [];
+      if (!sectionsRecord[info.priceGrade]) {
+        sectionsRecord[info.priceGrade] = [];
       }
       
-      sectionsRecord[info.grade].push({
+      sectionsRecord[info.priceGrade].push({
         sessionSeatId: 1000 + index,
         eventSeatId: 2000 + index,
         rowLabel,
         seatNumber,
         seatLabel,
         saleStatus: info.isAvailable ? 'AVAILABLE' : 'RESERVED',
-        price: info.grade === 'VIP' ? 170000 : (info.grade === 'R' ? 140000 : (info.grade === 'S' ? 110000 : 80000))
+        price: info.priceGrade === 'VIP' ? 170000 : (info.priceGrade === 'R' ? 140000 : (info.priceGrade === 'S' ? 110000 : 80000))
       });
     });
 
-    const sections = Object.entries(sectionsRecord).map(([grade, seats], idx) => ({
+    const sections = Object.entries(sectionsRecord).map(([priceGrade, seats], idx) => ({
       sectionId: idx + 1,
-      sectionName: `${grade}석`,
+      sectionName: `${priceGrade}석`,
       displayOrder: idx + 1,
       seats
     }));

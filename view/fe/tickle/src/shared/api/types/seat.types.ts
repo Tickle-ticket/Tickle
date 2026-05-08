@@ -8,6 +8,7 @@ export const SeatItemResponseSchema = Schema.Struct({
   seatLabel: Schema.String,
   saleStatus: Schema.Literal('AVAILABLE', 'HELD', 'PENDING', 'CONFIRMED', 'REALLOCATING', 'BLOCKED', 'UNAVAILABLE'),
   price: Schema.Number,
+  priceGrade: Schema.String,
   waitingCount: Schema.optional(Schema.Number),
   waitable: Schema.optional(Schema.Boolean),
 });
@@ -37,7 +38,8 @@ export const SeatHoldRequestSchema = Schema.Struct({
 export type SeatHoldRequest = Schema.Schema.Type<typeof SeatHoldRequestSchema>;
 
 export const SeatHoldResponseSchema = Schema.Struct({
-  heldSeats: Schema.Array(SeatItemResponseSchema),
+  heldSessionSeatIds: Schema.Array(Schema.Number),
+  expiresAt: Schema.String,
 });
 
 export type SeatHoldResponse = Schema.Schema.Type<typeof SeatHoldResponseSchema>;

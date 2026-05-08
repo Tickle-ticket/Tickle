@@ -22,13 +22,14 @@ interface SeatSelectionPanelProps {
   initialSeats: string[];
   initialSchedule: any;
   isWaitlistMode: boolean;
-  getSeatInfo: (seatId: string) => { grade: string; price: number };
+  getSeatInfo: (seatId: string) => { priceGrade: string; price: number };
   getDetailedSeatInfo: (seatId: string) => string;
   handleNextStep: (e: React.MouseEvent) => void;
   onClose: () => void;
   effectiveSeatsToCancel: Set<string>;
   scheduleId: string | null;
   onError: (title: string, message: string) => void;
+  isSubmitting?: boolean;
 }
 
 export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
@@ -58,7 +59,8 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
   onClose,
   effectiveSeatsToCancel,
   scheduleId,
-  onError
+  onError,
+  isSubmitting = false
 }) => {
 
   return (
@@ -159,10 +161,10 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
 
                         return (
                           <span
-                            key={seat.grade}
-                            className={`flex items-center gap-0.5 px-1 py-[1px] rounded-[4px] text-[10px] border ${gradeColors[seat.grade] || defaultColor}`}
+                            key={seat.priceGrade}
+                            className={`flex items-center gap-0.5 px-1 py-[1px] rounded-[4px] text-[10px] border ${gradeColors[seat.priceGrade] || defaultColor}`}
                           >
-                            <span className="font-extrabold">{seat.grade}</span>
+                            <span className="font-extrabold">{seat.priceGrade}</span>
                             <span>{seat.count}</span>
                           </span>
                         );
@@ -246,7 +248,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
           ) : (
             <div className="flex flex-col animate-fade-in pb-4">
               {Array.from(cartSeats).map(seatId => {
-                const { grade, price } = getSeatInfo(seatId);
+                const { priceGrade, price } = getSeatInfo(seatId);
 
                 const gradeDotColors: Record<string, string> = {
                   'VIP': 'grade-dot-vip',
@@ -254,7 +256,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                   'S': 'grade-dot-s',
                   'A': 'grade-dot-a',
                 };
-                const dotClass = gradeDotColors[grade] || 'bg-gray-400';
+                const dotClass = gradeDotColors[priceGrade] || 'bg-gray-400';
 
                 return (
                   <div
@@ -271,7 +273,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                       )}
                       <div className="flex items-center gap-2">
                         <span className={`w-3 h-3 rounded-full ${dotClass}`}></span>
-                        <span className="font-black text-gray-900 dark:text-white text-base">{grade}석</span>
+                        <span className="font-black text-gray-900 dark:text-white text-base">{priceGrade}석</span>
                         {isModifyModeActive && initialSeats.includes(seatId) && (
                           <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold">
                             기존
@@ -363,9 +365,14 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                     onClose();
                   }
                 }}
-                className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
+                disabled={isSubmitting}
+                className={`px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-md ${
+                  isSubmitting 
+                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-blue-600/20'
+                }`}
               >
-                {selectedSeats.size > 0 ? (isWaitlistMode ? '대기하기' : '인원 선택') : '변경 사항 저장'}
+                {isSubmitting ? '처리 중...' : selectedSeats.size > 0 ? (isWaitlistMode ? '대기하기' : '인원 선택') : '변경 사항 저장'}
               </button>
             </>
           ) : (
@@ -388,9 +395,14 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                   }
                   handleNextStep(e);
                 }}
-                className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20"
+                disabled={isSubmitting}
+                className={`px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-md ${
+                  isSubmitting 
+                    ? 'bg-gray-400 text-white cursor-not-allowed shadow-none' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-blue-600/20'
+                }`}
               >
-                {isWaitlistMode ? '예매 대기 신청' : '인원 선택'}
+                {isSubmitting ? '처리 중...' : (isWaitlistMode ? '예매 대기 신청' : '인원 선택')}
               </button>
             </>
           )}

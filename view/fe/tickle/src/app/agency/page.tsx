@@ -1052,13 +1052,13 @@ export default function AgencyRegistrationPage() {
   };
 
   const handleSeatPriceChange =
-    (grade: SeatGradeKey) =>
+    (priceGrade: SeatGradeKey) =>
     (event: ChangeEvent<HTMLInputElement>) => {
       const digitsOnly = event.target.value.replace(/\D/g, '');
 
       setSeatPrices((current) => ({
         ...current,
-        [grade]: digitsOnly,
+        [priceGrade]: digitsOnly,
       }));
     };
 

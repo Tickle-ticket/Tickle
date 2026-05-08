@@ -9,12 +9,12 @@ export interface EventSchedule {
     sessionNo: number;
     time: string;
     startAt: string;
-    remainingSeats: { grade: string; count: number }[];
+    remainingSeats: { priceGrade: string; count: number }[];
   }[];
 }
 
 type RemainingSeat = {
-  grade: string;
+  priceGrade: string;
   count: number;
 };
 
@@ -74,7 +74,7 @@ export const useEventDetail = (eventId?: string) => {
         venue: data.venueName,
         date: `${startDate} ~ ${endDate}`,
         zonePrices: data.pricePolicies.map(p => ({
-          grade: p.priceGrade,
+          priceGrade: p.priceGrade,
           price: getEventPriceAmount(p),
           discountInfo: p.discountInfo
         })),

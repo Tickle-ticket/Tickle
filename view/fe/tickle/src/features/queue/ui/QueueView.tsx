@@ -56,6 +56,10 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
     const startQueue = async (attempt = 1): Promise<void> => {
       if (isCancelled) return;
+      if (!eventId || eventId === 'undefined') {
+        console.error('Invalid eventId passed to QueueView:', eventId);
+        return;
+      }
 
       if (fastMode) {
         setStatus('WAITING');
@@ -87,23 +91,8 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
         setStatus('WAITING');
 
-        // 3. Get Initial Queue Status
-        try {
-          const statusRes = await getQueueStatus(eventId, queueToken, scope);
-          if (statusRes.data.status === 'WAITING') {
-            setRank(statusRes.data.rank);
-            setWaitingCount(statusRes.data.waitingCount);
-            setEstimatedWaitSeconds(statusRes.data.estimatedWaitSeconds);
-          } else if (statusRes.data.status === 'ADMITTED') {
-            onAdmitted(statusRes.data.admitToken || 'at-immediate');
-            return;
-          }
-        } catch (err) {
-          console.warn('Failed to fetch initial queue status', err);
-        }
-
+        // 3. SSE 연결 (Stream)
         const streamUrl = getQueueStreamUrl(eventId, queueToken);
-
         source = new EventSource(streamUrl);
 
         source.onmessage = (event) => {
@@ -134,6 +123,21 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         source.onerror = (err) => {
           console.warn('EventSource connection error, browser will attempt to auto-reconnect...', err);
         };
+
+        // 4. 상태 확인 (초기 스냅샷)
+        try {
+          const statusRes = await getQueueStatus(eventId, queueToken, scope);
+          if (statusRes.data.status === 'WAITING') {
+            setRank(statusRes.data.rank);
+            setWaitingCount(statusRes.data.waitingCount);
+            setEstimatedWaitSeconds(statusRes.data.estimatedWaitSeconds);
+          } else if (statusRes.data.status === 'ADMITTED') {
+            onAdmitted(statusRes.data.admitToken || 'at-immediate');
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch initial queue status', err);
+        }
 
       } catch (err: any) {
         if (err.status === 400) {
