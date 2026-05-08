@@ -67,7 +67,7 @@ export const seatHandlers = [
       
       client.send(JSON.stringify({ 
         seatLabel: randomSeat, 
-        saleStatus: currentMockSeats[randomSeat].isAvailable ? 'AVAILABLE' : 'RESERVED'
+        saleStatus: currentMockSeats[randomSeat].isAvailable ? 'AVAILABLE' : 'HELD'
       }));
     }, 1000);
 
@@ -103,7 +103,7 @@ export const seatHandlers = [
         rowLabel,
         seatNumber,
         seatLabel,
-        saleStatus: info.isAvailable ? 'AVAILABLE' : 'RESERVED',
+        saleStatus: info.isAvailable ? 'AVAILABLE' : 'HELD',
         price: info.grade === 'VIP' ? 170000 : (info.grade === 'R' ? 140000 : (info.grade === 'S' ? 110000 : 80000))
       });
     });
@@ -119,8 +119,57 @@ export const seatHandlers = [
       status: 200,
       message: 'success',
       data: {
+        venueId: 4001,
         sections
       }
+    });
+  }),
+
+  // 좌석 상태 실시간 업데이트 (SSE) — useSeatData.connectSSE() 가 호출
+  http.get('*/api/v1/events/:eventId/schedules/:scheduleId/seats/stream', ({ params }) => {
+    const { scheduleId } = params;
+    const currentMockSeats = getMockSeatsForSchedule(String(scheduleId));
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        let isClosed = false;
+
+        const send = (data: unknown) => {
+          if (isClosed) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          } catch (e) {
+            console.error('Seat SSE enqueue error', e);
+          }
+        };
+
+        // 1초마다 랜덤 좌석 상태 토글 (실제 BE 흉내)
+        const interval = setInterval(() => {
+          if (isClosed) return;
+          const seatIds = Object.keys(currentMockSeats);
+          if (seatIds.length === 0) return;
+          const randomSeat = seatIds[Math.floor(Math.random() * seatIds.length)];
+          currentMockSeats[randomSeat].isAvailable = !currentMockSeats[randomSeat].isAvailable;
+          send({
+            seatLabel: randomSeat,
+            saleStatus: currentMockSeats[randomSeat].isAvailable ? 'AVAILABLE' : 'HELD',
+          });
+        }, 1000);
+
+        return () => {
+          isClosed = true;
+          clearInterval(interval);
+        };
+      },
+    });
+
+    return new HttpResponse(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
   }),
 
