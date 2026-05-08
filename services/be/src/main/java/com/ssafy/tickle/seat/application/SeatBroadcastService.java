@@ -7,8 +7,10 @@ import com.ssafy.tickle.seat.infrastructure.sse.SeatSseEmitterRepository;
 import com.ssafy.tickle.seat.presentation.dto.SeatStatusMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -29,8 +31,11 @@ public class SeatBroadcastService {
 
     /**
      * 좌석 상태 변경을 구독자 전체에게 SSE로 Push합니다.
+     *
+     * <p>트랜잭션 커밋 후 비동기로 실행하여 API 응답 지연을 방지한다.</p>
      */
-    @EventListener
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSeatStatusChanged(SeatStatusChangedEvent event) {
         Long scheduleId = event.getScheduleId();
         List<SseEmitter> emitters = sseEmitterRepository.findByScheduleId(scheduleId);
