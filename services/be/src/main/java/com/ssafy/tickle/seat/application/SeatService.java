@@ -3,6 +3,7 @@ package com.ssafy.tickle.seat.application;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.RedisLockManager;
+import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.seat.domain.EventSection;
 import com.ssafy.tickle.seat.domain.SeatErrorCode;
@@ -52,7 +53,7 @@ public class SeatService {
      * 최초 1회 호출 후 이후 변경분은 WebSocket Push로 수신합니다.</p>
      */
     public SeatMapResponse getSeatMap(Long eventId, Long scheduleId) {
-        validateSession(eventId, scheduleId);
+        EventSession session = validateSession(eventId, scheduleId);
 
         List<SessionSeat> sessionSeats = sessionSeatRepository.findBySessionIdWithDetails(scheduleId);
 
@@ -67,7 +68,12 @@ public class SeatService {
                 .map(entry -> SeatSectionResponse.of(entry.getKey(), entry.getValue()))
                 .toList();
 
-        return new SeatMapResponse(sections);
+        Long venueId = seatsBySection.keySet().stream()
+                .findFirst()
+                .map(EventSection::getVenueId)
+                .orElseGet(() -> session.getEvent().getVenue().getId());
+
+        return new SeatMapResponse(venueId, sections);
     }
 
     /**
@@ -155,8 +161,8 @@ public class SeatService {
         );
     }
 
-    private void validateSession(Long eventId, Long scheduleId) {
-        eventSessionRepository.findByIdAndEventId(scheduleId, eventId)
+    private EventSession validateSession(Long eventId, Long scheduleId) {
+        return eventSessionRepository.findByIdAndEventId(scheduleId, eventId)
                 .orElseThrow(() -> new BaseException(
                         GlobalErrorCode.RESOURCE_NOT_FOUND,
                         "공연(%d)에 속하는 회차(%d)를 찾을 수 없습니다.".formatted(eventId, scheduleId)
