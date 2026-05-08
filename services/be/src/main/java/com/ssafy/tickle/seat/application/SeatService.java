@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,7 +108,8 @@ public class SeatService {
 
         try {
             // 단일 batch UPDATE — SELECT + N×UPDATE → UPDATE 1회로 단축 (All-or-Nothing)
-            int updated = sessionSeatRepository.holdBatch(seatIds, userId, Instant.now());
+            LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+            int updated = sessionSeatRepository.holdBatch(seatIds, userId, now);
             if (updated != seatIds.size()) {
                 throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
             }

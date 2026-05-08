@@ -62,7 +62,7 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
             WHERE session_seat_id IN :ids AND sale_status = 'AVAILABLE'
             """, nativeQuery = true)
     int holdBatch(@Param("ids") List<Long> ids, @Param("userId") Long userId,
-                  @Param("now") java.time.Instant now);
+                  @Param("now") java.time.LocalDateTime now);
 
     /**
      * 회차와 좌석 ID 목록으로 가격 정책까지 함께 조회합니다.

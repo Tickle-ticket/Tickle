@@ -270,10 +270,10 @@ class SeatServiceTest {
             // given
             SeatHoldRequest request = new SeatHoldRequest(List.of(9999L));
 
-            // when & then
+            // batch UPDATE 방식에서는 존재하지 않는 좌석도 SEAT_ALREADY_HELD로 처리됨
             assertThatThrownBy(() -> seatService.holdSeats(event.getId(), session.getId(), 1L, request))
                     .isInstanceOf(BaseException.class)
-                    .hasMessageContaining(SeatErrorCode.SEAT_NOT_FOUND.getMessage());
+                    .hasMessageContaining(SeatErrorCode.SEAT_ALREADY_HELD.getMessage());
         }
 
         @Test
