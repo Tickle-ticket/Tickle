@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { getUserId } from './tokenManager';
 import { ApiResponse } from './types';
 import {
   AgencySummary,
