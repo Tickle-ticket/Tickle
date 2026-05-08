@@ -1,10 +1,6 @@
-# IDE
-.idea/
-*.iml
-
-# 환경변수
+data/
+node_modules/
+__pycache__
+model_joblib/
+*.joblib
 .env
-
-# Claude Code 개인 설정 (토큰, 권한 등 로컬 오버라이드)
-.claude/settings.local.json
-mock_data.sql
