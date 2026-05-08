@@ -4,6 +4,7 @@ import com.ssafy.tickle.cancellation.application.CancellationRedistributionServi
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationOfferDetailResponse;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseResponse;
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class CancellationRedistributionController implements CancellationRedistr
     @Override
     @GetMapping("/{cancellationId}")
     public ResponseEntity<BaseResponse<CancellationOfferDetailResponse>> getCancellationDetail(
-            @RequestHeader("X-User-Id") Long userId,
+            @UserId Long userId,
             @PathVariable Long cancellationId
     ) {
         CancellationOfferDetailResponse response = cancellationRedistributionService.getCancellationDetail(cancellationId, userId);
@@ -29,7 +30,7 @@ public class CancellationRedistributionController implements CancellationRedistr
     @Override
     @PostMapping("/{cancellationId}/purchase")
     public ResponseEntity<BaseResponse<CancellationPurchaseResponse>> purchaseCancellation(
-            @RequestHeader("X-User-Id") Long userId,
+            @UserId Long userId,
             @PathVariable Long cancellationId,
             @RequestBody CancellationPurchaseRequest request
     ) {

@@ -1,11 +1,13 @@
 package com.ssafy.tickle.queue.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.presentation.dto.QueueEnterResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,7 +47,11 @@ public interface QueueApiDoc {
             description = "대기열 진입용 공연 오픈 정보를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(Long eventId, QueueScope scope, Long userId);
+    ResponseEntity<BaseResponse<QueueEnterResponse>> enter(
+            Long eventId,
+            QueueScope scope,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId
+    );
 
     /**
      * requestId 기반 최초 queueToken 발급 API 문서 정의입니다.
@@ -66,7 +72,12 @@ public interface QueueApiDoc {
             description = "존재하지 않는 대기열 진입 요청",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(Long eventId, QueueScope scope, String requestId);
+    ResponseEntity<BaseResponse<QueueTokenResponse>> getToken(
+            Long eventId,
+            QueueScope scope,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
+            String requestId
+    );
 
     /**
      * queueToken 기준 상태 조회 API 문서 정의입니다.
@@ -87,7 +98,12 @@ public interface QueueApiDoc {
             description = "존재하지 않는 대기열 토큰",
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
-    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(Long eventId, QueueScope scope, String queueToken);
+    ResponseEntity<BaseResponse<QueueStatusResponse>> getStatus(
+            Long eventId,
+            QueueScope scope,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
+            String queueToken
+    );
 
     @Operation(
             summary = "대기열 이탈",
@@ -97,7 +113,12 @@ public interface QueueApiDoc {
             responseCode = "200",
             description = "대기열 이탈 성공"
     )
-    ResponseEntity<BaseResponse<Void>> leave(Long eventId, QueueScope scope, String queueToken);
+    ResponseEntity<BaseResponse<Void>> leave(
+            Long eventId,
+            QueueScope scope,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
+            String queueToken
+    );
 
     /**
      * queueToken 기준 실시간 대기 상태 SSE API 문서 정의입니다.
@@ -113,5 +134,10 @@ public interface QueueApiDoc {
             responseCode = "200",
             description = "SSE 연결 성공"
     )
-    SseEmitter stream(Long eventId, QueueScope scope, String queueToken);
+    SseEmitter stream(
+            Long eventId,
+            QueueScope scope,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
+            String queueToken
+    );
 }

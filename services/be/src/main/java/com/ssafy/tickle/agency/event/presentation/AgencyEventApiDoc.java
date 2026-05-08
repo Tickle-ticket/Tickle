@@ -10,6 +10,7 @@ import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventSeatRe
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSeatsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSessionsRequest;
 import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyVenueTemplateResponse;
+import com.ssafy.tickle.common.auth.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,7 +35,7 @@ public interface AgencyEventApiDoc {
     /**
      * 기획사 공연 목록 조회 API를 문서화합니다.
      *
-     * @param organizerId 기획사 식별자
+     * @param userId JWT에서 추출한 사용자 식별자
      * @param page 페이지 번호
      * @param size 페이지 크기
      * @return 공연 목록 응답
@@ -50,7 +51,8 @@ public interface AgencyEventApiDoc {
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
     ResponseEntity<BaseResponse<AgencyEventListResponse>> getEvents(
-            @Parameter(description = "사용자 식별자 (X-User-Id)", required = true, example = "1001")
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1001")
+            @UserId
             Long userId,
             @Parameter(description = "페이지 번호", required = true, example = "0")
             int page,
@@ -137,7 +139,8 @@ public interface AgencyEventApiDoc {
     @ApiResponse(responseCode = "404", description = "기획사/공연장/카테고리를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     ResponseEntity<BaseResponse<AgencyCreateEventResponse>> createEvent(
-            @Parameter(description = "사용자 식별자 (X-User-Id)", required = true, example = "1001")
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1001")
+            @UserId
             Long userId,
             AgencyCreateEventBasicRequest request,
             @Parameter(description = "포스터 이미지 파일 (필수)") MultipartFile posterImage,

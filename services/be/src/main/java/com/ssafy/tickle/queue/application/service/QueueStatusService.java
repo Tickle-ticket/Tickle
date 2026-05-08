@@ -67,6 +67,15 @@ public class QueueStatusService {
         return getQueueToken(requestId);
     }
 
+    public QueueTokenResponse getQueueToken(QueueScope scope, Long eventId, Long userId, String requestId) {
+        QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
+        if (!reference.eventId().equals(eventId) || reference.scope() != scope || !reference.userId().equals(userId)) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 진입 요청 정보가 일치하지 않습니다.");
+        }
+        return getQueueToken(requestId);
+    }
+
     /**
      * queueToken 기준 현재 대기 상태를 조회합니다.
      *
@@ -108,6 +117,15 @@ public class QueueStatusService {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
         if (!snapshot.eventId().equals(eventId) || snapshot.scope() != scope) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
+        }
+        return getStatusByQueueToken(queueToken);
+    }
+
+    public QueueStatusResponse getStatusByQueueToken(QueueScope scope, Long eventId, Long userId, String queueToken) {
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
+        if (!snapshot.eventId().equals(eventId) || snapshot.scope() != scope || !snapshot.userId().equals(userId)) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
         }
         return getStatusByQueueToken(queueToken);
@@ -201,6 +219,15 @@ public class QueueStatusService {
         QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
         if (!snapshot.eventId().equals(eventId) || snapshot.scope() != scope) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
+        }
+        leave(queueToken);
+    }
+
+    public void leave(QueueScope scope, Long eventId, Long userId, String queueToken) {
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 토큰입니다."));
+        if (!snapshot.eventId().equals(eventId) || snapshot.scope() != scope || !snapshot.userId().equals(userId)) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "요청한 대기열과 토큰 정보가 일치하지 않습니다.");
         }
         leave(queueToken);

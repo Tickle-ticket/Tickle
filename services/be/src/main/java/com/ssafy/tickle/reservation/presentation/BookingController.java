@@ -1,5 +1,6 @@
 package com.ssafy.tickle.reservation.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.reservation.application.BookingOptionService;
@@ -28,10 +29,11 @@ public class BookingController implements BookingApiDoc {
     @Override
     @PostMapping("/bookings/options")
     public ResponseEntity<BaseResponse<BookingOptionsResponse>> getBookingOptions(
+            @UserId Long userId,
             @Valid @RequestBody BookingOptionsRequest request
     ) {
         return ResponseEntity.ok(
-                BaseResponse.success(SuccessCode.OK, bookingOptionService.getBookingOptions(request))
+                BaseResponse.success(SuccessCode.OK, bookingOptionService.getBookingOptions(userId, request))
         );
     }
 }

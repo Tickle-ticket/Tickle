@@ -1,5 +1,6 @@
 package com.ssafy.tickle.reservation.presentation;
 
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
@@ -9,7 +10,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * 예매 API 문서 인터페이스입니다.
@@ -26,7 +26,7 @@ public interface ReservationApiDoc {
     )
     @ApiResponse(responseCode = "200", description = "예매 목록 조회 성공")
     ResponseEntity<BaseResponse<ReservationListResponse>> getReservationList(
-            @Parameter(description = "사용자 식별자 (임시 - 추후 JWT에서 추출)") Long userId
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId
     );
 
     /**
@@ -41,7 +41,7 @@ public interface ReservationApiDoc {
     @ApiResponse(responseCode = "404", description = "예매 없음")
     ResponseEntity<BaseResponse<ReservationDetailResponse>> getReservationDetail(
             @Parameter(description = "예매 식별자") Long reservationId,
-            @Parameter(description = "사용자 식별자 (임시)") Long userId
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId
     );
 
     /**
@@ -58,6 +58,6 @@ public interface ReservationApiDoc {
     @ApiResponse(responseCode = "409", description = "이미 취소된 예매")
     ResponseEntity<BaseResponse<Void>> cancelReservation(
             @Parameter(description = "예매 식별자") Long reservationId,
-            @Parameter(description = "사용자 식별자 (임시)") Long userId
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId
     );
 }

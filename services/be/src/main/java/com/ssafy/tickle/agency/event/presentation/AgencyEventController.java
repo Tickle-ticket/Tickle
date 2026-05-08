@@ -6,6 +6,7 @@ import com.ssafy.tickle.agency.event.application.AgencyEventQueryService;
 import com.ssafy.tickle.agency.event.application.AgencyEventSeatBatchService;
 import com.ssafy.tickle.agency.event.application.AgencyEventSessionService;
 import com.ssafy.tickle.agency.event.application.AgencyVenueTemplateService;
+import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -73,7 +73,7 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @Override
     @GetMapping("/events")
     public ResponseEntity<BaseResponse<AgencyEventListResponse>> getEvents(
-            @RequestHeader("X-User-Id") Long userId,
+            @UserId Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -120,7 +120,7 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @Override
     @PostMapping(value = "/events", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BaseResponse<AgencyCreateEventResponse>> createEvent(
-            @RequestHeader("X-User-Id") Long userId,
+            @UserId Long userId,
             @Valid @RequestPart AgencyCreateEventBasicRequest request,
             @RequestPart MultipartFile posterImage,
             @RequestPart(required = false) List<MultipartFile> detailImages

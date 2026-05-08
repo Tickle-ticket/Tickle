@@ -38,7 +38,7 @@ public class BookingOptionService {
      * @param request 권종 옵션 조회 요청
      * @return 권종 옵션 응답
      */
-    public BookingOptionsResponse getBookingOptions(BookingOptionsRequest request) {
+    public BookingOptionsResponse getBookingOptions(Long userId, BookingOptionsRequest request) {
         EventSession session = getSession(request.eventId(), request.sessionId());
 
         List<SessionSeat> seats = sessionSeatRepository.findAllWithPricePolicyBySessionIdAndIdIn(
@@ -46,7 +46,7 @@ public class BookingOptionService {
                 request.seatIds()
         );
 
-        validateSeats(request.userId(), request.seatIds(), seats);
+        validateSeats(userId, request.seatIds(), seats);
 
         String currencyCode = getCurrencyCode(seats);
         BigDecimal totalTicketPriceAmount = calculateTotalTicketPrice(seats);
@@ -54,7 +54,7 @@ public class BookingOptionService {
         return BookingOptionsResponse.from(
                 request.eventId(),
                 request.sessionId(),
-                request.userId(),
+                userId,
                 currencyCode,
                 totalTicketPriceAmount,
                 seats.stream()
