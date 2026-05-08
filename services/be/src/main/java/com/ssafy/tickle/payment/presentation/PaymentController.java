@@ -122,9 +122,12 @@ public class PaymentController implements PaymentApiDoc {
 
     @Override
     @GetMapping("/payments/{paymentId}")
-    public ResponseEntity<BaseResponse<PaymentStatusResponse>> getPaymentStatus(@PathVariable Long paymentId) {
+    public ResponseEntity<BaseResponse<PaymentStatusResponse>> getPaymentStatus(
+            @PathVariable Long paymentId,
+            @UserId Long userId
+    ) {
         return ResponseEntity.ok(
-                BaseResponse.success(SuccessCode.OK, paymentQueryService.getPaymentStatus(paymentId))
+                BaseResponse.success(SuccessCode.OK, paymentQueryService.getPaymentStatus(paymentId, userId))
         );
     }
 }

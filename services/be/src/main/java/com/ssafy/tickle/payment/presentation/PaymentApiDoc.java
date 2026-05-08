@@ -166,10 +166,13 @@ public interface PaymentApiDoc {
     @Operation(summary = "결제 상태 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "결제 상태 조회 성공"),
+            @ApiResponse(responseCode = "403", description = "접근 권한 없음 (타인 결제)"),
             @ApiResponse(responseCode = "404", description = "결제 정보를 찾을 수 없음")
     })
     ResponseEntity<BaseResponse<PaymentStatusResponse>> getPaymentStatus(
             @Parameter(description = "결제 식별자", required = true, example = "1")
-            @PathVariable Long paymentId
+            @PathVariable Long paymentId,
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1")
+            @UserId Long userId
     );
 }

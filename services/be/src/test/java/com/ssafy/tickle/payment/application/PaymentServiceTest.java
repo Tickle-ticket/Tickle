@@ -4,6 +4,7 @@ import com.ssafy.tickle.category.domain.Category;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
@@ -19,6 +20,7 @@ import com.ssafy.tickle.payment.infrastructure.persistence.PaymentTransactionRep
 import com.ssafy.tickle.payment.presentation.dto.PaymentOptionSelectionRequest;
 import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareRequest;
 import com.ssafy.tickle.payment.presentation.dto.BankTransferPrepareResponse;
+import com.ssafy.tickle.payment.presentation.dto.PaymentStatusResponse;
 import com.ssafy.tickle.reservation.application.BookingPreorderService;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
@@ -70,6 +72,7 @@ class PaymentServiceTest {
 
     @Autowired private BankTransferPaymentService bankTransferPaymentService;
     @Autowired private BankTransferPaymentExpireService bankTransferPaymentExpireService;
+    @Autowired private PaymentQueryService paymentQueryService;
     @Autowired private BookingPreorderService bookingPreorderService;
     @Autowired private SeatService seatService;
     @Autowired private SeatHoldKeyStore seatHoldKeyStore;
@@ -240,6 +243,52 @@ class PaymentServiceTest {
                     user.getId(),
                     new BankTransferPrepareRequest(booking.getId())
             )).isInstanceOf(BaseException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("결제 상태 조회")
+    class GetPaymentStatus {
+
+        @Test
+        @DisplayName("본인 결제 상태만 조회할 수 있다")
+        void getPaymentStatus_success() {
+            // given
+            SessionSeat seat = createAndHoldSeat("A", "1");
+            BookingPreorderResponse preorder = createPreorder(seat, "일반예매");
+            BankTransferPrepareResponse prepared = bankTransferPaymentService.confirmBankTransferPayment(
+                    event.getId(),
+                    session.getId(),
+                    user.getId(),
+                    new BankTransferPrepareRequest(preorder.bookingId())
+            );
+
+            // when
+            PaymentStatusResponse response = paymentQueryService.getPaymentStatus(prepared.paymentId(), user.getId());
+
+            // then
+            assertThat(response.paymentId()).isEqualTo(prepared.paymentId());
+            assertThat(response.paymentStatus()).isEqualTo(Payment.Status.PENDING);
+        }
+
+        @Test
+        @DisplayName("타인 결제 상태 조회 시 ACCESS_DENIED 예외를 던진다")
+        void getPaymentStatus_accessDenied() {
+            // given
+            SessionSeat seat = createAndHoldSeat("A", "1");
+            BookingPreorderResponse preorder = createPreorder(seat, "일반예매");
+            BankTransferPrepareResponse prepared = bankTransferPaymentService.confirmBankTransferPayment(
+                    event.getId(),
+                    session.getId(),
+                    user.getId(),
+                    new BankTransferPrepareRequest(preorder.bookingId())
+            );
+
+            // when & then
+            assertThatThrownBy(() -> paymentQueryService.getPaymentStatus(prepared.paymentId(), 9999L))
+                    .isInstanceOf(BaseException.class)
+                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                            .isEqualTo(GlobalErrorCode.ACCESS_DENIED));
         }
     }
 

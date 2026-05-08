@@ -1,5 +1,6 @@
 package com.ssafy.tickle.seat.presentation.dto;
 
+import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
  * @param seatNumber       좌석 번호 (예: 1, 2, 3)
  * @param seatLabel        좌석 표기명 (예: A-1-1)
  * @param saleStatus       현재 판매 상태
+ * @param grade            좌석 가격 등급
  * @param price            좌석 가격
  */
 public record SeatItemResponse(
@@ -22,6 +24,7 @@ public record SeatItemResponse(
         String seatNumber,
         String seatLabel,
         SessionSeat.SaleStatus saleStatus,
+        SeatGrade grade,
         BigDecimal price
 ) {
 
@@ -40,6 +43,7 @@ public record SeatItemResponse(
                 eventSeat.getSeatNumber(),
                 eventSeat.getSeatLabel(),
                 sessionSeat.getSaleStatus(),
+                eventSeat.getEventPricePolicy().getPriceGrade(),
                 eventSeat.getEventPricePolicy().getPriceAmount()
         );
     }
