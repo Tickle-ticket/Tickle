@@ -1,0 +1,120 @@
+# infra/docker-compose/server1-main.yml
+services:
+
+  # ─── MySQL ────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: tickle-mysql
+    restart: always
+    mem_limit: 640m
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: tickle_core
+    command: >
+      --innodb-buffer-pool-size=512M
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+
+  # ─── Redis Master ─────────────────────────────────
+  redis-master:
+    image: redis:7
+    container_name: tickle-redis-master
+    restart: always
+    mem_limit: 400m
+    command: >
+      redis-server
+      --maxmemory 300mb
+      --maxmemory-policy volatile-ttl
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+  # ─── Spring Boot BE ───────────────────────────────
+  be:
+    build:
+      context: ../../services/be
+      dockerfile: Dockerfile
+    container_name: tickle-be
+    restart: always
+    mem_limit: 1024m
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      DB_HOST: tickle-mysql
+      DB_PORT: 3306
+      DB_NAME: tickle_core
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_PASSWORD: ""
+      KAFKA_BOOTSTRAP_SERVERS: ${SERVER2_PRIVATE_IP}:9092
+      KAFKA_CONSUMER_GROUP_ID: tickle-group
+      SERVER_PORT: 8080
+      JPA_DDL_AUTO: update
+      JPA_SHOW_SQL: "false"
+      SERVER3_PRIVATE_IP: ${SERVER3_PRIVATE_IP}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://172.31.57.10:4317
+      OTEL_SERVICE_NAME: tickle-be
+      CORS_FE_ORIGIN: ${CORS_FE_ORIGIN}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      KAKAOPAY_BASE_URL: ${KAKAOPAY_BASE_URL}
+      KAKAOPAY_SECRET_KEY: ${KAKAOPAY_SECRET_KEY}
+      KAKAOPAY_CID: ${KAKAOPAY_CID}
+      KAKAOPAY_APPROVAL_URL: ${KAKAOPAY_APPROVAL_URL}
+      KAKAOPAY_FAIL_URL: ${KAKAOPAY_FAIL_URL}
+      KAKAOPAY_CANCEL_URL: ${KAKAOPAY_CANCEL_URL}
+      KAKAOPAY_SUCCESS_REDIRECT_URL: ${KAKAOPAY_SUCCESS_REDIRECT_URL}
+      KAKAOPAY_METHOD_SELECTION_REDIRECT_URL: ${KAKAOPAY_METHOD_SELECTION_REDIRECT_URL}
+      COOLSMS_API_KEY: ${COOLSMS_API_KEY}
+      COOLSMS_API_SECRET: ${COOLSMS_API_SECRET}
+      COOLSMS_SENDER_NUMBER: ${COOLSMS_SENDER_NUMBER}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis-master
+
+  # ─── Node Exporter ────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: tickle-node-exporter
+    restart: always
+    mem_limit: 50m
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  # ─── Promtail ─────────────────────────────────────
+  promtail:
+    image: grafana/promtail:latest
+    container_name: tickle-promtail
+    restart: always
+    mem_limit: 60m
+    environment:
+      SERVER3_PRIVATE_IP: ${SERVER3_PRIVATE_IP}
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+    volumes:
+      - ../../infra/promtail/promtail-server1.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  mysql-data:
+  redis-data:

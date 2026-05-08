@@ -1,4 +1,17 @@
+<<<<<<< HEAD
 data/
 node_modules/
 __pycache__
 model_joblib/
+=======
+# IDE
+.idea/
+*.iml
+
+# 환경변수
+.env
+
+# Claude Code 개인 설정 (토큰, 권한 등 로컬 오버라이드)
+.claude/settings.local.json
+mock_data.sql
+>>>>>>> b262477732972ac96720e7dfd76cd35178ee80f3

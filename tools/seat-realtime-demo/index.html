@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>티클 하이퍼 인터랙티브 v9.5</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&family=Pretendard:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #020617;
+            --card-bg: rgba(15, 23, 42, 0.9);
+            --brand-primary: #7dd3fc;
+            --brand-indigo: #6366f1;
+            
+            /* 공식 SaleStatus 컬러 매핑 */
+            --status-available: #34d399;   
+            --status-held-mine: #7dd3fc;   
+            --status-held-others: #fbbf24; 
+            --status-pending: #f59e0b;    
+            --status-confirmed: #64748b;  
+            --status-reallocating: #c084fc;
+            --status-blocked: #334155;    
+            --status-unavailable: #1e293b;
+            --status-selecting: #6366f1;  
+            
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-soft: rgba(255, 255, 255, 0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-deep); color: var(--text-main); overflow: hidden; }
+        
+        .app-container { display: flex; height: 100vh; width: 100vw; position: relative; }
+
+        .panel { 
+            position: absolute; top: 0; height: 100%;
+            background: var(--card-bg); border-right: 1px solid var(--border-soft); 
+            padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); z-index: 500;
+            backdrop-filter: blur(30px); box-shadow: 20px 0 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .sidebar { left: 0; width: 360px; border-radius: 0 24px 24px 0; }
+        .log-panel { right: 0; width: 340px; border-radius: 24px 0 0 24px; }
+        .hidden { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+        .log-panel.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
+
+        .toggle-btn { 
+            position: absolute; top: 25px; width: 42px; height: 58px; 
+            background: var(--card-bg); color: var(--brand-primary); border: 1.5px solid var(--border-soft);
+            cursor: pointer; z-index: 600; font-weight: 900; font-size: 1.4rem;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 0 12px 12px 0; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toggle-btn:hover { background: var(--brand-primary); color: #000; }
+        #leftBtn { left: 360px; }
+        .sidebar.hidden + #leftBtn { left: 0; }
+        #rightBtn { right: 340px; border-radius: 12px 0 0 12px; }
+        .log-panel.hidden + #rightBtn { right: 0; }
+
+        .viewport { 
+            flex: 1; width: 100%; position: relative; overflow-x: hidden; overflow-y: auto;
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 2.5rem 1rem; background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); z-index: 100;
+        }
+
+        .stat-dash {
+            display: flex; align-items: center; gap: 3rem; margin-bottom: 3rem; 
+            background: rgba(255,255,255,0.03); backdrop-filter: blur(10px);
+            padding: 1rem 4.5rem; border-radius: 100px; border: 1px solid var(--border-soft);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .stat-item { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+        .stat-v { font-family: 'Outfit'; font-size: 2.2rem; font-weight: 900; color: var(--brand-primary); line-height: 1; }
+        .stat-l { font-size: 0.7rem; color: var(--text-muted); font-weight: 900; letter-spacing: 0.15rem; }
+
+        .stage-box { 
+            width: 80%; max-width: 600px; height: 80px; flex-shrink: 0;
+            background: #1e293b; border-bottom: 4px solid var(--brand-primary); 
+            border-radius: 0 0 160px 160px; display: flex; align-items: center; justify-content: center;
+            font-family: 'Outfit'; font-size: 2.2rem; font-weight: 900; letter-spacing: 1.5rem;
+            color: var(--brand-primary); margin-bottom: 6rem;
+            box-shadow: 0 20px 40px -10px rgba(125, 211, 252, 0.2);
+        }
+
+        .arena-container { display: flex; flex-direction: column; align-items: center; gap: 5rem; width: 100%; max-width: 1200px; padding-bottom: 20rem; }
+        .grid-row { display: flex; gap: 2.5rem; justify-content: center; flex-wrap: wrap; width: 100%; }
+
+        .section-box { 
+            background: rgba(30, 41, 59, 0.4); border: 2px solid var(--border-soft); 
+            border-radius: 28px; padding: 1.8rem; min-width: 260px;
+            transition: transform 0.3s ease;
+        }
+        .section-box:hover { transform: translateY(-5px); }
+        .sec-head { margin-bottom: 1.2rem; text-align: center; }
+        .sec-name { font-weight: 900; color: var(--brand-primary); font-size: 1.1rem; letter-spacing: 0.1rem; }
+
+        .seats-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; }
+        
+        /* [손맛 추가] 좌석 인터랙션 */
+        .p-seat { 
+            width: 46px; height: 46px; border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; font-weight: 900; cursor: pointer; 
+            background: #1e293b; border: 1.5px solid var(--border-soft);
+            color: rgba(255,255,255,0.7); 
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative; overflow: hidden;
+        }
+        .p-seat:hover:not([data-status="CONFIRMED"]):not([data-status="BLOCKED"]):not([data-status="UNAVAILABLE"]) {
+            transform: scale(1.1) translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.3);
+            z-index: 10;
+        }
+        .p-seat:active { transform: scale(0.9); }
+
+        .p-seat[data-status="AVAILABLE"] { background: var(--status-available); color: #064e3b; }
+        .p-seat[data-status="HELD"] { background: var(--status-held-others); color: #78350f; }
+        .p-seat[data-status="PENDING"] { background: var(--status-pending); color: #fff; animation: blink 2s infinite; }
+        .p-seat[data-status="CONFIRMED"] { background: var(--status-confirmed); color: rgba(255,255,255,0.4); cursor: not-allowed; }
+        .p-seat[data-status="REALLOCATING"] { background: var(--status-reallocating); color: #fff; }
+        .p-seat[data-status="BLOCKED"] { background: var(--status-blocked); color: #94a3b8; cursor: not-allowed; }
+        .p-seat[data-status="UNAVAILABLE"] { background: var(--status-unavailable); color: #475569; cursor: not-allowed; opacity: 0.4; }
+        
+        .p-seat.selecting { 
+            background: var(--status-selecting) !important; color: #fff !important; 
+            transform: scale(1.15); box-shadow: 0 0 25px var(--status-selecting);
+            animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .p-seat.mine {
+            background: var(--status-held-mine) !important; color: #0c4a6e !important;
+            box-shadow: 0 0 20px var(--brand-primary); animation: pulse-soft 1s infinite alternate;
+        }
+
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1.15); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes pulse-soft { from { transform: scale(1.15); } to { transform: scale(1.22); } }
+
+        .brand-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-shrink: 0; }
+        .brand-title { font-family: 'Outfit'; font-weight: 900; font-size: 2rem; color: var(--brand-primary); }
+        .id-badge { background: var(--brand-primary); color: #000; padding: 0.3rem 1rem; border-radius: 40px; font-weight: 900; font-size: 1.1rem; }
+
+        .group-box { 
+            background: rgba(0,0,0,0.3); border: 1px solid var(--border-soft); 
+            padding: 1.5rem; border-radius: 20px; display: flex; flex-direction: column; gap: 1rem;
+        }
+        .group-header { font-size: 0.75rem; font-weight: 900; color: var(--brand-primary); text-transform: uppercase; border-bottom: 1px solid rgba(56, 189, 248, 0.1); padding-bottom: 0.5rem; }
+
+        .form-unit { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-unit label { font-size: 0.8rem; font-weight: 900; color: var(--text-muted); }
+        .form-unit input { 
+            background: #000; border: 1.5px solid rgba(255,255,255,0.1); 
+            border-radius: 10px; padding: 0.8rem; color: #fff; font-size: 1.2rem; width: 100%; outline: none; font-weight: 900;
+            transition: all 0.3s ease;
+        }
+        .form-unit input:focus { border-color: var(--brand-primary); box-shadow: 0 0 15px rgba(125, 211, 252, 0.2); }
+        
+        /* [손맛 추가] 버튼 인터랙션 */
+        .btn-xl { 
+            padding: 1.2rem; border: none; border-radius: 16px; font-weight: 900; 
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            font-size: 1.1rem; width: 100%; position: relative; overflow: hidden;
+        }
+        .btn-xl:hover:not(:disabled) { transform: translateY(-2px); brightness(1.1); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+        .btn-xl:active:not(:disabled) { transform: translateY(1px) scale(0.97); }
+        
+        .btn-p { background: var(--brand-primary); color: #0c4a6e; }
+        .btn-s { background: var(--brand-indigo); color: white; }
+        .btn-d { background: #ef4444; color: white; }
+        .btn-o { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.2); }
+        
+        .btn-xl::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg); transition: 0.6s; pointer-events: none;
+        }
+        .btn-xl:hover::after { left: 120%; }
+        .btn-xl:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .live-dot { display: inline-block; width: 10px; height: 10px; background: #10b981; border-radius: 50%; margin-right: 10px; animation: blink 1s infinite; }
+
+        .log-scroll { flex: 1; background: rgba(0,0,0,0.4); border-radius: 24px; padding: 1.5rem; font-size: 0.95rem; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 0.8rem; border: 1px solid var(--border-soft); }
+        .log-entry { border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.6rem; color: var(--brand-primary); font-weight: 800; animation: slide-in 0.3s ease-out; }
+        @keyframes slide-in { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .legend-grid { 
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; 
+            padding-top: 1.5rem; border-top: 1px solid var(--border-soft);
+        }
+        .legend-unit { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; font-weight: 900; color: var(--text-muted); transition: 0.3s; }
+        .legend-unit:hover { color: var(--text-main); }
+        .tag-sq { width: 14px; height: 14px; border-radius: 4px; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside id="sidebar" class="panel sidebar">
+            <div class="brand-header">
+                <div class="brand-title">TICKLE</div>
+                <div class="id-badge">ID <span id="idBadge">...</span></div>
+            </div>
+
+            <div class="group-box">
+                <div class="group-header">서버 접속 설정</div>
+                <div class="form-unit"><label>서버 주소 (Base URL)</label><input id="baseUrl" type="text" value="http://localhost:8080"></div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-unit" style="flex: 1;"><label>공연 번호</label><input id="eventId" type="number" value="1"></div>
+                    <div class="form-unit" style="flex: 1;"><label>회차 번호</label><input id="scheduleId" type="number" value="1"></div>
+                </div>
+                <div class="form-unit"><label>사용자 ID</label><input id="userId" type="number"></div>
+            </div>
+
+            <div class="group-box">
+                <div class="group-header">좌석 예약 제어</div>
+                <button id="loadBtn" class="btn-xl btn-o">1. 좌석 배치도 불러오기</button>
+                <button id="connectBtn" class="btn-xl btn-p" disabled>2. 실시간 동기화 시작 (SSE)</button>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="confirmBtn" class="btn-xl btn-s" disabled>좌석 점유 확정 (Hold)</button>
+                    <button id="releaseBtn" class="btn-xl btn-d" disabled>모든 점유 해제 (Release)</button>
+                </div>
+            </div>
+
+            <div class="legend-grid">
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-available);"></div> AVAILABLE</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-held-mine); border: 1px solid #fff;"></div> MY HELD</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-held-others);"></div> OTHERS HELD</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-pending);"></div> PENDING</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-confirmed);"></div> CONFIRMED</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-reallocating);"></div> REALLOCATING</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-blocked);"></div> BLOCKED</div>
+                <div class="legend-unit"><div class="tag-sq" style="background: var(--status-unavailable);"></div> UNAVAILABLE</div>
+            </div>
+        </aside>
+        <button id="leftBtn" class="toggle-btn">&lt;</button>
+
+        <main class="viewport">
+            <div class="stat-dash">
+                <div class="stat-item"><div class="stat-v" id="statTotal">0</div><div class="stat-l">TOTAL</div></div>
+                <div style="width: 1px; height: 24px; background: var(--border-soft);"></div>
+                <div class="stat-item"><div class="stat-v" id="statAvail" style="color: var(--status-available);">0</div><div class="stat-l">AVAILABLE</div></div>
+                <div style="width: 1px; height: 24px; background: var(--border-soft);"></div>
+                <div class="stat-item"><div class="stat-v" id="statSelected" style="color: var(--brand-indigo);">0</div><div class="stat-l">SELECTED</div></div>
+            </div>
+            <div class="stage-box">STAGE</div>
+            <div class="arena-container">
+                <div id="floorLevel" class="grid-row"></div>
+                <div id="standLevel" class="grid-row"></div>
+            </div>
+        </main>
+
+        <aside id="logPanel" class="panel log-panel">
+            <h3 style="font-family: 'Outfit'; font-size: 1.2rem; color: var(--brand-primary); margin-bottom: 1.2rem;">실시간 모니터링</h3>
+            <div id="log" class="log-scroll"></div>
+        </aside>
+        <button id="rightBtn" class="toggle-btn">&gt;</button>
+    </div>
+
+    <script>
+        const els = {
+            baseUrl: document.getElementById('baseUrl'),
+            eventId: document.getElementById('eventId'),
+            scheduleId: document.getElementById('scheduleId'),
+            userId: document.getElementById('userId'),
+            idBadge: document.getElementById('idBadge'),
+            loadBtn: document.getElementById('loadBtn'),
+            connectBtn: document.getElementById('connectBtn'),
+            confirmBtn: document.getElementById('confirmBtn'),
+            releaseBtn: document.getElementById('releaseBtn'),
+            floorLevel: document.getElementById('floorLevel'),
+            standLevel: document.getElementById('standLevel'),
+            log: document.getElementById('log'),
+            sidebar: document.getElementById('sidebar'),
+            logPanel: document.getElementById('logPanel'),
+            leftBtn: document.getElementById('leftBtn'),
+            rightBtn: document.getElementById('rightBtn'),
+            statTotal: document.getElementById('statTotal'),
+            statAvail: document.getElementById('statAvail'),
+            statSelected: document.getElementById('statSelected')
+        };
+
+        const selecting = new Set();
+        const myHeld = new Set();
+        els.userId.value = Math.floor(Math.random() * 999) + 1;
+        els.idBadge.textContent = els.userId.value;
+
+        els.leftBtn.onclick = () => {
+            const isH = els.sidebar.classList.toggle('hidden');
+            els.leftBtn.textContent = isH ? '>' : '<';
+        };
+        els.rightBtn.onclick = () => {
+            const isH = els.logPanel.classList.toggle('hidden');
+            els.rightBtn.textContent = isH ? '<' : '>';
+        };
+        els.userId.oninput = () => { els.idBadge.textContent = els.userId.value; };
+
+        function addLog(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            div.innerHTML = `<span style="font-family: 'Outfit'; opacity: 0.6; margin-right: 8px;">${new Date().toLocaleTimeString()}</span> ${msg}`;
+            els.log.prepend(div);
+        }
+
+        function updateUI() {
+            els.statTotal.textContent = document.querySelectorAll('.p-seat').length;
+            els.statAvail.textContent = document.querySelectorAll('.p-seat[data-status="AVAILABLE"]').length;
+            els.statSelected.textContent = selecting.size;
+            els.confirmBtn.disabled = selecting.size === 0;
+            els.releaseBtn.disabled = myHeld.size === 0;
+        }
+
+        function handleSeatClick(seatId, status) {
+            if (status !== 'AVAILABLE') return;
+            if (selecting.has(seatId)) {
+                selecting.delete(seatId);
+                document.getElementById(`s-${seatId}`).classList.remove('selecting');
+            } else {
+                if (selecting.size + myHeld.size >= 4) {
+                    addLog(`🚫 도메인 정책: 최대 4매까지 선택 가능합니다.`, 'warn');
+                    return;
+                }
+                selecting.add(seatId);
+                document.getElementById(`s-${seatId}`).classList.add('selecting');
+            }
+            updateUI();
+        }
+
+        els.confirmBtn.onclick = async () => {
+            const ids = Array.from(selecting);
+            try {
+                const r = await fetch(`${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/hold?userId=${els.userId.value}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionSeatIds: ids })
+                });
+                if (!r.ok) throw new Error('실패');
+                ids.forEach(id => {
+                    myHeld.add(id);
+                    const el = document.getElementById(`s-${id}`);
+                    if (el) { el.classList.remove('selecting'); el.classList.add('mine'); el.dataset.status = 'HELD'; }
+                });
+                selecting.clear();
+                addLog(`🎉 [HELD] 좌석 선점 완료 (${ids.length}석)`, 'success');
+                updateUI();
+            } catch (e) { addLog(`에러: ${e.message}`, 'error'); }
+        };
+
+        els.releaseBtn.onclick = async () => {
+            try {
+                const r = await fetch(`${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/hold?userId=${els.userId.value}`, { method: 'DELETE' });
+                if (!r.ok) throw new Error('실패');
+                document.querySelectorAll('.p-seat.mine').forEach(el => { el.classList.remove('mine'); el.dataset.status = 'AVAILABLE'; });
+                myHeld.clear();
+                addLog(`🎉 [AVAILABLE] 모든 선점 해제 완료`, 'success');
+                updateUI();
+            } catch (e) { addLog(`에러: ${e.message}`, 'error'); }
+        };
+
+        els.loadBtn.onclick = async () => {
+            try {
+                const r = await fetch(`${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats`);
+                const res = await r.json();
+                if (res.data?.sections) {
+                    renderArena(res.data.sections);
+                    addLog('✅ 좌석 배치도 로드 완료.', 'success');
+                    els.connectBtn.disabled = false;
+                }
+            } catch (e) { addLog(`에러: ${e.message}`, 'error'); }
+        };
+
+        function renderArena(sections) {
+            els.floorLevel.innerHTML = ''; els.standLevel.innerHTML = '';
+            sections.forEach(sec => {
+                const card = document.createElement('div'); card.className = 'section-box';
+                card.innerHTML = `<div class="sec-head"><span class="sec-name">${sec.sectionName}</span></div><div class="seats-container"></div>`;
+                const grid = card.querySelector('.seats-container');
+                sec.seats.forEach(seat => {
+                    const s = document.createElement('div'); s.className = 'p-seat'; s.id = `s-${seat.sessionSeatId}`;
+                    s.dataset.status = seat.saleStatus; s.textContent = seat.seatLabel.split('-').pop();
+                    s.onclick = () => handleSeatClick(seat.sessionSeatId, s.dataset.status);
+                    grid.appendChild(s);
+                });
+                if (sec.sectionName.toUpperCase().includes('FLOOR')) els.floorLevel.appendChild(card);
+                else els.standLevel.appendChild(card);
+            });
+            setTimeout(updateUI, 100);
+        }
+
+        let eventSource = null;
+
+        function handleRealtimeUpdate(rawData) {
+            console.log("Raw SSE Event Received:", rawData);
+            try {
+                const d = JSON.parse(rawData);
+                const ids = d.sessionSeatIds || [];
+                const status = d.saleStatus;
+                if (!ids.length || !status) return;
+
+                addLog(`📡 실시간 푸시: ${ids.length}석 → ${status}`);
+                ids.forEach(sid => {
+                    const el = document.getElementById(`s-${sid}`);
+                    if (el) {
+                        el.dataset.status = status;
+                        if (status === 'HELD') {
+                            if (myHeld.has(sid)) el.classList.add('mine');
+                            else el.classList.remove('mine');
+                        } else {
+                            el.classList.remove('mine');
+                            if (status === 'AVAILABLE') myHeld.delete(sid);
+                        }
+                    }
+                });
+                updateUI();
+            } catch (e) { if (rawData !== 'connected') console.error('SSE JSON Error:', e); }
+        }
+
+        els.connectBtn.onclick = () => {
+            if (eventSource) eventSource.close();
+            const url = `${els.baseUrl.value.replace(/\/$/, '')}/api/v1/events/${els.eventId.value}/schedules/${els.scheduleId.value}/seats/stream`;
+            eventSource = new EventSource(url);
+            els.connectBtn.innerHTML = '연결 시도 중...';
+            eventSource.onopen = () => {
+                addLog('📡 실시간 동기화 채널 가동', 'success');
+                els.connectBtn.innerHTML = '<span class="live-dot"></span> 연결됨 (LIVE)';
+                els.connectBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+                els.connectBtn.style.color = '#10b981';
+            };
+            eventSource.onerror = () => { addLog('❌ 연결 끊김', 'error'); els.connectBtn.innerHTML = '재연결 시도 중'; };
+            
+            eventSource.addEventListener('seat-update', (e) => handleRealtimeUpdate(e.data));
+            eventSource.onmessage = (e) => handleRealtimeUpdate(e.data);
+        };
+    </script>
+</body>
+</html>
