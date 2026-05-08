@@ -181,7 +181,7 @@ class SeatServiceTest {
             // then
             assertThat(response.sections()).hasSize(1);
             var seatItem = response.sections().get(0).seats().get(0);
-            assertThat(seatItem.grade()).isEqualTo(SeatGrade.R);
+            assertThat(seatItem.priceGrade()).isEqualTo(SeatGrade.R);
             assertThat(seatItem.price()).isNotNull();
             assertThat(seatItem.rowLabel()).isEqualTo("A");
             assertThat(seatItem.seatNumber()).isEqualTo("1");
