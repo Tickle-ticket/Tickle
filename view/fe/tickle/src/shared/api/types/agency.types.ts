@@ -50,7 +50,7 @@ export interface AgencyDiscountInfoRequest {
 }
 
 export interface AgencyCreateEventPricePolicyRequest {
-  priceGrade: AgencySeatGrade;
+  grade: AgencySeatGrade;
   priceAmount: number;
   discountInfo: AgencyDiscountInfoRequest[];
   currencyCode: string;
@@ -73,7 +73,7 @@ export interface AgencyCreateEventSessionsRequest {
 }
 
 export interface AgencyCreateEventSeatGroupRequest {
-  priceGrade: AgencySeatGrade;
+  grade: AgencySeatGrade;
   seatIds: number[];
 }
 

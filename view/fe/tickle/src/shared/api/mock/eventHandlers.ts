@@ -132,7 +132,7 @@ export const eventHandlers = [
         ],
         pricePolicies: [
           {
-            eventPricePolicyId: 1, priceGrade: 'VIP', audienceType: 'ALL', salePriceAmount: 170000, currencyCode: 'KRW', displayOrder: 1,
+            eventPricePolicyId: 1, grade: 'VIP', audienceType: 'ALL', salePriceAmount: 170000, currencyCode: 'KRW', displayOrder: 1,
             discountInfo: [
               { discountName: '일반', discountRate: 0, actualPriceAmount: 170000 },
               { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 136000 },
@@ -140,7 +140,7 @@ export const eventHandlers = [
             ]
           },
           {
-            eventPricePolicyId: 2, priceGrade: 'R', audienceType: 'ALL', salePriceAmount: 140000, currencyCode: 'KRW', displayOrder: 2,
+            eventPricePolicyId: 2, grade: 'R', audienceType: 'ALL', salePriceAmount: 140000, currencyCode: 'KRW', displayOrder: 2,
             discountInfo: [
               { discountName: '일반', discountRate: 0, actualPriceAmount: 140000 },
               { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 112000 },
@@ -148,7 +148,7 @@ export const eventHandlers = [
             ]
           },
           {
-            eventPricePolicyId: 3, priceGrade: 'S', audienceType: 'ALL', salePriceAmount: 110000, currencyCode: 'KRW', displayOrder: 3,
+            eventPricePolicyId: 3, grade: 'S', audienceType: 'ALL', salePriceAmount: 110000, currencyCode: 'KRW', displayOrder: 3,
             discountInfo: [
               { discountName: '일반', discountRate: 0, actualPriceAmount: 110000 },
               { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 88000 },
@@ -156,7 +156,7 @@ export const eventHandlers = [
             ]
           },
           {
-            eventPricePolicyId: 4, priceGrade: 'A', audienceType: 'ALL', salePriceAmount: 80000, currencyCode: 'KRW', displayOrder: 4,
+            eventPricePolicyId: 4, grade: 'A', audienceType: 'ALL', salePriceAmount: 80000, currencyCode: 'KRW', displayOrder: 4,
             discountInfo: [
               { discountName: '일반', discountRate: 0, actualPriceAmount: 80000 },
               { discountName: '청소년 할인', discountRate: 20, actualPriceAmount: 64000 },

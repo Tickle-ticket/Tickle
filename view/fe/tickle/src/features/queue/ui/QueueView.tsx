@@ -56,6 +56,10 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
     const startQueue = async (attempt = 1): Promise<void> => {
       if (isCancelled) return;
+      if (!eventId || eventId === 'undefined') {
+        console.error('Invalid eventId passed to QueueView:', eventId);
+        return;
+      }
 
       if (fastMode) {
         setStatus('WAITING');

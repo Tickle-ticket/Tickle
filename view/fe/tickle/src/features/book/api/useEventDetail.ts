@@ -74,7 +74,7 @@ export const useEventDetail = (eventId?: string) => {
         venue: data.venueName,
         date: `${startDate} ~ ${endDate}`,
         zonePrices: data.pricePolicies.map(p => ({
-          grade: p.priceGrade,
+          grade: p.grade,
           price: getEventPriceAmount(p),
           discountInfo: p.discountInfo
         })),

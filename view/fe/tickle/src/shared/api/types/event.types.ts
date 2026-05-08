@@ -64,16 +64,39 @@ export const DiscountInfoSchema = Schema.Struct({
 
 export type DiscountInfo = Schema.Schema.Type<typeof DiscountInfoSchema>;
 
-export const EventPricePolicySchema = Schema.Struct({
-  eventPricePolicyId: Schema.Number,
-  priceGrade: Schema.String,
-  audienceType: Schema.optional(Schema.String),
-  priceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
-  salePriceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
-  currencyCode: Schema.String,
-  displayOrder: Schema.Number,
-  discountInfo: Schema.optional(Schema.Array(DiscountInfoSchema)),
-});
+export const EventPricePolicySchema = Schema.transform(
+  Schema.Struct({
+    eventPricePolicyId: Schema.Number,
+    grade: Schema.optional(Schema.String),
+    priceGrade: Schema.optional(Schema.String),
+    audienceType: Schema.optional(Schema.String),
+    priceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+    salePriceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+    currencyCode: Schema.String,
+    displayOrder: Schema.Number,
+    discountInfo: Schema.optional(Schema.Array(DiscountInfoSchema)),
+  }),
+  Schema.Struct({
+    eventPricePolicyId: Schema.Number,
+    grade: Schema.String,
+    audienceType: Schema.optional(Schema.String),
+    priceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+    salePriceAmount: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
+    currencyCode: Schema.String,
+    displayOrder: Schema.Number,
+    discountInfo: Schema.optional(Schema.Array(DiscountInfoSchema)),
+  }),
+  {
+    decode: (input: any) => ({
+      ...input,
+      grade: input.priceGrade
+    }),
+    encode: (output: any) => ({
+      ...output,
+      priceGrade: output.grade
+    })
+  }
+);
 
 export type EventPricePolicy = Schema.Schema.Type<typeof EventPricePolicySchema>;
 

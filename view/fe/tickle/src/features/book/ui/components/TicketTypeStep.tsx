@@ -34,8 +34,8 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   // Group seats by grade from the backend optionsData
   const gradeSeats: Record<string, any[]> = {};
   optionsData.seats.forEach(seat => {
-    if (!gradeSeats[seat.priceGrade]) gradeSeats[seat.priceGrade] = [];
-    gradeSeats[seat.priceGrade].push(seat);
+    if (!gradeSeats[seat.grade]) gradeSeats[seat.grade] = [];
+    gradeSeats[seat.grade].push(seat);
   });
 
   const getGradeTotal = (grade: string) => {

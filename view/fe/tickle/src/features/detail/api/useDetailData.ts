@@ -78,7 +78,7 @@ export const useDetailData = (eventId: string | null | undefined) => {
         venueAddress: data.venueAddress,
         notice: data.notice || '',
         zonePrices: data.pricePolicies.map((pricePolicy) => ({
-          grade: pricePolicy.priceGrade || '일반',
+          grade: pricePolicy.grade || '일반',
           price: getEventPriceAmount(pricePolicy),
         })),
         schedules,

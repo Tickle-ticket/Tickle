@@ -63,8 +63,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   // 등급별 좌석 그룹화 (UI 용)
   const gradeSeats: Record<string, any[]> = {};
   optionsData.seats.forEach(seat => {
-    if (!gradeSeats[seat.priceGrade]) gradeSeats[seat.priceGrade] = [];
-    gradeSeats[seat.priceGrade].push(seat);
+    if (!gradeSeats[seat.grade]) gradeSeats[seat.grade] = [];
+    gradeSeats[seat.grade].push(seat);
   });
 
   const ticketPrice = Object.entries(gradeSeats).reduce((sum, [grade, seats]) => {

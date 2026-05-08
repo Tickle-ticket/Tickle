@@ -1274,7 +1274,7 @@ export default function AgencyRegistrationPage() {
     }
 
     const seatGroups = (['VIP', 'R', 'S', 'A', 'RESTRICTED_VIEW'] as const)
-      .map((priceGrade) => {
+      .map((grade) => {
         const seatIds = STAGE_4001_SEAT_IDS.flatMap((seatLabel) => {
           const assignment = seatPolicy[seatLabel];
 
@@ -1282,13 +1282,13 @@ export default function AgencyRegistrationPage() {
             return [];
           }
 
-          return seatPolicyGradeToApiGrade[assignment] === priceGrade
+          return seatPolicyGradeToApiGrade[assignment] === grade
             ? [mockSeatIdByLabel.get(seatLabel) ?? -1]
             : [];
         }).filter((seatId) => seatId > 0);
 
         return {
-          priceGrade,
+          grade,
           seatIds,
         };
       })
@@ -1299,7 +1299,7 @@ export default function AgencyRegistrationPage() {
       return;
     }
 
-    const usedPriceGrades = new Set(seatGroups.map((seatGroup) => seatGroup.priceGrade));
+    const usedPriceGrades = new Set(seatGroups.map((seatGroup) => seatGroup.grade));
     const missingPriceField = seatGradeFields.find(
       ({ key }) =>
         usedPriceGrades.has(seatPriceGradeToApiGrade[key]) &&
@@ -1314,7 +1314,7 @@ export default function AgencyRegistrationPage() {
     const pricePolicies = seatGradeFields
       .filter(({ key }) => usedPriceGrades.has(seatPriceGradeToApiGrade[key]))
       .map(({ key }, index) => ({
-        priceGrade: seatPriceGradeToApiGrade[key],
+        grade: seatPriceGradeToApiGrade[key],
         priceAmount: Number(seatPrices[key]),
         discountInfo: [],
         currencyCode: 'KRW',
