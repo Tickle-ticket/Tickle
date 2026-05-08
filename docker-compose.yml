@@ -4,6 +4,11 @@ services:
     build:
       context: ./view/fe/tickle
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_AUTH_API_URL: ${NEXT_PUBLIC_AUTH_API_URL}
+        NEXT_PUBLIC_AI_PUBLIC_API_URL: ${NEXT_PUBLIC_AI_PUBLIC_API_URL}
+        NEXT_PUBLIC_API_MOCKING: ${NEXT_PUBLIC_API_MOCKING}
     ports:
       - "3000:3000"
     restart: always
