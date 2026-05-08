@@ -1,4 +1,4 @@
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse, delay, passthrough } from 'msw';
 import { Schema } from 'effect';
 import { TrialJSONSchema } from '../../utils/schema';
 import type { TrialJSON } from '../../utils/schema';
@@ -49,8 +49,16 @@ export const trialHandlers = [
   // AI Ingest Server 이벤트 수집 모킹 (CORS 에러 방지용)
   http.post('*/api/behavior/events', async () => {
     await delay(100);
-    console.log('%c[MSW] Behavior event sent to AI Ingest Server', 'color: #3b82f6; font-weight: bold;');
-    
+
+    const passthroughEnabled =
+      (process.env.NEXT_PUBLIC_MSW_PASSTHROUGH_BEHAVIOR_EVENTS || '').toLowerCase() === 'enabled';
+
+    if (passthroughEnabled) {
+      return passthrough();
+    }
+
+    console.log('%c[MSW] Behavior event mocked (not sent to AI Ingest Server)', 'color: #3b82f6; font-weight: bold;');
+
     return HttpResponse.json({
       status: 200,
       message: 'success',
