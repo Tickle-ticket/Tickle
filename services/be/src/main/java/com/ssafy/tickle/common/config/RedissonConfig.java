@@ -42,7 +42,7 @@ public class RedissonConfig {
                     .setTimeout(1000)
                     .setRetryAttempts(1)
                     .setRetryInterval(200)
-                    .setSlavesSyncTimeout(3000);
+                    .setCheckLockSyncedSlaves(false);
 
             if (password != null && !password.isBlank()) {
                 sentinelConfig.setPassword(password);
