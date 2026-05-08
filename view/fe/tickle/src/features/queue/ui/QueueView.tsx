@@ -2,33 +2,31 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { enterQueue, getQueueToken, leaveQueue, getQueueStreamUrl, getQueueStatus } from '@/src/shared/api/queueApi';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
 import { Modal } from '@/src/shared/components/Modal';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 
 interface QueueViewProps {
-  sessionId: string;
+  eventId: string;
   onAdmitted: (admitToken: string) => void;
   onClose: () => void;
   fastMode?: boolean;
   scope?: 'BOOKING' | 'CANCELLATION_WAIT';
 }
 
-export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'BOOKING' }: QueueViewProps) => {
+export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING' }: QueueViewProps) => {
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
-  const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string; action?: () => void; confirmText?: string; showCancelButton?: boolean}>({
+  const [errorModalConfig, setErrorModalConfig] = useState<{ isOpen: boolean; title: string; message: string; action?: () => void; confirmText?: string; showCancelButton?: boolean }>({
     isOpen: false,
     title: '',
     message: ''
   });
-  
+
   const queueTokenRef = useRef<string | null>(null);
   const isLeavingRef = useRef<boolean>(false);
   const isExitModalOpenRef = useRef<boolean>(false);
@@ -53,8 +51,8 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
       return;
     }
 
-    let ctrl: AbortController | null = null;
     let isCancelled = false;
+    let source: EventSource | null = null;
 
     const startQueue = async (attempt = 1): Promise<void> => {
       if (isCancelled) return;
@@ -72,12 +70,12 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
 
       try {
         // 1. Enter Queue
-        const enterRes = await enterQueue(sessionId, scope);
+        const enterRes = await enterQueue(eventId, scope);
         if (isCancelled) return;
         const { requestId } = enterRes.data;
 
         // 2. Get Queue Token
-        const tokenRes = await getQueueToken(sessionId, requestId, scope);
+        const tokenRes = await getQueueToken(eventId, requestId, scope);
         if (isCancelled) return;
         const { queueToken } = tokenRes.data;
         queueTokenRef.current = queueToken;
@@ -91,7 +89,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
 
         // 3. Get Initial Queue Status
         try {
-          const statusRes = await getQueueStatus(sessionId, queueToken, scope);
+          const statusRes = await getQueueStatus(eventId, queueToken, scope);
           if (statusRes.data.status === 'WAITING') {
             setRank(statusRes.data.rank);
             setWaitingCount(statusRes.data.waitingCount);
@@ -104,47 +102,38 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
           console.warn('Failed to fetch initial queue status', err);
         }
 
-        // 4. Setup SSE
-        ctrl = new AbortController();
-        const token = getAccessToken();
+        const streamUrl = getQueueStreamUrl(eventId, queueToken);
 
-        fetchEventSource(getQueueStreamUrl(sessionId, queueToken, scope), {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          signal: ctrl.signal,
-          onmessage(event) {
-            try {
-              const data = JSON.parse(event.data);
-              
-              if (data.status === 'WAITING') {
-                setRank(data.rank);
-                setWaitingCount(data.waitingCount);
-                setEstimatedWaitSeconds(data.estimatedWaitSeconds);
-              } else if (data.status === 'ADMITTED') {
-                if (ctrl) ctrl.abort();
-                
-                if (isExitModalOpenRef.current) {
-                  pendingAdmitTokenRef.current = data.admitToken;
-                } else {
-                  onAdmitted(data.admitToken);
-                }
-              } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
-                setStatus('ERROR');
-                if (ctrl) ctrl.abort();
+        source = new EventSource(streamUrl);
+
+        source.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            if (data.status === 'WAITING') {
+              setRank(data.rank);
+              setWaitingCount(data.waitingCount);
+              setEstimatedWaitSeconds(data.estimatedWaitSeconds);
+            } else if (data.status === 'ADMITTED') {
+              source?.close();
+
+              if (isExitModalOpenRef.current) {
+                pendingAdmitTokenRef.current = data.admitToken;
+              } else {
+                onAdmitted(data.admitToken);
               }
-            } catch (e) {
-              console.error('SSE parsing error', e);
+            } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
+              setStatus('ERROR');
+              source?.close();
             }
-          },
-          onerror(err) {
-            console.warn('EventSource connection error', err);
-            throw err; // Stop retrying on error
+          } catch (e) {
+            console.error('SSE parsing error', e);
           }
-        }).catch((err) => {
-          console.error('FetchEventSource error', err);
-        });
+        };
+
+        source.onerror = (err) => {
+          console.warn('EventSource connection error, browser will attempt to auto-reconnect...', err);
+        };
 
       } catch (err: any) {
         if (err.status === 400) {
@@ -165,7 +154,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
           });
           return;
         }
-        
+
         // MSW가 아직 준비되지 않았을 수 있으므로 최대 3회 재시도
         if (attempt < 3 && !isCancelled) {
           await new Promise(r => setTimeout(r, 500 * attempt));
@@ -180,14 +169,11 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
 
     return () => {
       isCancelled = true;
-      if (ctrl) {
-        ctrl.abort();
-      }
-      if (queueTokenRef.current && !isLeavingRef.current) {
-        leaveQueue(sessionId, queueTokenRef.current, scope).catch(() => {});
+      if (source) {
+        source.close();
       }
     };
-  }, [sessionId, onAdmitted]);
+  }, [eventId, onAdmitted]);
 
   const handleCloseClick = () => {
     setIsExitModalOpen(true);
@@ -199,7 +185,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
     isExitModalOpenRef.current = false;
     isLeavingRef.current = true;
     if (queueTokenRef.current) {
-      leaveQueue(sessionId, queueTokenRef.current, scope).catch(console.error);
+      leaveQueue(eventId, queueTokenRef.current, scope).catch(console.error);
     }
     onClose();
   };
@@ -254,7 +240,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
             </div>
-            
+
             <div className="text-center w-full flex flex-col items-center">
               <Text typography="t3" fontWeight="bold" color="primary" className="text-center">예매 대기 중입니다</Text>
               <Text typography="t6" color="secondary" className="mt-4 break-keep leading-relaxed text-center">
@@ -292,7 +278,7 @@ export const QueueView = ({ sessionId, onAdmitted, onClose, fastMode, scope = 'B
             <div className="flex flex-col items-center">
               <Text typography="t3" fontWeight="bold" className="text-red-600 text-center">대기열 접속 오류</Text>
               <Text typography="t6" color="secondary" className="mt-4 break-keep leading-relaxed text-center">
-                일시적인 오류가 발생했습니다.<br/>다시 시도해주세요.
+                일시적인 오류가 발생했습니다.<br />다시 시도해주세요.
               </Text>
             </div>
             <button

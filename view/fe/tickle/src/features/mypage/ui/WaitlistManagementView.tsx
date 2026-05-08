@@ -239,7 +239,7 @@ export const WaitlistManagementView = () => {
       {modifyFlowState === 'QUEUE' && selectedWaitlistForModify && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView 
-            sessionId={selectedWaitlistForModify.id || '1'} 
+            eventId={selectedWaitlistForModify.id || '1'} 
             scope="CANCELLATION_WAIT"
             onAdmitted={(token) => {
               setAdmitToken(token);
