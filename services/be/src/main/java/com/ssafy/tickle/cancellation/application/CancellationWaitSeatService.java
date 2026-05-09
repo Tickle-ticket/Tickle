@@ -8,6 +8,7 @@ import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatMapRes
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationWaitSeatSectionResponse;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.domain.QueueScope;
@@ -68,7 +69,7 @@ public class CancellationWaitSeatService {
             Long userId,
             String admitToken
     ) {
-        validateSession(eventId, scheduleId);
+        EventSession session = validateSession(eventId, scheduleId);
         // 예매 대기 좌석맵은 cancellation wait 큐를 통과한 사용자에게만 노출합니다.
         queueStatusService.validateAdmitToken(QueueScope.CANCELLATION_WAIT, eventId, userId, admitToken);
 
@@ -102,7 +103,12 @@ public class CancellationWaitSeatService {
                 .map(entry -> CancellationWaitSeatSectionResponse.of(entry.getKey(), entry.getValue()))
                 .toList();
 
-        return new CancellationWaitSeatMapResponse(sections);
+        Long venueId = seatsBySection.keySet().stream()
+                .findFirst()
+                .map(EventSection::getVenueId)
+                .orElseGet(() -> session.getEvent().getVenue().getId());
+
+        return new CancellationWaitSeatMapResponse(venueId, sections);
     }
 
     /**
@@ -111,8 +117,8 @@ public class CancellationWaitSeatService {
      * @param eventId 공연 식별자
      * @param scheduleId 회차 식별자
      */
-    private void validateSession(Long eventId, Long scheduleId) {
-        eventSessionRepository.findByIdAndEventId(scheduleId, eventId)
+    private EventSession validateSession(Long eventId, Long scheduleId) {
+        return eventSessionRepository.findByIdAndEventId(scheduleId, eventId)
                 .orElseThrow(() -> new BaseException(
                         GlobalErrorCode.RESOURCE_NOT_FOUND,
                         "공연(%d)에 속하는 회차(%d)를 찾을 수 없습니다.".formatted(eventId, scheduleId)

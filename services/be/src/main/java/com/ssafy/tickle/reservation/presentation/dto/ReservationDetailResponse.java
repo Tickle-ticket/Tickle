@@ -10,6 +10,7 @@ import java.util.List;
  * 예매 상세 조회 응답 DTO입니다.
  *
  * @param bookingId       예매 식별자
+ * @param paymentId       결제 식별자
  * @param bookingNo       예매 번호
  * @param bookingStatus   예매 상태
  * @param eventTitle      공연 제목
@@ -23,6 +24,7 @@ import java.util.List;
  */
 public record ReservationDetailResponse(
         Long bookingId,
+        Long paymentId,
         String bookingNo,
         String bookingStatus,
         String eventTitle,
@@ -39,12 +41,18 @@ public record ReservationDetailResponse(
      * Booking 엔티티와 티켓 목록을 상세 응답 DTO로 변환합니다.
      *
      * @param booking 예매 엔티티
+     * @param paymentId 결제 식별자
      * @param tickets 변환된 티켓 응답 목록
      * @return 상세 응답
      */
-    public static ReservationDetailResponse from(Booking booking, List<ReservationTicketResponse> tickets) {
+    public static ReservationDetailResponse from(
+            Booking booking,
+            Long paymentId,
+            List<ReservationTicketResponse> tickets
+    ) {
         return new ReservationDetailResponse(
                 booking.getId(),
+                paymentId,
                 booking.getBookingNo(),
                 booking.getBookingStatus().name(),
                 booking.getSession().getEvent().getTitle(),

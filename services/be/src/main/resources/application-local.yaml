@@ -129,8 +129,10 @@ kakaopay:
   cancel-url: ${KAKAOPAY_CANCEL_URL}
   # approve 완료 후 FE 예매 확정 페이지
   success-redirect-url: ${KAKAOPAY_SUCCESS_REDIRECT_URL}
-  # fail/cancel 후 FE 결제 수단 선택 페이지
-  method-selection-redirect-url: ${KAKAOPAY_METHOD_SELECTION_REDIRECT_URL}
+  # fail 후 FE 결제 실패 페이지
+  failed-redirect-url: ${KAKAOPAY_FAILED_REDIRECT_URL}
+  # cancel 후 FE 결제 취소 페이지
+  cancelled-redirect-url: ${KAKAOPAY_CANCELLED_REDIRECT_URL}
 
 coolsms:
   api-key: ${COOLSMS_API_KEY}

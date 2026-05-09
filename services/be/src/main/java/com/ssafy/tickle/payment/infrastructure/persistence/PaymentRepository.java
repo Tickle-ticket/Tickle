@@ -40,6 +40,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByBookingId(Long bookingId);
 
     /**
+     * 예매별 최신 결제 건을 조회합니다.
+     *
+     * @param bookingId 예매 식별자
+     * @return 최신 결제 조회 결과
+     */
+    Optional<Payment> findTopByBookingIdOrderByIdDesc(Long bookingId);
+
+    /**
      * 만료 대상이 될 수 있는 무통장 입금 대기 결제를 ID 순서로 배치 조회합니다.
      *
      * @param paymentStatus 결제 상태

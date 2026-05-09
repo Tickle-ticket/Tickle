@@ -105,7 +105,7 @@ public class PaymentController implements PaymentApiDoc {
     @Override
     @GetMapping("/payments/kakaopay/fail")
     public ResponseEntity<Void> failKakaoPay(@RequestParam Long paymentId) {
-        // 실패 콜백은 예매 초안을 유지한 채 결제 수단 선택 화면으로 되돌린다.
+        // 실패 콜백은 예매 초안과 좌석 선점을 유지한 채 FE 결제 실패 페이지로 보낸다.
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, kakaoPayPaymentService.failKakaoPay(paymentId))
                 .build();
@@ -114,7 +114,7 @@ public class PaymentController implements PaymentApiDoc {
     @Override
     @GetMapping("/payments/kakaopay/cancel")
     public ResponseEntity<Void> cancelKakaoPay(@RequestParam Long paymentId) {
-        // 취소 콜백도 좌석 선점과 초안은 유지하고 결제 선택 화면으로 되돌린다.
+        // 취소 콜백도 예매 초안과 좌석 선점을 유지한 채 FE 결제 취소 페이지로 보낸다.
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, kakaoPayPaymentService.cancelKakaoPay(paymentId))
                 .build();

@@ -5,6 +5,7 @@ import com.ssafy.tickle.cancellation.presentation.dto.CancellationOfferDetailRes
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseRequest;
 import com.ssafy.tickle.cancellation.presentation.dto.CancellationPurchaseResponse;
 import com.ssafy.tickle.common.auth.UserId;
+import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +48,6 @@ public class CancellationRedistributionController implements CancellationRedistr
         // Internal Secret Header 검증은 인터셉터나 시큐리티 등에서 처리될 수 있으나
         // 내부 API임을 명시적으로 처리하기 위해 추가적인 로직을 수행할 수 있습니다.
         cancellationRedistributionService.notifyCandidate(cancellationId);
-        return ResponseEntity.ok().body(BaseResponse.success(null));
+        return ResponseEntity.ok().body(BaseResponse.success(SuccessCode.OK, null));
     }
 }

@@ -1,6 +1,7 @@
 package com.ssafy.tickle.reservation.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
 import com.ssafy.tickle.reservation.domain.ReservationErrorCode;
@@ -43,6 +44,7 @@ public class ReservationService {
 
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
+    private final PaymentRepository paymentRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final CancellationRedistributionService cancellationRedistributionService;
     private final ApplicationEventPublisher eventPublisher;
@@ -78,8 +80,11 @@ public class ReservationService {
                 .stream()
                 .map(ReservationTicketResponse::from)
                 .toList();
+        Long paymentId = paymentRepository.findTopByBookingIdOrderByIdDesc(reservationId)
+                .map(payment -> payment.getId())
+                .orElse(null);
 
-        return ReservationDetailResponse.from(booking, tickets);
+        return ReservationDetailResponse.from(booking, paymentId, tickets);
     }
 
     /**

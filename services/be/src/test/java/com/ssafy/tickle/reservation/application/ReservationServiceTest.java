@@ -3,6 +3,8 @@ package com.ssafy.tickle.reservation.application;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.payment.domain.Payment;
+import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
 import com.ssafy.tickle.reservation.domain.ReservationErrorCode;
@@ -54,6 +56,7 @@ class ReservationServiceTest {
 
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingTicketRepository bookingTicketRepository;
+    @Mock private PaymentRepository paymentRepository;
     @Mock private SessionSeatRepository sessionSeatRepository;
     @Mock private CancellationRedistributionService cancellationRedistributionService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -62,11 +65,13 @@ class ReservationServiceTest {
 
     private static final Long USER_ID       = 1L;
     private static final Long BOOKING_ID    = 10L;
+    private static final Long PAYMENT_ID    = 20L;
     private static final Long SEAT_ID       = 100L;
 
     private Booking confirmedBooking;
     private Booking cancelledBooking;
     private BookingTicket ticket;
+    private Payment payment;
     private SessionSeat sessionSeat;
 
     @BeforeEach
@@ -97,6 +102,9 @@ class ReservationServiceTest {
         // CANCELLED 예매
         cancelledBooking = mock(Booking.class);
         given(cancelledBooking.getBookingStatus()).willReturn(Booking.Status.CANCELLED);
+
+        payment = mock(Payment.class);
+        given(payment.getId()).willReturn(PAYMENT_ID);
 
         // 티켓 + 좌석
         sessionSeat = mock(SessionSeat.class);
@@ -158,12 +166,15 @@ class ReservationServiceTest {
                     .willReturn(Optional.of(confirmedBooking));
             given(bookingTicketRepository.findAllByBookingId(BOOKING_ID))
                     .willReturn(List.of());
+            given(paymentRepository.findTopByBookingIdOrderByIdDesc(BOOKING_ID))
+                    .willReturn(Optional.of(payment));
 
             // when
             ReservationDetailResponse response = reservationService.getReservationDetail(BOOKING_ID, USER_ID);
 
             // then
             assertThat(response.bookingId()).isEqualTo(BOOKING_ID);
+            assertThat(response.paymentId()).isEqualTo(PAYMENT_ID);
             assertThat(response.tickets()).isEmpty();
         }
 
