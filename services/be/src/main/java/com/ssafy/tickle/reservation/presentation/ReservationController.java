@@ -1,6 +1,7 @@
 package com.ssafy.tickle.reservation.presentation;
 
 import com.ssafy.tickle.common.auth.UserId;
+import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.reservation.application.ReservationService;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
@@ -73,6 +74,6 @@ public class ReservationController implements ReservationApiDoc {
         reservationService.cancelReservation(reservationId, userId);
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(null));
+                .body(BaseResponse.success(SuccessCode.OK, null));
     }
 }
