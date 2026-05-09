@@ -88,8 +88,11 @@ public class KakaoPayPaymentService {
     @Value("${kakaopay.success-redirect-url}")
     private String successRedirectUrl;
 
-    @Value("${kakaopay.method-selection-redirect-url}")
-    private String methodSelectionRedirectUrl;
+    @Value("${kakaopay.failed-redirect-url}")
+    private String failedRedirectUrl;
+
+    @Value("${kakaopay.cancelled-redirect-url}")
+    private String cancelledRedirectUrl;
 
     /**
      * 카카오페이 단건 결제 준비를 요청합니다.
@@ -243,8 +246,11 @@ public class KakaoPayPaymentService {
 
         validateKakaoPayFailureCallback(payment);
 
-        if (payment.getPaymentStatus() == Payment.Status.FAILED || payment.getPaymentStatus() == Payment.Status.CANCELLED) {
-            return buildMethodSelectionRedirectUrl(payment);
+        if (payment.getPaymentStatus() == Payment.Status.FAILED) {
+            return buildFailedRedirectUrl(payment);
+        }
+        if (payment.getPaymentStatus() == Payment.Status.CANCELLED) {
+            return buildCancelledRedirectUrl(payment);
         }
         if (payment.getPaymentStatus() == Payment.Status.APPROVED) {
             return buildSuccessRedirectUrl(payment);
@@ -261,7 +267,7 @@ public class KakaoPayPaymentService {
                 )
         );
 
-        return buildMethodSelectionRedirectUrl(payment);
+        return buildFailedRedirectUrl(payment);
     }
 
     /**
@@ -279,8 +285,11 @@ public class KakaoPayPaymentService {
 
         validateKakaoPayFailureCallback(payment);
 
-        if (payment.getPaymentStatus() == Payment.Status.CANCELLED || payment.getPaymentStatus() == Payment.Status.FAILED) {
-            return buildMethodSelectionRedirectUrl(payment);
+        if (payment.getPaymentStatus() == Payment.Status.FAILED) {
+            return buildFailedRedirectUrl(payment);
+        }
+        if (payment.getPaymentStatus() == Payment.Status.CANCELLED) {
+            return buildCancelledRedirectUrl(payment);
         }
         if (payment.getPaymentStatus() == Payment.Status.APPROVED) {
             return buildSuccessRedirectUrl(payment);
@@ -296,7 +305,7 @@ public class KakaoPayPaymentService {
                 )
         );
 
-        return buildMethodSelectionRedirectUrl(payment);
+        return buildCancelledRedirectUrl(payment);
     }
 
     /**
@@ -464,20 +473,30 @@ public class KakaoPayPaymentService {
     private String buildSuccessRedirectUrl(Payment payment) {
         return UriComponentsBuilder.fromUriString(successRedirectUrl)
                 .queryParam("bookingId", payment.getBooking().getId())
-                .queryParam("paymentId", payment.getId())
                 .toUriString();
     }
 
     /**
-     * 결제 실패 또는 취소 후 결제 수단 선택 페이지 URL을 생성합니다.
+     * 결제 실패 후 리다이렉트 페이지 URL을 생성합니다.
      *
-     * @param payment 실패 또는 취소된 결제
-     * @return FE 결제 수단 선택 페이지 URL
+     * @param payment 실패한 결제
+     * @return FE 결제 실패 페이지 URL
      */
-    private String buildMethodSelectionRedirectUrl(Payment payment) {
-        return UriComponentsBuilder.fromUriString(methodSelectionRedirectUrl)
+    private String buildFailedRedirectUrl(Payment payment) {
+        return UriComponentsBuilder.fromUriString(failedRedirectUrl)
                 .queryParam("bookingId", payment.getBooking().getId())
-                .queryParam("paymentId", payment.getId())
+                .toUriString();
+    }
+
+    /**
+     * 결제 취소 후 리다이렉트 페이지 URL을 생성합니다.
+     *
+     * @param payment 취소된 결제
+     * @return FE 결제 취소 페이지 URL
+     */
+    private String buildCancelledRedirectUrl(Payment payment) {
+        return UriComponentsBuilder.fromUriString(cancelledRedirectUrl)
+                .queryParam("bookingId", payment.getBooking().getId())
                 .toUriString();
     }
 
