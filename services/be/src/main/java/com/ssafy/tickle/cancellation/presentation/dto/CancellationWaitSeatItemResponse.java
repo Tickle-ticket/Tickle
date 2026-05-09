@@ -1,5 +1,6 @@
 package com.ssafy.tickle.cancellation.presentation.dto;
 
+import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.seat.domain.SessionSeat;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
  * @param seatNumber 좌석 번호
  * @param seatLabel 좌석 표기명
  * @param saleStatus 현재 판매 상태
+ * @param priceGrade 좌석 가격 등급
  * @param price 좌석 가격
  * @param waitingCount 해당 좌석 활성 예매 대기 인원 수
  * @param waitable 요청 사용자의 해당 좌석 예매 대기 신청 가능 여부
@@ -24,6 +26,7 @@ public record CancellationWaitSeatItemResponse(
         String seatNumber,
         String seatLabel,
         SessionSeat.SaleStatus saleStatus,
+        SeatGrade priceGrade,
         BigDecimal price,
         long waitingCount,
         boolean waitable
@@ -50,6 +53,7 @@ public record CancellationWaitSeatItemResponse(
                 eventSeat.getSeatNumber(),
                 eventSeat.getSeatLabel(),
                 sessionSeat.getSaleStatus(),
+                eventSeat.getEventPricePolicy().getPriceGrade(),
                 eventSeat.getEventPricePolicy().getPriceAmount(),
                 waitingCount,
                 waitable
