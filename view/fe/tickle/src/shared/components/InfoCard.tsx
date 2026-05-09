@@ -7,6 +7,7 @@ import { InfoDay } from './InfoDay';
 import { InfoRank } from './InfoRank';
 import { InfoTime } from './InfoTime';
 import { Badge } from './Badge';
+import { getBadgeColor } from '../utils/badgeColor';
 import type { InfoCardProps } from './types';
 
 export const InfoCard = ({
@@ -73,7 +74,11 @@ export const InfoCard = ({
             <div className="mt-2 flex flex-wrap gap-1.5 pointer-events-auto">
               {displayBadges.map((badge, idx) => {
                 if (typeof badge === 'string') {
-                  return <Badge key={idx}>{badge}</Badge>;
+                  return (
+                    <Badge key={idx} color={getBadgeColor(idx) as any} variant="fill">
+                      {badge}
+                    </Badge>
+                  );
                 }
                 return (
                   <Badge key={idx} color={badge.color} variant={badge.variant}>

@@ -19,6 +19,7 @@ export function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const loginMode = resolveLoginMode(searchParams.get('mode'));
+  const redirect = searchParams.get('redirect');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,7 +83,8 @@ export function LoginPageClient() {
 
       if (response.data) {
         setTokens(response.data.accessToken, response.data.refreshToken);
-        router.push('/');
+        const targetUrl = redirect && redirect.startsWith('/') ? redirect : '/';
+        router.push(targetUrl);
       }
     } catch (error) {
       console.error('Login failed', error);
@@ -98,7 +100,10 @@ export function LoginPageClient() {
 
   const handleKakaoLogin = () => {
     clearKakaoSignUpToken();
-    window.location.href = '/api/v1/auth/kakao';
+    const kakaoUrl = redirect && redirect.startsWith('/') 
+      ? `/api/v1/auth/kakao?redirect=${encodeURIComponent(redirect)}`
+      : '/api/v1/auth/kakao';
+    window.location.href = kakaoUrl;
   };
 
   return (

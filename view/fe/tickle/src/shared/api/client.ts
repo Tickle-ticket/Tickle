@@ -45,10 +45,15 @@ export const apiClient = async <T, A = any, I = any>(
 
   const accessToken = getAccessToken();
 
+  // 크로스 오리진 여부 판별: 로컬 개발 환경(localhost)에서 원격 API 서버로 요청할 때
+  // credentials: 'include'는 CORS preflight에서 Access-Control-Allow-Credentials가 필요하며
+  // 백엔드가 localhost를 허용하지 않으면 요청 자체가 차단됨.
+  // 인증은 Authorization 헤더로 처리하므로, 크로스 오리진 시 쿠키 전송은 불필요.
+  const isCrossOrigin = typeof window !== 'undefined' && BASE_URL && !url.startsWith(window.location.origin);
+
   const config: RequestInit = {
     ...restOptions,
-    // 실제 통신 시에는 항상 쿠키 전송이 필요합니다. 개발 단계에서 MSW 연동 문제 시 수정 가능.
-    credentials: 'include', 
+    credentials: isCrossOrigin ? 'same-origin' : 'include',
     redirect: 'manual', // 302 자동 추적 방지
     headers: {
       ...(!(body instanceof FormData) && { 'Content-Type': 'application/json' }),
@@ -123,9 +128,10 @@ const handle401 = async <T>(
   if (_isRetry) {
     // 재시도까지 했는데 실패했다면 로그인 페이지로 리다이렉트
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
+      const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?redirect=${currentPath}`;
     }
-    throw new ApiError('인증이 만료되었습니다. 다시 로그인해주세요.', 401);
+    throw new ApiError('로그인 세션이 만료되었습니다. 다시 로그인해주세요.', 401);
   }
 
   // 누군가 이미 리프레시 중이라면 큐(대기열)에 넣고 프로미스를 리턴하여 대기
@@ -154,16 +160,22 @@ const handle401 = async <T>(
       clearWaitQueue();
       clearTokens();
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
+        const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?redirect=${currentPath}`;
       }
-      throw new ApiError('리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.', 401);
+      throw new ApiError('로그인 세션이 만료되었습니다. 다시 로그인해주세요.', 401);
     }
   } catch (error) {
     setIsRefreshing(false);
     clearWaitQueue();
+    // ApiError가 이미 위 분기에서 throw된 경우 토큰은 이미 정리된 상태이므로 중복 처리하지 않음
+    if (error instanceof ApiError) {
+      throw error;
+    }
     clearTokens();
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
+      const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?redirect=${currentPath}`;
     }
     throw error;
   }

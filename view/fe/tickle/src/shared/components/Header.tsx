@@ -21,15 +21,78 @@ export const Header = () => {
   const { searchValue, setSearchValue, clearSearch } = useSearchStore();
   const [inputValue, setInputValue] = useState(searchValue);
   const { data: searchResults, isLoading: isSearchLoading } = useSearchData(searchValue);
-  const { openMypage, closeMypage } = useMypageStore();
+  const { isMypageOpen, activeTab, openMypage, closeMypage } = useMypageStore();
   const { openDetail, closeDetail } = useDetailStore();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // 1. 초기 로딩 시 URL의 q, view, tab 파라미터를 읽어와 Zustand 스토어에 세팅
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      const view = params.get('view');
+      const tab = params.get('tab');
+
+      if (q && q !== useSearchStore.getState().searchValue) {
+        setSearchValue(q);
+      }
+
+      if (view === 'mypage') {
+        const mypageStore = useMypageStore.getState();
+        if (!mypageStore.isMypageOpen || mypageStore.activeTab !== tab) {
+          openMypage((tab as any) || 'USER');
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 2. searchValue가 외부에서 변경되었을 때 input 값 동기화
   useEffect(() => {
     setInputValue(searchValue);
   }, [searchValue]);
+
+  // 3. 포커스를 잃지 않게 history.replaceState로 실시간 URL 변경 (Search & Mypage)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      let changed = false;
+
+      // Search URL 동기화
+      if (searchValue) {
+        if (url.searchParams.get('q') !== searchValue) {
+          url.searchParams.set('q', searchValue);
+          changed = true;
+        }
+      } else {
+        if (url.searchParams.has('q')) {
+          url.searchParams.delete('q');
+          changed = true;
+        }
+      }
+
+      // Mypage URL 동기화
+      if (isMypageOpen) {
+        if (url.searchParams.get('view') !== 'mypage' || url.searchParams.get('tab') !== activeTab) {
+          url.searchParams.set('view', 'mypage');
+          if (activeTab) url.searchParams.set('tab', activeTab);
+          changed = true;
+        }
+      } else {
+        if (url.searchParams.has('view')) {
+          url.searchParams.delete('view');
+          url.searchParams.delete('tab');
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
+    }
+  }, [searchValue, isMypageOpen, activeTab]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -52,8 +115,14 @@ export const Header = () => {
         setSearchValue(inputValue.trim());
         closeMypage();
         closeDetail();
+        
+        // 엔터 시 즉시 URL 업데이트
+        const url = new URL(window.location.href);
+        url.searchParams.set('q', inputValue.trim());
+        window.history.replaceState(null, '', url.pathname + url.search);
+
         if (window.location.pathname !== '/') {
-          router.push('/');
+          router.push(`/?q=${encodeURIComponent(inputValue.trim())}`);
         }
       }
     }
@@ -136,8 +205,7 @@ export const Header = () => {
                       setIsProfileOpen(false);
                       clearSearch();
                       if (window.location.pathname !== '/') {
-                        router.push('/');
-                        setTimeout(() => openMypage('USER'), 100);
+                        router.push('/?view=mypage&tab=USER');
                       } else {
                         openMypage('USER');
                       }
@@ -151,8 +219,21 @@ export const Header = () => {
                       setIsProfileOpen(false);
                       clearSearch();
                       if (window.location.pathname !== '/') {
-                        router.push('/');
-                        setTimeout(() => openMypage('WAITLIST'), 100);
+                        router.push('/?view=mypage&tab=MY_TICKETS');
+                      } else {
+                        openMypage('MY_TICKETS');
+                      }
+                    }}
+                  >
+                    내 예매 관리
+                  </button>
+                  <button 
+                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      clearSearch();
+                      if (window.location.pathname !== '/') {
+                        router.push('/?view=mypage&tab=WAITLIST');
                       } else {
                         openMypage('WAITLIST');
                       }
@@ -166,8 +247,7 @@ export const Header = () => {
                       setIsProfileOpen(false);
                       clearSearch();
                       if (window.location.pathname !== '/') {
-                        router.push('/');
-                        setTimeout(() => openMypage('UPCOMING'), 100);
+                        router.push('/?view=mypage&tab=UPCOMING');
                       } else {
                         openMypage('UPCOMING');
                       }
@@ -189,7 +269,10 @@ export const Header = () => {
             </>
           ) : (
             <button 
-              onClick={() => router.push('/login')}
+              onClick={() => {
+                const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+                router.push(`/login?redirect=${currentPath}`);
+              }}
               className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center min-w-[72px] h-10"
             >
               로그인

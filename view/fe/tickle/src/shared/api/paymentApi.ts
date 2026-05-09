@@ -77,33 +77,5 @@ export const paymentApi = {
     );
   },
 
-  approveKakaoPay: async (paymentId: number | string, pgToken: string): Promise<void> => {
-    return apiClient<void>(
-      `/api/v1/payments/kakaopay/approve?paymentId=${paymentId}&pg_token=${pgToken}`,
-      {
-        method: 'GET',
-      },
-      false
-    );
-  },
 
-  failKakaoPay: async (paymentId: number | string): Promise<void> => {
-    return apiClient<void>(
-      `/api/v1/payments/kakaopay/fail?paymentId=${paymentId}`,
-      {
-        method: 'GET',
-      },
-      false
-    );
-  },
-
-  cancelKakaoPay: async (paymentId: number | string): Promise<void> => {
-    return apiClient<void>(
-      `/api/v1/payments/kakaopay/cancel?paymentId=${paymentId}`,
-      {
-        method: 'GET',
-      },
-      false
-    );
-  },
 };

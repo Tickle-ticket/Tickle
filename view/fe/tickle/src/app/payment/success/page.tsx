@@ -8,17 +8,21 @@ import { Header } from '@/src/shared/components/Header';
 import { Modal } from '@/src/shared/components/Modal';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
+import type { ReservationDetail } from '@/src/shared/api/types/reservation.types';
+import { BookingDetailCard } from '@/src/shared/components/BookingDetailCard';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { openMypage } = useMypageStore();
+  const { openMypage, closeMypage } = useMypageStore();
   
-  const paymentId = searchParams.get('paymentId');
+  const paymentIdParam = searchParams.get('paymentId');
+  const bookingIdParam = searchParams.get('bookingId');
   const method = searchParams.get('method');
   const pgToken = searchParams.get('pg_token');
 
   const [paymentData, setPaymentData] = useState<PaymentStatusResponse | null>(null);
+  const [bookingDetail, setBookingDetail] = useState<ReservationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string; action?: () => void}>({
     isOpen: false,
@@ -27,7 +31,18 @@ export default function PaymentSuccessPage() {
   });
 
   useEffect(() => {
-    if (!paymentId) {
+    if (typeof window !== 'undefined' && window.opener) {
+      window.opener.postMessage(
+        { type: 'PAYMENT_COMPLETE', url: window.location.pathname + window.location.search },
+        window.location.origin
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.opener) return; // 팝업인 경우 아래 로직 실행 안함
+    
+    if (!paymentIdParam && !bookingIdParam) {
       setErrorModalConfig({
         isOpen: true,
         title: '결제 정보 없음',
@@ -40,28 +55,33 @@ export default function PaymentSuccessPage() {
 
     const processPayment = async () => {
       try {
-        // 카카오페이 승인 콜백으로 진입한 경우 승인 API 먼저 호출
-        if (pgToken) {
-          try {
-            await paymentApi.approveKakaoPay(paymentId, pgToken);
-          } catch (approveErr: any) {
-            console.error('Failed to approve KakaoPay', approveErr);
-            setErrorModalConfig({
-              isOpen: true,
-              title: '결제 승인 오류',
-              message: approveErr.status === 404 ? '결제 정보를 찾을 수 없습니다.' : 
-                       approveErr.status === 409 ? '현재 결제 상태에서는 승인 처리를 할 수 없습니다.' : 
-                       '결제 승인 처리 중 오류가 발생했습니다.',
-              action: () => router.push('/')
-            });
-            setLoading(false);
-            return;
+        let actualPaymentId = paymentIdParam ? Number(paymentIdParam) : null;
+        
+        if (!actualPaymentId && bookingIdParam) {
+          const { reservationApi } = await import('@/src/shared/api/reservationApi');
+          const resDetail = await reservationApi.getReservationDetail(bookingIdParam);
+          if (resDetail.data?.paymentId) {
+            actualPaymentId = resDetail.data.paymentId;
           }
         }
 
-        const res = await paymentApi.getPaymentStatus(paymentId);
+        if (!actualPaymentId) {
+          throw new Error('결제 내역을 찾을 수 없습니다.');
+        }
+
+        const res = await paymentApi.getPaymentStatus(actualPaymentId);
         if (res.data) {
           setPaymentData(res.data);
+          
+          const { reservationApi } = await import('@/src/shared/api/reservationApi');
+          try {
+            const detailRes = await reservationApi.getReservationDetail(res.data.bookingId);
+            if (detailRes.data) {
+              setBookingDetail(detailRes.data);
+            }
+          } catch (e) {
+            console.error('Failed to load reservation detail', e);
+          }
         } else {
           setErrorModalConfig({
             isOpen: true,
@@ -84,7 +104,7 @@ export default function PaymentSuccessPage() {
     };
 
     processPayment();
-  }, [paymentId, pgToken, router]);
+  }, [paymentIdParam, bookingIdParam, pgToken, router]);
 
   return (
     <div className="min-h-screen bg-[#f8f8f8] flex flex-col font-sans">
@@ -97,65 +117,30 @@ export default function PaymentSuccessPage() {
           <div className="flex flex-col items-center text-center space-y-4">
             {loading ? (
               <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            ) : paymentData ? (
-              <>
-                {paymentData.paymentMethodType === 'BANK_TRANSFER' ? (
-                  <InformationCircleIcon className="w-20 h-20 text-blue-500" />
-                ) : (
-                  <CheckCircleIcon className="w-20 h-20 text-green-500" />
-                )}
-                <h1 className="text-2xl font-extrabold text-gray-900">
-                  {paymentData.paymentMethodType === 'BANK_TRANSFER' ? '무통장 입금 안내' : '예매가 완료되었습니다!'}
+            ) : bookingDetail ? (
+              <div className="w-full text-left">
+                <h1 className="text-2xl font-extrabold text-gray-900 text-center mb-6">
+                  예매가 완료되었습니다!
                 </h1>
-                <p className="text-gray-500">
-                  예매 번호: <span className="font-bold text-gray-900">{paymentData.bookingNo}</span>
-                </p>
-
-                <div className="w-full bg-gray-50 p-6 rounded-2xl text-left space-y-3 mt-4 border border-gray-100">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">결제 금액</span>
-                    <span className="font-bold text-lg">{paymentData.orderAmount.toLocaleString()} 원</span>
-                  </div>
-                  
-                  {paymentData.paymentMethodType === 'BANK_TRANSFER' && (
-                    <>
-                      <div className="border-t border-gray-200 my-2" />
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">입금 계좌</span>
-                        <span className="font-bold text-blue-600">{paymentData.bankAccount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">예금주</span>
-                        <span className="font-medium text-gray-900">{paymentData.accountHolder}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">입금 기한</span>
-                        <span className="font-bold text-red-500">{paymentData.depositDeadline ? new Date(paymentData.depositDeadline).toLocaleString() : '기한 없음'}</span>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-2">
-                        * 안내된 기한 내에 입금하지 않으시면 예매가 자동 취소됩니다.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </>
+                <BookingDetailCard bookingDetail={bookingDetail} paymentDetail={paymentData || undefined} />
+              </div>
             ) : null}
           </div>
 
           <div className="flex gap-4 pt-4">
             <button
               onClick={() => {
-                router.push('/');
-                setTimeout(() => {
-                  openMypage(paymentData?.paymentMethodType === 'BANK_TRANSFER' ? 'PAYMENTS' : 'MY_TICKETS');
-                }, 100);
+                router.push('/?view=mypage&tab=MY_TICKETS');
               }}
               className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
             >
-              {paymentData?.paymentMethodType === 'BANK_TRANSFER' ? '결제 관리' : '내 예매'}
+              내 예매
             </button>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => {
+                closeMypage();
+                router.push('/');
+              }}
               className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-colors"
             >
               홈으로
@@ -180,5 +165,13 @@ export default function PaymentSuccessPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <PaymentSuccessContent />
+    </React.Suspense>
   );
 }

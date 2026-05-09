@@ -4,6 +4,7 @@ import { Toggle } from '@/src/shared/components/Toggle';
 import { useBookStore } from '../../store/useBookStore';
 import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
 import { paymentApi } from '@/src/shared/api/paymentApi';
+import { useRouter } from 'next/navigation';
 
 interface PaymentStepProps {
   optionsData: BookingOptionsResponse;
@@ -39,6 +40,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
   const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
 
+  const router = useRouter();
+  const [isKakaoPopupOpen, setIsKakaoPopupOpen] = useState(false);
+
   const [buyerName, setBuyerName] = useState(userProfile?.name || userProfile?.nickname || '');
   const [buyerEmail, setBuyerEmail] = useState(userProfile?.email || '');
   const [buyerPhone, setBuyerPhone] = useState(userProfile?.phoneNumber || '');
@@ -70,12 +74,19 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
   const ticketPrice = Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
     const baseSeat = seats[0];
-    const types = baseSeat.discountInfo;
+    let types = baseSeat.priceInfos || [];
+    
+    if (types.length === 0) {
+      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
+      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
+    }
+    
+    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
 
     const counts = priceGradeTicketCounts[priceGrade] || {};
     return sum + Object.entries(counts).reduce((s, [typeId, count]: [string, any]) => {
       const type = types.find((t: any) => t.discountName === typeId);
-      const typePrice = type ? type.ticketPriceAmount : baseSeat.priceAmount;
+      const typePrice = type ? type.ticketPriceAmount : basePrice;
       return s + typePrice * count;
     }, 0);
   }, 0);
@@ -154,7 +165,10 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   ];
 
   const handlePayment = async () => {
-    if (!scheduleId || !preorderBookingId || !selectedPayMethod) return;
+    if (!scheduleId || !preorderBookingId || !selectedPayMethod) {
+      console.error('Missing required payment parameters:', { scheduleId, preorderBookingId, selectedPayMethod });
+      return;
+    }
     if (!userId) {
       onError('로그인 필요', '로그인이 필요합니다.');
       window.location.href = '/login';
@@ -173,27 +187,85 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       const nextAction = selectRes.data?.nextAction;
 
-      if (nextAction === 'PREPARE_BANK_TRANSFER') {
+      const baseUrl = process.env.NEXT_PUBLIC_PAYMENT_BASE_URL || window.location.origin;
+
+      if (paymentMethod === 'BANK_TRANSFER' && selectRes.data?.bankTransfer) {
+        // 1-step 방식: select-method 응답에 이미 무통장 입금 정보가 있는 경우
+        router.push(`/payment/success?paymentId=${selectRes.data.bankTransfer.paymentId}&method=vbank`);
+      } else if (nextAction === 'PREPARE_BANK_TRANSFER') {
+        // 기존 2-step 방식에 대한 하위 호환성 유지
         const bankRes = await paymentApi.confirmBankTransferPayment(
           eventId,
           scheduleId,
           { bookingId: preorderBookingId }
         );
         if (bankRes.data) {
-          // @ts-ignore
-          window.__isNavigatingToPayment__ = true;
-          window.location.href = `/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`;
+          router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
         }
-      } else if (nextAction === 'PREPARE_KAKAOPAY') {
+      } else if (nextAction === 'PREPARE_KAKAOPAY' || paymentMethod === 'KAKAOPAY') {
         const kakaoRes = await paymentApi.readyKakaoPay(
           eventId,
           scheduleId,
-          { bookingId: preorderBookingId }
+          {
+            bookingId: preorderBookingId
+          }
         );
-        if (kakaoRes.data?.nextRedirectPcUrl) {
-          // @ts-ignore
-          window.__isNavigatingToPayment__ = true;
-          window.location.href = kakaoRes.data.nextRedirectPcUrl;
+
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const redirectUrl = isMobile
+          ? (kakaoRes.data?.nextRedirectMobileUrl || kakaoRes.data?.nextRedirectPcUrl)
+          : kakaoRes.data?.nextRedirectPcUrl;
+
+        if (redirectUrl) {
+          if (isMobile) {
+            (window as any).__isNavigatingToPayment__ = true;
+            window.location.href = redirectUrl;
+          } else {
+            // PC: 새 창으로 띄우고 메시지 리스너 등록
+            setIsKakaoPopupOpen(true);
+            const popup = window.open(redirectUrl, 'kakaopay', 'width=500,height=700,scrollbars=yes');
+
+            // 사용자가 팝업을 그냥 닫았는지 감지
+            const checkPopupInterval = setInterval(() => {
+              if (popup && popup.closed) {
+                clearInterval(checkPopupInterval);
+                setIsKakaoPopupOpen(false);
+                setIsProcessing(false);
+                onError('결제 중단', '결제 창이 닫혔습니다.\n결제를 다시 시도해주세요.');
+                setBookingStep('PAY_METHOD');
+              }
+            }, 500);
+
+            const messageListener = (event: MessageEvent) => {
+              // 출처 확인 (보안) - 동일 도메인에서 온 메시지만 허용
+              if (event.origin !== window.location.origin) return;
+
+              if (event.data?.type === 'PAYMENT_COMPLETE') {
+                clearInterval(checkPopupInterval);
+                window.removeEventListener('message', messageListener);
+                if (popup && !popup.closed) popup.close();
+                setIsKakaoPopupOpen(false);
+
+                const redirectUrlObj = new URL(event.data.url, window.location.origin);
+                const path = redirectUrlObj.pathname;
+
+                if (path.includes('/payment/success')) {
+                  redirectUrlObj.searchParams.set('eventId', eventId.toString());
+                  router.push(redirectUrlObj.pathname + redirectUrlObj.search);
+                } else if (path.includes('/payment/cancel')) {
+                  onError('결제 취소', '결제가 취소되었습니다.\n다시 시도해주세요.');
+                  setIsProcessing(false);
+                  setBookingStep('PAY_METHOD');
+                } else if (path.includes('/payment/fail')) {
+                  const reason = redirectUrlObj.searchParams.get('reason') || '결제 중 오류가 발생했습니다.';
+                  onError('결제 실패', reason);
+                  setIsProcessing(false);
+                  setBookingStep('PAY_METHOD');
+                }
+              }
+            };
+            window.addEventListener('message', messageListener);
+          }
         }
       }
     } catch (err: any) {
@@ -215,6 +287,25 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
   return (
     <div className="absolute inset-0 top-[73px] flex bg-white dark:bg-zinc-950 z-40 animate-fade-in border-t border-gray-200 dark:border-zinc-800">
+
+      {/* 팝업 결제 진행 중 오버레이 */}
+      {isKakaoPopupOpen && (
+        <div className="absolute inset-0 z-50 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
+          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">결제 진행 중입니다</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+            새 창에서 카카오페이 결제를 완료해 주세요.<br />
+            결제가 완료되면 이 화면은 자동으로 넘어갑니다.
+          </p>
+          <button
+            onClick={() => setIsKakaoPopupOpen(false)}
+            className="mt-8 px-6 py-2.5 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+          >
+            결제 창이 안 보이나요? (닫기)
+          </button>
+        </div>
+      )}
+
       {/* Left: 예매자 정보 + 약관 동의 */}
       <div className="w-[60%] h-full overflow-y-auto p-8 flex flex-col gap-6 border-r border-gray-200 dark:border-zinc-800 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
@@ -464,7 +555,12 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 let priceGradeTotalPrice = 0;
 
                 const baseSeat = seats[0];
-                const types = baseSeat.discountInfo;
+                let types = baseSeat.priceInfos || [];
+                
+                if (types.length === 0) {
+                  const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
+                  types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
+                }
 
                 Object.entries(counts).forEach(([typeId, count]: [string, any]) => {
                   const typeInfo = types.find((t: any) => t.discountName === typeId);

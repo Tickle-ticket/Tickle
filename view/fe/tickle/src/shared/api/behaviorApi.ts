@@ -57,9 +57,12 @@ export const sendBehaviorEvent = async ({
   };
 
   try {
-    const response = await fetch(buildBehaviorEventsUrl(), {
+    const behaviorUrl = buildBehaviorEventsUrl();
+    const isCrossOrigin = typeof window !== 'undefined' && !behaviorUrl.startsWith(window.location.origin);
+    
+    const response = await fetch(behaviorUrl, {
       method: 'POST',
-      credentials: 'include',
+      credentials: isCrossOrigin ? 'same-origin' : 'include',
       headers: {
         'Content-Type': 'application/json',
         'access-token': accessToken,

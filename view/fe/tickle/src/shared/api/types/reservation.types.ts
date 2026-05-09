@@ -43,6 +43,7 @@ export type TicketDetail = Schema.Schema.Type<typeof TicketDetailSchema>;
 
 export const ReservationDetailSchema = Schema.Struct({
   bookingId: Schema.Number,
+  paymentId: Schema.optional(Schema.Union(Schema.Number, Schema.Null)),
   bookingNo: Schema.String,
   bookingStatus: Schema.String,
   eventTitle: Schema.String,
@@ -62,3 +63,13 @@ export const ReservationListResponseSchema = Schema.Struct({
 });
 
 export type ReservationListResponse = Schema.Schema.Type<typeof ReservationListResponseSchema>;
+
+export const OwnershipCountResponseSchema = Schema.Struct({
+  eventId: Schema.Number,
+  sessionId: Schema.Number,
+  ownedTicketCount: Schema.Number,
+  cancellationWaitSeatCount: Schema.Number,
+  totalCount: Schema.Number,
+});
+
+export type OwnershipCountResponse = Schema.Schema.Type<typeof OwnershipCountResponseSchema>;

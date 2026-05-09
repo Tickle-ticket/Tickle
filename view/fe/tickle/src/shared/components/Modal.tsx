@@ -84,7 +84,7 @@ export const Modal = ({
             />
           )}
           {description && (
-            <Text typography="t5" color="secondary" className="whitespace-pre-wrap leading-relaxed mt-2 text-center break-keep">
+            <Text typography="t5" color="secondary" textAlign="center" className="whitespace-pre-wrap leading-relaxed mt-2 break-keep">
               {description}
             </Text>
           )}

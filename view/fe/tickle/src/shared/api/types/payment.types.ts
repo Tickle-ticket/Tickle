@@ -18,9 +18,23 @@ export interface PaymentMethodSelectionRequest {
 }
 
 export const PaymentMethodSelectionResponseSchema = Schema.Struct({
-  bookingId: Schema.Number,
-  paymentMethod: Schema.Literal('BANK_TRANSFER', 'KAKAOPAY'),
-  nextAction: Schema.Literal('PREPARE_BANK_TRANSFER', 'PREPARE_KAKAOPAY'),
+  bookingId: Schema.optional(Schema.Number),
+  paymentMethod: Schema.String,
+  nextAction: Schema.optional(Schema.String),
+  bankTransfer: Schema.optional(Schema.Struct({
+    paymentId: Schema.Number,
+    bookingId: Schema.Number,
+    bookingNo: Schema.String,
+    paymentStatus: Schema.String,
+    bookingStatus: Schema.String,
+    orderAmount: Schema.Number,
+    currencyCode: Schema.String,
+    bankAccount: Schema.String,
+    accountHolder: Schema.String,
+    depositDeadline: Schema.String,
+    seats: Schema.Array(PaymentSeatSummarySchema),
+  })),
+  kakaoPay: Schema.optional(Schema.Any),
 });
 
 export type PaymentMethodSelectionResponse = Schema.Schema.Type<typeof PaymentMethodSelectionResponseSchema>;
@@ -30,8 +44,11 @@ export interface KakaoPayReadyRequest {
 }
 
 export const KakaoPayReadyResponseSchema = Schema.Struct({
+  paymentId: Schema.Number,
   tid: Schema.String,
-  nextRedirectPcUrl: Schema.String,
+  nextRedirectPcUrl: Schema.optional(Schema.String),
+  nextRedirectMobileUrl: Schema.optional(Schema.String),
+  nextRedirectAppUrl: Schema.optional(Schema.String),
   createdAt: Schema.String,
 });
 

@@ -85,7 +85,8 @@ export function KakaoCallbackClient() {
 
         clearKakaoSignUpToken();
         setTokens(response.data.accessToken, response.data.refreshToken);
-        router.replace('/');
+        const targetUrl = state && state.startsWith('/') ? state : '/';
+        router.replace(targetUrl);
       } catch (err) {
         clearKakaoSignUpToken();
         console.error('Kakao callback failed:', err);

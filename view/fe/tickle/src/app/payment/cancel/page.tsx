@@ -6,11 +6,14 @@ import { Header } from '@/src/shared/components/Header';
 import { XCircleIcon } from '@heroicons/react/24/solid';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import { Modal } from '@/src/shared/components/Modal';
+import { useMypageStore } from '@/src/shared/store/useMypageStore';
 
-export default function PaymentCancelPage() {
+function PaymentCancelContent() {
   const router = useRouter();
+  const { closeMypage } = useMypageStore();
   const searchParams = useSearchParams();
-  const paymentId = searchParams.get('paymentId');
+  const bookingId = searchParams.get('bookingId');
+  const eventId = searchParams.get('eventId');
 
   const [isProcessing, setIsProcessing] = useState(true);
   const [errorModalConfig, setErrorModalConfig] = useState({
@@ -21,38 +24,19 @@ export default function PaymentCancelPage() {
   });
 
   useEffect(() => {
-    const processCancel = async () => {
-      if (!paymentId) {
-        setIsProcessing(false);
-        return;
-      }
+    if (typeof window !== 'undefined' && window.opener) {
+      window.opener.postMessage(
+        { type: 'PAYMENT_COMPLETE', url: window.location.pathname + window.location.search },
+        window.location.origin
+      );
+    }
+  }, []);
 
-      try {
-        await paymentApi.cancelKakaoPay(paymentId);
-        setIsProcessing(false);
-      } catch (err: any) {
-        setIsProcessing(false);
-
-        let title = '취소 처리 오류';
-        let message = '결제 취소 처리 중 오류가 발생했습니다.';
-
-        if (err.status === 404) {
-          message = '결제 정보를 찾을 수 없습니다.';
-        } else if (err.status === 409) {
-          message = '현재 결제 상태에서는 취소 처리를 할 수 없습니다.';
-        }
-
-        setErrorModalConfig({
-          isOpen: true,
-          title,
-          message,
-          action: () => router.push('/'),
-        });
-      }
-    };
-
-    processCancel();
-  }, [paymentId, router]);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.opener) return; // 팝업인 경우 아래 로직 실행 안함
+    
+    setIsProcessing(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -67,24 +51,27 @@ export default function PaymentCancelPage() {
 
           <div className="flex flex-col gap-3 pt-4">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => eventId ? router.push(`/detail?id=${eventId}`) : router.push('/')}
               disabled={isProcessing}
               className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
             >
-              다시 예매하기 (홈으로)
+              다시 예매하기
             </button>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => {
+                closeMypage();
+                router.push('/');
+              }}
               disabled={isProcessing}
               className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
                   ? 'bg-gray-300 text-white cursor-not-allowed'
                   : 'bg-gray-600 text-white shadow-lg shadow-gray-600/30 hover:bg-gray-700'
                 }`}
             >
-              마이페이지에서 결제 재시도
+              홈으로 돌아가기
             </button>
           </div>
         </div>
@@ -106,5 +93,13 @@ export default function PaymentCancelPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function PaymentCancelPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <PaymentCancelContent />
+    </React.Suspense>
   );
 }

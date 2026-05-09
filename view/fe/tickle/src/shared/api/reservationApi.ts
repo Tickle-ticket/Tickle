@@ -8,6 +8,8 @@ import {
   ReservationListResponseSchema,
   ReservationDetail,
   ReservationDetailSchema,
+  OwnershipCountResponse,
+  OwnershipCountResponseSchema,
 } from './types/reservation.types';
 
 export const reservationApi = {
@@ -42,6 +44,18 @@ export const reservationApi = {
         method: 'DELETE',
         params: {}
       }
+    );
+  },
+
+  getOwnershipCount: async (eventId: number | string, scheduleId: number | string, userId: number | string): Promise<ApiResponse<OwnershipCountResponse>> => {
+    return apiClient<ApiResponse<OwnershipCountResponse>>(
+      '/api/v1/reservations/ownership-count',
+      {
+        method: 'GET',
+        params: { eventId, scheduleId, userId }
+      },
+      true,
+      createApiResponseSchema(OwnershipCountResponseSchema)
     );
   },
 };

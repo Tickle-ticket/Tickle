@@ -75,7 +75,7 @@ export interface TextProps extends React.HTMLAttributes<HTMLSpanElement> {
   as?: React.ElementType;
   typography?: 't1' | 't2' | 't3' | 't4' | 't5' | 't6' | 't7';
   color?: 'primary' | 'secondary' | 'tertiary' | 'blue' | 'red' | 'white' | 'gray';
-  fontWeight?: 'regular' | 'medium' | 'bold' | 'semibold';
+  fontWeight?: 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold';
   textAlign?: 'left' | 'center' | 'right';
   ellipsis?: boolean;
   isLoading?: boolean;

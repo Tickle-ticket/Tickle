@@ -4,11 +4,7 @@ import React, { useState } from 'react';
 import { useWaitlistBookings, useCancelWaitlist } from '@/src/features/mypage/api/useMyPageData';
 import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
-import { Table } from '@/src/shared/components/Table';
-import Button from '@/src/shared/components/Button';
 import { Modal } from '@/src/shared/components/Modal';
-import { QueueView } from '@/src/features/queue/ui/QueueView';
-import { BookView } from '@/src/features/book/ui/BookView';
 import { CancellationDetailView } from '@/src/features/cancellation/ui/CancellationDetailView';
 
 export const WaitlistManagementView = () => {
@@ -16,20 +12,14 @@ export const WaitlistManagementView = () => {
 
   // Cancel Flow State
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [selectedWaitlistForCancel, setSelectedWaitlistForCancel] = useState<any | null>(null);
-  const [selectedSeatsToCancel, setSelectedSeatsToCancel] = useState<Set<string>>(new Set());
-
-  // Modify Flow State
-  const [modifyFlowState, setModifyFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK'>('NONE');
-  const [selectedWaitlistForModify, setSelectedWaitlistForModify] = useState<any | null>(null);
-  const [admitToken, setAdmitToken] = useState<string | null>(null);
 
   // Cancellation Flow State
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
 
   const handleOpenCancelModal = (item: any) => {
     setSelectedWaitlistForCancel(item);
-    setSelectedSeatsToCancel(new Set());
     setIsCancelModalOpen(true);
   };
 
@@ -37,51 +27,32 @@ export const WaitlistManagementView = () => {
     setIsCancelModalOpen(false);
     setTimeout(() => {
       setSelectedWaitlistForCancel(null);
-      setSelectedSeatsToCancel(new Set());
     }, 300);
   };
 
   const cancelWaitlistMutation = useCancelWaitlist();
 
-  const handleConfirmCancel = async () => {
+  const handleConfirmCancel = () => {
+    setIsWarningModalOpen(true);
+  };
+
+  const handleExecuteCancel = async () => {
+    if (!selectedWaitlistForCancel) return;
     try {
-      const cancelPromises = Array.from(selectedSeatsToCancel).map(id =>
-        cancelWaitlistMutation.mutateAsync(id)
+      const cancelPromises = selectedWaitlistForCancel.seats.map((seat: any) =>
+        cancelWaitlistMutation.mutateAsync(seat.id)
       );
       await Promise.all(cancelPromises);
-      alert('선택한 대기 내역이 취소되었습니다.');
+      // alert 띄우지 않음
+      setIsWarningModalOpen(false);
+      handleCloseCancelModal();
     } catch (err) {
       console.error(err);
       alert('취소 처리 중 오류가 발생했습니다.');
-    } finally {
-      handleCloseCancelModal();
+      setIsWarningModalOpen(false);
     }
   };
 
-  const handleOpenModifyFlow = (item: any) => {
-    // 좌석 정보에서 ID 추출 (예: "VIP석 1층 B구역 12열 14번" -> "VIP1")
-    // 여기서는 임시로 인덱스를 사용해 매핑
-    const parsedSeats = item.seats.map((s: any, i: number) => {
-      const match = s.info.match(/([A-Z]+)석/);
-      const priceGrade = match ? match[1] : 'VIP';
-      return `${priceGrade}${i + 1}`;
-    });
-
-    setSelectedWaitlistForModify({
-      ...item,
-      date: item.performanceDate.split('T')[0].replace(/-/g, '.'),
-      time: item.performanceDate.split('T')[1].substring(0, 5),
-      initialSeats: parsedSeats
-    });
-    setModifyFlowState('QUEUE');
-  };
-
-  const handleCloseModifyFlow = () => {
-    setModifyFlowState('NONE');
-    setTimeout(() => {
-      setSelectedWaitlistForModify(null);
-    }, 300);
-  };
 
   return (
     <div className="w-full animate-fade-in relative">
@@ -101,88 +72,82 @@ export const WaitlistManagementView = () => {
             return (
               <div
                 key={item.id}
-                className="relative w-full max-w-[280px] flex flex-col rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-white"
+                className="relative w-full max-w-[320px] flex flex-col rounded-[24px] overflow-hidden shadow-2xl shadow-black/20 bg-zinc-900"
               >
                 {/* 포스터 배경 (Full Size) */}
                 <div className="absolute inset-0 w-full h-full">
-                  <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="rounded-2xl max-w-full object-cover" />
+                  <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="!rounded-none max-w-full object-cover" />
                 </div>
 
                 {/* 그라데이션 오버레이 (텍스트 가독성) */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a]/95 via-[#0f172a]/70 to-[#0f172a]/10 pointer-events-none z-10"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-[#0f172a]/20 pointer-events-none z-10"></div>
 
                 {/* 컨텐츠 영역 */}
-                <div className="relative z-20 w-full h-full flex flex-col p-5 justify-between min-h-[420px]">
+                <div className="relative z-20 w-full h-full flex flex-col p-6 justify-between min-h-[460px] gap-4">
                   {/* 상단 뱃지 */}
-                  <div className="flex justify-between items-start w-full">
-                    <span className="px-2 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-md text-[10px] font-extrabold tracking-wider backdrop-blur-md shadow-sm">
+                  <div className="flex justify-between items-start w-full shrink-0">
+                    <span className="px-3 py-1.5 bg-purple-500/30 text-purple-200 border border-purple-400/40 rounded-lg text-xs font-extrabold tracking-widest backdrop-blur-md shadow-lg shadow-purple-500/20">
                       취소표 대기중
                     </span>
                   </div>
 
                   {/* 하단 텍스트 및 정보 박스 */}
-                  <div className="flex flex-col gap-3 w-full mt-auto">
-                    <div className="flex flex-col drop-shadow-md">
-                      <span className="text-[10px] font-extrabold text-purple-400 tracking-[0.2em] mb-1 opacity-90">WAITING TICKET</span>
-                      <Text typography="t4" fontWeight="bold" className="text-white w-full truncate mb-0.5 drop-shadow-lg">
+                  <div className="flex flex-col gap-4 w-full mt-auto">
+                    <div className="flex flex-col drop-shadow-lg">
+                      <Text typography="t3" fontWeight="extrabold" className="text-white w-full truncate mb-1 drop-shadow-xl">
                         {item.title}
-                      </Text>
-                      <Text typography="t7" fontWeight="medium" className="truncate text-gray-300 drop-shadow-md">
-                        {item.venue}
-                      </Text>
-                      <Text typography="t7" className="text-purple-200 mt-1 font-medium">
-                        {new Date(item.performanceDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                       </Text>
                     </div>
 
                     {/* Glassmorphism Info Box */}
-                    <div className="w-full bg-white/10 backdrop-blur-md rounded-xl p-3 flex flex-col gap-2 border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
-                      <div className="flex justify-between items-center text-[11px] mb-1">
-                        <span className="text-gray-300/80 font-medium">신청일</span>
-                        <span className="text-white font-bold tracking-wide">
-                          {item.waitDate.replace(/-/g, '.')}
+                    <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 flex flex-col gap-3 border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                      <div className="flex flex-col gap-1.5 text-xs mb-1 px-1">
+                        <span className="text-gray-300/90 font-bold">콘서트 일시</span>
+                        <span className="text-white font-extrabold tracking-wide">
+                          {new Date(item.performanceDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <div className="h-px w-full bg-white/10 mb-1" />
+
+                      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent mb-1" />
 
                       {/* 다중 좌석 대기열 */}
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2.5">
                         {item.seats && item.seats.map((seat: any) => {
                           const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
 
-                          // 혼잡도/대기열 색상 (파-초-노-빨 순서 - 인원이 많을수록 빨간색)
+                          // 혼잡도/대기열 색상
                           let badgeClass = '';
                           let barClass = '';
 
                           if (seat.waitlistNumber <= 0) {
-                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.6)] animate-pulse';
-                            barClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
+                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse border-rose-400';
+                            barClass = 'bg-gradient-to-r from-rose-600 to-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
                           } else if (seat.waitlistNumber <= 5) {
-                            badgeClass = 'bg-blue-500/20 text-blue-300 border-blue-500/30 shadow-[0_0_8px_rgba(59,130,246,0.3)]';
-                            barClass = 'bg-blue-400 shadow-[0_0_4px_rgba(59,130,246,0.8)]';
+                            badgeClass = 'bg-blue-500/30 text-blue-200 border-blue-400/50 shadow-[0_0_8px_rgba(59,130,246,0.4)]';
+                            barClass = 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_4px_rgba(59,130,246,0.8)]';
                           } else if (seat.waitlistNumber <= 10) {
-                            badgeClass = 'bg-green-500/20 text-green-300 border-green-500/30 shadow-[0_0_8px_rgba(34,197,94,0.3)]';
-                            barClass = 'bg-green-400 shadow-[0_0_4px_rgba(34,197,94,0.8)]';
+                            badgeClass = 'bg-green-500/30 text-green-200 border-green-400/50 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+                            barClass = 'bg-gradient-to-r from-green-600 to-green-400 shadow-[0_0_4px_rgba(34,197,94,0.8)]';
                           } else if (seat.waitlistNumber <= 15) {
-                            badgeClass = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30 shadow-[0_0_8px_rgba(234,179,8,0.3)]';
-                            barClass = 'bg-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.8)]';
+                            badgeClass = 'bg-yellow-500/30 text-yellow-200 border-yellow-400/50 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
+                            barClass = 'bg-gradient-to-r from-yellow-600 to-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.8)]';
                           } else {
-                            badgeClass = 'bg-red-500/20 text-red-300 border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.3)]';
-                            barClass = 'bg-red-400 shadow-[0_0_4px_rgba(239,68,68,0.8)]';
+                            badgeClass = 'bg-red-500/30 text-red-200 border-red-400/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
+                            barClass = 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_4px_rgba(239,68,68,0.8)]';
                           }
 
                           const isOffered = seat.waitlistNumber <= 0;
 
                           return (
-                            <div key={seat.id} className={`flex flex-col gap-2 bg-black/20 p-2 rounded-lg border ${isOffered ? 'border-rose-500/50' : 'border-white/5'}`}>
-                              <div className="flex justify-between items-center text-[11px]">
-                                <span className="text-gray-200 font-medium truncate max-w-[110px]">{seat.info}</span>
-                                <div className="flex flex-col items-end gap-1 w-[40px]">
-                                  <span className={`px-1.5 py-0.5 rounded border text-[9px] font-extrabold whitespace-nowrap ${badgeClass}`}>
-                                    {isOffered ? '배정됨!' : `${seat.waitlistNumber}번`}
+                            <div key={seat.id} className={`flex flex-col gap-2.5 bg-black/40 p-3 rounded-xl border ${isOffered ? 'border-rose-500/70 shadow-lg shadow-rose-500/20' : 'border-white/5 hover:border-white/10 transition-colors'}`}>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-100 font-bold tracking-wide truncate max-w-[130px]">{seat.info}</span>
+                                <div className="flex flex-col items-end gap-1.5 w-[60px]">
+                                  <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black whitespace-nowrap ${badgeClass}`}>
+                                    {isOffered ? '배정됨!' : `대기 ${seat.waitlistNumber}번`}
                                   </span>
                                   {!isOffered && (
-                                    <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                                    <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
                                       <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
                                     </div>
                                   )}
@@ -191,7 +156,7 @@ export const WaitlistManagementView = () => {
                               {isOffered && (
                                 <button
                                   onClick={() => setSelectedOfferId(seat.id)}
-                                  className="w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded text-[11px] font-bold shadow-lg shadow-rose-500/30 transition-colors"
+                                  className="w-full py-2 mt-1 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-lg text-xs font-bold shadow-lg shadow-rose-500/40 transition-all"
                                 >
                                   상세 확인 및 결제
                                 </button>
@@ -203,18 +168,12 @@ export const WaitlistManagementView = () => {
                     </div>
 
                     {/* 액션 버튼들 */}
-                    <div className="flex gap-2 mt-2 w-full">
+                    <div className="flex gap-3 mt-1 w-full">
                       <button
                         onClick={() => handleOpenCancelModal(item)}
-                        className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-md text-white text-[12px] font-bold rounded-xl border border-white/20 transition-colors shadow-sm"
+                        className="w-full py-3 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-xl text-white text-sm font-extrabold rounded-xl border border-white/20 transition-all shadow-lg hover:shadow-xl"
                       >
                         취소하기
-                      </button>
-                      <button
-                        onClick={() => handleOpenModifyFlow(item)}
-                        className="flex-1 py-2.5 bg-purple-500/80 hover:bg-purple-600/80 active:bg-purple-700/80 backdrop-blur-md text-white text-[12px] font-bold rounded-xl border border-purple-500/50 transition-colors shadow-sm"
-                      >
-                        대기 변경
                       </button>
                     </div>
                   </div>
@@ -236,88 +195,49 @@ export const WaitlistManagementView = () => {
         )}
       </div>
 
-      {modifyFlowState === 'QUEUE' && selectedWaitlistForModify && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <QueueView
-            eventId={selectedWaitlistForModify.eventId?.toString()}
-            scope="CANCELLATION_WAIT"
-            onAdmitted={(token) => {
-              setAdmitToken(token);
-              setModifyFlowState('BOOK');
-            }}
-            onClose={() => setModifyFlowState('NONE')}
-          />
-        </div>
-      )}
-
-      {modifyFlowState === 'BOOK' && selectedWaitlistForModify && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView
-            eventId={selectedWaitlistForModify.eventId}
-            mode="WAITLIST"
-            initialSchedule={{ date: selectedWaitlistForModify.date, time: selectedWaitlistForModify.time }}
-            initialSeats={selectedWaitlistForModify.initialSeats}
-            initialModifyModeActive={true}
-            admitToken={admitToken || undefined}
-            onClose={() => {
-              handleCloseModifyFlow();
-            }}
-          />
-        </div>
-      )}
 
       <Modal
         isOpen={isCancelModalOpen}
         onClose={handleCloseCancelModal}
         onCancel={handleCloseCancelModal}
         onConfirm={handleConfirmCancel}
-        title="대기 취소하기"
-        description="취소할 대기 내역을 선택해 주세요."
-        confirmText="선택 취소"
+        title="대기 전체 취소"
+        description="해당 공연의 대기 내역을 모두 취소하시겠습니까?"
+        confirmText="전체 취소"
         cancelText="닫기"
-        isConfirmDisabled={selectedSeatsToCancel.size === 0}
+        isConfirmDisabled={false}
       >
-        <div className="flex flex-col gap-3 mt-4">
+        <div className="flex flex-col gap-2 mt-2 max-h-[300px] overflow-y-auto px-1">
           {selectedWaitlistForCancel?.seats.map((seat: any) => {
-            const isSelected = selectedSeatsToCancel.has(seat.id);
             return (
               <div
                 key={seat.id}
-                onClick={() => {
-                  setSelectedSeatsToCancel(prev => {
-                    const next = new Set(prev);
-                    if (next.has(seat.id)) next.delete(seat.id);
-                    else next.add(seat.id);
-                    return next;
-                  });
-                }}
-                className={`flex justify-between items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected
-                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'
-                    : 'border-gray-100 hover:border-gray-200 dark:border-zinc-800'
-                  }`}
+                className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800 text-left"
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
-                    }`}>
-                    {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-gray-900 dark:text-white text-[15px]">
-                        {seat.info.split(' ')[0]}
-                      </span>
-                      <span className="text-gray-400 dark:text-gray-500 font-medium text-[12px]">
-                        {seat.info.split(' ').slice(1).join(' ')}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-purple-500 font-extrabold">대기 {seat.waitlistNumber}번</span>
-                  </div>
-                </div>
+                <span className="shrink-0 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 text-[11px] font-extrabold rounded-md border border-purple-200 dark:border-purple-800/50">
+                  대기 {seat.waitlistNumber}번
+                </span>
+                <span className="text-[14px] font-bold text-gray-800 dark:text-gray-200 truncate">
+                  {seat.info}
+                </span>
               </div>
             );
           })}
         </div>
       </Modal>
+
+      {/* 경고 모달 (재차 확인) */}
+      <Modal
+        isOpen={isWarningModalOpen}
+        onClose={() => setIsWarningModalOpen(false)}
+        onCancel={() => setIsWarningModalOpen(false)}
+        onConfirm={handleExecuteCancel}
+        title="대기 취소 경고"
+        description="취소 시 현재 대기 순번이 모두 사라지며 복구할 수 없습니다.\n정말 취소하시겠습니까?"
+        confirmText="취소 진행"
+        cancelText="돌아가기"
+        isConfirmDisabled={false}
+      />
 
       {selectedOfferId && (
         <CancellationDetailView

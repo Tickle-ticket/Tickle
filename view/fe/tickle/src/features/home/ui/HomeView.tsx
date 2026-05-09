@@ -7,7 +7,6 @@ import { useHomeBanners, useHomeRanking, useHomeUpcoming, useHomeCategories } fr
 import { http } from '@/src/shared/api/http';
 import { getFavoriteEvents, createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
-import { getBadgeColor } from '@/src/shared/utils/badgeColor';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { BannerTitle } from '@/src/shared/components/BannerTitle';
@@ -196,8 +195,9 @@ export const HomeView = () => {
     }
   }, [searchValue, isMypageOpen, selectedDetailId]);
 
-  // 임시: 컴포넌트 마운트 시 전체 찜 목록 조회 (실제로는 API 혹은 Global State 연동 필요)
+  // 로그인된 사용자만 찜 목록을 조회 (비로그인 시 불필요한 401 에러 및 강제 리디렉트 방지)
   useEffect(() => {
+    if (!getAccessToken()) return;
     getFavoriteEvents().then(res => {
       const ids: string[] = [];
       if (res.data?.items) {
@@ -205,7 +205,7 @@ export const HomeView = () => {
       }
       initWishlist(ids);
     }).catch(err => {
-      // API 실패 시 무시
+      // API 실패 시 무시 (토큰 만료 등)
     });
   }, []);
 
@@ -231,7 +231,10 @@ export const HomeView = () => {
         content: '로그인이 필요한 서비스입니다.',
         confirmText: '로그인 하기',
         showCancelButton: true,
-        onConfirm: () => { window.location.href = '/login'; }
+        onConfirm: () => { 
+          const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?redirect=${currentPath}`; 
+        }
       });
       return;
     }
@@ -430,11 +433,7 @@ export const HomeView = () => {
                             showRank={true}
                             isWishlisted={isWishlisted}
                             onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                            badges={item.badges.map((b, badgeIdx) => ({
-                              text: b,
-                              color: getBadgeColor(badgeIdx) as any,
-                              variant: 'fill' as const,
-                            }))}
+                            badges={item.badges}
                             priority={idx < 3}
                           />
                         </div>
@@ -508,11 +507,7 @@ export const HomeView = () => {
                             targetDate={item.openDate}
                             isWishlisted={isWishlisted}
                             onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                            badges={item.badges.map((b, badgeIdx) => ({
-                              text: b,
-                              color: getBadgeColor(badgeIdx) as any,
-                              variant: 'fill' as const,
-                            }))}
+                            badges={item.badges}
                             priority={idx < 3}
                           />
                         </div>

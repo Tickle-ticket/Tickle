@@ -7,7 +7,7 @@ interface TicketTypeStepProps {
   optionsData: BookingOptionsResponse;
   onSubmitPreorder: (
     seatIds: number[],
-    optionSelections: { sessionSeatId: number; discountName: string | null }[]
+    optionSelections: { sessionSeatId: number; discountName: string }[]
   ) => Promise<any>;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -29,13 +29,16 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
   const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
 
-  const [openPriceGrade, setOpenPriceGrade] = useState<string | null>(null);
-
   // Group seats by grade from the backend optionsData
   const priceGradeSeats: Record<string, any[]> = {};
   optionsData.seats.forEach(seat => {
     if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
     priceGradeSeats[seat.priceGrade].push(seat);
+  });
+
+  const [openPriceGrade, setOpenPriceGrade] = useState<string | null>(() => {
+    const grades = Object.keys(priceGradeSeats);
+    return grades.length > 0 ? grades[0] : null;
   });
 
   const getPriceGradeTotal = (priceGrade: string) => {
@@ -49,21 +52,33 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
 
     // We assume all seats in the same grade share the same base price and discounts
     const baseSeat = seatsInGrade[0];
-    let types = baseSeat.discountInfo || [];
+    let types = baseSeat.priceInfos || [];
+    
     if (types.length === 0) {
-      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: baseSeat.priceAmount }];
+      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
+      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
     }
+    
+    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
 
     const counts = priceGradeTicketCounts[priceGrade] || {};
     return Object.entries(counts).reduce((sum, [typeId, count]: [string, any]) => {
       const type = types.find((t: any) => t.discountName === typeId);
-      const typePrice = type ? type.ticketPriceAmount : baseSeat.priceAmount;
+      const typePrice = type ? type.ticketPriceAmount : basePrice;
       return sum + typePrice * (count as number);
     }, 0);
   };
 
   const totalPrice = Object.keys(priceGradeSeats).reduce((sum, priceGrade) => sum + getPriceGradePrice(priceGrade), 0);
-  const originalPrice = optionsData.seats.reduce((sum, seat) => sum + seat.priceAmount, 0);
+  const originalPrice = optionsData.seats.reduce((sum, seat) => {
+    let types = seat.priceInfos || [];
+    if (types.length === 0) {
+      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
+      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
+    }
+    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
+    return sum + basePrice;
+  }, 0);
   const discountAmount = originalPrice - totalPrice;
 
   const handleCount = (priceGrade: string, typeId: string, delta: number) => {
@@ -86,7 +101,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
 
   const handleSubmit = () => {
     // Convert priceGradeTicketCounts into optionSelections array expected by backend
-    const optionSelections: { sessionSeatId: number; discountName: string | null }[] = [];
+    const optionSelections: { sessionSeatId: number; discountName: string }[] = [];
     const seatIds = optionsData.seats.map(s => s.sessionSeatId);
 
     // Distribute selected discount types to the seats in each grade
@@ -99,7 +114,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
           if (seatIndex < seats.length) {
             optionSelections.push({
               sessionSeatId: seats[seatIndex].sessionSeatId,
-              discountName: discountName === '일반' ? null : discountName
+              discountName: discountName
             });
             seatIndex++;
           }
@@ -165,15 +180,11 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                   <div className="flex flex-col gap-2 px-1">
                     {(() => {
                       const baseSeat = seats[0];
-                      let types = baseSeat.discountInfo || [];
+                      let types = baseSeat.priceInfos || [];
                       
-                      // 백엔드에서 할인 정보나 기본 '일반' 권종을 안 내려줬을 경우를 위한 방어 로직
                       if (types.length === 0) {
-                        types = [{
-                          discountName: '일반',
-                          discountRate: 0,
-                          ticketPriceAmount: baseSeat.priceAmount
-                        }];
+                        const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
+                        types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
                       }
 
                       return types.map((type: any) => {

@@ -16,6 +16,7 @@ import { TimelineNav } from '@/src/shared/components/TimelineNav';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
+import { useBookStore } from '@/src/features/book/store/useBookStore';
 import { BookView } from '@/src/features/book/ui/BookView';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
@@ -63,7 +64,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [isWaitlistUpcoming, setIsWaitlistUpcoming] = useState(false);
   const [isMoreThanOneDayLeft, setIsMoreThanOneDayLeft] = useState(false);
   const [isWaitlistMoreThanOneDayLeft, setIsWaitlistMoreThanOneDayLeft] = useState(false);
-  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK'>('NONE');
+  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
@@ -71,6 +72,18 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [detailImageFailed, setDetailImageFailed] = useState(false);
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
   const queryClient = useQueryClient();
+  const [isInvalidAccess, setIsInvalidAccess] = useState(false);
+
+  // ── Validate state on direct URL access ────────────────
+  useEffect(() => {
+    const step = searchParams?.get('step');
+    if (step === 'pay_method' || step === 'payment' || step === 'seat') {
+      const currentSelectedSeats = useBookStore.getState().selectedSeats;
+      if (currentSelectedSeats.size === 0 && flowState === 'NONE') {
+        setIsInvalidAccess(true);
+      }
+    }
+  }, [searchParams, flowState]);
 
   const { setStage, finalize } = useTrialCollector({
     enabled: flowState === 'NONE',
@@ -86,22 +99,25 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     setStage('detail');
   }, [setStage]);
 
-  const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE' | 'TEST_WAITLIST_QUEUE' | 'TEST_WAITLIST_BOOK') => {
+  const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
     if (!getAccessToken()) {
-      setModalConfig({ 
-        isOpen: true, 
-        title: '로그인 필요', 
+      setModalConfig({
+        isOpen: true,
+        title: '로그인 필요',
         content: '로그인이 필요한 서비스입니다.',
         confirmText: '로그인 하기',
         showCancelButton: true,
-        onConfirm: () => { window.location.href = '/login'; }
+        onConfirm: () => {
+          const redirectUrl = `/detail?id=${activeEventId}`;
+          window.location.href = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
+        }
       });
       return;
     }
 
     // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 지금까지 수집된 DETAIL 데이터 전송
     finalize();
-    
+
     setFlowState(state);
   };
 
@@ -122,13 +138,16 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     if (!activeEventId) return;
 
     if (!getAccessToken()) {
-      setModalConfig({ 
-        isOpen: true, 
-        title: '로그인 필요', 
+      setModalConfig({
+        isOpen: true,
+        title: '로그인 필요',
         content: '로그인이 필요한 서비스입니다.',
         confirmText: '로그인 하기',
         showCancelButton: true,
-        onConfirm: () => { window.location.href = '/login'; }
+        onConfirm: () => {
+          const redirectUrl = `/detail?id=${activeEventId}`;
+          window.location.href = `/login?redirect=${encodeURIComponent(redirectUrl)}`;
+        }
       });
       return;
     }
@@ -180,14 +199,14 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   useEffect(() => {
     if (data?.openDate) {
       const openTime = new Date(data.openDate).getTime();
-      const waitlistOpenTime = openTime + 24 * 60 * 60 * 1000;
+      const waitlistOpenTime = data.waitlistOpenDate ? new Date(data.waitlistOpenDate).getTime() : 0;
 
       const checkTime = () => {
         const now = Date.now();
         setIsUpcoming(openTime > now);
-        setIsWaitlistUpcoming(waitlistOpenTime > now);
+        setIsWaitlistUpcoming(waitlistOpenTime > 0 && waitlistOpenTime > now);
         setIsMoreThanOneDayLeft(openTime - now > 24 * 60 * 60 * 1000);
-        setIsWaitlistMoreThanOneDayLeft(waitlistOpenTime - now > 24 * 60 * 60 * 1000);
+        setIsWaitlistMoreThanOneDayLeft(waitlistOpenTime > 0 && (waitlistOpenTime - now > 24 * 60 * 60 * 1000));
       };
 
       checkTime();
@@ -263,6 +282,25 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     );
   }
 
+  if (isInvalidAccess) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-[#f8f8f8] gap-4">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-gray-900">잘못된 접근입니다</h1>
+          <p className="text-gray-500">
+            예매 정보가 만료되었거나 비정상적인 접근입니다.
+          </p>
+          <button 
+            onClick={() => { window.location.href = '/'; }}
+            className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+          >
+            홈으로 가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const renderContent = () => (
     <div className="flex flex-col w-full h-full pb-32 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Hero Section */}
@@ -320,11 +358,11 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
               >
                 {isWaitlistUpcoming && data?.openDate ? (
                   isWaitlistMoreThanOneDayLeft ? (
-                    <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 24 * 60 * 60 * 1000).toISOString())}</span>
+                    <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString())}</span>
                   ) : (
                     <div className="flex items-center justify-center whitespace-nowrap">
                       <div className="flex items-center bg-slate-200/60 rounded-md px-2.5 py-1 border border-slate-300 shadow-inner text-slate-800">
-                        <CountdownTimer targetDate={new Date(new Date(data.openDate).getTime() + 24 * 60 * 60 * 1000).toISOString()} onExpire={() => setIsWaitlistUpcoming(false)} variant="compact" />
+                        <CountdownTimer targetDate={new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString()} onExpire={() => setIsWaitlistUpcoming(false)} variant="compact" />
                       </div>
                     </div>
                   )
@@ -352,21 +390,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
             </button>
           </div>
 
-          {/* Test Buttons - 개발용 */}
-          <div className="flex items-center gap-3 w-full mt-2">
-            {/* 위쪽 버튼 그룹과 정확히 동일한 너비를 가지도록 flex-1 설정 */}
-            <div className="flex items-center flex-1 gap-2">
-              <Button color="dark" size="small" className="flex-1 opacity-50 !bg-gray-500 hover:!bg-gray-600 !rounded-md" onClick={() => handleFlowStart('TEST_WAITLIST_QUEUE')}>
-                Test: Waitlist Queue
-              </Button>
-              <Button color="light" size="small" className="flex-1 opacity-50 border border-gray-300 !rounded-md hover:bg-gray-100" onClick={() => handleFlowStart('TEST_WAITLIST_BOOK')}>
-                Test: Waitlist Book
-              </Button>
-            </div>
-
-            {/* 우측 찜하기 버튼과 동일한 크기의 투명 영역을 두어 정렬 맞춤 */}
-            <div className="w-12 shrink-0 invisible pointer-events-none"></div>
-          </div>
         </div>
       </section>
 
@@ -522,23 +545,22 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       </section>
 
       {/* Booking Pipeline Overlays */}
-      {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') && (
+      {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <QueueView
             eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
-            scope={(flowState === 'WAITLIST_QUEUE' || flowState === 'TEST_WAITLIST_QUEUE') ? 'CANCELLATION_WAIT' : 'BOOKING'}
+            scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
             onAdmitted={(token) => {
               setAdmitToken(token);
-              if (flowState === 'TEST_WAITLIST_QUEUE') setFlowState('TEST_WAITLIST_BOOK');
-              else setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
+              setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
             }}
             onClose={() => setFlowState('NONE')}
           />
         </div>
       )}
-      {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') && (
+      {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView eventId={activeEventId} mode={(flowState === 'WAITLIST_BOOK' || flowState === 'TEST_WAITLIST_BOOK') ? 'WAITLIST' : 'BOOK'} admitToken={admitToken || undefined} onClose={() => setFlowState('NONE')} />
+          <BookView eventId={activeEventId} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} admitToken={admitToken || undefined} onClose={() => setFlowState('NONE')} />
         </div>
       )}
 

@@ -7,7 +7,6 @@ import SidebarButton from '@/src/shared/components/SidebarButton';
 import { UserManagementView } from './UserManagementView';
 import { UpcomingWishlistView } from './UpcomingWishlistView';
 import { MyBookingsView } from './MyBookingsView';
-import { PastBookingsView } from './PastBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { SearchContent } from '@/src/shared/components/SearchContent';
@@ -94,10 +93,9 @@ export const MyPageView = () => {
               {activeTab === 'USER' && <UserManagementView />}
               {activeTab === 'UPCOMING' && <UpcomingWishlistView />}
               {activeTab === 'MY_TICKETS' && <MyBookingsView />}
-              {activeTab === 'PAST_TICKETS' && <PastBookingsView />}
               {activeTab === 'WAITLIST' && <WaitlistManagementView />}
               
-              {activeTab !== 'USER' && activeTab !== 'UPCOMING' && activeTab !== 'MY_TICKETS' && activeTab !== 'PAST_TICKETS' && activeTab !== 'WAITLIST' && (
+              {activeTab !== 'USER' && activeTab !== 'UPCOMING' && activeTab !== 'MY_TICKETS' && activeTab !== 'WAITLIST' && (
                 <div className="flex flex-col items-center justify-center py-32 border border-dashed border-gray-300 rounded-2xl bg-white/50">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-4">
                     <circle cx="12" cy="12" r="10"></circle>

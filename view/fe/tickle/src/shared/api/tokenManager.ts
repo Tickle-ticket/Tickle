@@ -57,9 +57,12 @@ export const refreshAccessToken = async (_baseUrl: string): Promise<boolean> => 
   if (!refreshToken) return false;
 
   try {
-    const response = await fetch(buildAuthApiUrl('/api/v1/auth/reissue'), {
+    const refreshUrl = buildAuthApiUrl('/api/v1/auth/reissue');
+    const isCrossOrigin = typeof window !== 'undefined' && !refreshUrl.startsWith(window.location.origin);
+    
+    const response = await fetch(refreshUrl, {
       method: 'POST',
-      credentials: 'include',
+      credentials: isCrossOrigin ? 'same-origin' : 'include',
       headers: {
         'Content-Type': 'application/json',
       },
