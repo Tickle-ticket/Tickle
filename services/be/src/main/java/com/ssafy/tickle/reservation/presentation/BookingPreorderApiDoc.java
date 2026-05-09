@@ -25,8 +25,9 @@ public interface BookingPreorderApiDoc {
                     좌석 hold 이후 사용자가 고른 권종/할인을 확정하고 예매 초안을 생성합니다.
 
                     - Redis hold와 DB HELD 상태를 검증합니다.
-                    - 좌석별 선택한 discountName이 비어 있으면 기본가를 사용합니다.
-                    - discountName이 있으면 해당 할인/권종 가격을 ticketPriceAmount로 사용합니다.
+                    - 좌석별 선택한 discountName은 필수입니다.
+                    - discountName은 해당 좌석의 priceInfos에 포함된 값만 허용합니다.
+                    - 선택한 priceInfo의 ticketPriceAmount를 티켓 가격으로 사용합니다.
                     - 성공 시 bookingId를 반환하며, 이후 결제 단계는 bookingId를 기준으로 진행합니다.
                     """
     )

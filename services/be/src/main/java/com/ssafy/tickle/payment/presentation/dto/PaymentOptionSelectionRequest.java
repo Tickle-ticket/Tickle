@@ -1,5 +1,6 @@
 package com.ssafy.tickle.payment.presentation.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -11,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 public record PaymentOptionSelectionRequest(
         @NotNull(message = "sessionSeatId는 필수입니다.")
         Long sessionSeatId,
+        @NotBlank(message = "discountName은 필수입니다.")
         String discountName
 ) {
 }

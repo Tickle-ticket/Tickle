@@ -67,7 +67,7 @@ public record BookingPreorderResponse(
      *
      * @param sessionSeatId 회차 좌석 식별자
      * @param seatLabel 좌석 표시명
-     * @param discountName 선택한 권종명, 기본가를 사용한 경우 null
+     * @param discountName 선택한 권종명
      * @param ticketPriceAmount 좌석의 티켓 가격
      * @param serviceFeeAmount 티켓 가격 기준 5% 수수료
      * @param finalPriceAmount 티켓 가격과 수수료를 합친 좌석별 최종 금액

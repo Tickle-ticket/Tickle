@@ -245,8 +245,7 @@ public class BookingPreorderService {
     /**
      * 좌석에 대해 실제 적용할 티켓 가격을 계산합니다.
      *
-     * <p>discountName이 없으면 기본가를 사용하고,
-     * 값이 있으면 가격 정책에 등록된 할인/권종 가격만 허용합니다.</p>
+     * <p>discountName은 필수이며, 가격 정책에 등록된 할인/권종 가격만 허용합니다.</p>
      *
      * @param seat 대상 좌석
      * @param selection 좌석별 권종 선택 정보
@@ -257,12 +256,11 @@ public class BookingPreorderService {
             throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "좌석별 권종 선택 정보가 누락되었습니다.");
         }
 
-        // 할인명이 없으면 선택 권종 없이 기본 티켓 가격으로 예매한다.
-        if (selection.discountName() == null) {
-            return seat.getEventSeat().getEventPricePolicy().getPriceAmount();
+        if (selection.discountName() == null || selection.discountName().isBlank()) {
+            throw new BaseException(PaymentErrorCode.PAYMENT_OPTION_INVALID, "권종명은 비어 있을 수 없습니다.");
         }
 
-        // 할인명이 있으면 해당 좌석의 가격 정책에 등록된 할인/권종만 허용한다.
+        // 해당 좌석의 가격 정책에 등록된 할인/권종만 허용한다.
         return seat.getEventSeat().getEventPricePolicy().getDiscountInfo().stream()
                 .filter(discountInfo -> discountInfo.discountName().equals(selection.discountName()))
                 .findFirst()
@@ -314,7 +312,7 @@ public class BookingPreorderService {
             SessionSeat seat,
             PaymentOptionSelectionRequest selection
     ) {
-        // 티켓 가격은 선택 권종이 있으면 할인 가격, 없으면 기본가다.
+        // 티켓 가격은 선택한 권종의 가격이다.
         BigDecimal ticketPriceAmount = getSelectedPrice(seat, selection);
         // 수수료는 티켓 가격의 5%를 좌석 단위로 따로 계산한다.
         BigDecimal serviceFeeAmount = calculateServiceFee(ticketPriceAmount);
@@ -359,14 +357,10 @@ public class BookingPreorderService {
      * 저장된 티켓 가격을 기준으로 권종명을 복원합니다.
      *
      * @param ticket 예매 티켓
-     * @return 복원된 권종명, 기본가인 경우 null
+     * @return 복원된 권종명, 찾지 못한 경우 null
      */
     private String resolveDiscountName(BookingTicket ticket) {
         EventPricePolicy pricePolicy = ticket.getSessionSeat().getEventSeat().getEventPricePolicy();
-
-        if (pricePolicy.getPriceAmount().compareTo(ticket.getTicketPriceAmount()) == 0) {
-            return null;
-        }
 
         return pricePolicy.getDiscountInfo().stream()
                 .filter(discountInfo -> discountInfo.actualPriceAmount().compareTo(ticket.getTicketPriceAmount()) == 0)

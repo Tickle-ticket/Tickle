@@ -26,7 +26,7 @@ public interface BookingApiDoc {
 
                     - 좌석 선점 단계에서 이미 대기열 검증이 끝났다고 보고, 여기서는 admitToken을 다시 요구하지 않습니다.
                     - Redis hold와 DB HELD 상태를 함께 검증합니다.
-                    - 좌석별 EventPricePolicy와 discountInfo를 반환합니다.
+                    - 좌석별 EventPricePolicy와 priceInfos를 반환합니다.
                     """
     )
     @ApiResponses({
