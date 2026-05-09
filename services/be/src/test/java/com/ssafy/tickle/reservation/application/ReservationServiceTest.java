@@ -166,7 +166,7 @@ class ReservationServiceTest {
                     .willReturn(Optional.of(confirmedBooking));
             given(bookingTicketRepository.findAllByBookingId(BOOKING_ID))
                     .willReturn(List.of());
-            given(paymentRepository.findByBookingId(BOOKING_ID))
+            given(paymentRepository.findTopByBookingIdOrderByIdDesc(BOOKING_ID))
                     .willReturn(Optional.of(payment));
 
             // when

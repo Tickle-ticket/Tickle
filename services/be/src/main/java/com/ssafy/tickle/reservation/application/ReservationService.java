@@ -80,7 +80,7 @@ public class ReservationService {
                 .stream()
                 .map(ReservationTicketResponse::from)
                 .toList();
-        Long paymentId = paymentRepository.findByBookingId(reservationId)
+        Long paymentId = paymentRepository.findTopByBookingIdOrderByIdDesc(reservationId)
                 .map(payment -> payment.getId())
                 .orElse(null);
 
