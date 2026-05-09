@@ -169,6 +169,12 @@ class EventServiceTest {
             assertThat(response.sessions())
                     .extracting(session -> session.sessionId())
                     .containsExactly(savedSessions.get(0).getId(), savedSessions.get(1).getId());
+            assertThat(response.sessions())
+                    .extracting(session -> session.cancellationWaitOpenAt())
+                    .containsExactly(
+                            savedSessions.get(0).getSalesOpenAt().plusSeconds(600),
+                            savedSessions.get(1).getSalesOpenAt().plusSeconds(600)
+                    );
             assertThat(response.pricePolicies())
                     .extracting(policy -> policy.eventPricePolicyId())
                     .containsExactly(savedPricePolicies.get(0).getId(), savedPricePolicies.get(1).getId());

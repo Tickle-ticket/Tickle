@@ -1,6 +1,7 @@
 package com.ssafy.tickle.event.presentation.dto;
 
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.config.EventConstants;
 import com.ssafy.tickle.event.infrastructure.cache.model.CachedEventSessionItem;
 
 import java.time.Instant;
@@ -13,6 +14,7 @@ import java.time.Instant;
  * @param startAt 시작 시각
  * @param endAt 종료 시각
  * @param salesOpenAt 판매 오픈 시각
+ * @param cancellationWaitOpenAt 취소표 대기 오픈 시각
  * @param salesCloseAt 판매 종료 시각
  * @param status 회차 상태
  */
@@ -22,6 +24,7 @@ public record EventSessionResponse(
         Instant startAt,
         Instant endAt,
         Instant salesOpenAt,
+        Instant cancellationWaitOpenAt,
         Instant salesCloseAt,
         EventSession.Status status
 ) {
@@ -39,6 +42,7 @@ public record EventSessionResponse(
                 eventSession.getStartAt(),
                 eventSession.getEndAt(),
                 eventSession.getSalesOpenAt(),
+                calculateCancellationWaitOpenAt(eventSession.getSalesOpenAt()),
                 eventSession.getSalesCloseAt(),
                 eventSession.getStatus()
         );
@@ -51,8 +55,13 @@ public record EventSessionResponse(
                 item.startAt(),
                 item.endAt(),
                 item.salesOpenAt(),
+                calculateCancellationWaitOpenAt(item.salesOpenAt()),
                 item.salesCloseAt(),
                 item.status()
         );
+    }
+
+    private static Instant calculateCancellationWaitOpenAt(Instant salesOpenAt) {
+        return salesOpenAt.plus(EventConstants.CANCELLATION_WAIT_OPEN_DELAY);
     }
 }
