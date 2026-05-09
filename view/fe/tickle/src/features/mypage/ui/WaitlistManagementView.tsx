@@ -233,7 +233,7 @@ export const WaitlistManagementView = () => {
         onCancel={() => setIsWarningModalOpen(false)}
         onConfirm={handleExecuteCancel}
         title="대기 취소 경고"
-        description="취소 시 현재 대기 순번이 모두 사라지며 복구할 수 없습니다.\n정말 취소하시겠습니까?"
+        description={'취소 시 현재 대기 순번이 모두 사라지며 복구할 수 없습니다.\n정말 취소하시겠습니까?'}
         confirmText="취소 진행"
         cancelText="돌아가기"
         isConfirmDisabled={false}

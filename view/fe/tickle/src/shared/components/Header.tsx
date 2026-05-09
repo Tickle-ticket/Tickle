@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Logo } from '@/src/shared/components/Logo';
 import { SearchBar } from '@/src/shared/components/SearchBar';
 import { Avatar } from '@/src/shared/components/Avatar';
@@ -23,17 +23,17 @@ export const Header = () => {
   const { data: searchResults, isLoading: isSearchLoading } = useSearchData(searchValue);
   const { isMypageOpen, activeTab, openMypage, closeMypage } = useMypageStore();
   const { openDetail, closeDetail } = useDetailStore();
+  const searchParams = useSearchParams();
+  const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   // 1. 초기 로딩 시 URL의 q, view, tab 파라미터를 읽어와 Zustand 스토어에 세팅
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const q = params.get('q');
-      const view = params.get('view');
-      const tab = params.get('tab');
+    const q = searchParams.get('q');
+    const view = searchParams.get('view');
+    const tab = searchParams.get('tab');
 
       if (q && q !== useSearchStore.getState().searchValue) {
         setSearchValue(q);
@@ -45,9 +45,9 @@ export const Header = () => {
           openMypage((tab as any) || 'USER');
         }
       }
-    }
+      setIsInitialSyncDone(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   // 2. searchValue가 외부에서 변경되었을 때 input 값 동기화
   useEffect(() => {
@@ -56,7 +56,7 @@ export const Header = () => {
 
   // 3. 포커스를 잃지 않게 history.replaceState로 실시간 URL 변경 (Search & Mypage)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isInitialSyncDone) {
       const url = new URL(window.location.href);
       let changed = false;
 
@@ -92,7 +92,7 @@ export const Header = () => {
         window.history.replaceState(null, '', url.pathname + url.search);
       }
     }
-  }, [searchValue, isMypageOpen, activeTab]);
+  }, [searchValue, isMypageOpen, activeTab, isInitialSyncDone]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
