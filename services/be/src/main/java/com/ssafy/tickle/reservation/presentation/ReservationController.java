@@ -3,15 +3,18 @@ package com.ssafy.tickle.reservation.presentation;
 import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.reservation.application.ReservationOwnershipQueryService;
 import com.ssafy.tickle.reservation.application.ReservationService;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
 import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
+import com.ssafy.tickle.reservation.presentation.dto.ReservationOwnershipCountResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReservationController implements ReservationApiDoc {
 
     private final ReservationService reservationService;
+    private final ReservationOwnershipQueryService reservationOwnershipQueryService;
 
     /**
      * 사용자의 예매 내역 목록을 조회합니다.
@@ -38,6 +42,28 @@ public class ReservationController implements ReservationApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(reservationService.getReservationList(userId)));
+    }
+
+    /**
+     * 사용자가 특정 회차에서 보유 중인 티켓 수와 취소표 대기 좌석 수를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param scheduleId 회차 식별자
+     * @param userId JWT에서 추출한 사용자 식별자
+     * @return 보유/대기 좌석 수 응답
+     */
+    @Override
+    @GetMapping("/ownership-count")
+    public ResponseEntity<BaseResponse<ReservationOwnershipCountResponse>> getOwnershipCount(
+            @RequestParam Long eventId,
+            @RequestParam Long scheduleId,
+            @UserId Long userId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(
+                        reservationOwnershipQueryService.getOwnershipCount(eventId, scheduleId, userId)
+                ));
     }
 
     /**
