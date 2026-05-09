@@ -56,8 +56,7 @@ public record BookingOptionsResponse(
      * @param seatNumber 좌석 번호
      * @param eventPricePolicyId 가격 정책 식별자
      * @param priceGrade 가격 등급
-     * @param priceAmount 기본 가격
-     * @param discountInfo 할인 옵션 목록
+     * @param priceInfos 가격 선택지 목록
      */
     public record BookingSeatOptionResponse(
             Long sessionSeatId,
@@ -66,8 +65,7 @@ public record BookingOptionsResponse(
             String seatNumber,
             Long eventPricePolicyId,
             SeatGrade priceGrade,
-            BigDecimal priceAmount,
-            List<DiscountInfoResponse> discountInfo
+            List<PriceInfoResponse> priceInfos
     ) {
 
         /**
@@ -79,6 +77,7 @@ public record BookingOptionsResponse(
         public static BookingSeatOptionResponse from(SessionSeat sessionSeat) {
             var eventSeat = sessionSeat.getEventSeat();
             var pricePolicy = eventSeat.getEventPricePolicy();
+
             return new BookingSeatOptionResponse(
                     sessionSeat.getId(),
                     eventSeat.getSeatLabel(),
@@ -86,35 +85,34 @@ public record BookingOptionsResponse(
                     eventSeat.getSeatNumber(),
                     pricePolicy.getId(),
                     pricePolicy.getPriceGrade(),
-                    pricePolicy.getPriceAmount(),
                     pricePolicy.getDiscountInfo().stream()
-                            .map(DiscountInfoResponse::from)
+                            .map(PriceInfoResponse::from)
                             .toList()
             );
         }
     }
 
     /**
-     * 할인 옵션 응답입니다.
+     * 가격 선택지 응답입니다.
      *
-     * @param discountName 할인명
+     * @param discountName 권종/할인명
      * @param discountRate 할인율
      * @param ticketPriceAmount 할인/권종 적용 후 티켓 가격
      */
-    public record DiscountInfoResponse(
+    public record PriceInfoResponse(
             String discountName,
             BigDecimal discountRate,
             BigDecimal ticketPriceAmount
     ) {
 
         /**
-         * 가격 정책 할인 정보를 응답 DTO로 변환합니다.
+         * 가격 정책 할인 정보를 가격 선택지 응답 DTO로 변환합니다.
          *
          * @param discountInfo 할인 정보
-         * @return 할인 옵션 응답
+         * @return 가격 선택지 응답
          */
-        public static DiscountInfoResponse from(EventPricePolicy.DiscountInfo discountInfo) {
-            return new DiscountInfoResponse(
+        public static PriceInfoResponse from(EventPricePolicy.DiscountInfo discountInfo) {
+            return new PriceInfoResponse(
                     discountInfo.discountName(),
                     discountInfo.discountRate(),
                     discountInfo.actualPriceAmount()

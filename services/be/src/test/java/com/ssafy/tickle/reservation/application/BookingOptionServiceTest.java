@@ -130,8 +130,8 @@ class BookingOptionServiceTest {
             assertThat(response.currencyCode()).isEqualTo("KRW");
             assertThat(response.totalTicketPriceAmount()).isEqualByComparingTo("300000");
             assertThat(response.seats()).hasSize(2);
-            assertThat(response.seats().getFirst().discountInfo()).hasSize(2);
-            assertThat(response.seats().getFirst().discountInfo().getFirst().discountName()).isEqualTo("조기예매");
+            assertThat(response.seats().getFirst().priceInfos()).hasSize(2);
+            assertThat(response.seats().getFirst().priceInfos().getFirst().discountName()).isEqualTo("조기예매");
         }
 
         @Test

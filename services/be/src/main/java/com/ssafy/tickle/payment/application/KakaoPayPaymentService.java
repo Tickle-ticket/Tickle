@@ -473,6 +473,7 @@ public class KakaoPayPaymentService {
     private String buildSuccessRedirectUrl(Payment payment) {
         return UriComponentsBuilder.fromUriString(successRedirectUrl)
                 .queryParam("bookingId", payment.getBooking().getId())
+                .queryParam("paymentId", payment.getId())
                 .toUriString();
     }
 
