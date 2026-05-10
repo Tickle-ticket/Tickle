@@ -14,7 +14,7 @@ const jsonResponse = (status: number, message: string, data: unknown = null) =>
       message,
       data,
     },
-    { status }
+    { status },
   );
 
 export async function POST(request: NextRequest) {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   const storedState = request.cookies.get(KAKAO_OAUTH_STATE_COOKIE_NAME)?.value;
-  if (!storedState || storedState !== state) {
+  if (storedState && storedState !== state) {
     const response = jsonResponse(400, '유효하지 않은 카카오 로그인 상태값입니다.');
     response.cookies.delete(KAKAO_OAUTH_STATE_COOKIE_NAME);
     return response;
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         message: backendResponse.ok ? '성공' : '카카오 로그인 처리에 실패했습니다.',
         data: null,
       },
-      { status: proxiedStatus }
+      { status: proxiedStatus },
     );
 
     response.cookies.delete(KAKAO_OAUTH_STATE_COOKIE_NAME);

@@ -1,63 +1,131 @@
-import { QueueStatusChart } from '@/src/shared/components/QueueStatusChart';
-import type { QueueStatusPoint } from '@/src/shared/components/QueueStatusChart';
+'use client';
 
-const queueStatusData: QueueStatusPoint[] = [
-  { time: '13:00', waitingUsers: 860, incomingUsers: 132, admittedUsers: 96, estimatedWaitMinutes: 8 },
-  { time: '13:05', waitingUsers: 1040, incomingUsers: 168, admittedUsers: 112, estimatedWaitMinutes: 10 },
-  { time: '13:10', waitingUsers: 1380, incomingUsers: 214, admittedUsers: 126, estimatedWaitMinutes: 14 },
-  { time: '13:15', waitingUsers: 1720, incomingUsers: 238, admittedUsers: 142, estimatedWaitMinutes: 17 },
-  { time: '13:20', waitingUsers: 2110, incomingUsers: 286, admittedUsers: 158, estimatedWaitMinutes: 21 },
-  { time: '13:25', waitingUsers: 2480, incomingUsers: 304, admittedUsers: 176, estimatedWaitMinutes: 25 },
-  { time: '13:30', waitingUsers: 2760, incomingUsers: 296, admittedUsers: 204, estimatedWaitMinutes: 26 },
-  { time: '13:35', waitingUsers: 2680, incomingUsers: 218, admittedUsers: 236, estimatedWaitMinutes: 24 },
-  { time: '13:40', waitingUsers: 2410, incomingUsers: 192, admittedUsers: 252, estimatedWaitMinutes: 21 },
-  { time: '13:45', waitingUsers: 2140, incomingUsers: 174, admittedUsers: 246, estimatedWaitMinutes: 18 },
-  { time: '13:50', waitingUsers: 1870, incomingUsers: 156, admittedUsers: 228, estimatedWaitMinutes: 15 },
-  { time: '13:55', waitingUsers: 1620, incomingUsers: 142, admittedUsers: 214, estimatedWaitMinutes: 13 },
-  { time: '14:00', waitingUsers: 1390, incomingUsers: 128, admittedUsers: 198, estimatedWaitMinutes: 11 },
-];
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { getAdminQueueStats } from '@/src/shared/api/adminApi';
+import type { QueueStatsResponse } from '@/src/shared/api/types/admin.types';
 
-const queueSummary = [
-  { label: '총 대기 진입', value: '18,420', caption: '최근 1시간' },
-  { label: '현재 대기', value: '1,390', caption: '전 구간 대비 -230' },
-  { label: '평균 대기', value: '11분', caption: '목표 15분 이하' },
-];
+const formatNumber = (value: number) => new Intl.NumberFormat('ko-KR').format(value);
 
-const highQueuePerformances = [
-  { rank: 1, title: '뮤지컬 Tickle 19:30', date: '2026.04.23', waitingUsers: 1390, estimatedWait: '11분' },
-  { rank: 2, title: 'SSAFY Concert 20:00', date: '2026.04.23', waitingUsers: 1184, estimatedWait: '14분' },
-  { rank: 3, title: 'Developer Meetup Live', date: '2026.04.24', waitingUsers: 842, estimatedWait: '8분' },
-  { rank: 4, title: 'Spring Festival Stage', date: '2026.04.24', waitingUsers: 636, estimatedWait: '6분' },
-];
+const formatSeconds = (seconds: number) => {
+  if (seconds < 60) {
+    return `${formatNumber(seconds)}초`;
+  }
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat('ko-KR').format(value);
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+
+  return restSeconds > 0
+    ? `${formatNumber(minutes)}분 ${formatNumber(restSeconds)}초`
+    : `${formatNumber(minutes)}분`;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : '대기열 통계를 불러오지 못했습니다.';
 }
 
 export default function QueueMonitoringPage() {
+  const [scheduleIdInput, setScheduleIdInput] = useState('1');
+  const [scheduleId, setScheduleId] = useState(1);
+  const [stats, setStats] = useState<QueueStatsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+
+  const loadQueueStats = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await getAdminQueueStats(scheduleId);
+      setStats(response.data);
+      setLastUpdatedAt(new Date().toLocaleString('ko-KR'));
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [scheduleId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadQueueStats();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadQueueStats]);
+
+  const cards = useMemo(() => {
+    if (!stats) {
+      return [
+        { label: '현재 대기', value: '-', caption: 'WAITING 상태' },
+        { label: '처리 중', value: '-', caption: 'ADMITTED 상태' },
+        { label: '평균 대기', value: '-', caption: '예상 평균 시간' },
+        { label: '동시 입장 한도', value: '-', caption: 'slotLimit' },
+      ];
+    }
+
+    return [
+      { label: '현재 대기', value: `${formatNumber(stats.totalWaiting)}명`, caption: 'WAITING 상태' },
+      { label: '처리 중', value: `${formatNumber(stats.processingCount)}명`, caption: 'ADMITTED 상태' },
+      { label: '평균 대기', value: formatSeconds(stats.averageWaitSeconds), caption: '예상 평균 시간' },
+      { label: '동시 입장 한도', value: `${formatNumber(stats.slotLimit)}명`, caption: 'slotLimit' },
+    ];
+  }, [stats]);
+
+  const usageRate = stats && stats.slotLimit > 0
+    ? Math.min(100, (stats.processingCount / stats.slotLimit) * 100)
+    : 0;
+  const pressureRate = stats && stats.slotLimit > 0
+    ? Math.min(100, (stats.totalWaiting / stats.slotLimit) * 100)
+    : 0;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const parsedScheduleId = Number(scheduleIdInput);
+
+    if (!Number.isInteger(parsedScheduleId) || parsedScheduleId <= 0) {
+      setErrorMessage('스케줄 ID는 1 이상의 숫자로 입력해 주세요.');
+      return;
+    }
+
+    setScheduleId(parsedScheduleId);
+  };
+
   return (
-    <div className="space-y-6 p-5 sm:p-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">대기열 상태 모니터링</p>
-          <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
-            공연 대기열 상태 대시보드
-          </h1>
+          <p className="text-sm font-bold text-blue-600">Admin API</p>
+          <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">대기열 상태</h1>
+          <p className="mt-2 text-sm font-medium text-slate-500">
+            `/api/v1/admin/queues/{'{scheduleId}'}/stats` 응답 기준의 현재 상태입니다.
+          </p>
         </div>
 
-        <label className="flex w-full flex-col gap-2 sm:w-[300px]">
-          <span className="text-[12px] font-bold text-slate-500">공연 선택</span>
-          <select className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-            <option>뮤지컬 Tickle 19:30</option>
-            <option>SSAFY Concert 20:00</option>
-            <option>Developer Meetup Live</option>
-          </select>
-        </label>
+        <form className="flex w-full gap-2 sm:w-auto" onSubmit={handleSubmit}>
+          <label className="min-w-0 flex-1 sm:w-[220px]">
+            <span className="sr-only">스케줄 ID</span>
+            <input
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              inputMode="numeric"
+              onChange={(event) => setScheduleIdInput(event.target.value)}
+              placeholder="scheduleId"
+              value={scheduleIdInput}
+            />
+          </label>
+          <button className="h-11 rounded-lg bg-slate-950 px-5 text-sm font-black text-white" type="submit">
+            조회
+          </button>
+        </form>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {queueSummary.map((item) => (
-          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5">
+      {errorMessage ? (
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{errorMessage}</p>
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-4">
+        {cards.map((item) => (
+          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-bold text-slate-500">{item.label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
             <p className="mt-2 text-xs font-bold text-slate-500">{item.caption}</p>
@@ -65,51 +133,73 @@ export default function QueueMonitoringPage() {
         ))}
       </section>
 
-      <QueueStatusChart
-        data={queueStatusData}
-        performanceTitle="뮤지컬 Tickle 19:30"
-        performanceMeta="2026.04.23 19:30 / VIP 선예매 대기열"
-        capacityPerMinute={210}
-        targetWaitingUsers={2400}
-      />
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-950">스케줄 #{stats?.scheduleId ?? scheduleId}</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                {lastUpdatedAt ? `마지막 갱신: ${lastUpdatedAt}` : '아직 갱신 전입니다.'}
+              </p>
+            </div>
+            <button
+              className="h-10 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+              disabled={isLoading}
+              onClick={() => void loadQueueStats()}
+              type="button"
+            >
+              {isLoading ? '갱신 중' : '새로고침'}
+            </button>
+          </div>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
-        <header className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
-            실시간 대기열 많은 공연 리스트
-          </h2>
-        </header>
+          <div className="mt-8 space-y-6">
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-600">
+                <span>동시 입장 사용률</span>
+                <span>{usageRate.toFixed(1)}%</span>
+              </div>
+              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${usageRate}%` }} />
+              </div>
+            </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                <th className="px-5 py-3 font-black">순위</th>
-                <th className="px-5 py-3 font-black">공연</th>
-                <th className="px-5 py-3 font-black">일자</th>
-                <th className="px-5 py-3 font-black">대기열 수</th>
-                <th className="px-5 py-3 font-black">예상 대기</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {highQueuePerformances.map((performance) => (
-                <tr key={performance.title}>
-                  <td className="px-5 py-4 font-black text-blue-600">{performance.rank}</td>
-                  <td className="px-5 py-4 font-bold text-slate-900">{performance.title}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{performance.date}</td>
-                  <td className="px-5 py-4 font-black text-slate-900">
-                    {formatNumber(performance.waitingUsers)}명
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-black text-orange-600">
-                      {performance.estimatedWait}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-600">
+                <span>대기 압력</span>
+                <span>{pressureRate.toFixed(1)}%</span>
+              </div>
+              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-orange-500" style={{ width: `${pressureRate}%` }} />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-black text-slate-950">응답 필드</h2>
+          <dl className="mt-4 space-y-4 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-bold text-slate-500">scheduleId</dt>
+              <dd className="font-black text-slate-900">{stats?.scheduleId ?? '-'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-bold text-slate-500">totalWaiting</dt>
+              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.totalWaiting) : '-'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-bold text-slate-500">processingCount</dt>
+              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.processingCount) : '-'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-bold text-slate-500">averageWaitSeconds</dt>
+              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.averageWaitSeconds) : '-'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-bold text-slate-500">slotLimit</dt>
+              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.slotLimit) : '-'}</dd>
+            </div>
+          </dl>
+        </aside>
       </section>
     </div>
   );
