@@ -41,6 +41,10 @@ export interface BookingData {
   bookingDate: string; // 예매 일시
   seatInfo: string; // 좌석 정보 등 기타 내용
   ticketCount: number;
+  status: string;
+  bookingNo: string;
+  totalPaymentAmount: number;
+  paymentId?: number;
 }
 
 export interface WaitlistSeatData {
@@ -78,8 +82,27 @@ export const useMyBookings = () => {
         bookingDate: r.createdAt,
         seatInfo: `총 ${r.ticketCount}매`, // 명세에 좌석 배열이 없음
         ticketCount: r.ticketCount,
+        status: r.bookingStatus,
+        bookingNo: r.bookingNo,
+        totalPaymentAmount: r.totalPaymentAmount,
+        paymentId: (r as any).paymentId, // 백엔드에서 추가될 필드
       })) as BookingData[];
     },
+  });
+};
+
+export const usePaymentStatus = (paymentId: number | null) => {
+  return useQuery({
+    queryKey: ['paymentStatus', paymentId],
+    queryFn: async () => {
+      if (!paymentId) return null;
+      // paymentApi import가 파일 상단에 없으므로, 여기서 동적으로 가져오거나 위에서 추가해야 합니다.
+      // 파일 최상단에 import { paymentApi } from '@/src/shared/api/paymentApi'; 를 추가하겠습니다.
+      const { paymentApi } = await import('@/src/shared/api/paymentApi');
+      const res = await paymentApi.getPaymentStatus(paymentId);
+      return res.data;
+    },
+    enabled: !!paymentId,
   });
 };
 

@@ -22,7 +22,8 @@ interface SeatSelectionPanelProps {
   initialSeats: string[];
   initialSchedule: any;
   isWaitlistMode: boolean;
-  getSeatInfo: (seatId: string) => { priceGrade: string; price: number };
+  maxSelectable: number;
+  getSeatInfo: (seatId: string) => { priceGrade: string; price: number; waitingCount?: number };
   getDetailedSeatInfo: (seatId: string) => string;
   handleNextStep: (e: React.MouseEvent) => void;
   onClose: () => void;
@@ -53,6 +54,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
   initialSeats,
   initialSchedule,
   isWaitlistMode,
+  maxSelectable,
   getSeatInfo,
   getDetailedSeatInfo,
   handleNextStep,
@@ -215,8 +217,8 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
 
           <div className="flex justify-between items-center border-b border-gray-100 dark:border-zinc-800 pb-4 shrink-0">
             <div className="text-[22px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              {isCancelMode && !isModifyModeActive ? '취소할 좌석' : '선택 좌석'} <span className="text-blue-500 font-extrabold">{cartSeats.size}</span>
-              {!isCancelMode && <span className="text-gray-300 dark:text-gray-600 font-medium text-lg">/ 4</span>}
+              {isCancelMode && !isModifyModeActive ? '취소할 좌석' : '선택 좌석'} <span className="text-blue-500 font-extrabold">{isModifyModeActive ? selectedSeats.size : cartSeats.size}</span>
+              {!isCancelMode && <span className="text-gray-300 dark:text-gray-600 font-medium text-lg">/ {maxSelectable}</span>}
             </div>
             {cartSeats.size > 0 && (
               <button
@@ -286,7 +288,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                     <div className="flex items-center gap-4">
                       <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight">
                         {isWaitlistMode ? (
-                          <span className="text-blue-600">대기 {(seatId.charCodeAt(0) + (parseInt(seatId.slice(1)) || 0)) * 2 % 45 + 1}명</span>
+                          <span className="text-blue-600">대기 {getSeatInfo(seatId).waitingCount || 0}명</span>
                         ) : (
                           `${price.toLocaleString()}원`
                         )}

@@ -36,7 +36,7 @@ export const useBookingPreorder = () => {
     eventId: number,
     sessionId: number,
     seatIds: number[],
-    optionSelections: { sessionSeatId: number; discountName: string | null }[]
+    optionSelections: { sessionSeatId: number; discountName: string }[]
   ) => {
     setIsPreorderLoading(true);
     try {
@@ -60,6 +60,7 @@ export const useBookingPreorder = () => {
 
   return {
     optionsData,
+    setOptionsData,
     isOptionsLoading,
     fetchOptions,
     submitPreorder,

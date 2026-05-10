@@ -9,7 +9,8 @@ import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
-
+import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { Modal } from '@/src/shared/components/Modal';
 interface SearchContentProps {
   query: string;
 }
@@ -21,6 +22,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
   const { openDetail } = useDetailStore();
   const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
   const queryClient = useQueryClient();
+  const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
 
   const handleCardClick = (id: string, layoutId: string) => {
     clearSearch();
@@ -29,6 +31,22 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
+
+    if (!getAccessToken()) {
+      setModalConfig({ 
+        isOpen: true, 
+        title: '로그인 필요', 
+        content: '로그인이 필요한 서비스입니다.',
+        confirmText: '로그인 하기',
+        showCancelButton: true,
+        onConfirm: () => { 
+          const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?redirect=${currentPath}`;
+        }
+      });
+      return;
+    }
+
     const isWishlisted = !!wishlistMap[eventId];
     
     // 낙관적 업데이트
@@ -96,11 +114,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
                   targetDate={item.openDate}
                   isWishlisted={isWishlisted}
                   onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                  badges={item.badges.map((b) => ({
-                    text: b,
-                    color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
-                    variant: 'fill' as const,
-                  }))}
+                  badges={item.badges}
                 />
               </div>
             );
@@ -111,6 +125,20 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query }) => {
           </div>
         )}
       </div>
+
+      {/* 에러/로그인 모달 */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={() => {
+          setModalConfig({ ...modalConfig, isOpen: false });
+          if (modalConfig.onConfirm) modalConfig.onConfirm();
+        }}
+        title={modalConfig.title}
+        description={modalConfig.content}
+        confirmText={modalConfig.confirmText || '확인'}
+        showCancelButton={modalConfig.showCancelButton ?? false}
+      />
     </section>
   );
 };

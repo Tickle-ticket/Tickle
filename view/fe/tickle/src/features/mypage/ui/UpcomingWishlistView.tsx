@@ -118,11 +118,7 @@ export const UpcomingWishlistView = () => {
                     isWishlisted={!isRemoved}
                     onWishlistToggle={(e) => handleToggle(e, item.id)}
                     wishlistVariant={isRemoved ? 'greyPlus' : 'default'}
-                    badges={item.badges.map((b) => ({
-                      text: b,
-                      color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
-                      variant: 'fill' as const,
-                    }))}
+                    badges={item.badges}
                   />
                 </div>
               </div>

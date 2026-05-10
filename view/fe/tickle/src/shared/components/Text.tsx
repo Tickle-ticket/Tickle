@@ -27,6 +27,7 @@ const WEIGHT_MAP = {
   medium: 'font-medium',
   semibold: 'font-semibold',
   bold: 'font-bold',
+  extrabold: 'font-extrabold',
 };
 
 const ALIGN_MAP = {

@@ -50,6 +50,7 @@ export const EventSessionSchema = Schema.Struct({
   startAt: Schema.String,
   endAt: Schema.String,
   salesOpenAt: Schema.String,
+  cancellationWaitOpenAt: Schema.String,
   salesCloseAt: Schema.String,
   status: Schema.String,
 });

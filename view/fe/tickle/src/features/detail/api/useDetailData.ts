@@ -7,6 +7,7 @@ export interface DetailData {
   subTitle: string;
   imageUrl: string;
   openDate?: string | null;
+  waitlistOpenDate?: string | null;
   startDate: string;
   endDate: string;
   venue: string;
@@ -72,6 +73,7 @@ export const useDetailData = (eventId: string | null | undefined) => {
         imageUrl:
           data.images.find((img) => img.imageType === 'THUMBNAIL' || img.imageType === 'POSTER')?.imageUrl || '',
         openDate: data.salesStartAt,
+        waitlistOpenDate: data.sessions[0]?.cancellationWaitOpenAt || null,
         startDate: new Date(data.eventStartAt).toLocaleDateString().replace(/\s/g, ''),
         endDate: new Date(data.eventEndAt).toLocaleDateString().replace(/\s/g, ''),
         venue: data.venueName,

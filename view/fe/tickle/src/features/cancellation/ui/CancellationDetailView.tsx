@@ -21,6 +21,36 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
     }
   }, [error, onClose]);
 
+  // 이탈 시 취소표 배정(오퍼) 자동 거절/해제 로직
+  useEffect(() => {
+    // 정상적인 결제 리다이렉트인지 확인
+    const isNormalNavigation = () => (window as any).__isNavigatingToPayment__ === true;
+
+    const releaseOffer = () => {
+      if (!isPurchasing && !isNormalNavigation()) {
+        // 백엔드에 명시적으로 오퍼를 거절(해제)하는 API가 있다면 여기서 호출합니다.
+        // 현재 cancellationApi 에는 명시적인 거절 API가 없으므로 임의로 DELETE 요청을 보냅니다.
+        // (필요 시 백엔드 명세에 맞춰 수정하세요)
+        fetch(`/api/v1/cancellations/${cancellationId}`, { method: 'DELETE' }).catch(console.error);
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isPurchasing && !isNormalNavigation()) {
+        releaseOffer();
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      releaseOffer();
+    };
+  }, [isPurchasing, cancellationId]);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       {isLoading ? (

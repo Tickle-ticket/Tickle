@@ -84,11 +84,7 @@ export const SearchView = () => {
                       targetDate={item.openDate}
                       isWishlisted={isWishlisted}
                       onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                      badges={item.badges.map((b) => ({
-                        text: b,
-                        color: b === 'HOT' ? 'red' : b === 'NEW' ? 'green' : b === 'BEST' ? 'blue' : 'grey' as any,
-                        variant: 'fill' as const,
-                      }))}
+                      badges={item.badges}
                     />
                   </div>
                 );

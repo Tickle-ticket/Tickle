@@ -46,7 +46,10 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         message: '로그인이 필요한 서비스입니다.',
         confirmText: '로그인 하기',
         showCancelButton: true,
-        action: () => { window.location.href = '/login'; }
+        action: () => { 
+          const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?redirect=${currentPath}`; 
+        }
       });
       return;
     }

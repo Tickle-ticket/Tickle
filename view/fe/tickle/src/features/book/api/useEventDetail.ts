@@ -32,6 +32,7 @@ export interface EventDetailResponse {
   schedules: EventSchedule[];
   notice: string;
   openDate?: string;
+  waitlistOpenDate?: string;
 }
 
 export const useEventDetail = (eventId?: string) => {
@@ -81,6 +82,7 @@ export const useEventDetail = (eventId?: string) => {
         schedules,
         notice: data.notice || '',
         openDate: data.salesStartAt,
+        waitlistOpenDate: data.sessions[0]?.cancellationWaitOpenAt,
       } as EventDetailResponse;
     },
     enabled: !!eventId,

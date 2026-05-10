@@ -7,8 +7,8 @@ export const SeatItemResponseSchema = Schema.Struct({
   seatNumber: Schema.String,
   seatLabel: Schema.String,
   saleStatus: Schema.Literal('AVAILABLE', 'HELD', 'PENDING', 'CONFIRMED', 'REALLOCATING', 'BLOCKED', 'UNAVAILABLE'),
-  price: Schema.Number,
-  priceGrade: Schema.String,
+  price: Schema.optional(Schema.Number),
+  priceGrade: Schema.optional(Schema.String),
   waitingCount: Schema.optional(Schema.Number),
   waitable: Schema.optional(Schema.Boolean),
 });
@@ -25,7 +25,7 @@ export const SeatSectionResponseSchema = Schema.Struct({
 export type SeatSectionResponse = Schema.Schema.Type<typeof SeatSectionResponseSchema>;
 
 export const SeatMapResponseSchema = Schema.Struct({
-  venueId: Schema.Number,
+  venueId: Schema.optional(Schema.Number),
   sections: Schema.Array(SeatSectionResponseSchema),
 });
 

@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 
 export interface PaymentOptionSelectionRequest {
   sessionSeatId: number;
-  discountName: string | null;
+  discountName: string;
 }
 
 export interface BookingPreorderRequest {
@@ -39,7 +39,7 @@ export interface BookingOptionsRequest {
   seatIds: number[];
 }
 
-export const DiscountOptionResponseSchema = Schema.Struct({
+export const PriceInfoResponseSchema = Schema.Struct({
   discountName: Schema.String,
   discountRate: Schema.Number,
   ticketPriceAmount: Schema.Number,
@@ -52,8 +52,7 @@ export const BookingSeatOptionResponseSchema = Schema.Struct({
   seatNumber: Schema.optional(Schema.String),
   eventPricePolicyId: Schema.optional(Schema.Number),
   priceGrade: Schema.String,
-  priceAmount: Schema.Number,
-  discountInfo: Schema.Array(DiscountOptionResponseSchema),
+  priceInfos: Schema.Array(PriceInfoResponseSchema),
 });
 
 export const BookingOptionsResponseSchema = Schema.Struct({

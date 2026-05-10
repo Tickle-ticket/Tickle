@@ -11,7 +11,6 @@ import { agencyHandlers } from './agencyHandlers';
 import { authHandlers } from './authHandlers';
 import { reservationHandlers } from './reservationHandlers';
 import { bookingHandlers } from './bookingHandlers';
-import { paymentHandlers } from './paymentHandlers';
 export const handlers = [
   ...trialHandlers,
   ...homeHandlers,
@@ -26,5 +25,4 @@ export const handlers = [
   ...authHandlers,
   ...reservationHandlers,
   ...bookingHandlers,
-  ...paymentHandlers,
 ];
