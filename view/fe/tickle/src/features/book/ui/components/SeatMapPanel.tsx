@@ -39,10 +39,10 @@ export const SeatMapPanel: React.FC<SeatMapPanelProps> = ({
   seatPrices,
 }) => {
   return (
-    <div className="w-[60%] h-full bg-gray-100 dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 shadow-inner relative group/map overflow-hidden">
-      {/* Overlay when schedule is not selected or modifying */}
+    <div className="w-full h-full bg-gray-100 dark:bg-zinc-900 lg:border-r border-b lg:border-b-0 border-gray-200 dark:border-zinc-800 shadow-inner relative group/map overflow-hidden">
+      {/* Overlay when schedule is not selected or modifying (desktop only) */}
       {(!scheduleId || isModifyingSchedule) && (
-        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center animate-fade-in pointer-events-auto">
+        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] z-30 hidden lg:flex flex-col items-center justify-center animate-fade-in pointer-events-auto">
           <div className="bg-white dark:bg-zinc-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-zinc-700 flex flex-col items-center gap-4 max-w-[80%] text-center transform -translate-y-4">
             <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-500">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -57,7 +57,7 @@ export const SeatMapPanel: React.FC<SeatMapPanelProps> = ({
                 {scheduleId ? '일시를 변경 중입니다' : '관람 일시를 먼저 선택해주세요'}
               </p>
               <p className="text-sm text-gray-500">
-                오른쪽 패널에서 원하시는 날짜와 회차를 선택하시면<br />좌석 예매가 활성화됩니다.
+                패널에서 원하시는 날짜와 회차를 선택하시면<br />좌석 예매가 활성화됩니다.
               </p>
             </div>
           </div>

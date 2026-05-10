@@ -6,6 +6,8 @@ import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Modal } from '@/src/shared/components/Modal';
 import { CancellationDetailView } from '@/src/features/cancellation/ui/CancellationDetailView';
+import { MobileWaitlistCard } from '@/src/shared/components/MobileWaitlistCard';
+import { WaitlistDetailView } from './WaitlistDetailView';
 
 export const WaitlistManagementView = () => {
   const { data: waitlist, isLoading } = useWaitlistBookings();
@@ -15,8 +17,21 @@ export const WaitlistManagementView = () => {
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [selectedWaitlistForCancel, setSelectedWaitlistForCancel] = useState<any | null>(null);
 
+  // Mobile Detail Flow State
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
+
   // Cancellation Flow State
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+
+  const handleOpenDetail = (item: any) => {
+    setSelectedDetailItem(item);
+    if (window.innerWidth < 768) {
+      setIsMobileDetailOpen(true);
+    } else {
+      handleOpenCancelModal(item);
+    }
+  };
 
   const handleOpenCancelModal = (item: any) => {
     setSelectedWaitlistForCancel(item);
@@ -62,7 +77,7 @@ export const WaitlistManagementView = () => {
         </Text>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-20 justify-items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20 justify-items-center">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="w-full h-[450px] bg-gray-100 animate-pulse rounded-2xl" />
@@ -70,131 +85,142 @@ export const WaitlistManagementView = () => {
         ) : waitlist && waitlist.length > 0 ? (
           waitlist.map((item) => {
             return (
-              <div
-                key={item.id}
-                className="relative w-full max-w-[320px] flex flex-col rounded-[24px] overflow-hidden shadow-2xl shadow-black/20 bg-zinc-900"
-              >
-                {/* 포스터 배경 (Full Size) */}
-                <div className="absolute inset-0 w-full h-full">
-                  <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="!rounded-none max-w-full object-cover" />
-                </div>
-
-                {/* 그라데이션 오버레이 (텍스트 가독성) */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-[#0f172a]/20 pointer-events-none z-10"></div>
-
-                {/* 컨텐츠 영역 */}
-                <div className="relative z-20 w-full h-full flex flex-col p-6 justify-between min-h-[460px] gap-4">
-                  {/* 상단 뱃지 */}
-                  <div className="flex justify-between items-start w-full shrink-0">
-                    <span className="px-3 py-1.5 bg-purple-500/30 text-purple-200 border border-purple-400/40 rounded-lg text-xs font-extrabold tracking-widest backdrop-blur-md shadow-lg shadow-purple-500/20">
-                      취소표 대기중
-                    </span>
+              <React.Fragment key={item.id}>
+                {/* 데스크톱/태블릿용 그리드 카드 (세로형) */}
+                <div className="hidden md:flex relative w-full max-w-[320px] flex-col rounded-[24px] overflow-hidden shadow-2xl shadow-black/20 bg-zinc-900">
+                  {/* 포스터 배경 (Full Size) */}
+                  <div className="absolute inset-0 w-full h-full">
+                    <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="!rounded-none max-w-full object-cover" />
                   </div>
 
-                  {/* 하단 텍스트 및 정보 박스 */}
-                  <div className="flex flex-col gap-4 w-full mt-auto">
-                    <div className="flex flex-col drop-shadow-lg">
-                      <Text typography="t3" fontWeight="extrabold" className="text-white w-full truncate mb-1 drop-shadow-xl">
-                        {item.title}
-                      </Text>
+                  {/* 그라데이션 오버레이 (텍스트 가독성) */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-[#0f172a]/20 pointer-events-none z-10"></div>
+
+                  {/* 컨텐츠 영역 */}
+                  <div className="relative z-20 w-full h-full flex flex-col p-6 justify-between min-h-[460px] gap-4">
+                    {/* 상단 뱃지 */}
+                    <div className="flex justify-between items-start w-full shrink-0">
+                      <span className="px-3 py-1.5 bg-purple-500/30 text-purple-200 border border-purple-400/40 rounded-lg text-xs font-extrabold tracking-widest backdrop-blur-md shadow-lg shadow-purple-500/20">
+                        취소표 대기중
+                      </span>
                     </div>
 
-                    {/* Glassmorphism Info Box */}
-                    <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 flex flex-col gap-3 border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                      <div className="flex flex-col gap-1.5 text-xs mb-1 px-1">
-                        <span className="text-gray-300/90 font-bold">콘서트 일시</span>
-                        <span className="text-white font-extrabold tracking-wide">
-                          {new Date(item.performanceDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                    {/* 하단 텍스트 및 정보 박스 */}
+                    <div className="flex flex-col gap-4 w-full mt-auto">
+                      <div className="flex flex-col drop-shadow-lg">
+                        <Text typography="t3" fontWeight="extrabold" className="text-white w-full truncate mb-1 drop-shadow-xl">
+                          {item.title}
+                        </Text>
                       </div>
 
-                      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent mb-1" />
+                      {/* Glassmorphism Info Box */}
+                      <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 flex flex-col gap-3 border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                        <div className="flex flex-col gap-1.5 text-xs mb-1 px-1">
+                          <span className="text-gray-300/90 font-bold">콘서트 일시</span>
+                          <span className="text-white font-extrabold tracking-wide">
+                            {new Date(item.performanceDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
 
-                      {/* 다중 좌석 대기열 */}
-                      <div className="flex flex-col gap-2.5">
-                        {item.seats && item.seats.map((seat: any) => {
-                          const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent mb-1" />
 
-                          // 혼잡도/대기열 색상
-                          let badgeClass = '';
-                          let barClass = '';
+                        {/* 다중 좌석 대기열 */}
+                        <div className="flex flex-col gap-2.5">
+                          {item.seats && item.seats.map((seat: any) => {
+                            const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
 
-                          if (seat.waitlistNumber <= 0) {
-                            badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse border-rose-400';
-                            barClass = 'bg-gradient-to-r from-rose-600 to-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
-                          } else if (seat.waitlistNumber <= 5) {
-                            badgeClass = 'bg-blue-500/30 text-blue-200 border-blue-400/50 shadow-[0_0_8px_rgba(59,130,246,0.4)]';
-                            barClass = 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_4px_rgba(59,130,246,0.8)]';
-                          } else if (seat.waitlistNumber <= 10) {
-                            badgeClass = 'bg-green-500/30 text-green-200 border-green-400/50 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-                            barClass = 'bg-gradient-to-r from-green-600 to-green-400 shadow-[0_0_4px_rgba(34,197,94,0.8)]';
-                          } else if (seat.waitlistNumber <= 15) {
-                            badgeClass = 'bg-yellow-500/30 text-yellow-200 border-yellow-400/50 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
-                            barClass = 'bg-gradient-to-r from-yellow-600 to-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.8)]';
-                          } else {
-                            badgeClass = 'bg-red-500/30 text-red-200 border-red-400/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
-                            barClass = 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_4px_rgba(239,68,68,0.8)]';
-                          }
+                            // 혼잡도/대기열 색상
+                            let badgeClass = '';
+                            let barClass = '';
 
-                          const isOffered = seat.waitlistNumber <= 0;
+                            if (seat.waitlistNumber <= 0) {
+                              badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse border-rose-400';
+                              barClass = 'bg-gradient-to-r from-rose-600 to-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
+                            } else if (seat.waitlistNumber <= 5) {
+                              badgeClass = 'bg-blue-500/30 text-blue-200 border-blue-400/50 shadow-[0_0_8px_rgba(59,130,246,0.4)]';
+                              barClass = 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_4px_rgba(59,130,246,0.8)]';
+                            } else if (seat.waitlistNumber <= 10) {
+                              badgeClass = 'bg-green-500/30 text-green-200 border-green-400/50 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+                              barClass = 'bg-gradient-to-r from-green-600 to-green-400 shadow-[0_0_4px_rgba(34,197,94,0.8)]';
+                            } else if (seat.waitlistNumber <= 15) {
+                              badgeClass = 'bg-yellow-500/30 text-yellow-200 border-yellow-400/50 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
+                              barClass = 'bg-gradient-to-r from-yellow-600 to-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.8)]';
+                            } else {
+                              badgeClass = 'bg-red-500/30 text-red-200 border-red-400/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
+                              barClass = 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_4px_rgba(239,68,68,0.8)]';
+                            }
 
-                          return (
-                            <div key={seat.id} className={`flex flex-col gap-2.5 bg-black/40 p-3 rounded-xl border ${isOffered ? 'border-rose-500/70 shadow-lg shadow-rose-500/20' : 'border-white/5 hover:border-white/10 transition-colors'}`}>
-                              <div className="flex justify-between items-center text-xs">
-                                <span className="text-gray-100 font-bold tracking-wide truncate max-w-[130px]">{seat.info}</span>
-                                <div className="flex flex-col items-end gap-1.5 w-[60px]">
-                                  <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black whitespace-nowrap ${badgeClass}`}>
-                                    {isOffered ? '배정됨!' : `대기 ${seat.waitlistNumber}번`}
-                                  </span>
-                                  {!isOffered && (
-                                    <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
-                                      <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
-                                    </div>
-                                  )}
+                            const isOffered = seat.waitlistNumber <= 0;
+
+                            return (
+                              <div key={seat.id} className={`flex flex-col gap-2.5 bg-black/40 p-3 rounded-xl border ${isOffered ? 'border-rose-500/70 shadow-lg shadow-rose-500/20' : 'border-white/5 hover:border-white/10 transition-colors'}`}>
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="text-gray-100 font-bold tracking-wide truncate max-w-[130px]">{seat.info}</span>
+                                  <div className="flex flex-col items-end gap-1.5 w-[60px]">
+                                    <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black whitespace-nowrap ${badgeClass}`}>
+                                      {isOffered ? '배정됨!' : `대기 ${seat.waitlistNumber}번`}
+                                    </span>
+                                    {!isOffered && (
+                                      <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
+                                {isOffered && (
+                                  <button
+                                    onClick={() => setSelectedOfferId(seat.id)}
+                                    className="w-full py-2 mt-1 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-lg text-xs font-bold shadow-lg shadow-rose-500/40 transition-all"
+                                  >
+                                    상세 확인 및 결제
+                                  </button>
+                                )}
                               </div>
-                              {isOffered && (
-                                <button
-                                  onClick={() => setSelectedOfferId(seat.id)}
-                                  className="w-full py-2 mt-1 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-lg text-xs font-bold shadow-lg shadow-rose-500/40 transition-all"
-                                >
-                                  상세 확인 및 결제
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* 액션 버튼들 */}
-                    <div className="flex gap-3 mt-1 w-full">
-                      <button
-                        onClick={() => handleOpenCancelModal(item)}
-                        className="w-full py-3 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-xl text-white text-sm font-extrabold rounded-xl border border-white/20 transition-all shadow-lg hover:shadow-xl"
-                      >
-                        취소하기
-                      </button>
+                      {/* 액션 버튼들 */}
+                      <div className="flex gap-3 mt-1 w-full">
+                        <button
+                          onClick={() => handleOpenCancelModal(item)}
+                          className="w-full py-3 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-xl text-white text-sm font-extrabold rounded-xl border border-white/20 transition-all shadow-lg hover:shadow-xl"
+                        >
+                          취소하기
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+
+                {/* 모바일용 리스트 카드 (가로형) */}
+                <div className="flex md:hidden w-full max-w-[480px]">
+                  <MobileWaitlistCard 
+                    item={item} 
+                    onOpenDetail={handleOpenDetail} 
+                    setSelectedOfferId={setSelectedOfferId} 
+                  />
+                </div>
+              </React.Fragment>
             );
           })
         ) : (
-          <div className="col-span-full w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-4">
-              <path d="M5 22h14"></path>
-              <path d="M5 2h14"></path>
-              <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path>
-              <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path>
+          <div className="col-span-full w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <Text typography="t5" fontWeight="bold" color="secondary" className="mb-1">진행 중인 취소표 대기 내역이 없습니다.</Text>
-            <Text typography="t6" color="tertiary">취소표 대기를 신청하시면 우선순위로 예매 기회를 얻을 수 있습니다.</Text>
+            <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
+              취소표 대기 내역이 없습니다.
+            </Text>
+            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px] md:max-w-none">
+              원하시는 공연의 취소표 대기를 걸어보세요!
+            </Text>
           </div>
         )}
       </div>
-
 
       <Modal
         isOpen={isCancelModalOpen}
@@ -244,6 +270,20 @@ export const WaitlistManagementView = () => {
           cancellationId={selectedOfferId}
           onClose={() => setSelectedOfferId(null)}
         />
+      )}
+
+      {/* 모바일 전용 상세 오버레이 뷰 */}
+      {isMobileDetailOpen && selectedDetailItem && (
+        <div className="fixed inset-0 z-[100] bg-zinc-950 overflow-y-auto md:hidden">
+          <WaitlistDetailView 
+            item={selectedDetailItem} 
+            onBack={() => setIsMobileDetailOpen(false)}
+            onOpenPayment={(id) => {
+              setIsMobileDetailOpen(false); // 오버레이 닫고 결제 뷰 띄우기
+              setSelectedOfferId(id);
+            }}
+          />
+        </div>
       )}
     </div>
   );

@@ -53,14 +53,14 @@ const FlipDigit = ({ digit, isSmall = false }: { digit: string; isSmall?: boolea
 
   return (
     <div className={`relative bg-[#1a1a1a] ${digitSizeClass} rounded-[3px] border border-black/80`} style={{ perspective: '300px' }}>
-      
+
       {/* 1. 상단 뒷장 (바뀔 새 숫자가 미리 깔려있음) */}
       <div className="absolute top-0 left-0 w-full h-1/2 overflow-hidden bg-[#1a1a1a] rounded-t-[3px]">
         <span className={`${sharedSpanClass} bottom-0 translate-y-1/2`}>
           {current}
         </span>
       </div>
-      
+
       {/* 2. 하단 뒷장 (현재 보이는 옛날 숫자) */}
       <div className="absolute bottom-0 left-0 w-full h-1/2 overflow-hidden bg-[#1a1a1a] rounded-b-[3px]">
         <span className={`${sharedSpanClass} top-0 -translate-y-1/2`}>
@@ -89,7 +89,7 @@ const FlipDigit = ({ digit, isSmall = false }: { digit: string; isSmall?: boolea
 
       {/* 가운데 분할선 (플랩 사이의 고정된 틈새) */}
       <div className="absolute top-1/2 left-0 w-full h-[1.5px] bg-[#000] z-20 transform -translate-y-1/2 shadow-[0_1px_0_rgba(255,255,255,0.1)]"></div>
-      
+
       {/* 윗 프레임 상시 음영 (고급스러운 입체감) */}
       <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-black/60 to-transparent z-[5] pointer-events-none"></div>
     </div>
@@ -109,9 +109,9 @@ export const InfoTime = ({ targetDate, className = '', isLoading = false }: Info
     const calculateTimeLeft = () => {
       const now = Date.now();
       const diff = Math.max(0, targetTime - now);
-      
+
       const totalSeconds = Math.floor(diff / 1000);
-      
+
       if (totalSeconds <= 0) return '00:00:00';
 
       const d = Math.floor(totalSeconds / 86400);
@@ -120,7 +120,7 @@ export const InfoTime = ({ targetDate, className = '', isLoading = false }: Info
       const s = totalSeconds % 60;
 
       const pad = (num: number) => String(num).padStart(2, '0');
-      
+
       // 일(Day)이 남아있으면 DD:HH:MM:SS, 아니면 HH:MM:SS
       if (d > 0) {
         return `${pad(d)}:${pad(h)}:${pad(m)}:${pad(s)}`;
@@ -145,7 +145,7 @@ export const InfoTime = ({ targetDate, className = '', isLoading = false }: Info
 
   const parts = textStr.split(':');
   const hasColon = textStr.includes(':');
-  
+
   // 길이에 따라 적절한 라벨 제공
   const labels = parts.length === 4 ? ['DAYS', 'HRS', 'MIN', 'SEC'] : ['HRS', 'MIN', 'SEC'];
 

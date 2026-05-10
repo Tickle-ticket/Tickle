@@ -130,3 +130,45 @@ body {
 .grade-dot-r { background-color: var(--seat-r-top); }
 .grade-dot-s { background-color: var(--seat-s-top); }
 .grade-dot-a { background-color: var(--seat-a-top); }
+
+/* ============================
+   Custom Scrollbar Styling
+   ============================ */
+
+/* Mobile: Hide scrollbar entirely */
+@media (max-width: 639px) {
+  * {
+    scrollbar-width: none; /* Firefox */
+  }
+  ::-webkit-scrollbar {
+    display: none; /* WebKit */
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Desktop: Custom sleek scrollbar */
+@media (min-width: 640px) {
+  * {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--toss-grey-200) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--toss-grey-200);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--toss-grey-600);
+  }
+}

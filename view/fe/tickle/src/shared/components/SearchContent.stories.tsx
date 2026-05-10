@@ -63,3 +63,25 @@ export const MultipleQueries: Story = {
     </div>
   ),
 };
+
+export const Mobile: Story = {
+  args: {
+    query: '뮤지컬',
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: 'iphone14',
+    },
+  },
+};
+
+export const Tablet: Story = {
+  args: {
+    query: '뮤지컬',
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: 'ipad',
+    },
+  },
+};

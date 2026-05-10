@@ -22,6 +22,14 @@ export function SignupPageClient() {
           <Link
             key={accountType.value}
             href={getSignupFormHref(accountType.value)}
+            onClick={(e) => {
+              if (typeof window !== 'undefined' && window.parent !== window) {
+                e.preventDefault();
+                const href = getSignupFormHref(accountType.value);
+                window.history.pushState({}, '', href);
+                window.dispatchEvent(new CustomEvent('storybook-auth-nav', { detail: href }));
+              }
+            }}
             className="group flex min-h-[220px] flex-col justify-between rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-5 text-left shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-white hover:shadow-[0_18px_44px_rgba(15,23,42,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500"
           >
             <div>

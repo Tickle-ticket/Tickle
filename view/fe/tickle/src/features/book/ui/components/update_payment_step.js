@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Toggle } from '@/src/shared/components/Toggle';
 import { useBookStore } from '../../store/useBookStore';
@@ -215,7 +217,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         if (paymentMethod === 'KAKAOPAY') {
           setIsStorybookMockOpen(true);
         } else {
-          router.push(`/payment/success?paymentId=mock_vbank_123&method=vbank`);
+          router.push(\`/payment/success?paymentId=mock_vbank_123&method=vbank\`);
         }
         setIsProcessing(false);
         return;
@@ -233,7 +235,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       if (paymentMethod === 'BANK_TRANSFER' && selectRes.data?.bankTransfer) {
         // 1-step 방식: select-method 응답에 이미 무통장 입금 정보가 있는 경우
-        router.push(`/payment/success?paymentId=${selectRes.data.bankTransfer.paymentId}&method=vbank`);
+        router.push(\`/payment/success?paymentId=\${selectRes.data.bankTransfer.paymentId}&method=vbank\`);
       } else if (nextAction === 'PREPARE_BANK_TRANSFER') {
         // 기존 2-step 방식에 대한 하위 호환성 유지
         const bankRes = await paymentApi.confirmBankTransferPayment(
@@ -242,7 +244,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           { bookingId: preorderBookingId }
         );
         if (bankRes.data) {
-          router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
+          router.push(\`/payment/success?paymentId=\${bankRes.data.paymentId}&method=vbank\`);
         }
       } else if (nextAction === 'PREPARE_KAKAOPAY' || paymentMethod === 'KAKAOPAY') {
         if (storyMode) {
@@ -292,7 +294,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                         paymentHandled = true;
                         setIsKakaoPopupOpen(false);
                         (window as any).__isNavigatingToPayment__ = true;
-                        router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
+                        router.push(\`/payment/success?bookingId=\${statusRes.data.bookingId}&paymentId=\${kakaoPaymentId}\`);
                         return;
                       }
                     } catch (e) {
@@ -301,7 +303,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   }
                   setIsKakaoPopupOpen(false);
                   setIsProcessing(false);
-                  onError('결제 중단', '결제 창이 닫혔습니다.\n결제를 다시 시도해주세요.');
+                  onError('결제 중단', '결제 창이 닫혔습니다.\\n결제를 다시 시도해주세요.');
                   setBookingStep('PAY_METHOD');
                 }
                 return;
@@ -324,7 +326,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     setIsKakaoPopupOpen(false);
 
                     (window as any).__isNavigatingToPayment__ = true;
-                    router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
+                    router.push(\`/payment/success?bookingId=\${statusRes.data.bookingId}&paymentId=\${kakaoPaymentId}\`);
                   } else if (paymentStatus === 'CANCELLED' || paymentStatus === 'FAILED') {
                     // 결제 실패/취소
                     paymentHandled = true;
@@ -335,9 +337,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     setIsProcessing(false);
                     
                     if (paymentStatus === 'CANCELLED') {
-                      onError('결제 취소', '결제가 취소되었습니다.\n다시 시도해주세요.');
+                      onError('결제 취소', '결제가 취소되었습니다.\\n다시 시도해주세요.');
                     } else {
-                      onError('결제 실패', '결제 중 오류가 발생했습니다.\n다시 시도해주세요.');
+                      onError('결제 실패', '결제 중 오류가 발생했습니다.\\n다시 시도해주세요.');
                     }
                     setBookingStep('PAY_METHOD');
                   }
@@ -398,7 +400,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               <div key={priceGrade} className="px-5 py-4 flex items-center justify-between">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
-                    <span className={`w-3 h-3 rounded-full ${dotClass}`} />
+                    <span className={\`w-3 h-3 rounded-full \${dotClass}\`} />
                     <span className="font-bold text-gray-900 dark:text-white text-[15px]">{priceGrade}석</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2.5 ml-5 mt-0.5">
@@ -415,7 +417,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   </div>
                 </div>
                 <span className="font-extrabold text-gray-900 dark:text-white text-sm">
-                  {priceGradeTotalPrice > 0 ? `${priceGradeTotalPrice.toLocaleString()}원` : ''}
+                  {priceGradeTotalPrice > 0 ? \`\${priceGradeTotalPrice.toLocaleString()}원\` : ''}
                 </span>
               </div>
             );
@@ -446,37 +448,16 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     </div>
   );
 
-  const renderBackButton = (containerClassName: string) => (
-    <div className={`p-4 sm:p-6 bg-white dark:bg-zinc-950 z-20 shrink-0 border-b border-gray-100 dark:border-zinc-800 ${containerClassName}`}>
-      <button
-        onClick={() => {
-          if (bookingStep === 'PAYMENT') {
-            onCancel();
-          } else {
-            setBookingStep('PAYMENT');
-          }
-        }}
-        disabled={isProcessing}
-        className="px-4 py-2 text-gray-600 dark:text-gray-300 font-bold text-sm border border-gray-300 dark:border-zinc-600 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2 w-max"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-        전단계로 돌아가기
-      </button>
-    </div>
-  );
-
   const renderPaymentButton = () => {
     if (bookingStep === 'PAYMENT') {
       return (
         <button
           disabled={!canPay || isProcessing}
           onClick={() => setBookingStep('PAY_METHOD')}
-          className={`w-full py-4 rounded-2xl font-extrabold text-lg transition-all ${canPay && !isProcessing
+          className={\`w-full py-4 rounded-2xl font-extrabold text-lg transition-all \${canPay && !isProcessing
             ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-lg shadow-blue-600/25'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            }\`}
         >
           결제 수단 선택
         </button>
@@ -486,13 +467,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       <button
         disabled={!selectedPayMethod || isProcessing}
         onClick={handlePayment}
-        className={`w-full py-4 rounded-2xl font-extrabold text-lg transition-all ${selectedPayMethod && !isProcessing
+        className={\`w-full py-4 rounded-2xl font-extrabold text-lg transition-all \${selectedPayMethod && !isProcessing
           ? 'bg-red-500 text-white hover:bg-red-600 active:scale-[0.98] shadow-lg shadow-red-500/25'
           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
+          }\`}
         data-track-id="payment-confirm"
       >
-        {isProcessing ? '처리 중...' : `${finalPrice.toLocaleString()}원 결제하기`}
+        {isProcessing ? '처리 중...' : \`\${finalPrice.toLocaleString()}원 결제하기\`}
       </button>
     );
   };
@@ -518,48 +499,60 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         </div>
       )}
 
-      {/* Mobile-only Back Button */}
-      {renderBackButton("lg:hidden")}
-
       {/* Mobile Top Summary (Visible only on mobile/tablet) */}
-      <div className="lg:hidden w-full px-4 sm:px-6 pb-4 bg-white dark:bg-zinc-950 z-30 shrink-0 border-b border-gray-100 dark:border-zinc-800">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-          <div 
-            className="flex items-center justify-between p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800"
-            onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-700 dark:text-gray-300">총 결제 금액</span>
-              <span className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{finalPrice.toLocaleString()}원</span>
-            </div>
-            <button className="p-1 text-gray-400 transition-transform duration-300">
-               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isSummaryExpanded ? 'rotate-180' : ''}>
-                 <polyline points="6 9 12 15 18 9"></polyline>
-               </svg>
-            </button>
+      <div className="lg:hidden w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-30 shrink-0 shadow-sm">
+        <div 
+          className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800"
+          onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-700 dark:text-gray-300">총 결제 금액</span>
+            <span className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{finalPrice.toLocaleString()}원</span>
           </div>
-          <AnimatePresence>
-            {isSummaryExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="bg-gray-50 dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-800"
-              >
-                <div className="max-h-[50vh] overflow-y-auto">
-                  {renderSummaryContent()}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <button className="p-1 text-gray-400 transition-transform duration-300">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isSummaryExpanded ? 'rotate-180' : ''}>
+               <polyline points="6 9 12 15 18 9"></polyline>
+             </svg>
+          </button>
         </div>
+        <AnimatePresence>
+          {isSummaryExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-gray-50 dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-800"
+            >
+              <div className="max-h-[50vh] overflow-y-auto">
+                {renderSummaryContent()}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Main Content Area (Left on desktop, bottom on mobile) */}
       <div className="w-full lg:w-[60%] flex-1 flex flex-col relative overflow-hidden bg-white dark:bg-zinc-950 lg:border-r border-gray-200 dark:border-zinc-800">
         
-        {/* Desktop-only Back Button */}
-        {renderBackButton("hidden lg:block")}
+        {/* 뒤로가기 버튼 고정 헤더 */}
+        <div className="p-4 sm:p-6 bg-white dark:bg-zinc-950 z-20 shrink-0 border-b border-gray-100 dark:border-zinc-800">
+          <button
+            onClick={() => {
+              if (bookingStep === 'PAYMENT') {
+                onCancel();
+              } else {
+                setBookingStep('PAYMENT');
+              }
+            }}
+            disabled={isProcessing}
+            className="px-4 py-2 text-gray-600 dark:text-gray-300 font-bold text-sm border border-gray-300 dark:border-zinc-600 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2 w-max"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            전단계로 돌아가기
+          </button>
+        </div>
 
         <div className="flex-1 relative overflow-hidden bg-white dark:bg-zinc-950">
           <AnimatePresence initial={false} custom={slideDirection}>
@@ -626,7 +619,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     </div>
 
                     {/* 예매 이용 약관 */}
-                    <div className={`rounded-xl border transition-colors ${agreeTerm1 ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-zinc-700'}`}>
+                    <div className={\`rounded-xl border transition-colors \${agreeTerm1 ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-zinc-700'}\`}>
                       <div className="flex items-center gap-3 px-4 py-3.5">
                         <Toggle checked={agreeTerm1} onChange={(val) => { setAgreeTerm1(val); if (!val) setAgreeAll(false); else if (agreeTerm2) setAgreeAll(true); }} size="small" />
                         <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">예매 이용 약관 (필수)</span>
@@ -635,13 +628,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                           className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full transition-colors"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                            className={`transition-transform duration-300 text-gray-400 ${termExpand1 ? 'rotate-180' : ''}`}
+                            className={\`transition-transform duration-300 text-gray-400 \${termExpand1 ? 'rotate-180' : ''}\`}
                           >
                             <polyline points="6 9 12 15 18 9"></polyline>
                           </svg>
                         </button>
                       </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${termExpand1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                      <div className={\`grid transition-all duration-300 ease-in-out \${termExpand1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}\`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="px-4 pb-4">
                             <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -658,7 +651,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     </div>
 
                     {/* 개인정보 수집 동의 */}
-                    <div className={`rounded-xl border transition-colors ${agreeTerm2 ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-zinc-700'}`}>
+                    <div className={\`rounded-xl border transition-colors \${agreeTerm2 ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-zinc-700'}\`}>
                       <div className="flex items-center gap-3 px-4 py-3.5">
                         <Toggle checked={agreeTerm2} onChange={(val) => { setAgreeTerm2(val); if (!val) setAgreeAll(false); else if (agreeTerm1) setAgreeAll(true); }} size="small" />
                         <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">개인정보 수집 동의 (필수)</span>
@@ -667,13 +660,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                           className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full transition-colors"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                            className={`transition-transform duration-300 text-gray-400 ${termExpand2 ? 'rotate-180' : ''}`}
+                            className={\`transition-transform duration-300 text-gray-400 \${termExpand2 ? 'rotate-180' : ''}\`}
                           >
                             <polyline points="6 9 12 15 18 9"></polyline>
                           </svg>
                         </button>
                       </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${termExpand2 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                      <div className={\`grid transition-all duration-300 ease-in-out \${termExpand2 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}\`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="px-4 pb-4">
                             <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -710,21 +703,21 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   <div className="p-5 flex flex-col gap-3">
                     {/* 페이 결제 */}
                     <div
-                      className={`rounded-xl border-2 transition-all cursor-pointer ${payCategory === 'pay'
+                      className={\`rounded-xl border-2 transition-all cursor-pointer \${payCategory === 'pay'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-gray-200 dark:border-zinc-700 hover:border-gray-300'
-                        }`}
+                        }\`}
                       onClick={() => { setPayCategory('pay'); setSelectedPayMethod(null); }}
                     >
                       <div className="flex items-center gap-3 px-4 py-3.5">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${payCategory === 'pay' ? 'border-blue-500' : 'border-gray-300'
-                          }`}>
+                        <div className={\`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors \${payCategory === 'pay' ? 'border-blue-500' : 'border-gray-300'
+                          }\`}>
                           {payCategory === 'pay' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
                         </div>
-                        <span className={`font-bold text-sm ${payCategory === 'pay' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
-                          }`}>페이 결제</span>
+                        <span className={\`font-bold text-sm \${payCategory === 'pay' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                          }\`}>페이 결제</span>
                       </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${payCategory === 'pay' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                      <div className={\`grid transition-all duration-300 ease-in-out \${payCategory === 'pay' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}\`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="px-4 pb-4 pt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {payMethods.map(m => (
@@ -732,13 +725,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                                 key={m.id}
                                 disabled={m.disabled}
                                 onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
-                                className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
+                                className={\`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center \${m.disabled
                                   ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
-                                  : `hover:z-10 ${selectedPayMethod === m.id
-                                    ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
+                                  : \`hover:z-10 \${selectedPayMethod === m.id
+                                    ? \`\${m.selectedColor} shadow-sm scale-[1.02] z-10\`
                                     : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
-                                  }`
-                                  }`}
+                                  }\`
+                                  }\`}
                               >
                                 {m.icon}
                                 {m.label}
@@ -751,21 +744,21 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
                     {/* 다른 결제 방법 */}
                     <div
-                      className={`rounded-xl border-2 transition-all cursor-pointer ${payCategory === 'other'
+                      className={\`rounded-xl border-2 transition-all cursor-pointer \${payCategory === 'other'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-gray-200 dark:border-zinc-700 hover:border-gray-300'
-                        }`}
+                        }\`}
                       onClick={() => { setPayCategory('other'); setSelectedPayMethod(null); }}
                     >
                       <div className="flex items-center gap-3 px-4 py-3.5">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${payCategory === 'other' ? 'border-blue-500' : 'border-gray-300'
-                          }`}>
+                        <div className={\`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors \${payCategory === 'other' ? 'border-blue-500' : 'border-gray-300'
+                          }\`}>
                           {payCategory === 'other' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
                         </div>
-                        <span className={`font-bold text-sm ${payCategory === 'other' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
-                          }`}>다른 결제 방법</span>
+                        <span className={\`font-bold text-sm \${payCategory === 'other' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                          }\`}>다른 결제 방법</span>
                       </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${payCategory === 'other' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                      <div className={\`grid transition-all duration-300 ease-in-out \${payCategory === 'other' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}\`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="px-4 pb-4 pt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {otherMethods.map(m => (
@@ -773,13 +766,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                                 key={m.id}
                                 disabled={m.disabled}
                                 onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
-                                className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
+                                className={\`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center \${m.disabled
                                   ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
-                                  : `hover:z-10 ${selectedPayMethod === m.id
-                                    ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
+                                  : \`hover:z-10 \${selectedPayMethod === m.id
+                                    ? \`\${m.selectedColor} shadow-sm scale-[1.02] z-10\`
                                     : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
-                                  }`
-                                  }`}
+                                  }\`
+                                  }\`}
                               >
                                 {m.icon}
                                 {m.label}
@@ -813,3 +806,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     </div>
   );
 };
+`;
+
+fs.writeFileSync('c:/Users/gyqls/OneDrive/바탕 화면/S14P31A203/view/fe/tickle/src/features/book/ui/components/PaymentStep.tsx', code, 'utf8');

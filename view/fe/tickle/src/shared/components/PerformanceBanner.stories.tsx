@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { PerformanceBanner } from './PerformanceBanner';
 
 const meta = {
-  title: 'Components/PerformanceBanner',
+  title: 'Shared/PerformanceBanner',
   component: PerformanceBanner,
   parameters: {
     layout: 'fullscreen',

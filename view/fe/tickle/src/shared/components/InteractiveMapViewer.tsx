@@ -166,10 +166,10 @@ export const InteractiveMapViewer = ({ children, showZoomControls = true }: Inte
       </div>
 
       {showZoomControls && (
-        <div className="zoom-controls absolute bottom-6 right-6 flex flex-col bg-white dark:bg-zinc-800 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-zinc-700 overflow-hidden cursor-auto z-20">
+        <div className="zoom-controls absolute top-[80px] lg:top-auto lg:bottom-6 right-4 sm:right-6 flex flex-col bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm rounded-lg sm:rounded-xl shadow-lg border border-gray-200/60 dark:border-zinc-700 overflow-hidden cursor-auto z-20">
           <button 
             onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
-            className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"
+            className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"
             aria-label="확대"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -179,7 +179,7 @@ export const InteractiveMapViewer = ({ children, showZoomControls = true }: Inte
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); handleZoomOut(); }}
-            className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"
+            className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors border-b border-gray-100 dark:border-zinc-700"
             aria-label="축소"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -188,7 +188,7 @@ export const InteractiveMapViewer = ({ children, showZoomControls = true }: Inte
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); handleResetZoom(); }}
-            className="w-12 h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors"
+            className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 active:bg-gray-100 transition-colors"
             aria-label="원래 크기로"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

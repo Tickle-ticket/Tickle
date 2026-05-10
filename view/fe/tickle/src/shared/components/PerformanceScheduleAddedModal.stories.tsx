@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { PerformanceScheduleAddedModal } from './PerformanceScheduleAddedModal';
 
 const meta = {
-  title: 'user/PerformanceScheduleAddedModal',
+  title: 'Agency/PerformanceScheduleAddedModal',
   component: PerformanceScheduleAddedModal,
   tags: ['autodocs'],
   parameters: {

@@ -23,8 +23,8 @@ export const PriceLegend = ({ prices, viewMode = 'grade' }: PriceLegendProps) =>
   const isCongestionMode = viewMode === 'congestion';
 
   return (
-    <div className="absolute top-4 left-4 z-20 group">
-      <button className="flex items-center gap-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg text-sm font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-700 hover:scale-105 transition-transform">
+    <div className="absolute top-[80px] lg:top-4 left-4 z-20 group">
+      <button className="flex items-center gap-1.5 sm:gap-2 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm px-2.5 py-1.5 sm:px-4 sm:py-3 rounded-full shadow-lg text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-700 hover:scale-105 transition-transform">
         {isCongestionMode ? '대기 혼잡도 안내' : '등급 별 가격'}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
           <circle cx="12" cy="12" r="10"></circle>

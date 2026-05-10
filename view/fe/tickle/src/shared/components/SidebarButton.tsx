@@ -108,7 +108,7 @@ export function SidebarButton({
     >
       {isActive && (
         <span
-          className="absolute left-0 top-0 h-full w-[3px]"
+          className="hidden lg:block absolute left-0 top-0 h-full w-[3px]"
           style={{ backgroundColor: activeTextColor }}
           aria-hidden="true"
         />

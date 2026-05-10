@@ -9,8 +9,12 @@ import { MyBookingsView } from './MyBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 
+import Tab from '@/src/shared/components/Tab';
+import { useState } from 'react';
+
 export const MyPageContent = () => {
   const { activeTab, setActiveTab } = useMypageStore();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(true);
 
   const tabs = [
     { id: 'USER', label: '회원 관리' },
@@ -22,9 +26,33 @@ export const MyPageContent = () => {
   ] as const;
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
-      {/* LNB (Left Navigation Bar) */}
-      <aside className="w-full md:w-[260px] shrink-0 sticky top-28 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+    <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
+      {/* 모바일/태블릿 전용 드릴다운 메뉴 리스트 - lg 미만 & 메뉴 열림 상태에서만 표시 */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden w-full flex flex-col gap-3 pb-20 animate-in fade-in slide-in-from-left-4 duration-300">
+          <div className="mb-4">
+            <Title title="마이페이지" bottomBorder={false} className="!px-0 !pt-0 [&_h1]:text-2xl" />
+          </div>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
+            >
+              <span className="text-[17px] font-bold text-gray-800">{tab.label}</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 데스크톱 전용 LNB (Left Navigation Bar) - lg 이상에서만 표시 */}
+      <aside className="hidden lg:block w-[260px] shrink-0 sticky top-28 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="p-5 border-b border-gray-100 bg-gray-50">
           <h2 className="text-lg font-black tracking-tight text-gray-900">마이페이지</h2>
         </div>
@@ -48,12 +76,26 @@ export const MyPageContent = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 w-full min-h-[500px] pb-20">
+      <div className={`flex-1 w-full min-h-[500px] pb-20 ${isMobileMenuOpen ? 'hidden lg:block' : 'block animate-in slide-in-from-right-4 duration-300'}`}>
+        
+        {/* 모바일 전용 뒤로가기 버튼 */}
+        <div className="lg:hidden mb-2 -mt-2">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex items-center gap-1.5 text-gray-500 font-bold py-2 pr-4 active:text-gray-900 transition-colors"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            전체 메뉴
+          </button>
+        </div>
+
         <div className="mb-6">
           <Title 
             title={tabs.find(t => t.id === activeTab)?.label || ''} 
             bottomBorder={true} 
-            className="!px-0 !pt-0 [&_h1]:text-2xl" 
+            className="!px-0 !pt-0 [&_h1]:text-2xl lg:[&_h1]:text-2xl [&_h1]:text-[22px]" 
           />
         </div>
 

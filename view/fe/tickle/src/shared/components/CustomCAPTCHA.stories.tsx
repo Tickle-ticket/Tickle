@@ -26,3 +26,33 @@ export const Default: Story = {
     </div>
   ),
 };
+
+export const Mobile: Story = {
+  args: {
+    onSuccess: (token) => console.log('Captcha Verified!', token),
+  },
+  parameters: {
+    viewport: { defaultViewport: 'iphone14' },
+    layout: 'fullscreen',
+  },
+  render: (args) => (
+    <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <CustomCAPTCHA {...args} />
+    </div>
+  ),
+};
+
+export const Tablet: Story = {
+  args: {
+    onSuccess: (token) => console.log('Captcha Verified!', token),
+  },
+  parameters: {
+    viewport: { defaultViewport: 'ipad' },
+    layout: 'fullscreen',
+  },
+  render: (args) => (
+    <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <CustomCAPTCHA {...args} />
+    </div>
+  ),
+};

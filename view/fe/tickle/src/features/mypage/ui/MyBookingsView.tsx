@@ -7,10 +7,14 @@ import { Table } from '@/src/shared/components/Table';
 import { Modal } from '@/src/shared/components/Modal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 import { BookingCard } from '@/src/shared/components/BookingCard';
+import { MobileBookingCard } from '@/src/shared/components/MobileBookingCard';
 import { BookingDetailCard } from '@/src/shared/components/BookingDetailCard';
 import { Box } from '@/src/shared/components/Box';
+import { useRouter } from 'next/navigation';
+import { BookingDetailView } from './BookingDetailView';
 
 export const MyBookingsView = () => {
+  const router = useRouter();
   const { data: bookings, isLoading } = useMyBookings();
   const { mutate: cancelBooking, isPending: isCanceling } = useCancelBooking();
 
@@ -79,13 +83,22 @@ export const MyBookingsView = () => {
     setSelectedBarcodeText(null);
   };
 
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+
   const handleOpenDetailModal = (bookingId: string) => {
     setSelectedDetailId(bookingId);
-    setIsDetailModalOpen(true);
+    if (window.innerWidth < 768) {
+      // 모바일 환경: 풀스크린 오버레이 뷰어 열기
+      setIsMobileDetailOpen(true);
+    } else {
+      // 데스크톱 환경: 기존대로 모달 열기
+      setIsDetailModalOpen(true);
+    }
   };
 
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
+    setIsMobileDetailOpen(false);
     setSelectedDetailId(null);
   };
 
@@ -142,35 +155,56 @@ export const MyBookingsView = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-20 justify-items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20 justify-items-center">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="w-full h-[400px] bg-gray-100 animate-pulse rounded-2xl" />
           ))
         ) : filteredBookings.length > 0 ? (
           filteredBookings.map((item) => (
-            <BookingCard
-              key={item.id}
-              item={item}
-              onOpenPayment={handleOpenPaymentModal}
-              onOpenCancel={(id) => {
-                setSelectedBookingForCancel({ id });
-                setIsCancelModalOpen(true);
-              }}
-              onOpenDetail={handleOpenDetailModal}
-              onOpenBarcode={handleOpenBarcodeModal}
-            />
+            <React.Fragment key={item.id}>
+              {/* Desktop/Tablet View */}
+              <div className="hidden md:block w-full">
+                <BookingCard
+                  item={item}
+                  onOpenPayment={handleOpenPaymentModal}
+                  onOpenCancel={(id) => {
+                    setSelectedBookingForCancel({ id });
+                    setIsCancelModalOpen(true);
+                  }}
+                  onOpenDetail={handleOpenDetailModal}
+                  onOpenBarcode={handleOpenBarcodeModal}
+                />
+              </div>
+              {/* Mobile View */}
+              <div className="block md:hidden w-full">
+                <MobileBookingCard
+                  item={item}
+                  onOpenPayment={handleOpenPaymentModal}
+                  onOpenCancel={(id) => {
+                    setSelectedBookingForCancel({ id });
+                    setIsCancelModalOpen(true);
+                  }}
+                  onOpenDetail={handleOpenDetailModal}
+                  onOpenBarcode={handleOpenBarcodeModal}
+                />
+              </div>
+            </React.Fragment>
           ))
         ) : (
-          <div className="col-span-full w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-4">
+          <div className="col-span-full w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
               <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
               <path d="M13 5v2"></path>
               <path d="M13 17v2"></path>
               <path d="M13 11v2"></path>
             </svg>
-            <Text typography="t5" fontWeight="bold" color="secondary" className="mb-1">예매 내역이 없습니다.</Text>
-            <Text typography="t6" color="tertiary">새로운 공연을 예매해 보세요!</Text>
+            <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
+              예매 내역이 없습니다.
+            </Text>
+            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px] md:max-w-none">
+              새로운 공연을 예매해 보세요!
+            </Text>
           </div>
         )}
       </div>
@@ -280,6 +314,16 @@ export const MyBookingsView = () => {
           )}
         </div>
       </Modal>
+
+      {/* 모바일 전용 상세 오버레이 뷰 */}
+      {isMobileDetailOpen && selectedDetailId && (
+        <div className="fixed inset-0 z-[100] bg-gray-50 overflow-y-auto md:hidden">
+          <BookingDetailView 
+            bookingId={selectedDetailId} 
+            onBack={() => setIsMobileDetailOpen(false)} 
+          />
+        </div>
+      )}
     </div>
   );
 };
