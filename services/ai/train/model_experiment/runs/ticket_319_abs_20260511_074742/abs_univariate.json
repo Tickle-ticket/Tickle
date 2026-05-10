@@ -1,0 +1,146 @@
+[
+  {
+    "feature": "time_to_first_click_ms",
+    "baseline_raw_lv3_auc": 0.92,
+    "baseline_abs_lv3_auc": 0.92,
+    "today_raw_lv3_auc": 0.78,
+    "today_abs_lv3_auc": 0.78,
+    "baseline_overall_auc": 0.818018018,
+    "today_overall_auc": 0.5774647887
+  },
+  {
+    "feature": "inter_click_interval_ms",
+    "baseline_raw_lv3_auc": 0.23104,
+    "baseline_abs_lv3_auc": 0.76896,
+    "today_raw_lv3_auc": 0.23104,
+    "today_abs_lv3_auc": 0.76896,
+    "baseline_overall_auc": 0.9477477477,
+    "today_overall_auc": 0.8508962868
+  },
+  {
+    "feature": "pre_click_mousemove_count",
+    "baseline_raw_lv3_auc": 0.42,
+    "baseline_abs_lv3_auc": 0.5800000000000001,
+    "today_raw_lv3_auc": 1.0,
+    "today_abs_lv3_auc": 1.0,
+    "baseline_overall_auc": 0.536036036,
+    "today_overall_auc": 0.4637644046
+  },
+  {
+    "feature": "mouse_total_travel_distance_px",
+    "baseline_raw_lv3_auc": 0.59772,
+    "baseline_abs_lv3_auc": 0.59772,
+    "today_raw_lv3_auc": 0.59772,
+    "today_abs_lv3_auc": 0.59772,
+    "baseline_overall_auc": 0.7743243243,
+    "today_overall_auc": 0.8299615877
+  },
+  {
+    "feature": "mouse_avg_speed_px_per_ms",
+    "baseline_raw_lv3_auc": 0.38976,
+    "baseline_abs_lv3_auc": 0.61024,
+    "today_raw_lv3_auc": 0.38976,
+    "today_abs_lv3_auc": 0.61024,
+    "baseline_overall_auc": 0.8603603604,
+    "today_overall_auc": 0.885659411
+  },
+  {
+    "feature": "mouse_max_speed_px_per_ms",
+    "baseline_raw_lv3_auc": 0.28448,
+    "baseline_abs_lv3_auc": 0.7155199999999999,
+    "today_raw_lv3_auc": 0.28448,
+    "today_abs_lv3_auc": 0.7155199999999999,
+    "baseline_overall_auc": 0.9612612613,
+    "today_overall_auc": 0.7513444302
+  },
+  {
+    "feature": "mouse_speed_change_mean",
+    "baseline_raw_lv3_auc": 0.36746,
+    "baseline_abs_lv3_auc": 0.63254,
+    "today_raw_lv3_auc": 0.63254,
+    "today_abs_lv3_auc": 0.63254,
+    "baseline_overall_auc": 0.9234234234,
+    "today_overall_auc": 0.5948783611
+  },
+  {
+    "feature": "mouse_acceleration_mean",
+    "baseline_raw_lv3_auc": 0.20872,
+    "baseline_abs_lv3_auc": 0.79128,
+    "today_raw_lv3_auc": 0.20872,
+    "today_abs_lv3_auc": 0.79128,
+    "baseline_overall_auc": 0.8326576577,
+    "today_overall_auc": 0.5798335467
+  },
+  {
+    "feature": "mouse_jerk_mean",
+    "baseline_raw_lv3_auc": 0.17464,
+    "baseline_abs_lv3_auc": 0.82536,
+    "today_raw_lv3_auc": 0.17464,
+    "today_abs_lv3_auc": 0.82536,
+    "baseline_overall_auc": 0.5047297297,
+    "today_overall_auc": 0.7193982074
+  },
+  {
+    "feature": "mouse_path_straightness_score",
+    "baseline_raw_lv3_auc": 0.68784,
+    "baseline_abs_lv3_auc": 0.68784,
+    "today_raw_lv3_auc": 0.31216,
+    "today_abs_lv3_auc": 0.68784,
+    "baseline_overall_auc": 0.3445945946,
+    "today_overall_auc": 0.8275288092
+  },
+  {
+    "feature": "mouse_path_curvature_mean",
+    "baseline_raw_lv3_auc": 0.37536,
+    "baseline_abs_lv3_auc": 0.62464,
+    "today_raw_lv3_auc": 0.37536,
+    "today_abs_lv3_auc": 0.62464,
+    "baseline_overall_auc": 0.8513513514,
+    "today_overall_auc": 0.876056338
+  },
+  {
+    "feature": "mouse_direction_change_count",
+    "baseline_raw_lv3_auc": 0.4153,
+    "baseline_abs_lv3_auc": 0.5847,
+    "today_raw_lv3_auc": 0.4153,
+    "today_abs_lv3_auc": 0.5847,
+    "baseline_overall_auc": 0.9272522523,
+    "today_overall_auc": 0.9745198464
+  },
+  {
+    "feature": "mouse_overshoot_flag",
+    "baseline_raw_lv3_auc": 0.5,
+    "baseline_abs_lv3_auc": 0.5,
+    "today_raw_lv3_auc": 0.5,
+    "today_abs_lv3_auc": 0.5,
+    "baseline_overall_auc": 0.5,
+    "today_overall_auc": 0.5
+  },
+  {
+    "feature": "mouse_hover_dwell_time_ms",
+    "baseline_raw_lv3_auc": 0.54,
+    "baseline_abs_lv3_auc": 0.54,
+    "today_raw_lv3_auc": 0.56,
+    "today_abs_lv3_auc": 0.56,
+    "baseline_overall_auc": 0.4513513514,
+    "today_overall_auc": 0.6087067862
+  },
+  {
+    "feature": "mouse_stop_segment_count",
+    "baseline_raw_lv3_auc": 0.0,
+    "baseline_abs_lv3_auc": 1.0,
+    "today_raw_lv3_auc": 0.0,
+    "today_abs_lv3_auc": 1.0,
+    "baseline_overall_auc": 0.6745495495,
+    "today_overall_auc": 0.414340589
+  },
+  {
+    "feature": "mousemove_event_rate",
+    "baseline_raw_lv3_auc": 0.06,
+    "baseline_abs_lv3_auc": 0.94,
+    "today_raw_lv3_auc": 0.98,
+    "today_abs_lv3_auc": 0.98,
+    "baseline_overall_auc": 0.3833333333,
+    "today_overall_auc": 0.4302176697
+  }
+]
