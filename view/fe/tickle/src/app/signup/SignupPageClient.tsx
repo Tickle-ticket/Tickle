@@ -1,3 +1,4 @@
+'use client';
 import Link from 'next/link';
 import { type AuthNavigationItem, UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
 import { getSignupFormHref, signupAccountTypes } from './signupAccountType';

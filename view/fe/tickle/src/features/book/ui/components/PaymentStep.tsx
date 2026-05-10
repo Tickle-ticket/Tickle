@@ -4,20 +4,25 @@ import { Toggle } from '@/src/shared/components/Toggle';
 import { useBookStore } from '../../store/useBookStore';
 import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
 import { paymentApi } from '@/src/shared/api/paymentApi';
+import { purchaseCancellation } from '@/src/shared/api/cancellationApi';
+import { bookingApi } from '@/src/shared/api/bookingApi';
+import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface PaymentStepProps {
-  optionsData: BookingOptionsResponse;
-  preorderBookingId: number | null;
+  optionsData?: BookingOptionsResponse;
+  preorderBookingId?: number | null;
   eventId: string;
-  scheduleId: string | null;
+  scheduleId?: string | null;
   userId: number | undefined;
   userProfile: any;
   onCancel: () => void;
   onConflictError: () => void;
   onError: (title: string, message: string) => void;
   storyMode?: boolean;
+  cancellationId?: number;
+  cancellationTotalAmount?: number;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -38,6 +43,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   onConflictError,
   onError,
   storyMode = false,
+  cancellationId,
+  cancellationTotalAmount,
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
@@ -95,16 +102,20 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   };
 
   const priceGradeSeats: Record<string, any[]> = {};
-  optionsData.seats.forEach(seat => {
-    if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
-    priceGradeSeats[seat.priceGrade].push(seat);
-  });
+  if (optionsData?.seats) {
+    optionsData.seats.forEach(seat => {
+      if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
+      priceGradeSeats[seat.priceGrade].push(seat);
+    });
+  }
 
-  const ticketPrice = Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
+  const ticketPrice = cancellationTotalAmount 
+    ? Math.round(cancellationTotalAmount / 1.05) // 역산하여 티켓 가격 산출
+    : Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
     const baseSeat = seats[0];
     let types = baseSeat.priceInfos || [];
     
-    if (types.length === 0) {
+    if (types.length === 0 && optionsData) {
       const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
       types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
     }
@@ -119,8 +130,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     }, 0);
   }, 0);
 
-  const bookingFee = Math.round(ticketPrice * 0.05); // 5% 예매 수수료
-  const finalPrice = ticketPrice + bookingFee;
+  const finalPrice = cancellationTotalAmount || Math.round(ticketPrice * 1.05); // 5% 예매 수수료 포함
+  const bookingFee = finalPrice - ticketPrice;
 
   const handleAgreeAll = (val: boolean) => {
     setAgreeAll(val);
@@ -193,7 +204,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   ];
 
   const handlePayment = async () => {
-    if (!storyMode && (!scheduleId || !preorderBookingId || !selectedPayMethod)) {
+    if (!storyMode && !cancellationId && (!scheduleId || !preorderBookingId || !selectedPayMethod)) {
       console.error('Missing required payment parameters:', { scheduleId, preorderBookingId, selectedPayMethod });
       return;
     }
@@ -221,10 +232,77 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         return;
       }
 
+      if (cancellationId) {
+        const res = await purchaseCancellation(cancellationId.toString(), { paymentMethod });
+        const result = res.data;
+        
+        if (result.paymentMethod === 'BANK_TRANSFER') {
+          router.push(`/payment/success?bookingId=${result.bookingId}&method=vbank`);
+          return;
+        } else if (result.paymentMethod === 'KAKAOPAY') {
+          const redirectUrl = result.redirectUrl;
+          if (redirectUrl) {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+              (window as any).__isNavigatingToPayment__ = true;
+              window.location.href = redirectUrl;
+            } else {
+              setIsKakaoPopupOpen(true);
+              const popup = window.open(redirectUrl, 'kakaopay', 'width=500,height=700,scrollbars=yes');
+              
+              const bookingId = result.bookingId;
+              let paymentHandled = false;
+              const checkPopupInterval = setInterval(async () => {
+                if (!popup || paymentHandled) return;
+                
+                if (popup.closed) {
+                  clearInterval(checkPopupInterval);
+                  if (!paymentHandled) {
+                    if (bookingId) {
+                      try {
+                        const statusRes = await reservationApi.getReservationDetail(bookingId.toString());
+                        if (statusRes.data?.bookingStatus === 'CONFIRMED' || statusRes.data?.bookingStatus === 'BOOKED') {
+                          paymentHandled = true;
+                          setIsKakaoPopupOpen(false);
+                          (window as any).__isNavigatingToPayment__ = true;
+                          router.push(`/payment/success?bookingId=${bookingId}`);
+                          return;
+                        }
+                      } catch (e) {}
+                    }
+                    setIsKakaoPopupOpen(false);
+                    setIsProcessing(false);
+                    onError('결제 중단', '결제 창이 닫혔습니다.\n결제를 다시 시도해주세요.');
+                    setBookingStep('PAY_METHOD');
+                  }
+                  return;
+                }
+
+                if (bookingId) {
+                  try {
+                    const statusRes = await reservationApi.getReservationDetail(bookingId.toString());
+                    const bookingStatus = statusRes.data?.bookingStatus;
+                    if (bookingStatus === 'CONFIRMED' || bookingStatus === 'BOOKED') {
+                      paymentHandled = true;
+                      clearInterval(checkPopupInterval);
+                      try { popup.close(); } catch (e) {}
+                      setIsKakaoPopupOpen(false);
+                      (window as any).__isNavigatingToPayment__ = true;
+                      router.push(`/payment/success?bookingId=${bookingId}`);
+                    }
+                  } catch (e) {}
+                }
+              }, 2000);
+            }
+          }
+          return;
+        }
+      }
+
       const selectRes = await paymentApi.selectPaymentMethod(
         eventId,
-        scheduleId,
-        { bookingId: preorderBookingId, paymentMethod }
+        scheduleId!,
+        { bookingId: preorderBookingId!, paymentMethod }
       );
 
       const nextAction = selectRes.data?.nextAction;
@@ -238,8 +316,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         // 기존 2-step 방식에 대한 하위 호환성 유지
         const bankRes = await paymentApi.confirmBankTransferPayment(
           eventId,
-          scheduleId,
-          { bookingId: preorderBookingId }
+          scheduleId!,
+          { bookingId: preorderBookingId! }
         );
         if (bankRes.data) {
           router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
@@ -252,9 +330,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
         const kakaoRes = await paymentApi.readyKakaoPay(
           eventId,
-          scheduleId,
+          scheduleId!,
           {
-            bookingId: preorderBookingId
+            bookingId: preorderBookingId!
           }
         );
 
@@ -374,7 +452,12 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">좌석 정보</h3>
         </div>
         <div className="divide-y divide-gray-100 dark:divide-zinc-800">
-          {Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
+          {cancellationId ? (
+            <div className="px-5 py-4 flex flex-col gap-1.5">
+              <span className="font-bold text-gray-900 dark:text-white text-[15px]">취소표 1매</span>
+              <span className="text-[13px] text-gray-500 leading-none">배정된 취소표</span>
+            </div>
+          ) : Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
             const dotClass = priceGradeDotColors[priceGrade] || 'bg-gray-400';
             const counts = priceGradeTicketCounts[priceGrade] || {};
             let priceGradeTotalPrice = 0;
@@ -382,7 +465,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             const baseSeat = seats[0];
             let types = baseSeat.priceInfos || [];
             
-            if (types.length === 0) {
+            if (types.length === 0 && optionsData) {
               const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
               types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
             }

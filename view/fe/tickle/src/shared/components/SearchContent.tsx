@@ -215,7 +215,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query, hideMobileS
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <Title typography="t5" fontWeight="bold" color="secondary" className="mb-2 !p-0 !bg-transparent" title="검색 결과가 없습니다." bottomBorder={false} />
+            <Title className="mb-2 !p-0 !bg-transparent" title="검색 결과가 없습니다." bottomBorder={false} />
             <p className="text-gray-500 mt-2">다른 검색어를 입력해보세요.</p>
           </div>
         ) : null}
