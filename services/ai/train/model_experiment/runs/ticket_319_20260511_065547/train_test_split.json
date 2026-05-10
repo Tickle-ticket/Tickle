@@ -1,0 +1,22 @@
+[
+  {
+    "condition":"baseline",
+    "total_n":652,
+    "train_n":521,
+    "test_n":131,
+    "train_human":440,
+    "train_macro":81,
+    "test_human":111,
+    "test_macro":20
+  },
+  {
+    "condition":"+today",
+    "total_n":903,
+    "train_n":722,
+    "test_n":181,
+    "train_human":441,
+    "train_macro":281,
+    "test_human":110,
+    "test_macro":71
+  }
+]
