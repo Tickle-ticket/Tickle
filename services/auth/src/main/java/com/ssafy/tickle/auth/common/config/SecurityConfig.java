@@ -43,6 +43,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/reissue",
                                 "/api/v1/auth/kakao",
                                 "/api/v1/auth/kakao/callback",
+                                "/api/v1/auth/kakao/login",
+                                "/api/v1/auth/kakao/signup",
                                 "/api/v1/auth/phone/send",
                                 "/api/v1/auth/phone/verify"
                         ).permitAll()
