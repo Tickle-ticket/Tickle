@@ -216,5 +216,5 @@ tickle/
 ## 메모리 / 문서 분리
 
 - **CLAUDE.md** (본 문서) = 컨벤션 / 규칙 (불변, "어떻게 해야 하는가") — git 추적, 팀 공유
-- **tasks/lessons.md** = 학습 누적 (가변, "이전에 무슨 일이 있었나") — git 추적, 팀 공유
-- **tasks/todo.md** = 현재 진행 작업 todo — git 추적
+- **tasks/lessons.md** = 학습 누적 (가변, "이전에 무슨 일이 있었나") — 로컬 (gitignored), 개인 메모
+- **tasks/todo.md** = 현재 진행 작업 todo — 로컬 (gitignored), 개인 메모
