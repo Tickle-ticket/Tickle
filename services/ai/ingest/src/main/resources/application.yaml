@@ -12,6 +12,8 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 app:
+  cors:
+    allowed-origins: ${INGEST_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
   kafka:
     topics:
       behavior-events: ${KAFKA_TOPIC_BEHAVIOR_EVENTS:behavior-events-v1}
