@@ -1,6 +1,5 @@
 package com.ssafy.tickle.agency.event.application;
 
-import com.ssafy.tickle.agency.event.application.dto.CreatedEventSeat;
 import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventSeatGroupRequest;
 import com.ssafy.tickle.category.domain.Category;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
@@ -131,7 +130,12 @@ class AgencyEventSeatBatchServiceTest {
                 createPricePolicy(event, SeatGrade.R, 150000)
         ));
 
-        List<CreatedEventSeat> createdEventSeats = agencyEventSeatBatchService.createEventSeats(
+        eventSessionRepository.saveAll(List.of(
+                createSession(event, 1, Instant.parse("2026-08-01T10:00:00Z")),
+                createSession(event, 2, Instant.parse("2026-08-02T10:00:00Z"))
+        ));
+
+        agencyEventSeatBatchService.createSeats(
                 event.getId(),
                 List.of(
                         new AgencyCreateEventSeatGroupRequest(SeatGrade.VIP, List.of(vipSeat1.getId(), vipSeat2.getId())),
@@ -139,14 +143,6 @@ class AgencyEventSeatBatchServiceTest {
                 )
         );
 
-        List<EventSession> sessions = eventSessionRepository.saveAll(List.of(
-                createSession(event, 1, Instant.parse("2026-08-01T10:00:00Z")),
-                createSession(event, 2, Instant.parse("2026-08-02T10:00:00Z"))
-        ));
-
-        agencyEventSeatBatchService.createSessionSeats(sessions, createdEventSeats);
-
-        assertThat(createdEventSeats).hasSize(4);
         assertThat(eventSectionRepository.count()).isEqualTo(2);
         assertThat(eventSeatRepository.count()).isEqualTo(4);
         assertThat(sessionSeatRepository.count()).isEqualTo(8);
