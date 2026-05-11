@@ -53,7 +53,7 @@ public class SessionSeat {
 
     // 판매 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "sale_status", nullable = false, length = 30)
+    @Column(name = "sale_status", nullable = false, length = 30, columnDefinition = "varchar(30)")
     private SaleStatus saleStatus;
 
     // 선점 사용자 (HELD 상태인 경우에만 값이 있음. TTL 만료 시 DB 조회에 활용)

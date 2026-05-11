@@ -39,7 +39,7 @@ public class Blacklist {
 
     // 블랙리스트 등록 사유
     @Enumerated(EnumType.STRING)
-    @Column(name = "reason", nullable = false, length = 30)
+    @Column(name = "reason", nullable = false, length = 30, columnDefinition = "varchar(30)")
     private Reason reason;
 
     // 상세 설명 (선택)

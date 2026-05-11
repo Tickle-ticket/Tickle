@@ -58,7 +58,7 @@ public class VenueSeat {
 
     // 좌석 등급
     @Enumerated(EnumType.STRING)
-    @Column(name = "seat_type", nullable = false, length = 30)
+    @Column(name = "seat_type", nullable = false, length = 30, columnDefinition = "varchar(30)")
     private SeatGrade seatGrade;
 
     // 생성 시각
