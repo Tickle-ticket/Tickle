@@ -26,17 +26,22 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // 자주 사용되는 로컬 개발 포트 추가 (3000, 5173, 5174, 8080, 3001)
         List<String> allowedOrigins = new ArrayList<>(Arrays.asList(
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
+                "http://localhost:3000", "http://127.0.0.1:3000",
+                "http://localhost:5173", "http://127.0.0.1:5173",
+                "http://localhost:5174", "http://127.0.0.1:5174",
+                "http://localhost:8080", "http://127.0.0.1:8080",
+                "http://localhost:3001", "http://127.0.0.1:3001",
                 feOrigin
         ));
 
-        // 로컬 환경일 때 보안 정책을 대폭 완화 (로컬 파일 테스트용)
+        // 환경변수(ALLOW_ALL_ORIGINS)로 강제 허용 여부 확인
+        boolean allowAll = Boolean.parseBoolean(env.getProperty("cors.allow-all-origins", "false"));
         boolean isLocalOrDev = Arrays.stream(env.getActiveProfiles())
                 .anyMatch(profile -> profile.equalsIgnoreCase("local") || profile.equalsIgnoreCase("dev"));
         
-        if (isLocalOrDev) {
+        if (isLocalOrDev || allowAll) {
             registry.addMapping("/**") // /api 뿐만 아니라 모든 경로 허용
                     .allowedOriginPatterns("*")
                     .allowedMethods("*")

@@ -42,6 +42,11 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
 
+        // OPTIONS 메서드(Preflight)는 권한 검사 없이 통과
+        if (org.springframework.http.HttpMethod.OPTIONS.matches(request.getMethod())) {
+            return true;
+        }
+
         Long userId;
         try {
             userId = jwtProvider.extractUserIdFromRequest(request).orElse(null);

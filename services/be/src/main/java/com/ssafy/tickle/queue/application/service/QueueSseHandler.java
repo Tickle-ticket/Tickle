@@ -29,19 +29,32 @@ public class QueueSseHandler {
      * @return SSE emitter
      */
     public SseEmitter connect(String queueToken) {
+        // 1. 현재 상태를 즉시 조회
         QueueStatusResponse initialStatus = queueStatusService.getStatusByQueueToken(queueToken);
 
         SseEmitter emitter = new SseEmitter(QueueConstants.SSE_TIMEOUT_MILLIS);
 
-        // queueToken 기준으로 emitter를 보관해두고, 이후 scheduler가 같은 사용자에게 상태를 push.
-        // SSE 연결 끊김은 단순 map 정리만 수행한다.
-        // 대기열 이탈은 FE가 명시적으로 /leave를 호출해야 처리되므로 여기서 leave()를 호출하면 안 된다.
-        emitters.put(queueToken, emitter);
+        // 연결 끊김 시 맵에서 제거
         emitter.onCompletion(() -> emitters.remove(queueToken));
         emitter.onTimeout(() -> emitters.remove(queueToken));
         emitter.onError(exception -> emitters.remove(queueToken));
 
-        send(queueToken, emitter, initialStatus);
+        // 2. 초기 데이터 전송 (헤더 플러시 및 레이스 컨디션 방지)
+        // 아직 맵에 넣기 전이므로 스케줄러 쓰레드와 충돌하지 않음 (Thread-safety 보장)
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("connect")
+                    .data("connected"));
+            
+            // 즉시 현재 상태 전송 (0.5초 지연 제거)
+            send(queueToken, emitter, initialStatus);
+        } catch (java.io.IOException | IllegalStateException e) {
+            return emitter;
+        }
+
+        // 3. 모든 초기 전송이 성공한 후 맵에 등록하여 스케줄러 관리 시작
+        emitters.put(queueToken, emitter);
+
         return emitter;
     }
 
