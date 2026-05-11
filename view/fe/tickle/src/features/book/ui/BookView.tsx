@@ -110,6 +110,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     // 인원 선택 버튼을 누르기 전(CAPTCHA, SEAT)까지만 활성화
     enabled: (mode === 'BOOK' || mode === 'WAITLIST') && (!isBotVerified || bookingStep === 'SEAT'),
     userId: userProfile?.userId,
+    initialStage: 'captcha',
     behaviorEvent: {
       eventId: Number(eventId),
       scheduleId: Number(scheduleId) || undefined,
@@ -455,6 +456,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     }
     const isMyInitialSeat = initialSeats.includes(id);
     if (!selectedSeats.has(id) && !isMyInitialSeat && selectedSeats.size >= maxSelectable) {
+      if (!isShadowModeActive) {
+        setErrorModalConfig({ isOpen: true, title: '선택 제한', message: `최대 ${maxSelectable}개까지 선택 가능합니다.` });
+      }
       return;
     }
 
@@ -469,15 +473,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     const seatData = seatsData[id];
     if (!scheduleId || !seatData || seatData.status !== 'selectable' || !seatData.sessionSeatId) return;
 
-    if (seatData.isSelected) {
-      toggleSeat(id);
-    } else {
-      if (selectedSeats.size >= 4) {
-        setErrorModalConfig({ isOpen: true, title: '선택 제한', message: '한 번에 최대 4개까지 선택 가능합니다.' });
-        return;
-      }
-      toggleSeat(id);
-    }
+    toggleSeat(id);
   };
 
   const handleNextStep = async () => {

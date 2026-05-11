@@ -107,9 +107,10 @@ export class TrialCollector {
   // ─── Stage Flush Tracking ────────────────────────────────
   private stageStartTs: number;
 
-  constructor(options?: { trialId?: number; userId?: number | null }) {
+  constructor(options?: { trialId?: number; userId?: number | null; initialStage?: TrialStage }) {
     this.trialId = options?.trialId ?? Date.now();
     this.userId = options?.userId ?? null;
+    this.stage = options?.initialStage ?? 'captcha';
     this.sessionId = this.stage;
     this.startTs = Date.now();
     this.stageStartTs = this.startTs;
