@@ -95,6 +95,7 @@ pipeline {
                             set -e
 
                             cd ${FE_TARGET_DIR}
+                            rm -rf .next
                             tar -xzf deploy.tar.gz
                             rm deploy.tar.gz
 
@@ -144,7 +145,7 @@ pipeline {
                 def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
                 def branch = env.GIT_BRANCH ?: '?'
                 def author = env.GIT_AUTHOR_NAME ?: '누군가'
-                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 FE 배포 성공!", "fields": [{"short": true, "title": "👤 작업자", "value": "${author}"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 접속", "value": "https://k14a203.p.ssafy.io"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}], "footer": "Tickle Jenkins"}]}"""
+                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 FE(Withy) 배포 성공!", "fields": [{"short": true, "title": "👤 작업자", "value": "${author}"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 접속", "value": "https://k14a203.p.ssafy.io"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}], "footer": "Tickle Jenkins"}]}"""
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
@@ -156,10 +157,9 @@ pipeline {
                 def jobUrl = env.BUILD_URL ?: '#'
                 def author = env.GIT_AUTHOR_NAME ?: '누군가'
                 def failMsg = ["아 ${author}야 프론트 배포 터졌어 빨리 봐 🚨", "${author} FE CD 나갔는데 ㅋㅋ 확인해", "${author} 프론트 서버 죽었다 살려줘 😭", "${author}!! FE 배포 빨간불 ㅠ 고쳐줘"][new Random().nextInt(4)]
-                def msg = """{"text": "> ${failMsg}", "attachments": [{"color": "#ff4444", "title": "💥 FE 배포 실패!", "fields": [{"short": true, "title": "👤 담당자", "value": "**${author}**"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
+                def msg = """{"text": "> ${failMsg}", "attachments": [{"color": "#ff4444", "title": "💥 FE(Withy) 배포 실패!", "fields": [{"short": true, "title": "👤 담당자", "value": "**${author}**"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
                 sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
             }
         }
     }
 }
-
