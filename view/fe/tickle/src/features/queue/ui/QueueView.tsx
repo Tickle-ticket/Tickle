@@ -189,7 +189,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         source.close();
       }
     };
-  }, [eventId, onAdmitted]);
+  }, [eventId, onAdmitted, isUserProfileLoading]);
 
   const handleCloseClick = () => {
     setIsExitModalOpen(true);
