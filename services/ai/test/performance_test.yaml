@@ -1,0 +1,18 @@
+# Paths are resolved relative to `ai_root`.
+# When ai_root is omitted, it defaults to services/ai.
+ai_root: .
+
+paths:
+  model_path: train/model_joblib/logistic_9_g1_v1/model.joblib
+  meta_path: train/model_joblib/logistic_9_g1_v1/meta.json
+  data_dir: data/data_c1
+
+evaluation:
+  glob: "**/trial_*.json"
+  threshold: 0.5
+  include_unlabeled: false
+
+outputs:
+  metrics_json: test/outputs/logistic_9_g1_v1_cv_c1/metrics.json
+  predictions_jsonl: test/ouputs/logistic_9_g1_v1_cv_c1/predictions.jsonl
+  visualizations_dir: test/outputs/logistic_9_g1_v1_cv_c1/plots
