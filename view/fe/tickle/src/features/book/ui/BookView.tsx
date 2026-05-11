@@ -504,6 +504,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
       if (isWaitlistMode) {
         if (storyMode || isShadowModeActive) {
+          await finalizeTrial();
           setIsWaitlistCompleteModalOpen(true);
         } else {
           if (!admitToken) {

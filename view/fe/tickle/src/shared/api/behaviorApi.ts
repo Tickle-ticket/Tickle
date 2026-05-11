@@ -5,7 +5,10 @@ import { BehaviorEventPayload, SendBehaviorEventInput, BehaviorEventResponse } f
 const BEHAVIOR_EVENTS_PATH = '/api/behavior/events';
 
 const buildBehaviorEventsUrl = () => {
-  const baseUrl = process.env.NEXT_PUBLIC_AI_PUBLIC_API_URL;
+  let baseUrl = process.env.NEXT_PUBLIC_AI_PUBLIC_API_URL || '';
+  if (baseUrl && !baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    baseUrl = `http://${baseUrl}`;
+  }
   return `${baseUrl}${BEHAVIOR_EVENTS_PATH}`;
 };
 
