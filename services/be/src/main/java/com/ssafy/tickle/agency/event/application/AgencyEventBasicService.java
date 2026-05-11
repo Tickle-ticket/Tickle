@@ -30,6 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,6 +49,7 @@ public class AgencyEventBasicService {
 
     private static final String EVENT_POSTER_DIR = "events/poster";
     private static final String EVENT_DETAIL_DIR = "events/detail";
+    private static final String DEFAULT_PRICE_INFO_NAME = "일반";
     private static final int MAX_DETAIL_IMAGES = 3;
 
     private final EventRepository eventRepository;
@@ -185,24 +188,61 @@ public class AgencyEventBasicService {
                 throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "가격 정책 등급이 중복되었습니다: " + request.priceGrade());
             }
 
-            // 등록 화면의 할인 정보 요청을 엔티티 JSON 모델로 그대로 옮긴다.
+            List<EventPricePolicy.DiscountInfo> discountInfo = createDiscountInfo(request);
             policies.add(EventPricePolicy.builder()
                     .event(event)
                     .priceGrade(request.priceGrade())
-                    .priceAmount(request.priceAmount())
-                    .discountInfo(request.discountInfo().stream()
-                            .map(discountInfo -> new EventPricePolicy.DiscountInfo(
-                                    discountInfo.discountName(),
-                                    discountInfo.discountRate(),
-                                    discountInfo.actualPriceAmount()
-                            ))
-                            .toList())
+                    .priceAmount(request.defaultPriceAmount())
+                    .discountInfo(discountInfo)
                     .currencyCode(request.currencyCode())
                     .displayOrder(request.displayOrder())
                     .build());
         }
 
         eventPricePolicyRepository.saveAll(policies);
+    }
+
+    /**
+     * 기본 가격을 "일반" 권종으로 추가하고, 요청 할인 정보를 저장용 가격 정보로 변환합니다.
+     */
+    private List<EventPricePolicy.DiscountInfo> createDiscountInfo(AgencyCreateEventPricePolicyRequest request) {
+        Set<String> discountNames = new LinkedHashSet<>();
+        List<EventPricePolicy.DiscountInfo> discountInfo = new ArrayList<>();
+
+        // defaultPriceAmount는 결제 옵션에서 선택 가능한 "일반" 권종으로도 저장한다.
+        discountNames.add(DEFAULT_PRICE_INFO_NAME);
+        discountInfo.add(new EventPricePolicy.DiscountInfo(
+                DEFAULT_PRICE_INFO_NAME,
+                BigDecimal.ZERO,
+                request.defaultPriceAmount()
+        ));
+
+        for (AgencyCreateEventPricePolicyRequest.PriceInfoRequest priceInfo : request.priceInfos()) {
+            if (!discountNames.add(priceInfo.discountName())) {
+                throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "가격 정보 이름이 중복되었습니다: " + priceInfo.discountName());
+            }
+
+            discountInfo.add(new EventPricePolicy.DiscountInfo(
+                    priceInfo.discountName(),
+                    priceInfo.discountRate(),
+                    resolveActualPriceAmount(request.defaultPriceAmount(), priceInfo)
+            ));
+        }
+
+        return discountInfo;
+    }
+
+    /**
+     * 기본 가격과 할인율로 실제 결제 금액을 계산합니다.
+     */
+    private BigDecimal resolveActualPriceAmount(
+            BigDecimal defaultPriceAmount,
+            AgencyCreateEventPricePolicyRequest.PriceInfoRequest priceInfo
+    ) {
+        // 할인율은 0~100 사이의 퍼센트 값이며, DB 금액 스케일에 맞춰 소수 둘째 자리로 반올림한다.
+        return defaultPriceAmount
+                .multiply(BigDecimal.valueOf(100).subtract(priceInfo.discountRate()))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
     /**

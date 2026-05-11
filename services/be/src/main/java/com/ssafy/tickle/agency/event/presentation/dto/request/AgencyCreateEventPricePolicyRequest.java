@@ -16,8 +16,8 @@ import java.util.List;
  * 공연 가격 정책 요청입니다.
  *
  * @param priceGrade 가격 등급
- * @param priceAmount 기본 가격
- * @param discountInfo 할인 정보 목록
+ * @param defaultPriceAmount 기본 가격
+ * @param priceInfos 가격 정보 목록
  * @param currencyCode 통화 코드
  * @param displayOrder 노출 순서
  */
@@ -25,12 +25,12 @@ public record AgencyCreateEventPricePolicyRequest(
         @NotNull(message = "priceGrade는 필수입니다.")
         SeatGrade priceGrade,
 
-        @NotNull(message = "priceAmount는 필수입니다.")
-        @DecimalMin(value = "0.0", inclusive = true, message = "priceAmount는 0 이상이어야 합니다.")
-        BigDecimal priceAmount,
+        @NotNull(message = "defaultPriceAmount는 필수입니다.")
+        @DecimalMin(value = "0.0", inclusive = true, message = "defaultPriceAmount는 0 이상이어야 합니다.")
+        BigDecimal defaultPriceAmount,
 
-        @NotNull(message = "discountInfo는 필수입니다.")
-        List<@Valid DiscountInfoRequest> discountInfo,
+        @NotNull(message = "priceInfos는 필수입니다.")
+        List<@Valid PriceInfoRequest> priceInfos,
 
         @NotBlank(message = "currencyCode는 필수입니다.")
         @Size(min = 3, max = 3, message = "currencyCode는 3자리여야 합니다.")
@@ -45,9 +45,8 @@ public record AgencyCreateEventPricePolicyRequest(
      *
      * @param discountName 할인 정보 이름
      * @param discountRate 할인율
-     * @param actualPriceAmount 실제 가격
      */
-    public record DiscountInfoRequest(
+    public record PriceInfoRequest(
             @NotBlank(message = "discountName은 필수입니다.")
             @Size(max = 50, message = "discountName은 50자 이하여야 합니다.")
             String discountName,
@@ -55,11 +54,7 @@ public record AgencyCreateEventPricePolicyRequest(
             @NotNull(message = "discountRate는 필수입니다.")
             @DecimalMin(value = "0.0", inclusive = true, message = "discountRate는 0 이상이어야 합니다.")
             @DecimalMax(value = "100.0", inclusive = true, message = "discountRate는 100 이하여야 합니다.")
-            java.math.BigDecimal discountRate,
-
-            @NotNull(message = "actualPriceAmount는 필수입니다.")
-            @DecimalMin(value = "0.0", inclusive = true, message = "actualPriceAmount는 0 이상이어야 합니다.")
-            BigDecimal actualPriceAmount
+            BigDecimal discountRate
     ) {
     }
 }
