@@ -1,4 +1,5 @@
 import { AdminSidebar } from '@/src/shared/components/AdminSidebar';
+import { RoleGuard } from '@/src/shared/components/RoleGuard';
 import { WorkspaceScaffold } from '@/src/shared/components/WorkspaceScaffold';
 
 export default function AdminLayout({
@@ -7,8 +8,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <WorkspaceScaffold tone="admin" sidebar={<AdminSidebar />}>
-      {children}
-    </WorkspaceScaffold>
+    <RoleGuard allowedRoles={['ADMIN']}>
+      <WorkspaceScaffold tone="admin" sidebar={<AdminSidebar />}>
+        {children}
+      </WorkspaceScaffold>
+    </RoleGuard>
   );
 }

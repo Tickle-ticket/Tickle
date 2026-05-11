@@ -1,4 +1,5 @@
 import { AgencySidebar } from '@/src/shared/components/AgencySidebar';
+import { RoleGuard } from '@/src/shared/components/RoleGuard';
 import { WorkspaceScaffold } from '@/src/shared/components/WorkspaceScaffold';
 
 export default function AgencyLayout({
@@ -7,8 +8,10 @@ export default function AgencyLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <WorkspaceScaffold tone="agency" sidebar={<AgencySidebar />}>
-      {children}
-    </WorkspaceScaffold>
+    <RoleGuard allowedRoles={['ORGANIZER']}>
+      <WorkspaceScaffold tone="agency" sidebar={<AgencySidebar />}>
+        {children}
+      </WorkspaceScaffold>
+    </RoleGuard>
   );
 }
