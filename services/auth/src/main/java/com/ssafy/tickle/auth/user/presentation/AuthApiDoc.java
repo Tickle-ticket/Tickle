@@ -1,11 +1,7 @@
 package com.ssafy.tickle.auth.user.presentation;
 
 import com.ssafy.tickle.auth.common.response.BaseResponse;
-import com.ssafy.tickle.auth.user.presentation.dto.AccessTokenResponse;
-import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeSendRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeVerifyRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -89,8 +85,8 @@ public interface AuthApiDoc {
     @ApiResponse(responseCode = "400", description = "잘못된 로그인 요청 (코드 또는 리다이렉트 URI 누락)")
     @ApiResponse(responseCode = "401", description = "카카오 로그인 실패")
     @ApiResponse(responseCode = "409", description = "동일 이메일 계정 존재")
-    ResponseEntity<BaseResponse<com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse>> kakaoLogin(
-            @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request
+    ResponseEntity<BaseResponse<KakaoLoginResponse>> kakaoLogin(
+            @Valid @RequestBody KakaoLoginRequest request
     );
 
     /**
@@ -104,7 +100,7 @@ public interface AuthApiDoc {
     @ApiResponse(responseCode = "400", description = "입력값 검증 실패 또는 전화번호 미인증")
     @ApiResponse(responseCode = "401", description = "signUpToken 만료 또는 유효하지 않음")
     ResponseEntity<BaseResponse<AccessTokenResponse>> kakaoSignUp(
-            @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request
+            @Valid @RequestBody KakaoSignUpRequest request
     );
 
     /**
