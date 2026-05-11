@@ -32,7 +32,7 @@ export const TRIAL_CONFIG = {
   // ── 봇 탐지 (Bot Detection) 옵션 ──
 
   /** 매크로/봇 접근 시 차단 페이지(/blocked)로 강제 이동시킬지 여부 (기본: true) */
-  ENABLE_BOT_DETECTOR: false,
+  ENABLE_BOT_DETECTOR: true,
 
   // ── 데이터 전송 기준 (Data Submission) ──
 
