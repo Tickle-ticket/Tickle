@@ -2,8 +2,6 @@ import { Schema } from 'effect';
 
 export const TokenResponseSchema = Schema.Struct({
   accessToken: Schema.String,
-  refreshToken: Schema.String,
-  userId: Schema.Number,
 });
 
 export type TokenResponse = Schema.Schema.Type<typeof TokenResponseSchema>;
@@ -12,16 +10,12 @@ export const KakaoExistingUserResponseSchema = Schema.Struct({
   isNewUser: Schema.Literal(false),
   signUpToken: Schema.Null,
   accessToken: Schema.String,
-  refreshToken: Schema.String,
-  userId: Schema.Number,
 });
 
 export const KakaoNewUserResponseSchema = Schema.Struct({
   isNewUser: Schema.Literal(true),
   signUpToken: Schema.String,
   accessToken: Schema.Null,
-  refreshToken: Schema.Null,
-  userId: Schema.Null,
 });
 
 export const KakaoLoginResponseSchema = Schema.Union(
@@ -64,6 +58,3 @@ export interface PhoneCodeVerifyRequest {
   code: string;
 }
 
-export interface ReissueRequest {
-  refreshToken: string;
-}

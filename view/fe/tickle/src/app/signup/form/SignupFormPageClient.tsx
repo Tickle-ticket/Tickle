@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
 import { ApiError } from '@/src/shared/api/types';
-import { setTokens } from '@/src/shared/api/tokenManager';
+import { setAccessToken } from '@/src/shared/api/tokenManager';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
@@ -288,7 +288,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
   const router = useRouter();
   const selectedTypeCopy = signupAccountTypeCopy[initialAccountType];
   const isAgencySignup = initialAccountType === 'agency';
-  const todayDate = useMemo(() => getTodayDate(), []);
   const { data: agencies = [], isLoading: isAgenciesLoading, isError: isAgenciesError } = useAgencies(isAgencySignup);
 
   const authTabs: AuthNavigationItem[] = [
@@ -524,7 +523,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
       });
 
       if (response.data) {
-        setTokens(response.data.accessToken, response.data.refreshToken);
+        setAccessToken(response.data.accessToken);
         router.push('/');
       }
     } catch (error) {

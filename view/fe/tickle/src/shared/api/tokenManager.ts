@@ -31,48 +31,35 @@ export const getAccessToken = () => {
   return null;
 };
 
-export const getRefreshToken = () => {
-  if (typeof window !== 'undefined') return localStorage.getItem('refreshToken');
-  return null;
-};
-
-export const setTokens = (accessToken: string, refreshToken: string) => {
+export const setAccessToken = (accessToken: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('accessToken', normalizeToken(accessToken));
-    localStorage.setItem('refreshToken', normalizeToken(refreshToken));
   }
+};
+
+export const setTokens = (accessToken: string) => {
+  setAccessToken(accessToken);
 };
 
 export const clearTokens = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-
   }
 };
 
 // Refresh API Call
-export const refreshAccessToken = async (_baseUrl: string): Promise<boolean> => {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
-
+export const refreshAccessToken = async (): Promise<boolean> => {
   try {
     const refreshUrl = buildAuthApiUrl('/api/v1/auth/reissue');
-    const isCrossOrigin = typeof window !== 'undefined' && !refreshUrl.startsWith(window.location.origin);
-    
     const response = await fetch(refreshUrl, {
       method: 'POST',
-      credentials: isCrossOrigin ? 'same-origin' : 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
 
     if (response.ok) {
       const data = await response.json();
-      if (data && data.data && data.data.accessToken && data.data.refreshToken) {
-        setTokens(data.data.accessToken, data.data.refreshToken);
+      if (data && data.data && data.data.accessToken) {
+        setAccessToken(data.data.accessToken);
         return true;
       }
     }

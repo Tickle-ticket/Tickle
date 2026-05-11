@@ -74,17 +74,22 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json(
       normalizedBody ?? {
         status: proxiedStatus,
-        message: backendResponse.ok ? '성공' : '카카오 로그인 처리에 실패했습니다.',
+        message: backendResponse.ok ? 'OK' : 'Kakao login failed.',
         data: null,
       },
       { status: proxiedStatus },
     );
 
+    const setCookieHeader = backendResponse.headers.get('set-cookie');
+    if (setCookieHeader) {
+      response.headers.append('set-cookie', setCookieHeader);
+    }
+
     response.cookies.delete(KAKAO_OAUTH_STATE_COOKIE_NAME);
     return response;
   } catch (error) {
     console.error('Kakao login proxy failed:', error);
-    const response = jsonResponse(500, '카카오 로그인 처리에 실패했습니다.');
+    const response = jsonResponse(500, 'Kakao login failed.');
     response.cookies.delete(KAKAO_OAUTH_STATE_COOKIE_NAME);
     return response;
   }

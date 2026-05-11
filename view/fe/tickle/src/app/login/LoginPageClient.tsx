@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
-import { setTokens } from '@/src/shared/api/tokenManager';
+import { setAccessToken } from '@/src/shared/api/tokenManager';
 import { ApiError } from '@/src/shared/api/types';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
@@ -95,7 +95,7 @@ export function LoginPageClient() {
       const response = await authApi.login({ email, password });
 
       if (response.data) {
-        setTokens(response.data.accessToken, response.data.refreshToken);
+        setAccessToken(response.data.accessToken);
         const targetUrl = redirect && redirect.startsWith('/') ? redirect : '/';
         router.push(targetUrl);
       }

@@ -6,7 +6,6 @@ import {
   TokenResponse,
   SignUpRequest,
   LoginRequest,
-  ReissueRequest,
   TokenResponseSchema,
   KakaoLoginRequest,
   KakaoLoginResponse,
@@ -31,6 +30,7 @@ export const authApi = {
       {
         method: 'POST',
         body: request,
+        credentials: 'include',
       },
       false,
       createApiResponseSchema(TokenResponseSchema)
@@ -43,6 +43,7 @@ export const authApi = {
       {
         method: 'POST',
         body: request,
+        credentials: 'include',
       },
       false,
       createApiResponseSchema(TokenResponseSchema)
@@ -52,15 +53,16 @@ export const authApi = {
   logout: async (): Promise<ApiResponse<void>> => {
     return apiClient<ApiResponse<void>>(buildAuthApiUrl('/api/v1/auth/logout'), {
       method: 'POST',
+      credentials: 'include',
     });
   },
 
-  reissue: async (request: ReissueRequest): Promise<ApiResponse<TokenResponse>> => {
+  reissue: async (): Promise<ApiResponse<TokenResponse>> => {
     return apiClient<ApiResponse<TokenResponse>>(
       buildAuthApiUrl('/api/v1/auth/reissue'),
       {
         method: 'POST',
-        body: request,
+        credentials: 'include',
       },
       false,
       createApiResponseSchema(TokenResponseSchema)
@@ -73,6 +75,7 @@ export const authApi = {
       {
         method: 'POST',
         body: request,
+        credentials: 'include',
       },
       false,
       createApiResponseSchema(KakaoLoginResponseSchema)
@@ -85,6 +88,7 @@ export const authApi = {
       {
         method: 'POST',
         body: request,
+        credentials: 'include',
       },
       false,
       createApiResponseSchema(TokenResponseSchema)
@@ -95,6 +99,7 @@ export const authApi = {
     return apiClient<ApiResponse<void>>(buildAuthApiUrl('/api/v1/auth/phone/send'), {
       method: 'POST',
       body: request,
+      credentials: 'include',
     });
   },
 
@@ -102,6 +107,7 @@ export const authApi = {
     return apiClient<ApiResponse<void>>(buildAuthApiUrl('/api/v1/auth/phone/verify'), {
       method: 'POST',
       body: request,
+      credentials: 'include',
     });
   },
 };

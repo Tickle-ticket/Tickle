@@ -40,16 +40,15 @@ export interface AgencyCreateEventResponseData {
   title: string;
 }
 
-export interface AgencyDiscountInfoRequest {
+export interface AgencyPriceInfoRequest {
   discountName: string;
   discountRate: number;
-  actualPriceAmount: number;
 }
 
 export interface AgencyCreateEventPricePolicyRequest {
   priceGrade: AgencySeatGrade;
-  priceAmount: number;
-  discountInfo: AgencyDiscountInfoRequest[];
+  defaultPriceAmount: number;
+  priceInfos: AgencyPriceInfoRequest[];
   currencyCode: string;
   displayOrder: number;
 }

@@ -306,6 +306,36 @@ type TicketSchedulePreview = {
   ticketCloseAt: Date;
 };
 
+type SeatDiscountDraft = {
+  id: string;
+  preset: 'youth' | 'disability' | 'patriot' | 'custom';
+  customDiscountName: string;
+  discountRate: string;
+};
+
+const discountPresetOptions = [
+  { label: '청소년', value: 'youth' },
+  { label: '장애인', value: 'disability' },
+  { label: '국가유공자', value: 'patriot' },
+  { label: '직접입력', value: 'custom' },
+] as const;
+
+const discountPresetNameMap: Record<'youth' | 'disability' | 'patriot', string> = {
+  youth: '청소년',
+  disability: '장애인',
+  patriot: '국가유공자',
+};
+
+const createSeatDiscountDraft = (): SeatDiscountDraft => ({
+  id:
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  preset: 'youth',
+  customDiscountName: '',
+  discountRate: '',
+});
+
 const createIntroImageKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
 
 const normalizeHashtag = (value: string) => value.trim().replace(/^#+/, '').replace(/\s+/g, '');
@@ -722,6 +752,7 @@ export default function AgencyRegistrationPage() {
     s: '110000',
     a: '80000',
   });
+  const [seatDiscounts, setSeatDiscounts] = useState<SeatDiscountDraft[]>([]);
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null);
   const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
   const [performanceSchedules, setPerformanceSchedules] = useState<PerformanceScheduleMap>({});
@@ -1205,6 +1236,59 @@ export default function AgencyRegistrationPage() {
       }));
     };
 
+  const handleSeatDiscountAdd = () => {
+    setSeatDiscounts((current) => [...current, createSeatDiscountDraft()]);
+  };
+
+  const handleSeatDiscountChange =
+    (discountId: string, field: 'customDiscountName' | 'discountRate') =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const nextValue = (() => {
+        if (field !== 'discountRate') {
+          return event.target.value;
+        }
+
+        const digitsOnly = event.target.value.replace(/\D/g, '');
+        if (digitsOnly.length === 0) {
+          return '';
+        }
+
+        return String(Math.min(Number(digitsOnly), 100));
+      })();
+
+      setSeatDiscounts((current) =>
+        current.map((discount) =>
+          discount.id === discountId
+            ? {
+                ...discount,
+                [field]: nextValue,
+              }
+            : discount,
+        ),
+      );
+    };
+
+  const handleSeatDiscountPresetChange = (
+    discountId: string,
+    preset: SeatDiscountDraft['preset'],
+  ) => {
+    setSeatDiscounts((current) =>
+      current.map((discount) =>
+        discount.id === discountId
+          ? {
+              ...discount,
+              preset,
+              customDiscountName: preset === 'custom' ? discount.customDiscountName : '',
+            }
+          : discount,
+      ),
+    );
+  };
+
+  const handleSeatDiscountRemove = (discountId: string) => {
+    setSeatDiscounts((current) => current.filter((discount) => discount.id !== discountId));
+  };
+
   const syncSchedulesToPerformanceRange = (nextOpenAt: Date, nextCloseAt: Date) => {
     const nextDateKeys = buildDateKeysBetween(nextOpenAt, nextCloseAt);
     const nextSelectedDateKeys = selectedScheduleDateKeys.filter((dateKey) => nextDateKeys.includes(dateKey));
@@ -1386,8 +1470,73 @@ export default function AgencyRegistrationPage() {
     setActiveRegistrationStep((current) => Math.max(0, current - 1));
   };
 
+  const getRegistrationStepValidationMessage = (stepIndex: number) => {
+    if (stepIndex === 0) {
+      if (isCategoryListLoading || isVenueListLoading) {
+        return '데이터를 아직 불러오는 중입니다. 잠시 후 다시 진행해 주세요.';
+      }
+
+      const missingFields: string[] = [];
+
+      if (performanceTitle.trim().length === 0) {
+        missingFields.push('공연명');
+      }
+
+      if (selectedCategoryId.length === 0) {
+        missingFields.push('카테고리');
+      }
+
+      if (resolvedSelectedVenue === null) {
+        missingFields.push('공연장');
+      }
+
+      if (posterImage === null) {
+        missingFields.push('포스터 이미지');
+      }
+
+      return missingFields.length > 0
+        ? `다음 항목을 입력하거나 설정해 주세요: ${missingFields.join(', ')}.`
+        : null;
+    }
+
+    if (stepIndex === 1) {
+      if (registeredTicketSchedulePreviews.length === 0) {
+        return '공연 일정 등록 전에 최소 1개 이상의 회차를 먼저 추가해 주세요.';
+      }
+
+      if (hasInvalidTicketWindow) {
+        return '티켓 오픈일과 종료일 기준이 올바르지 않습니다. 먼저 일정 기준을 다시 조정해 주세요.';
+      }
+    }
+
+    return null;
+  };
+
+  const moveToRegistrationStep = (targetStep: number) => {
+    if (targetStep <= activeRegistrationStep) {
+      setRegistrationErrorMessage(null);
+      setRegistrationSuccessMessage(null);
+      setActiveRegistrationStep(targetStep);
+      return;
+    }
+
+    for (let stepIndex = activeRegistrationStep; stepIndex < targetStep; stepIndex += 1) {
+      const validationMessage = getRegistrationStepValidationMessage(stepIndex);
+
+      if (validationMessage) {
+        setRegistrationSuccessMessage(null);
+        setRegistrationErrorMessage(validationMessage);
+        return;
+      }
+    }
+
+    setRegistrationErrorMessage(null);
+    setRegistrationSuccessMessage(null);
+    setActiveRegistrationStep(targetStep);
+  };
+
   const goToNextRegistrationStep = () => {
-    setActiveRegistrationStep((current) => Math.min(registrationStepItems.length - 1, current + 1));
+    moveToRegistrationStep(Math.min(registrationStepItems.length - 1, activeRegistrationStep + 1));
   };
 
   const handleRegistrationSubmit = async () => {
@@ -1448,7 +1597,7 @@ export default function AgencyRegistrationPage() {
       const suffix = missingSeatLabels.length > 5 ? ' ...' : '';
 
       setRegistrationErrorMessage(
-        `공연장 좌석 골격에 없는 좌석이 포함되어 있습니다. ${previewLabels}${suffix}`,
+        `좌석 등급이 지정된 좌석 중 공연장 좌석 정보와 연결되지 않은 항목이 있습니다. ${previewLabels}${suffix}`,
       );
       return;
     }
@@ -1475,7 +1624,7 @@ export default function AgencyRegistrationPage() {
       .filter((seatGroup) => seatGroup.seatIds.length > 0);
 
     if (seatGroups.length === 0) {
-      setRegistrationErrorMessage('등록 가능한 좌석이 없습니다. 좌석 정책을 다시 확인해 주세요.');
+      setRegistrationErrorMessage('좌석 등급이 지정된 좌석이 없습니다. 먼저 좌석 등급을 설정해 주세요.');
       return;
     }
 
@@ -1487,16 +1636,63 @@ export default function AgencyRegistrationPage() {
     );
 
     if (missingPriceField) {
-      setRegistrationErrorMessage(`${missingPriceField.label} 가격을 입력해 주세요.`);
+      setRegistrationErrorMessage(`${missingPriceField.label} 금액을 입력해 주세요.`);
       return;
+    }
+
+    const priceInfos: Array<{ discountName: string; discountRate: number }> = [];
+    const seenDiscountNames = new Set<string>();
+
+    for (let index = 0; index < seatDiscounts.length; index += 1) {
+      const discount = seatDiscounts[index];
+      const discountName =
+        discount.preset === 'custom'
+          ? discount.customDiscountName.trim()
+          : discountPresetNameMap[discount.preset];
+      const discountRateText = discount.discountRate.trim();
+
+      if (discountName.length === 0 && discountRateText.length === 0) {
+        continue;
+      }
+
+      if (discountName.length === 0) {
+        setRegistrationErrorMessage(`할인 ${index + 1}의 이름을 입력해 주세요.`);
+        return;
+      }
+
+      if (discountRateText.length === 0) {
+        setRegistrationErrorMessage(`할인 ${index + 1}의 할인율을 입력해 주세요.`);
+        return;
+      }
+
+      const discountRate = Number(discountRateText);
+      if (!Number.isFinite(discountRate) || discountRate < 1 || discountRate > 100) {
+        setRegistrationErrorMessage(
+          `할인 ${index + 1}의 할인율은 1부터 100 사이여야 합니다.`,
+        );
+        return;
+      }
+
+      const normalizedDiscountName = discountName.toLowerCase();
+
+      if (seenDiscountNames.has(normalizedDiscountName)) {
+        setRegistrationErrorMessage(`할인 ${index + 1}의 이름이 중복되었습니다.`);
+        return;
+      }
+
+      seenDiscountNames.add(normalizedDiscountName);
+      priceInfos.push({
+        discountName,
+        discountRate,
+      });
     }
 
     const pricePolicies = seatGradeFields
       .filter(({ key }) => usedPriceGrades.has(seatPriceGradeToApiGrade[key]))
       .map(({ key }, index) => ({
         priceGrade: seatPriceGradeToApiGrade[key],
-        priceAmount: Number(seatPrices[key]),
-        discountInfo: [],
+        defaultPriceAmount: Number(seatPrices[key]),
+        priceInfos: [...priceInfos],
         currencyCode: 'KRW',
         displayOrder: index,
       }));
@@ -1544,7 +1740,7 @@ export default function AgencyRegistrationPage() {
       };
 
       const result = await submitAgencyEventRegistration(request);
-      setRegistrationSuccessMessage(`공연 등록 API 호출이 완료되었습니다. eventId=${result.eventId}`);
+      setRegistrationSuccessMessage(`공연 등록이 완료되었습니다. eventId=${result.eventId}`);
     } catch (error) {
       if (error instanceof ApiError) {
         setRegistrationErrorMessage(error.message);
@@ -1645,7 +1841,7 @@ export default function AgencyRegistrationPage() {
             <button
               key={step.title}
               type="button"
-              onClick={() => setActiveRegistrationStep(index)}
+              onClick={() => moveToRegistrationStep(index)}
               className={`rounded-3xl border px-5 py-4 text-left transition ${
                 isActive
                   ? 'border-blue-500 bg-blue-50 shadow-[0_14px_34px_rgba(49,130,246,0.14)]'
@@ -2148,6 +2344,7 @@ export default function AgencyRegistrationPage() {
               </div>
           </Box>
 
+
           <Box
             variant="shadow"
             className="space-y-5"
@@ -2217,6 +2414,122 @@ export default function AgencyRegistrationPage() {
                 </div>
               </div>
             </div>
+          </Box>
+
+          <Box
+            variant="shadow"
+            className="space-y-5"
+            style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-[18px] font-black text-slate-950">
+                  {'할인 정보'}
+                </h2>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  {
+                    '할인 유형과 할인율을 한 번만 입력하면 모든 좌석 등급에 같게 적용됩니다.'
+                  }
+                </p>
+              </div>
+              <Button
+                color="primary"
+                variant="weak"
+                size="medium"
+                onClick={handleSeatDiscountAdd}
+              >
+                {'할인 추가'}
+              </Button>
+            </div>
+
+            {seatDiscounts.length > 0 ? (
+              <div className="space-y-4">
+                {seatDiscounts.map((discount, index) => (
+                  <div
+                    key={discount.id}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex-1 space-y-4">
+                        <div>
+                          <p className="text-sm font-bold text-slate-500">
+                            {`할인 ${index + 1}`}
+                          </p>
+                          <div className="mt-3">
+                            <SegmentedControl
+                              options={discountPresetOptions.map((option) => ({
+                                label: option.label,
+                                value: option.value,
+                              }))}
+                              value={discount.preset}
+                              onChange={(value) =>
+                                handleSeatDiscountPresetChange(
+                                  discount.id,
+                                  value as SeatDiscountDraft['preset'],
+                                )
+                              }
+                              columns={2}
+                              rows={2}
+                              size="medium"
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {discount.preset === 'custom' ? (
+                            <Input
+                              label={'할인명'}
+                              fullWidth
+                              value={discount.customDiscountName}
+                              onChange={handleSeatDiscountChange(
+                                discount.id,
+                                'customDiscountName',
+                              )}
+                              placeholder={'할인명 입력'}
+                            />
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <span className="mb-1 text-[13px] font-medium text-gray-500">
+                                {'선택된 할인'}
+                              </span>
+                              <div className="border-b-[2px] border-gray-300 py-2 text-base text-gray-900">
+                                {discountPresetNameMap[discount.preset]}
+                              </div>
+                            </div>
+                          )}
+
+                          <Input
+                            label={'할인율 (%)'}
+                            fullWidth
+                            inputMode="numeric"
+                            value={discount.discountRate}
+                            onChange={handleSeatDiscountChange(discount.id, 'discountRate')}
+                            maxLength={3}
+                            placeholder={'1-100'}
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        color="light"
+                        variant="weak"
+                        size="medium"
+                        onClick={() => handleSeatDiscountRemove(discount.id)}
+                      >
+                        {'삭제'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-medium leading-6 text-slate-500">
+                {
+                  '추가할 할인 정보가 없으면 빈 상태로 두셔도 됩니다. 할인을 운영할 경우 위 버튼으로 행을 추가해 주세요.'
+                }
+              </div>
+            )}
           </Box>
 
           <Box
@@ -2528,7 +2841,7 @@ export default function AgencyRegistrationPage() {
                   <button
                     key={item.title}
                     type="button"
-                    onClick={() => setActiveRegistrationStep(index)}
+                    onClick={() => moveToRegistrationStep(index)}
                     className={`flex w-full gap-3 rounded-2xl px-4 py-3 text-left transition ${
                       isActive ? 'bg-blue-50' : 'bg-slate-50 hover:bg-slate-100'
                     }`}

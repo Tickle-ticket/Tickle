@@ -4,15 +4,13 @@ const API_BASE_URL = '*/api/v1/auth';
 
 const dummyTokenResponse = {
   accessToken: 'mock-access-token-' + Date.now(),
-  refreshToken: 'mock-refresh-token-' + Date.now(),
-  userId: 1,
 };
 
 export const authHandlers = [
   // 자체 로그인
   http.post(`${API_BASE_URL}/login`, async ({ request }) => {
     await delay(300);
-    const body = (await request.json()) as any;
+    const body = (await request.json()) as { email?: string; password?: string };
 
     if (!body.email || !body.password) {
       return HttpResponse.json({ status: 400, message: '이메일과 비밀번호를 모두 입력해주세요.' }, { status: 400 });
@@ -32,7 +30,7 @@ export const authHandlers = [
   }),
 
   // 자체 회원가입
-  http.post(`${API_BASE_URL}/signup`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/signup`, async () => {
     await delay(300);
     return HttpResponse.json({
       status: 201,
@@ -62,8 +60,6 @@ export const authHandlers = [
       message: '성공',
       data: {
         accessToken: 'reissued-access-token-' + Date.now(),
-        refreshToken: 'reissued-refresh-token-' + Date.now(),
-        userId: 1,
       },
     });
   }),
@@ -107,7 +103,7 @@ export const authHandlers = [
   // 휴대폰 인증 확인
   http.post(`${API_BASE_URL}/phone/verify`, async ({ request }) => {
     await delay(300);
-    const body = (await request.json()) as any;
+    const body = (await request.json()) as { code?: string };
 
     if (body.code !== '123456') {
       return HttpResponse.json({ status: 400, message: '인증번호가 일치하지 않습니다.' }, { status: 400 });

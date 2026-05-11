@@ -34,16 +34,17 @@ const buildUrl = (path: string, params?: RequestOptions['params']) => {
   return url.toString();
 };
 
-export const apiClient = async <T, A = any, I = any>(
+export const apiClient = async <T, A = unknown, I = unknown>(
   path: string,
   options: RequestOptions = {},
   _isRetry = false,
   schema?: Schema.Schema<A, I>
 ): Promise<T> => {
   const url = buildUrl(path, options.params);
-  const { body, params, headers, ...restOptions } = options;
+  const { body, headers, credentials, ...restOptions } = options;
 
   const accessToken = getAccessToken();
+  const isAuthEndpoint = AUTH_ENDPOINT_PATTERNS.some((pattern) => path.includes(pattern));
 
   // 크로스 오리진 여부 판별: 로컬 개발 환경(localhost)에서 원격 API 서버로 요청할 때
   // credentials: 'include'는 CORS preflight에서 Access-Control-Allow-Credentials가 필요하며
@@ -53,7 +54,7 @@ export const apiClient = async <T, A = any, I = any>(
 
   const config: RequestInit = {
     ...restOptions,
-    credentials: isCrossOrigin ? 'same-origin' : 'include',
+    credentials: credentials ?? (isAuthEndpoint ? 'include' : isCrossOrigin ? 'same-origin' : 'include'),
     redirect: 'manual', // 302 자동 추적 방지
     headers: {
       ...(!(body instanceof FormData) && { 'Content-Type': 'application/json' }),
@@ -70,7 +71,6 @@ export const apiClient = async <T, A = any, I = any>(
     const response = await fetch(url, config);
 
     // 인증 관련 API는 401을 토큰 갱신이 아닌 일반 에러로 처리
-    const isAuthEndpoint = AUTH_ENDPOINT_PATTERNS.some((pattern) => path.includes(pattern));
 
     // 401 또는 302(리다이렉트) 발생 시 인증 만료로 간주하여 TokenManager 핸들러로 위임
     // 단, accessToken이 없는 비회원 상태에서는 토큰 갱신을 시도하지 않음
@@ -147,7 +147,7 @@ const handle401 = async <T>(
   // 내가 첫 번째 401 발생자라면 리프레시 락(Lock)을 걸고 갱신 시작
   setIsRefreshing(true);
   try {
-    const success = await refreshAccessToken(BASE_URL);
+    const success = await refreshAccessToken();
     setIsRefreshing(false);
 
     if (success) {

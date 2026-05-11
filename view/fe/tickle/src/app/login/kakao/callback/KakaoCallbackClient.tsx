@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/src/shared/api/authApi';
-import { setTokens } from '@/src/shared/api/tokenManager';
+import { setAccessToken } from '@/src/shared/api/tokenManager';
 import { ApiError } from '@/src/shared/api/types';
 import { clearKakaoSignUpToken, setKakaoSignUpToken } from '@/src/shared/lib/kakaoSignupToken';
 
@@ -15,19 +15,13 @@ const readTokensFromHash = () => {
   const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
   const params = new URLSearchParams(hash);
   const accessToken = params.get('accessToken');
-  const refreshToken = params.get('refreshToken');
 
-  if (!accessToken || !refreshToken) {
+  if (!accessToken) {
     return null;
   }
 
-  const rawUserId = params.get('userId');
-  const userId = rawUserId ? Number(rawUserId) : undefined;
-
   return {
     accessToken,
-    refreshToken,
-    userId: Number.isFinite(userId) ? userId : undefined,
   };
 };
 
@@ -45,7 +39,7 @@ export function KakaoCallbackClient() {
     const tokenPayload = readTokensFromHash();
 
     if (tokenPayload) {
-      setTokens(tokenPayload.accessToken, tokenPayload.refreshToken);
+      setAccessToken(tokenPayload.accessToken);
       router.replace('/');
       return;
     }
@@ -84,7 +78,7 @@ export function KakaoCallbackClient() {
         }
 
         clearKakaoSignUpToken();
-        setTokens(response.data.accessToken, response.data.refreshToken);
+        setAccessToken(response.data.accessToken);
         const targetUrl = state && state.startsWith('/') ? state : '/';
         router.replace(targetUrl);
       } catch (err) {
