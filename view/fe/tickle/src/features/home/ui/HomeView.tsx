@@ -291,7 +291,9 @@ export const HomeView = () => {
       <aside
         className={`relative transition-[width,height,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded
           ? 'hidden lg:block lg:w-0 lg:min-w-0 opacity-0'
-          : 'w-full h-[28vh] min-h-[220px] md:h-[35vh] lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
+          : selectedDetailId
+            ? 'hidden lg:block lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
+            : 'w-full h-[28vh] min-h-[220px] md:h-[35vh] lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
           }`}
       >
         <motion.div

@@ -37,11 +37,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
   const { data: userProfile, isLoading: isUserProfileLoading } = useUserProfile();
 
   useEffect(() => {
-    console.log('[QueueView] useEffect 실행', { isUserProfileLoading, eventId, timestamp: Date.now() });
-    if (isUserProfileLoading) {
-      console.log('[QueueView] ⏳ 프로필 로딩 중 - early return (cleanup 없음)');
-      return;
-    }
+    if (isUserProfileLoading) return;
 
     const userId = userProfile?.userId;
     if (!userId) {
@@ -61,17 +57,10 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
     let isCancelled = false;
     let source: EventSource | null = null;
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    const startQueue = async (attempt = 1): Promise<void> => {
-      if (isCancelled) {
-        console.log('[QueueView] ❌ isCancelled=true, startQueue 중단');
-        return;
-      }
-      if (!eventId || eventId === 'undefined') {
-        console.error('Invalid eventId passed to QueueView:', eventId);
-        return;
-      }
+    const startQueue = async (): Promise<void> => {
+      if (isCancelled) return;
+      if (!eventId || eventId === 'undefined') return;
 
       if (storyMode) {
         setStatus('WAITING');
@@ -94,14 +83,14 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
       try {
         // 1. Enter Queue
-        console.log('[QueueView] 📡 /enter 호출', { eventId, scope, attempt });
         const enterRes = await enterQueue(eventId, scope);
-        if (isCancelled) {
-          console.log('[QueueView] ❌ /enter 후 isCancelled=true');
+        if (isCancelled) return;
+        const { requestId } = enterRes.data;
+
+        if (!requestId) {
+          setStatus('ERROR');
           return;
         }
-        const { requestId } = enterRes.data;
-        console.log('[QueueView] ✅ /enter 응답', { requestId });
 
         // 2. Get Queue Token
         const tokenRes = await getQueueToken(eventId, requestId, scope);
@@ -116,51 +105,17 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
         setStatus('WAITING');
 
-        // 3. SSE 연결 (Stream) — 실패 시 폴링 fallback
+        // 3. SSE 연결
         let sseErrorCount = 0;
 
-        const startPollingFallback = () => {
-          if (pollInterval || isCancelled) return;
-          console.log('[QueueView] 🔄 SSE 실패 → /status 폴링 fallback 시작 (3초 간격)');
-          pollInterval = setInterval(async () => {
-            if (isCancelled) {
-              if (pollInterval) clearInterval(pollInterval);
-              return;
-            }
-            try {
-              const statusRes = await getQueueStatus(eventId, queueToken, scope);
-              if (statusRes.data.status === 'WAITING') {
-                setRank(statusRes.data.rank);
-                setWaitingCount(statusRes.data.waitingCount);
-                setEstimatedWaitSeconds(statusRes.data.estimatedWaitSeconds);
-              } else if (statusRes.data.status === 'ADMITTED') {
-                console.log('[QueueView] 🎉 폴링에서 ADMITTED 감지!');
-                if (pollInterval) clearInterval(pollInterval);
-                if (isExitModalOpenRef.current) {
-                  pendingAdmitTokenRef.current = statusRes.data.admitToken;
-                } else {
-                  onAdmitted(statusRes.data.admitToken || 'at-immediate');
-                }
-              } else if (statusRes.data.status === 'LEFT' || statusRes.data.status === 'EXPIRED') {
-                if (pollInterval) clearInterval(pollInterval);
-                setStatus('ERROR');
-              }
-            } catch (e) {
-              console.warn('[QueueView] 폴링 실패', e);
-            }
-          }, 3000);
-        };
-
-        console.log('[QueueView] 📡 Step 3: SSE 연결 시작...');
-        const streamUrl = getQueueStreamUrl(eventId, queueToken);
+        const streamUrl = getQueueStreamUrl(eventId, queueToken, scope);
         source = new EventSource(streamUrl);
-
+        
         source.onopen = () => {
-          console.log('[QueueView] ✅ SSE 연결 성공 (onopen)');
           sseErrorCount = 0;
         };
 
-        source.onmessage = (event) => {
+        source.addEventListener('queue-status', (event) => {
           try {
             const data = JSON.parse(event.data);
 
@@ -170,8 +125,6 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
               setEstimatedWaitSeconds(data.estimatedWaitSeconds);
             } else if (data.status === 'ADMITTED') {
               source?.close();
-              if (pollInterval) clearInterval(pollInterval);
-
               if (isExitModalOpenRef.current) {
                 pendingAdmitTokenRef.current = data.admitToken;
               } else {
@@ -180,41 +133,23 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
             } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
               setStatus('ERROR');
               source?.close();
-              if (pollInterval) clearInterval(pollInterval);
             }
-          } catch (e) {
-            console.error('[QueueView] SSE parsing error', e);
+          } catch {
+            // SSE 파싱 실패 시 무시
           }
-        };
+        });
 
         source.onerror = () => {
           sseErrorCount++;
-          console.warn(`[QueueView] ⚠️ SSE 에러 (${sseErrorCount}회)`);
-          // SSE가 3회 이상 실패하면 SSE를 포기하고 폴링으로 전환
           if (sseErrorCount >= 3) {
-            console.warn('[QueueView] SSE 연결 불안정 → SSE 종료 후 폴링 전환');
             source?.close();
             source = null;
-            startPollingFallback();
+            setStatus('ERROR');
           }
         };
 
-        // 4. 상태 확인 (초기 스냅샷)
-        try {
-          const statusRes = await getQueueStatus(eventId, queueToken, scope);
-          if (statusRes.data.status === 'WAITING') {
-            setRank(statusRes.data.rank);
-            setWaitingCount(statusRes.data.waitingCount);
-            setEstimatedWaitSeconds(statusRes.data.estimatedWaitSeconds);
-          } else if (statusRes.data.status === 'ADMITTED') {
-            onAdmitted(statusRes.data.admitToken || 'at-immediate');
-            return;
-          }
-        } catch (err) {
-          console.warn('Failed to fetch initial queue status', err);
-        }
-
       } catch (err: any) {
+        if (isCancelled) return;
         if (err.status === 400) {
           setErrorModalConfig({
             isOpen: true,
@@ -234,7 +169,6 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
           return;
         }
 
-        console.error('Queue connection failed', err);
         setStatus('ERROR');
       }
     };
@@ -242,13 +176,9 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     startQueue();
 
     return () => {
-      console.log('[QueueView] 🧹 useEffect cleanup 실행! (isCancelled → true)', { timestamp: Date.now() });
       isCancelled = true;
       if (source) {
         source.close();
-      }
-      if (pollInterval) {
-        clearInterval(pollInterval);
       }
     };
   }, [eventId, onAdmitted, isUserProfileLoading]);
@@ -263,7 +193,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     isExitModalOpenRef.current = false;
     isLeavingRef.current = true;
     if (queueTokenRef.current) {
-      leaveQueue(eventId, queueTokenRef.current, scope).catch(console.error);
+      leaveQueue(eventId, queueTokenRef.current, scope).catch(() => { });
     }
     onClose();
   };

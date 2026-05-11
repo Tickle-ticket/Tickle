@@ -58,9 +58,10 @@ export const getQueueStatus = async (eventId: number | string, queueToken: strin
 };
 
 // SSE stream endpoint URL builder (since SSE uses native EventSource, not apiClient)
-export const getQueueStreamUrl = (eventId: number | string, queueToken: string): string => {
+export const getQueueStreamUrl = (eventId: number | string, queueToken: string, scope?: 'BOOKING' | 'CANCELLATION_WAIT'): string => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
   const accessToken = getAccessToken();
   const tokenQuery = accessToken ? `&token=${accessToken}` : '';
-  return `${baseUrl}/api/v1/queues/${eventId}/stream?queueToken=${queueToken}${tokenQuery}`;
+  const scopeQuery = scope ? `&scope=${scope}` : '';
+  return `${baseUrl}/api/v1/queues/${eventId}/stream?queueToken=${queueToken}${tokenQuery}${scopeQuery}`;
 };

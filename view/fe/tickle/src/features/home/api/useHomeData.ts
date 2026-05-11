@@ -127,7 +127,7 @@ export const useHomeUpcoming = () => {
       return response.data.events.map((item) => ({
         id: String(item.eventId),
         title: item.eventName,
-        imageUrl: item.thumbnailUrl,
+        imageUrl: item.thumbnailUrl || '',
         venue: item.venueName,
         date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
         badges: item.tags ? [...item.tags] : [],

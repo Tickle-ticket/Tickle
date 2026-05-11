@@ -280,6 +280,13 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     }
   };
 
+  // 에러 발생 시 (예: 404) 스토어를 초기화하여 빈 오버레이에 갇히지 않도록 방어
+  useEffect(() => {
+    if (isError && isOverlay) {
+      useDetailStore.getState().closeDetail();
+    }
+  }, [isError, isOverlay]);
+
   if (!activeEventId || isError) {
     if (isOverlay) return null;
     return (
@@ -389,11 +396,17 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   );
 
   const renderContent = () => (
-    <div className="flex flex-col w-full h-full pb-20 lg:pb-32 pt-0 lg:pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+    <div className="w-full min-h-full pb-20 lg:pb-32 pt-0 lg:pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       {/* Mobile/Tablet Header (Transparent Floating) */}
       <div className="lg:hidden fixed top-0 left-0 z-[60] p-4 pointer-events-none">
         <button 
-          onClick={() => useDetailStore.getState().closeDetail()}
+          onClick={() => {
+            if (isOverlay) {
+              useDetailStore.getState().closeDetail();
+            } else {
+              router.push('/');
+            }
+          }}
           className="w-10 h-10 flex items-center justify-center text-white bg-black/20 hover:bg-black/30 backdrop-blur-md rounded-full transition-colors pointer-events-auto shadow-sm"
           aria-label="뒤로 가기"
         >
@@ -404,7 +417,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       </div>
 
       {/* Mobile/Tablet Hero Poster (Hidden on Desktop) */}
-      <div className="w-[calc(100%+3rem)] -mx-6 md:w-[calc(100%+5rem)] md:-mx-10 h-[40vh] min-h-[300px] sm:h-[400px] md:h-[380px] lg:hidden mb-6 relative">
+      <div className="w-[100vw] ml-[calc(50%-50vw)] h-[40vh] min-h-[300px] sm:h-[400px] md:h-[380px] lg:hidden mb-6 relative shrink-0">
         <BannerPoster
           src={data?.imageUrl || ''}
           alt="Detail Banner"
