@@ -31,16 +31,9 @@ function PaymentSuccessContent() {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.opener) {
-      window.opener.postMessage(
-        { type: 'PAYMENT_COMPLETE', url: window.location.pathname + window.location.search },
-        window.location.origin
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.opener) return; // 팝업인 경우 아래 로직 실행 안함
+    if (typeof window === 'undefined') return;
+    // 부모 창에서 팝업의 URL을 감지하여 자동으로 닫아주므로,
+    // 이 페이지가 직접 열린 경우(모바일 리다이렉트 등)에만 결제 처리를 진행
     
     if (!paymentIdParam && !bookingIdParam) {
       setErrorModalConfig({

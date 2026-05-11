@@ -13,7 +13,11 @@ import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { Title } from '@/src/shared/components/Title';
 
-export const Header = () => {
+interface HeaderProps {
+  className?: string;
+}
+
+export const Header = ({ className = '' }: HeaderProps) => {
   const router = useRouter();
   const { data, isLoading: isUserLoading } = useUserProfile();
   
@@ -22,7 +26,7 @@ export const Header = () => {
   const [inputValue, setInputValue] = useState(searchValue);
   const { data: searchResults, isLoading: isSearchLoading } = useSearchData(searchValue);
   const { isMypageOpen, activeTab, openMypage, closeMypage } = useMypageStore();
-  const { openDetail, closeDetail } = useDetailStore();
+  const { selectedDetailId, openDetail, closeDetail } = useDetailStore();
   const searchParams = useSearchParams();
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
 
@@ -157,15 +161,15 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#f8f8f8] -mx-6 px-6 md:-mx-10 md:px-10 flex items-center justify-between border-b border-black/10 pt-3 pb-3 mb-6">
+    <header className={`${selectedDetailId ? 'hidden lg:flex' : 'flex'} sticky top-0 z-50 bg-[#f8f8f8] -mx-6 px-6 md:-mx-10 md:px-10 items-center justify-between border-b border-black/10 pt-3 pb-3 mb-6 ${className}`}>
       {/* Left: Logo */}
-      <div className="flex items-center gap-12">
+      <div className="flex items-center gap-12 shrink-0">
         <Logo variant="black" size="small" onClick={handleLogoClick} />
       </div>
 
       {/* Right: SearchBar & Avatar */}
-      <div className="flex items-center gap-6">
-        <div className="hidden sm:block w-48 focus-within:w-64 transition-all duration-300 ease-out">
+      <div className="flex items-center gap-3 sm:gap-6 flex-1 justify-end ml-4">
+        <div className="w-full max-w-[140px] sm:max-w-none sm:w-48 focus-within:max-w-[180px] sm:focus-within:w-64 transition-all duration-300 ease-out">
           <SearchBar
             placeholder="Search... (Enter)"
             value={inputValue}

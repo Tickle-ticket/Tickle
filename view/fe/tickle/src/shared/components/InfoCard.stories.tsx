@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { InfoCard } from './InfoCard';
 
 const meta = {
-  title: 'Components/InfoCard',
+  title: 'Shared/InfoCard',
   component: InfoCard,
   parameters: {
     layout: 'centered',

@@ -84,20 +84,22 @@ export const UserManagementView = () => {
           {/* User Info Fields */}
           <div className="flex flex-col gap-4 w-full max-w-lg">
             {/* 닉네임 */}
-            <Box variant="outline" padding="small" className="flex items-center gap-4 w-full h-14 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
-              <div className="w-20 shrink-0">
+            <Box variant="outline" padding="small" className="flex items-center gap-4 w-full min-h-[56px] py-3 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
+              <div className="w-16 sm:w-20 shrink-0">
                 <Text typography="t6" fontWeight="bold" color="tertiary">닉네임</Text>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {isEditingNickname ? (
                   <input
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
-                    className="w-full text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
+                    className="w-full text-[16px] sm:text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
                     autoFocus
                   />
                 ) : (
-                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[18px]">{nickname}</Text>
+                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[16px] sm:!text-[18px] break-all">
+                    {nickname}
+                  </Text>
                 )}
               </div>
               <button
@@ -139,21 +141,23 @@ export const UserManagementView = () => {
             </Box>
 
             {/* 전화번호 (수정 가능) */}
-            <Box variant="outline" padding="small" className="flex items-center gap-4 w-full h-14 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
-              <div className="w-20 shrink-0">
+            <Box variant="outline" padding="small" className="flex items-center gap-4 w-full min-h-[56px] py-3 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
+              <div className="w-16 sm:w-20 shrink-0">
                 <Text typography="t6" fontWeight="bold" color="tertiary">전화번호</Text>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {isEditingPhone ? (
                   <input
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
+                    className="w-full text-[16px] sm:text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
                     autoFocus
                     placeholder="010-0000-0000"
                   />
                 ) : (
-                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[18px]">{phoneNumber}</Text>
+                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[16px] sm:!text-[18px] tracking-tight break-all">
+                    {phoneNumber}
+                  </Text>
                 )}
               </div>
               <button

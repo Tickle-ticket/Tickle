@@ -15,6 +15,8 @@ import { BannerTime } from '@/src/shared/components/BannerTime';
 import { BannerNavigation } from '@/src/shared/components/BannerNavigation';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { Header } from '@/src/shared/components/Header';
+import { MobileBottomNav } from '@/src/shared/components/MobileBottomNav';
+import { PullToRefresh } from '@/src/shared/components/PullToRefresh';
 import { Footer } from '@/src/shared/components/Footer';
 import Tab from '@/src/shared/components/Tab';
 import { InfoCard } from '@/src/shared/components/InfoCard';
@@ -69,11 +71,10 @@ const useCarouselScroll = () => {
   return { scrollRef: setNode, canScrollLeft, canScrollRight, scroll };
 };
 
-/** 타이틀 옆 네비게이션 화살표 */
 const CarouselNav = ({ canLeft, canRight, onPrev, onNext }: {
   canLeft: boolean; canRight: boolean; onPrev: () => void; onNext: () => void;
 }) => (
-  <div className="flex items-center gap-1.5 ml-auto">
+  <div className="hidden md:flex items-center gap-1.5 ml-auto">
     <button
       onClick={onPrev}
       disabled={!canLeft}
@@ -273,18 +274,28 @@ export const HomeView = () => {
     }
   };
 
-  return (
-    <div className="flex w-full h-screen bg-[#f8f8f8] font-sans overflow-hidden relative">
+  const handleRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['homeBanners'] }),
+      queryClient.invalidateQueries({ queryKey: ['homeRanking'] }),
+      queryClient.invalidateQueries({ queryKey: ['homeUpcoming'] })
+    ]);
+  };
 
-      {/* Left Column: 배너 슬라이드 */}
+  return (
+    <div className="w-full h-[100dvh] overflow-hidden bg-[#f8f8f8]">
+      <PullToRefresh onRefresh={handleRefresh}>
+        <div className="flex flex-col lg:flex-row w-full h-auto min-h-[100dvh] lg:h-[100dvh] bg-[#f8f8f8] font-sans relative">
+
+          {/* Left Column: 배너 슬라이드 */}
       <aside
-        className={`hidden lg:block h-full relative transition-[width,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded
-          ? 'w-0 min-w-0 opacity-0'
-          : 'w-2/5 min-w-[40%] opacity-100'
+        className={`relative transition-[width,height,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded
+          ? 'hidden lg:block lg:w-0 lg:min-w-0 opacity-0'
+          : 'w-full h-[28vh] min-h-[220px] md:h-[35vh] lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
           }`}
       >
         <motion.div
-          className={`w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
+          className={`w-full lg:w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
           layoutId={clickedLayoutId || "main-banner"}
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           onClick={() => {
@@ -332,9 +343,9 @@ export const HomeView = () => {
 
               {/* 하단: 타이틀 등 정보 표시 */}
               {!selectedDetailId && (
-                <div className="mt-auto w-full max-w-4xl flex flex-col items-start gap-1">
+                <div className="mt-auto w-full max-w-4xl flex flex-col items-start gap-1 pb-2">
                   {'subtitle' in (activeBanner || {}) && (activeBanner as any).subtitle && (
-                    <span className="text-white text-sm md:text-base font-semibold tracking-wide mb-1 drop-shadow-md bg-black/30 px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center rounded bg-blue-600/90 px-2 py-0.5 text-[11px] md:text-xs font-bold tracking-wider text-white mb-1 shadow-sm">
                       {(activeBanner as any).subtitle}
                     </span>
                   )}
@@ -349,15 +360,19 @@ export const HomeView = () => {
       </aside>
 
       {/* Toggle Button */}
-      <PanelToggle
-        isFolded={isBannerFolded}
-        onToggle={() => setIsBannerFolded(!isBannerFolded)}
-      />
+      <div className="hidden lg:block z-50">
+        <PanelToggle
+          isFolded={isBannerFolded}
+          onToggle={() => setIsBannerFolded(!isBannerFolded)}
+        />
+      </div>
 
       {/* Right Column: Main Content */}
-      <main className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <main className="flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
-        <Header />
+        <div className="hidden lg:block">
+          <Header />
+        </div>
 
         {/* 검색 중일 때: 홈 컨텐츠 대신 검색 결과 렌더링 */}
         <AnimatePresence mode="wait">
@@ -537,6 +552,9 @@ export const HomeView = () => {
         {/* 전역 푸터 (하단 스크롤 시 모든 뷰에서 등장) */}
         <Footer />
       </main>
+      </div>
+      </PullToRefresh>
+      <MobileBottomNav />
     </div>
   );
 };

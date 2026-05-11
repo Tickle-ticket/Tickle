@@ -18,7 +18,8 @@ export const useSeatData = (
   scheduleId: string | null,
   enableWs: boolean = true,
   mode: 'BOOKING' | 'WAITLIST' = 'BOOKING',
-  admitToken: string | null = null
+  admitToken: string | null = null,
+  storyMode: boolean = false
 ) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,21 @@ export const useSeatData = (
       setIsLoading(true);
       try {
         let response;
+
+        if (storyMode) {
+          // 스토리북 모드용 하드코딩 목데이터 (Stage_4001 도면 기준)
+          const mockMap: SeatAvailabilityResponse = {
+            'A1': { priceGrade: 'VIP', isAvailable: mode !== 'WAITLIST', sessionSeatId: 1, detailedInfo: 'A구역 A열 1번', waitingCount: 12, waitable: true },
+            'B2': { priceGrade: 'R', isAvailable: mode !== 'WAITLIST', sessionSeatId: 2, detailedInfo: 'B구역 B열 2번', waitingCount: 5, waitable: true },
+            'D10': { priceGrade: 'S', isAvailable: true, sessionSeatId: 3, detailedInfo: 'C구역 D열 10번', waitingCount: 0, waitable: false },
+            'E15': { priceGrade: 'S', isAvailable: false, sessionSeatId: 4, detailedInfo: 'D구역 E열 15번', waitingCount: 3, waitable: true },
+            'J8': { priceGrade: 'A', isAvailable: mode !== 'WAITLIST', sessionSeatId: 5, detailedInfo: 'E구역 J열 8번', waitingCount: 20, waitable: true },
+          };
+          setVenueId(4001); // 4001 도면 렌더링을 위해
+          setSeatAvailability(mockMap);
+          setIsLoading(false);
+          return;
+        }
 
         if (mode === 'WAITLIST') {
           if (!admitToken) {

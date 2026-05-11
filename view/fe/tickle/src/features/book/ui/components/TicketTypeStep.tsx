@@ -130,18 +130,18 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   return (
     <div className="absolute inset-0 bg-gray-50 dark:bg-zinc-950 flex flex-col z-30 animate-fade-in">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center gap-3 shrink-0">
+      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center gap-3 shrink-0">
         <button
           onClick={onCancel}
           disabled={isSubmitting}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+          className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
           aria-label="뒤로"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">인원 선택</h2>
+        <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white">인원 선택</h2>
       </div>
 
       {/* Grade list with Accordions */}
@@ -251,18 +251,18 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       </div>
 
       {/* Bottom checkout bar */}
-      <div className="p-6 border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400 font-medium">좌석 금액</span>
-            <span className="text-sm text-gray-400 line-through">{originalPrice.toLocaleString()}원</span>
+      <div className="p-3 sm:p-6 border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-3">
+        <div className="flex flex-col gap-0.5 sm:gap-1 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <span className="text-xs sm:text-sm text-gray-400 font-medium">좌석 금액</span>
+            <span className="text-xs sm:text-sm text-gray-400 line-through">{originalPrice.toLocaleString()}원</span>
             {discountAmount > 0 && (
-              <span className="text-xs font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">-{discountAmount.toLocaleString()}원</span>
+              <span className="text-[10px] sm:text-xs font-bold text-red-500 bg-red-50 px-1 sm:px-1.5 py-0.5 rounded">-{discountAmount.toLocaleString()}원</span>
             )}
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-sm text-gray-500 font-medium">총 결제 금액</span>
-            <span className="text-2xl font-extrabold text-blue-600 ml-1">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium">총 결제 금액</span>
+            <span className="text-xl sm:text-2xl font-extrabold text-blue-600 ml-1">
               {totalPrice.toLocaleString()}원
             </span>
           </div>
@@ -270,7 +270,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
         <button
           disabled={!isAllSeatsAssigned || isSubmitting}
           onClick={handleSubmit}
-          className={`px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-md ${!isAllSeatsAssigned || isSubmitting
+          className={`px-6 sm:px-10 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-lg transition-all shadow-md shrink-0 ${!isAllSeatsAssigned || isSubmitting
             ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
             : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-blue-600/20'
             }`}

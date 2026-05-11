@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
@@ -47,15 +47,26 @@ const formatDateToDot = (date: Date) => {
 
 interface DetailViewProps {
   isOverlay?: boolean;
+  storyMode?: boolean;
 }
 
-export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
+export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedDetailId, setDetailBannerOpen } = useDetailStore();
 
   const urlId = searchParams?.get('id');
   const activeEventId = selectedDetailId || urlId;
+
+  const scrollRef = useRef<HTMLElement>(null);
+
+  // 페이지 진입 시 스크롤을 항상 최상단으로 초기화
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+    window.scrollTo(0, 0); // 혹시 모를 window 레벨의 스크롤도 방어
+  }, [activeEventId]);
 
   const { data, isLoading, isError, error } = useDetailData(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -100,7 +111,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   }, [setStage]);
 
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
-    if (!getAccessToken()) {
+    if (!storyMode && !getAccessToken()) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -137,7 +148,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const handleFavoriteToggle = async () => {
     if (!activeEventId) return;
 
-    if (!getAccessToken()) {
+    if (!storyMode && !getAccessToken()) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -301,95 +312,127 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     );
   }
 
+  const renderActionButtons = () => (
+    <div className="flex items-center gap-3 w-full">
+      {/* 예약 버튼 묶음 */}
+      <div className="flex items-center flex-1 gap-2">
+
+        {/* 예매하기 버튼 */}
+        <Button
+          color="dark"
+          size="large"
+          className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`}
+          onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
+          isLoading={isLoading}
+        >
+          {isUpcoming && data?.openDate ? (
+            isMoreThanOneDayLeft ? (
+              <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(data.openDate)}</span>
+            ) : (
+              <div className="flex items-center justify-center whitespace-nowrap">
+                <div className="flex items-center bg-white/10 rounded-md px-2.5 py-1 border border-white/5 shadow-inner text-white">
+                  <CountdownTimer targetDate={data.openDate} onExpire={() => setIsUpcoming(false)} variant="compact" />
+                </div>
+              </div>
+            )
+          ) : (
+            <span className="font-bold tracking-wider text-[15px]">예매하기</span>
+          )}
+        </Button>
+
+        {/* 취소표 대기하기 버튼 */}
+        <Button
+          color="light"
+          size="large"
+          className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`}
+          onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
+          isLoading={isLoading}
+        >
+          {isWaitlistUpcoming && data?.openDate ? (
+            isWaitlistMoreThanOneDayLeft ? (
+              <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString())}</span>
+            ) : (
+              <div className="flex items-center justify-center whitespace-nowrap">
+                <div className="flex items-center bg-slate-200/60 rounded-md px-2.5 py-1 border border-slate-300 shadow-inner text-slate-800">
+                  <CountdownTimer targetDate={new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString()} onExpire={() => setIsWaitlistUpcoming(false)} variant="compact" />
+                </div>
+              </div>
+            )
+          ) : (
+            <span className="font-bold tracking-wider text-[15px]">취소표 대기하기</span>
+          )}
+        </Button>
+      </div>
+
+      {/* 찜하기 버튼 */}
+      <button
+        onClick={handleFavoriteToggle}
+        className={`w-14 h-14 flex items-center justify-center rounded-xl border transition-colors shadow-sm shrink-0 ${isFavorite ? 'border-red-100 bg-red-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+        aria-label={isFavorite ? '찜 해제' : '찜 추가'}
+      >
+        {isFavorite ? (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+
   const renderContent = () => (
-    <div className="flex flex-col w-full h-full pb-32 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col w-full h-full pb-20 lg:pb-32 pt-0 lg:pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      {/* Mobile/Tablet Header (Transparent Floating) */}
+      <div className="lg:hidden fixed top-0 left-0 z-[60] p-4 pointer-events-none">
+        <button 
+          onClick={() => useDetailStore.getState().closeDetail()}
+          className="w-10 h-10 flex items-center justify-center text-white bg-black/20 hover:bg-black/30 backdrop-blur-md rounded-full transition-colors pointer-events-auto shadow-sm"
+          aria-label="뒤로 가기"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile/Tablet Hero Poster (Hidden on Desktop) */}
+      <div className="w-[calc(100%+3rem)] -mx-6 md:w-[calc(100%+5rem)] md:-mx-10 h-[40vh] min-h-[300px] sm:h-[400px] md:h-[380px] lg:hidden mb-6 relative">
+        <BannerPoster
+          src={data?.imageUrl || ''}
+          alt="Detail Banner"
+          isLoading={isLoading}
+          width="100%"
+          height="100%"
+          showGradient={false}
+          className="w-full h-full rounded-none"
+        >
+          {/* 포스터 하단 그라데이션 오버레이 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+        </BannerPoster>
+      </div>
+
       {/* Hero Section */}
-      <section className="max-w-2xl mt-3 flex flex-col items-start">
+      <section className="max-w-2xl lg:mt-3 flex flex-col items-start px-2 lg:px-0">
         <Title
           title={data?.title || ''}
           textColor="black"
-          className="!bg-transparent [&>div]:!p-0 !text-5xl md:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.1] [&_h1]:whitespace-pre-line"
+          className="!bg-transparent [&>div]:!p-0 !text-3xl sm:!text-4xl md:!text-5xl lg:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.15] [&_h1]:whitespace-pre-line"
           bottomBorder={false}
           isLoading={isLoading}
         />
 
-        <div className="flex flex-col gap-1 mt-4">
-          <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-base md:!text-[17px]" isLoading={isLoading} />
-          <BannerPlace place={data?.venue || ''} color="black" className="!text-base md:!text-[17px] font-bold" isLoading={isLoading} />
-          <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-base md:!text-[17px]" isLoading={isLoading} />
+        <div className="flex flex-col gap-1.5 mt-4 sm:mt-5">
+          <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-80" isLoading={isLoading} />
+          <BannerPlace place={data?.venue || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] font-bold" isLoading={isLoading} />
+          <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-90" isLoading={isLoading} />
         </div>
 
-        <div className="flex flex-col gap-3 mt-6 w-full max-w-[540px]">
+        <div className="flex flex-col gap-3 mt-8 w-full max-w-[540px]">
           {/* 예약 버튼 그룹 + 찜하기 버튼 */}
-          <div className="flex items-center gap-3 w-full">
-            {/* 예약 버튼 묶음 */}
-            <div className="flex items-center flex-1 gap-2">
-
-              {/* 예매하기 버튼 */}
-              <Button
-                color="dark"
-                size="large"
-                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`}
-                onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
-                isLoading={isLoading}
-              >
-                {isUpcoming && data?.openDate ? (
-                  isMoreThanOneDayLeft ? (
-                    <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(data.openDate)}</span>
-                  ) : (
-                    <div className="flex items-center justify-center whitespace-nowrap">
-                      <div className="flex items-center bg-white/10 rounded-md px-2.5 py-1 border border-white/5 shadow-inner text-white">
-                        <CountdownTimer targetDate={data.openDate} onExpire={() => setIsUpcoming(false)} variant="compact" />
-                      </div>
-                    </div>
-                  )
-                ) : (
-                  <span className="font-bold tracking-wider text-[15px]">예매하기</span>
-                )}
-              </Button>
-
-              {/* 취소표 대기하기 버튼 */}
-              <Button
-                color="light"
-                size="large"
-                className={`flex-1 flex items-center justify-center h-14 !rounded-md !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`}
-                onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
-                isLoading={isLoading}
-              >
-                {isWaitlistUpcoming && data?.openDate ? (
-                  isWaitlistMoreThanOneDayLeft ? (
-                    <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString())}</span>
-                  ) : (
-                    <div className="flex items-center justify-center whitespace-nowrap">
-                      <div className="flex items-center bg-slate-200/60 rounded-md px-2.5 py-1 border border-slate-300 shadow-inner text-slate-800">
-                        <CountdownTimer targetDate={new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString()} onExpire={() => setIsWaitlistUpcoming(false)} variant="compact" />
-                      </div>
-                    </div>
-                  )
-                ) : (
-                  <span className="font-bold tracking-wider text-[15px]">취소표 대기하기</span>
-                )}
-              </Button>
-            </div>
-
-            {/* 찜하기 버튼 */}
-            <button
-              onClick={handleFavoriteToggle}
-              className={`w-14 h-14 flex items-center justify-center rounded-full border transition-colors shadow-sm shrink-0 ${isFavorite ? 'border-red-100 bg-red-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
-              aria-label={isFavorite ? '찜 해제' : '찜 추가'}
-            >
-              {isFavorite ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
-                </svg>
-              )}
-            </button>
-          </div>
-
+          {renderActionButtons()}
         </div>
       </section>
 
@@ -541,12 +584,12 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
             </Box>
           </div>
 
-        </div>
+    </div>
       </section>
 
       {/* Booking Pipeline Overlays */}
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+        <div className="fixed inset-0 z-[70] bg-white overflow-y-auto">
           <QueueView
             eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
             scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
@@ -555,12 +598,13 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
               setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
             }}
             onClose={() => setFlowState('NONE')}
+            storyMode={storyMode}
           />
         </div>
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <BookView eventId={activeEventId} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} admitToken={admitToken || undefined} onClose={() => setFlowState('NONE')} />
+        <div className="fixed inset-0 z-[70] bg-white overflow-y-auto">
+          <BookView eventId={activeEventId} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} admitToken={admitToken || undefined} onClose={() => setFlowState('NONE')} storyMode={storyMode} />
         </div>
       )}
 
@@ -611,10 +655,13 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       />
 
       <main
+        ref={scrollRef}
         className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        <Header />
+        <div className="hidden lg:block">
+          <Header />
+        </div>
 
         <div className="flex-1 w-full min-w-0">
           {renderContent()}

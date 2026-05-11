@@ -231,9 +231,12 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
       clientX = (e as React.MouseEvent).clientX;
       clientY = (e as React.MouseEvent).clientY;
     }
+    // Account for CSS transform scale
+    const scaleX = CANVAS_W / rect.width;
+    const scaleY = CANVAS_H / rect.height;
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
     };
   };
 
@@ -316,15 +319,15 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
   if (keypad.length === 0) return null;
 
   return (
-    <div className={`relative flex flex-col items-center bg-white p-6 rounded-2xl shadow-xl border w-full max-w-sm transition-colors duration-300 min-h-[560px] ${isError ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
+    <div className={`relative flex flex-col items-center bg-white p-4 sm:p-6 rounded-2xl shadow-xl border w-full max-w-[280px] sm:max-w-sm transition-colors duration-300 ${isError ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
       
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-20"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-20"
           aria-label="닫기"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -332,14 +335,16 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
       )}
 
       <div className={`w-full flex flex-col items-center transition-opacity duration-300 ${isSuccess ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handlePointerDown}
-          onTouchStart={handlePointerDown}
-          onMouseMove={handlePointerMove}
-          onMouseLeave={handlePointerLeave}
-          className="touch-none select-none cursor-pointer"
-        />
+        <div className="origin-top scale-[0.72] sm:scale-[0.85] md:scale-100 h-[403px] sm:h-[476px] md:h-[560px]" style={{ width: CANVAS_W }}>
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handlePointerDown}
+            onTouchStart={handlePointerDown}
+            onMouseMove={handlePointerMove}
+            onMouseLeave={handlePointerLeave}
+            className="touch-none select-none cursor-pointer"
+          />
+        </div>
       </div>
 
       {isSuccess && (

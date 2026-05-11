@@ -10,7 +10,7 @@ import { BookingDetailCard } from './BookingDetailCard';
 import { BookingData } from '../../features/mypage/api/useMyPageData';
 
 const meta = {
-  title: 'Components/BookingCard',
+  title: 'Shared/BookingCard',
   component: BookingCard,
   parameters: {
     layout: 'centered',

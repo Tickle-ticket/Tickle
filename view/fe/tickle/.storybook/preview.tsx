@@ -3,6 +3,8 @@ import React from 'react'
 import '../src/app/globals.css'
 import { QueryProvider } from '../src/shared/providers/QueryProvider'
 
+import { INITIAL_VIEWPORTS } from '@storybook/addon-viewport';
+
 const preview: Preview = {
   parameters: {
     controls: {
@@ -10,6 +12,30 @@ const preview: Preview = {
        color: /(background|color)$/i,
        date: /Date$/i,
       },
+    },
+
+    viewport: {
+      viewports: {
+        ...INITIAL_VIEWPORTS,
+        iphone14: {
+          name: 'iPhone 14',
+          styles: { width: '390px', height: '844px' },
+        },
+        ipad: {
+          name: 'iPad',
+          styles: { width: '768px', height: '1024px' },
+        },
+        iphoneSE: {
+          name: 'iPhone SE',
+          styles: { width: '375px', height: '667px' },
+        },
+        responsive: {
+          name: 'Responsive (직접 조절)',
+          styles: { width: '100%', height: '100%' },
+          type: 'desktop',
+        },
+      },
+      defaultViewport: 'responsive',
     },
 
     a11y: {
