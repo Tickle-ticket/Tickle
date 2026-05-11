@@ -1,10 +1,14 @@
 const KAKAO_AUTH_BASE_URL = 'https://kauth.kakao.com/oauth/authorize';
 const DEFAULT_KAKAO_SCOPE = 'account_email,profile_nickname,profile_image';
-const KAKAO_CALLBACK_PATH = '/login/kakao/callback';
+const KAKAO_CALLBACK_PATH = '/oauth/callback';
 
 export const KAKAO_OAUTH_STATE_COOKIE_NAME = 'kakaoOAuthState';
 
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+const firstHeaderValue = (value: string | null) => value?.split(',')[0]?.trim() || null;
+
+const getConfiguredKakaoRedirectUris = () =>
+  [process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI?.trim()].filter((value): value is string => Boolean(value));
 
 const getKakaoClientId = () => {
   const clientId =
@@ -29,11 +33,7 @@ export const generateKakaoOAuthState = () => {
 
 export const resolveKakaoRedirectUri = (origin: string) => {
   const normalizedOrigin = trimTrailingSlash(origin);
-  const configuredRedirectUris = [
-    process.env.KAKAO_REDIRECT_URI?.trim(),
-    process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI?.trim(),
-    process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI1?.trim(),
-  ].filter((value): value is string => Boolean(value));
+  const configuredRedirectUris = getConfiguredKakaoRedirectUris();
 
   const sameOriginRedirectUri = configuredRedirectUris.find((value) => {
     try {
@@ -47,12 +47,38 @@ export const resolveKakaoRedirectUri = (origin: string) => {
     return sameOriginRedirectUri;
   }
 
-  const explicitRedirectUri = process.env.KAKAO_REDIRECT_URI?.trim();
-  if (explicitRedirectUri) {
-    return explicitRedirectUri;
+  if (configuredRedirectUris.length > 0) {
+    const httpsRedirectUri = configuredRedirectUris.find((value) => {
+      try {
+        return new URL(value).protocol === 'https:';
+      } catch {
+        return false;
+      }
+    });
+
+    if (process.env.NODE_ENV === 'production') {
+      return httpsRedirectUri ?? configuredRedirectUris[0];
+    }
+
+    return configuredRedirectUris[0];
   }
 
   return `${normalizedOrigin}${KAKAO_CALLBACK_PATH}`;
+};
+
+export const resolveKakaoRequestOrigin = (requestUrl: string, headers: Headers) => {
+  const requestOrigin = new URL(requestUrl).origin;
+  const forwardedHost = firstHeaderValue(headers.get('x-forwarded-host'));
+  const host = forwardedHost || firstHeaderValue(headers.get('host'));
+
+  if (!host) {
+    return requestOrigin;
+  }
+
+  const forwardedProto = firstHeaderValue(headers.get('x-forwarded-proto'));
+  const protocol = forwardedProto || new URL(requestUrl).protocol.replace(':', '');
+
+  return `${protocol}://${host}`;
 };
 
 export const buildKakaoAuthorizeUrl = ({

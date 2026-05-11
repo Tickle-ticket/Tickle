@@ -3,13 +3,14 @@ import {
   buildKakaoAuthorizeUrl,
   KAKAO_OAUTH_STATE_COOKIE_NAME,
   resolveKakaoRedirectUri,
+  resolveKakaoRequestOrigin,
 } from '@/src/shared/lib/kakaoOAuth';
 
 const OAUTH_STATE_MAX_AGE_SECONDS = 60 * 10;
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const origin = url.origin;
+  const origin = resolveKakaoRequestOrigin(request.url, request.headers);
   
   // redirect 파라미터가 있고 /로 시작하면 state로 사용, 아니면 / 사용
   const redirectParam = url.searchParams.get('redirect');
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   response.cookies.set(KAKAO_OAUTH_STATE_COOKIE_NAME, state, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: new URL(request.url).protocol === 'https:',
+    secure: origin.startsWith('https:'),
     path: '/',
     maxAge: OAUTH_STATE_MAX_AGE_SECONDS,
   });

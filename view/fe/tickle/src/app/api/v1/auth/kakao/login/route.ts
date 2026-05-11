@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthApiBaseUrl } from '@/src/shared/api/authConfig';
-import { KAKAO_OAUTH_STATE_COOKIE_NAME, resolveKakaoRedirectUri } from '@/src/shared/lib/kakaoOAuth';
+import {
+  KAKAO_OAUTH_STATE_COOKIE_NAME,
+  resolveKakaoRedirectUri,
+  resolveKakaoRequestOrigin,
+} from '@/src/shared/lib/kakaoOAuth';
 
 type KakaoLoginRequestBody = {
   code?: string;
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
-  const redirectUri = resolveKakaoRedirectUri(new URL(request.url).origin);
+  const redirectUri = resolveKakaoRedirectUri(resolveKakaoRequestOrigin(request.url, request.headers));
 
   try {
     const backendResponse = await fetch(`${authApiBaseUrl}/api/v1/auth/kakao/login`, {
