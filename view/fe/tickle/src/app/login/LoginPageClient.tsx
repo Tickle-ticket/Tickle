@@ -18,14 +18,15 @@ const resolveLoginMode = (value: string | null): LoginMode => (value === 'agency
 export function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // URL의 mode 파라미터를 초기값으로 사용하되, Storybook 환경에서는 window.location.search를 우선 확인합니다.
-  const storybookMode = typeof window !== 'undefined' && window.parent !== window 
-    ? new URLSearchParams(window.location.search).get('mode') 
-    : null;
+
+  // Use the URL mode param as the initial value. In Storybook, prefer window.location.search.
+  const storybookMode =
+    typeof window !== 'undefined' && window.parent !== window
+      ? new URLSearchParams(window.location.search).get('mode')
+      : null;
   const initialMode = resolveLoginMode(storybookMode || searchParams.get('mode'));
   const [loginMode, setLoginMode] = useState<LoginMode>(initialMode);
-  
+
   const redirect = searchParams.get('redirect');
 
   const [email, setEmail] = useState('');
@@ -113,9 +114,9 @@ export function LoginPageClient() {
 
   const handleKakaoLogin = () => {
     clearKakaoSignUpToken();
-    const kakaoUrl = redirect && redirect.startsWith('/') 
-      ? `/api/v1/auth/kakao?redirect=${encodeURIComponent(redirect)}`
-      : '/api/v1/auth/kakao';
+    const kakaoUrl = redirect && redirect.startsWith('/')
+      ? `/oauth/kakao?redirect=${encodeURIComponent(redirect)}`
+      : '/oauth/kakao';
     window.location.href = kakaoUrl;
   };
 
