@@ -33,7 +33,7 @@ const formatEventDateRange = (eventStartAt: string, eventEndAt: string) => {
 const mapRankingItemToPerformance = (item: EventRankingItem): PerformanceData => ({
   id: String(item.eventId),
   title: item.eventName,
-  imageUrl: item.thumbnailUrl,
+  imageUrl: item.thumbnailUrl || '',
   venue: item.venueName,
   date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
   badges: item.tags ? [...item.tags] : [],
@@ -42,7 +42,7 @@ const mapRankingItemToPerformance = (item: EventRankingItem): PerformanceData =>
 const mapEventItemToPerformance = (item: EventItem): PerformanceData => ({
   id: String(item.eventId),
   title: item.title,
-  imageUrl: item.thumbnailUrl,
+  imageUrl: item.thumbnailUrl || '',
   venue: item.venueLocation,
   date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
   badges: item.metadata?.tags ? [...item.metadata.tags] : [],
@@ -77,7 +77,7 @@ export const useHomeBanners = () => {
               id: String(topRanking.eventId),
               title: topRanking.eventName,
               subtitle: `${categoryName} 랭킹 1위`,
-              imageUrl: topRanking.thumbnailUrl,
+              imageUrl: topRanking.thumbnailUrl || '',
               venue: topRanking.venueName,
               date: formatEventDateRange(topRanking.eventStartAt, topRanking.eventEndAt)
             });
@@ -127,7 +127,7 @@ export const useHomeUpcoming = () => {
       return response.data.events.map((item) => ({
         id: String(item.eventId),
         title: item.eventName,
-        imageUrl: item.thumbnailUrl,
+        imageUrl: item.thumbnailUrl || '',
         venue: item.venueName,
         date: formatEventDateRange(item.eventStartAt, item.eventEndAt),
         badges: item.tags ? [...item.tags] : [],

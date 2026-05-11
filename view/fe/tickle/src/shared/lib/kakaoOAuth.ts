@@ -4,6 +4,8 @@ const KAKAO_CALLBACK_PATH = '/login/kakao/callback';
 
 export const KAKAO_OAUTH_STATE_COOKIE_NAME = 'kakaoOAuthState';
 
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
+
 const getKakaoClientId = () => {
   const clientId =
     process.env.KAKAO_REST_API_KEY?.trim() || process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY?.trim();
@@ -26,14 +28,31 @@ export const generateKakaoOAuthState = () => {
 };
 
 export const resolveKakaoRedirectUri = (origin: string) => {
-  const configuredRedirectUri =
-    process.env.KAKAO_REDIRECT_URI?.trim() || process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI?.trim();
+  const normalizedOrigin = trimTrailingSlash(origin);
+  const configuredRedirectUris = [
+    process.env.KAKAO_REDIRECT_URI?.trim(),
+    process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI?.trim(),
+    process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI1?.trim(),
+  ].filter((value): value is string => Boolean(value));
 
-  if (configuredRedirectUri) {
-    return configuredRedirectUri;
+  const sameOriginRedirectUri = configuredRedirectUris.find((value) => {
+    try {
+      return trimTrailingSlash(new URL(value).origin) === normalizedOrigin;
+    } catch {
+      return false;
+    }
+  });
+
+  if (sameOriginRedirectUri) {
+    return sameOriginRedirectUri;
   }
 
-  return `${origin}${KAKAO_CALLBACK_PATH}`;
+  const explicitRedirectUri = process.env.KAKAO_REDIRECT_URI?.trim();
+  if (explicitRedirectUri) {
+    return explicitRedirectUri;
+  }
+
+  return `${normalizedOrigin}${KAKAO_CALLBACK_PATH}`;
 };
 
 export const buildKakaoAuthorizeUrl = ({

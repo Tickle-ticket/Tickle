@@ -113,7 +113,7 @@ export const EventRankingItemSchema = Schema.Struct({
   eventEndAt: Schema.String,
   salesStartAt: Schema.String,
   salesEndAt: Schema.String,
-  thumbnailUrl: Schema.String,
+  thumbnailUrl: Schema.Union(Schema.String, Schema.Null),
   tags: Schema.Array(Schema.String),
   isFavorite: Schema.Boolean,
 });
@@ -136,7 +136,7 @@ export const OpeningSoonEventItemSchema = Schema.Struct({
   eventEndAt: Schema.String,
   salesStartAt: Schema.String,
   salesEndAt: Schema.String,
-  thumbnailUrl: Schema.String,
+  thumbnailUrl: Schema.Union(Schema.String, Schema.Null),
   tags: Schema.Array(Schema.String),
   isFavorite: Schema.Boolean,
 });

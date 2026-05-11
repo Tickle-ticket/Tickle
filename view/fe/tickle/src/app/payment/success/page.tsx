@@ -32,8 +32,14 @@ function PaymentSuccessContent() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // 부모 창에서 팝업의 URL을 감지하여 자동으로 닫아주므로,
-    // 이 페이지가 직접 열린 경우(모바일 리다이렉트 등)에만 결제 처리를 진행
+    
+    // 카카오페이 등 팝업창에서 이 페이지로 리다이렉트 된 경우:
+    // 팝업은 바로 닫아주고, 조회를 비롯한 최종 처리는 부모 창에서 진행하도록 합니다.
+    // (보안 정책으로 window.opener가 null이 될 수 있으므로 window.name도 확인)
+    if (window.name === 'kakaopay' || window.opener) {
+      window.close();
+      return;
+    }
     
     if (!paymentIdParam && !bookingIdParam) {
       setErrorModalConfig({
