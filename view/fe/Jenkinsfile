@@ -68,7 +68,8 @@ pipeline {
                             .next/standalone \
                             .next/static \
                             public \
-                            Dockerfile
+                            Dockerfile \
+                            .dockerignore
                     """
 
                     // 2. 서버 폴더 준비 및 소유권 설정
