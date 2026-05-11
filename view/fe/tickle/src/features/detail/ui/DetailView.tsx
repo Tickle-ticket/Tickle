@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
@@ -109,6 +109,11 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   useEffect(() => {
     setStage('detail');
   }, [setStage]);
+
+  const handleQueueAdmitted = useCallback((token: string) => {
+    setAdmitToken(token);
+    setFlowState((prev) => (prev === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK'));
+  }, []);
 
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
     if (!storyMode && !getAccessToken()) {
@@ -593,10 +598,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
           <QueueView
             eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
             scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
-            onAdmitted={(token) => {
-              setAdmitToken(token);
-              setFlowState(flowState === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK');
-            }}
+            onAdmitted={handleQueueAdmitted}
             onClose={() => setFlowState('NONE')}
             storyMode={storyMode}
           />
