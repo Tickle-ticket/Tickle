@@ -46,7 +46,7 @@ public class EventPricePolicy {
 
     // 가격 등급
     @Enumerated(EnumType.STRING)
-    @Column(name = "price_grade", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(name = "price_grade", nullable = false, columnDefinition = "varchar(30)")
     private SeatGrade priceGrade;
 
     // 기본 가격

@@ -53,7 +53,7 @@ public class BookingTicket {
 
     // 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "ticket_status", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(name = "ticket_status", nullable = false, columnDefinition = "varchar(30)")
     private Status ticketStatus;
 
     // 외부 노출 티켓 번호

@@ -46,12 +46,12 @@ public class PaymentTransaction {
 
     // 타입
     @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_type", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(name = "transaction_type", nullable = false, columnDefinition = "varchar(30)")
     private TransactionType transactionType;
 
     // 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_status", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(name = "transaction_status", nullable = false, columnDefinition = "varchar(30)")
     private TransactionStatus transactionStatus;
 
     // 금액

@@ -45,7 +45,7 @@ public class CancellationRequest {
 
     // 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "cancellation_status", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(name = "cancellation_status", nullable = false, columnDefinition = "varchar(30)")
     private Status cancellationStatus;
 
     // 요청 시각

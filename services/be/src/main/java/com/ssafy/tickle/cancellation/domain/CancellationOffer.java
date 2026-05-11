@@ -52,7 +52,7 @@ public class CancellationOffer {
 
     // 제안 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "offer_status", nullable = false, length = 30, columnDefinition = "varchar(30)")
+    @Column(name = "offer_status", nullable = false, columnDefinition = "varchar(30)")
     private OfferStatus offerStatus;
 
     // 수락 시각
