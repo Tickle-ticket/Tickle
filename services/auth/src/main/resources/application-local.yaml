@@ -56,6 +56,9 @@ internal:
     url: ${BE_INTERNAL_URL:http://localhost:8080}
     secret: ${INTERNAL_SECRET}
 
+admin:
+  secret: ${ADMIN_SECRET:tickle-admin-dev}
+
 kakao:
   oauth:
     client-id: ${KAKAO_REST_API_KEY}

@@ -6,6 +6,7 @@ import com.ssafy.tickle.auth.common.exception.code.SuccessCode;
 import com.ssafy.tickle.auth.common.response.BaseResponse;
 import com.ssafy.tickle.auth.user.application.AuthService;
 import com.ssafy.tickle.auth.user.application.PhoneVerificationService;
+import com.ssafy.tickle.auth.user.presentation.dto.AdminSignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeSendRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeVerifyRequest;
@@ -32,6 +33,23 @@ public class AuthController implements AuthApiDoc {
 
     private final AuthService authService;
     private final PhoneVerificationService phoneVerificationService;
+
+    /**
+     * 어드민 계정 생성 API입니다.
+     *
+     * @param secret  X-Admin-Secret 헤더
+     * @param request 어드민 계정 생성 요청
+     * @return 발급된 토큰 응답 (201 Created)
+     */
+    @PostMapping("/admin/signup")
+    public ResponseEntity<BaseResponse<TokenResponse>> createAdminAccount(
+            @RequestHeader("X-Admin-Secret") String secret,
+            @Valid @RequestBody AdminSignUpRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(BaseResponse.success(SuccessCode.CREATED, authService.createAdminAccount(request, secret)));
+    }
 
     /**
      * 자체 회원가입 API입니다.

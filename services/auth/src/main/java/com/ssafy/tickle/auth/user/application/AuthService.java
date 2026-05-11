@@ -13,6 +13,7 @@ import com.ssafy.tickle.auth.user.infrastructure.oauth.KakaoOAuthClient;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
 import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
+import com.ssafy.tickle.auth.user.presentation.dto.AdminSignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
@@ -21,6 +22,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +56,60 @@ public class AuthService {
     private final KakaoOAuthClient kakaoOAuthClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+
+    @Value("${admin.secret}")
+    private String adminSecret;
+
+    /**
+     * 어드민 계정을 생성합니다.
+     *
+     * <p>전화번호 인증 없이 ADMIN 권한 계정을 직접 생성한다. X-Admin-Secret 헤더 검증 필수.</p>
+     *
+     * @param request     어드민 계정 생성 요청
+     * @param secretHeader 요청 헤더에서 추출한 어드민 시크릿
+     * @return 발급된 Access Token / Refresh Token / userId
+     */
+    @Transactional
+    public TokenResponse createAdminAccount(AdminSignUpRequest request, String secretHeader) {
+        if (!adminSecret.equals(secretHeader)) {
+            throw new BaseException(AuthErrorCode.INVALID_ADMIN_SECRET);
+        }
+
+        if (authUserRepository.existsByEmail(request.email())) {
+            throw new BaseException(AuthErrorCode.DUPLICATE_EMAIL);
+        }
+
+        Instant now = Instant.now();
+        AuthUser authUser = AuthUser.builder()
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .role(AuthUser.Role.ADMIN)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        AuthUser saved = authUserRepository.save(authUser);
+
+        String userNo = generateUserNo();
+        try {
+            beInternalClient.createUser(new CreateUserRequest(
+                    saved.getId(),
+                    userNo,
+                    request.email(),
+                    request.name(),
+                    request.nickname(),
+                    null,
+                    AuthUser.Role.ADMIN,
+                    null,
+                    null
+            ));
+        } catch (Exception e) {
+            log.error("어드민 계정 BE 사용자 생성 실패, 롤백 예정: userId={}", saved.getId(), e);
+            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        return issueTokens(saved);
+    }
 
     /**
      * 자체 회원가입을 처리합니다.
