@@ -8,9 +8,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param isNewUser    신규 가입 필요 여부 (true면 전화번호 인증 등 추가 정보 입력 필요)
  * @param signUpToken  신규 가입 시 필요한 임시 토큰 (isNewUser=true 일 때만 존재)
  * @param accessToken  기존 회원일 경우 발급되는 Access Token (isNewUser=false 일 때만 존재)
- * @param refreshToken 기존 회원일 경우 발급되는 Refresh Token
- * @param userId       기존 회원일 경우 사용자 식별자
- * @param organizerId  기획사 식별자 (isNewUser=false 이고 권한이 기획사일 경우)
  */
 @Schema(description = "카카오 로그인 응답 DTO")
 public record KakaoLoginResponse(
@@ -21,15 +18,6 @@ public record KakaoLoginResponse(
         String signUpToken,
 
         @Schema(description = "Access Token", example = "eyJhbGciOiJIUzI1NiJ9...")
-        String accessToken,
-
-        @Schema(description = "Refresh Token", example = "eyJhbGciOiJIUzI1NiJ9...")
-        String refreshToken,
-
-        @Schema(description = "사용자 식별자", example = "1")
-        Long userId,
-
-        @Schema(description = "기획사 식별자", example = "1")
-        Long organizerId
+        String accessToken
 ) {
 }
