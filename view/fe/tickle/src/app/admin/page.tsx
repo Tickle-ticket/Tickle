@@ -1,271 +1,335 @@
-import { LoadMetricGaugePanel } from '@/src/shared/components/LoadMetricGaugePanel';
-import { ServerMonitoringChart } from '@/src/shared/components/ServerMonitoringChart';
-import type { LoadMetricGauge } from '@/src/shared/components/LoadMetricGaugePanel';
-import type { ServerMonitoringPoint } from '@/src/shared/components/ServerMonitoringChart';
+'use client';
 
-const serverMonitoringData: ServerMonitoringPoint[] = [
-  { time: '13:00', activeUsers: 1260, mtps: 28920, mttrMinutes: 18, p95LatencyMs: 212, errorRatePercent: 0.4 },
-  { time: '13:05', activeUsers: 1384, mtps: 31560, mttrMinutes: 17, p95LatencyMs: 238, errorRatePercent: 0.5 },
-  { time: '13:10', activeUsers: 1512, mtps: 34440, mttrMinutes: 16, p95LatencyMs: 265, errorRatePercent: 0.7 },
-  { time: '13:15', activeUsers: 1698, mtps: 38280, mttrMinutes: 15, p95LatencyMs: 304, errorRatePercent: 1.1 },
-  { time: '13:20', activeUsers: 1886, mtps: 42360, mttrMinutes: 14, p95LatencyMs: 342, errorRatePercent: 1.4 },
-  { time: '13:25', activeUsers: 2054, mtps: 44520, mttrMinutes: 13, p95LatencyMs: 318, errorRatePercent: 1.2 },
-  { time: '13:30', activeUsers: 2188, mtps: 48720, mttrMinutes: 11, p95LatencyMs: 286, errorRatePercent: 0.9 },
-  { time: '13:35', activeUsers: 2240, mtps: 50160, mttrMinutes: 10, p95LatencyMs: 292, errorRatePercent: 0.8 },
-  { time: '13:40', activeUsers: 2164, mtps: 48240, mttrMinutes: 9, p95LatencyMs: 276, errorRatePercent: 0.6 },
-  { time: '13:45', activeUsers: 2036, mtps: 45960, mttrMinutes: 9, p95LatencyMs: 248, errorRatePercent: 0.5 },
-  { time: '13:50', activeUsers: 1912, mtps: 43440, mttrMinutes: 8, p95LatencyMs: 232, errorRatePercent: 0.4 },
-  { time: '13:55', activeUsers: 1798, mtps: 41400, mttrMinutes: 8, p95LatencyMs: 226, errorRatePercent: 0.4 },
-  { time: '14:00', activeUsers: 1726, mtps: 39840, mttrMinutes: 7, p95LatencyMs: 218, errorRatePercent: 0.3 },
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  addAdminBlacklist,
+  getAdminBlacklist,
+  removeAdminBlacklist,
+} from '@/src/shared/api/adminApi';
+import type {
+  BlacklistItem,
+  BlacklistPageResponse,
+  BlacklistReason,
+} from '@/src/shared/api/types/admin.types';
+
+const reasonOptions: { value: BlacklistReason; label: string }[] = [
+  { value: 'BOT_DETECTED', label: '봇 자동 탐지' },
+  { value: 'MACRO_DETECTED_FE', label: '프론트 매크로 탐지' },
+  { value: 'IP_RATE_LIMIT', label: 'IP 요청 제한 초과' },
+  { value: 'SUSPICIOUS_PATTERN', label: '의심 패턴 탐지' },
+  { value: 'MANUAL_BLOCK', label: '관리자 수동 차단' },
 ];
 
-const serverMetricGauges: LoadMetricGauge[] = [
-  {
-    id: 'transactions-per-second',
-    label: '초당 트랜잭션',
-    value: 664,
-    unit: '건/s',
-    max: 1000,
-    tone: 'green',
-    thresholds: [
-      { value: 0, color: '#22c55e' },
-      { value: 760, color: '#f97316' },
-      { value: 920, color: '#dc2626' },
-    ],
-  },
-  {
-    id: 'p95-latency',
-    label: 'p95 응답시간',
-    value: 218,
-    unit: 'ms',
-    max: 600,
-    tone: 'green',
-    thresholds: [
-      { value: 0, color: '#22c55e' },
-      { value: 300, color: '#f97316' },
-      { value: 450, color: '#dc2626' },
-    ],
-  },
-  {
-    id: 'http-error-rate',
-    label: 'HTTP 에러율',
-    value: 0.3,
-    unit: '%',
-    max: 5,
-    tone: 'green',
-    decimals: 1,
-    thresholds: [
-      { value: 0, color: '#22c55e' },
-      { value: 1.5, color: '#f97316' },
-      { value: 3, color: '#dc2626' },
-    ],
-  },
-  {
-    id: 'mtps',
-    label: 'MTPS',
-    value: 50160,
-    unit: '건/분',
-    max: 60000,
-    tone: 'orange',
-    thresholds: [
-      { value: 0, color: '#22c55e' },
-      { value: 45000, color: '#f97316' },
-      { value: 56000, color: '#dc2626' },
-    ],
-  },
-  {
-    id: 'mttr',
-    label: 'MTTR',
-    value: 7,
-    unit: '분',
-    max: 30,
-    tone: 'green',
-    thresholds: [
-      { value: 0, color: '#22c55e' },
-      { value: 15, color: '#f97316' },
-      { value: 24, color: '#dc2626' },
-    ],
-  },
-];
+const reasonLabels = reasonOptions.reduce<Record<string, string>>((acc, option) => {
+  acc[option.value] = option.label;
+  return acc;
+}, {});
 
-const serverEvents = [
-  {
-    metric: 'p95 response time',
-    service: 'tickle-api',
-    value: '318ms',
-    status: '주의',
-    date: '2026.04.23 13:25',
-    message: '피크 유입 구간에서 응답 지연이 일시적으로 증가했습니다.',
-  },
-  {
-    metric: 'HTTP error rate',
-    service: 'payment-api',
-    value: '1.2%',
-    status: '정상화',
-    date: '2026.04.23 13:31',
-    message: '결제 재시도 정책 적용 후 오류율이 안정 범위로 복귀했습니다.',
-  },
-  {
-    metric: 'MTPS',
-    service: 'ticket-api',
-    value: '50,160건/분',
-    status: '정상',
-    date: '2026.04.23 13:35',
-    message: '분당 최대 처리량이 예상 범위 안에서 유지되고 있습니다.',
-  },
-  {
-    metric: 'MTTR',
-    service: 'incident-response',
-    value: '7분',
-    status: '정상',
-    date: '2026.04.23 14:00',
-    message: '최근 장애 복구 시간이 목표 기준 안으로 유지되고 있습니다.',
-  },
-  {
-    metric: 'Active users',
-    service: 'gateway',
-    value: '2,240명',
-    status: '정상',
-    date: '2026.04.23 13:35',
-    message: '동시 접속 피크 이후 안정적으로 감소 중입니다.',
-  },
-];
+const formatNumber = (value: number) => new Intl.NumberFormat('ko-KR').format(value);
 
-const statusStyle: Record<string, string> = {
-  정상: 'bg-emerald-50 text-emerald-600',
-  정상화: 'bg-blue-50 text-blue-600',
-  주의: 'bg-orange-50 text-orange-600',
-  위험: 'bg-red-50 text-red-600',
+const formatDateTime = (value: string) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 };
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat('ko-KR').format(value);
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : '요청 처리 중 오류가 발생했습니다.';
 }
 
-export default function ServerMonitoringPage() {
-  const peakActiveUsers = Math.max(...serverMonitoringData.map((point) => point.activeUsers));
-  const attentionCount = serverEvents.filter((event) => event.status === '주의').length;
+export default function AdminBlacklistPage() {
+  const [pageData, setPageData] = useState<BlacklistPageResponse | null>(null);
+  const [page, setPage] = useState(0);
+  const [size] = useState(20);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [adminUserId, setAdminUserId] = useState('');
+  const [targetUserId, setTargetUserId] = useState('');
+  const [reason, setReason] = useState<BlacklistReason>('MANUAL_BLOCK');
+  const [detail, setDetail] = useState('');
 
-  const operationalHighlights = [
-    {
-      label: '피크 접속',
-      value: `${formatNumber(peakActiveUsers)}명`,
-      caption: '최근 1시간 최고치',
-    },
-    {
-      label: '주의 이벤트',
-      value: `${attentionCount}건`,
-      caption: '즉시 확인 필요',
-    },
-    {
-      label: '최근 복구 시간',
-      value: `${serverMetricGauges.find((metric) => metric.id === 'mttr')?.value ?? 0}분`,
-      caption: '목표 기준 이내',
-    },
-  ];
+  const items = useMemo(() => pageData?.items ?? [], [pageData]);
+  const totalElements = pageData?.totalElements ?? 0;
+  const totalPages = pageData?.totalPages ?? 0;
+
+  const summary = useMemo(() => {
+    const manualCount = items.filter((item) => item.reason === 'MANUAL_BLOCK').length;
+    const automatedCount = items.length - manualCount;
+
+    return [
+      { label: '전체 차단', value: formatNumber(totalElements), caption: '백엔드 블랙리스트 기준' },
+      { label: '현재 페이지', value: `${formatNumber(items.length)}건`, caption: `${page + 1}/${Math.max(totalPages, 1)} 페이지` },
+      { label: '자동 탐지', value: `${formatNumber(automatedCount)}건`, caption: '현재 페이지 기준' },
+      { label: '수동 차단', value: `${formatNumber(manualCount)}건`, caption: '현재 페이지 기준' },
+    ];
+  }, [items, page, totalElements, totalPages]);
+
+  const loadBlacklist = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await getAdminBlacklist(page, size);
+      setPageData(response.data);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, size]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadBlacklist();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadBlacklist]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const parsedUserId = Number(targetUserId);
+      const parsedAdminUserId = adminUserId ? Number(adminUserId) : undefined;
+
+      if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+        throw new Error('차단할 사용자 ID를 숫자로 입력해 주세요.');
+      }
+
+      if (parsedAdminUserId !== undefined && (!Number.isInteger(parsedAdminUserId) || parsedAdminUserId <= 0)) {
+        throw new Error('관리자 ID는 숫자로 입력해 주세요.');
+      }
+
+      await addAdminBlacklist({
+        userId: parsedUserId,
+        reason,
+        detail: detail.trim() || undefined,
+        adminUserId: parsedAdminUserId,
+      });
+
+      setTargetUserId('');
+      setDetail('');
+      setSuccessMessage('블랙리스트에 등록했습니다.');
+      await loadBlacklist();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemove = async (item: BlacklistItem) => {
+    const confirmed = window.confirm(`사용자 ${item.userId}의 차단을 해제할까요?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      await removeAdminBlacklist(item.blacklistId);
+      setSuccessMessage('블랙리스트 항목을 삭제했습니다.');
+      await loadBlacklist();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    }
+  };
 
   return (
     <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-      <header className="flex flex-col gap-4">
-        <div>
-          <p className="text-sm font-bold text-blue-600">서버 모니터링</p>
-          <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
-            서버 모니터링 대시보드
-          </h1>
-        </div>
+      <header className="flex flex-col gap-2">
+        <p className="text-sm font-bold text-blue-600">Admin API</p>
+        <h1 className="text-2xl font-black tracking-normal text-slate-950">블랙리스트 관리</h1>
+        <p className="text-sm font-medium text-slate-500">
+          `/api/v1/admin/blacklist` 엔드포인트로 등록, 조회, 삭제를 처리합니다.
+        </p>
       </header>
 
-      <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.55fr)_320px]">
-        <div>
-          <ServerMonitoringChart
-            data={serverMonitoringData}
-            title="실시간 접속자 수"
-            subtitle="최근 1시간 활성 접속자 수 변화"
-          />
-        </div>
+      <section className="grid gap-4 md:grid-cols-4">
+        {summary.map((item) => (
+          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold text-slate-500">{item.label}</p>
+            <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
+            <p className="mt-2 text-xs font-bold text-slate-500">{item.caption}</p>
+          </article>
+        ))}
+      </section>
 
-        <div className="h-full">
-          <aside className="flex h-full flex-col rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-            <label className="flex flex-col gap-2">
-              <span className="text-[12px] font-black text-slate-500">서비스 선택</span>
-              <select className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white">
-                <option>전체 서비스</option>
-                <option>tickle-api</option>
-                <option>ticket-api</option>
-                <option>payment-api</option>
-              </select>
-            </label>
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-black text-slate-950">수동 차단 등록</h2>
+        <form className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr_auto]" onSubmit={handleSubmit}>
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold text-slate-500">사용자 ID</span>
+            <input
+              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              inputMode="numeric"
+              onChange={(event) => setTargetUserId(event.target.value)}
+              placeholder="예: 1001"
+              value={targetUserId}
+            />
+          </label>
 
-            <div className="mt-5 flex flex-1 flex-col gap-3">
-              {operationalHighlights.map((item) => (
-                <div key={item.label} className="flex flex-1 flex-col justify-center rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
-                  <p className="mt-2 text-[24px] font-black tracking-tight text-slate-950">{item.value}</p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">{item.caption}</p>
-                </div>
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold text-slate-500">사유</span>
+            <select
+              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              onChange={(event) => setReason(event.target.value as BlacklistReason)}
+              value={reason}
+            >
+              {reasonOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
               ))}
-            </div>
-          </aside>
-        </div>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold text-slate-500">관리자 ID</span>
+            <input
+              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              inputMode="numeric"
+              onChange={(event) => setAdminUserId(event.target.value)}
+              placeholder="토큰에서 자동 추출"
+              value={adminUserId}
+            />
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-bold text-slate-500">상세 사유</span>
+            <input
+              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              onChange={(event) => setDetail(event.target.value)}
+              placeholder="운영 메모"
+              value={detail}
+            />
+          </label>
+
+          <button
+            className="h-11 self-end rounded-lg bg-slate-950 px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? '등록 중' : '등록'}
+          </button>
+        </form>
+
+        {errorMessage ? (
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{errorMessage}</p>
+        ) : null}
+        {successMessage ? (
+          <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{successMessage}</p>
+        ) : null}
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-        <header className="px-1">
-          <h2 className="text-[16px] font-black leading-6 tracking-tight text-slate-950">
-            서버 핵심 지표
-          </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            한계치에 가까워지는 항목을 빠르게 읽을 수 있도록 게이지 카드로 정리했습니다.
-          </p>
-        </header>
-        <div className="mt-4">
-          <LoadMetricGaugePanel metrics={serverMetricGauges} />
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-        <header className="border-b border-slate-200/80 px-5 py-4">
-          <h2 className="text-[16px] font-black leading-6 tracking-tight text-slate-950">
-            서버 이벤트 로그
-          </h2>
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <header className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">차단 목록</h2>
+            <p className="mt-1 text-sm font-medium text-slate-500">페이지 크기 {size}건</p>
+          </div>
+          <button
+            className="h-10 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            onClick={() => void loadBlacklist()}
+            type="button"
+          >
+            새로고침
+          </button>
         </header>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px] table-auto text-left text-sm">
-            <thead className="bg-slate-50/90 text-slate-500">
+          <table className="w-full min-w-[920px] text-left text-sm">
+            <thead className="bg-slate-50 text-slate-500">
               <tr>
-                <th className="px-5 py-3 font-black whitespace-nowrap">메트릭</th>
-                <th className="px-5 py-3 font-black whitespace-nowrap">서비스</th>
-                <th className="px-5 py-3 font-black whitespace-nowrap">값</th>
-                <th className="px-5 py-3 font-black whitespace-nowrap">일자</th>
-                <th className="px-5 py-3 font-black whitespace-nowrap">처리상태</th>
-                <th className="px-5 py-3 font-black">내용</th>
+                <th className="px-5 py-3 font-black">ID</th>
+                <th className="px-5 py-3 font-black">사용자</th>
+                <th className="px-5 py-3 font-black">사유</th>
+                <th className="px-5 py-3 font-black">등록 관리자</th>
+                <th className="px-5 py-3 font-black">등록일</th>
+                <th className="px-5 py-3 font-black">상세</th>
+                <th className="px-5 py-3 font-black">작업</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {serverEvents.map((event) => (
-                <tr key={`${event.metric}-${event.date}`} className="align-top">
-                  <td className="px-5 py-4 font-black text-slate-900 whitespace-nowrap">{event.metric}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500 whitespace-nowrap">{event.service}</td>
-                  <td className="px-5 py-4 font-black text-slate-900 whitespace-nowrap">{event.value}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500 whitespace-nowrap">{event.date}</td>
-                  <td className="px-5 py-4 whitespace-nowrap">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-black ${
-                        statusStyle[event.status] ?? 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {event.status}
+              {items.map((item) => (
+                <tr key={item.blacklistId} className="align-top">
+                  <td className="px-5 py-4 font-black text-slate-900">{item.blacklistId}</td>
+                  <td className="px-5 py-4 font-bold text-slate-700">{item.userId}</td>
+                  <td className="px-5 py-4">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700">
+                      {reasonLabels[item.reason] ?? item.reason}
                     </span>
                   </td>
-                  <td className="min-w-[420px] px-5 py-4 font-semibold leading-6 text-slate-600">
-                    {event.message}
+                  <td className="px-5 py-4 font-semibold text-slate-500">{item.blockedBy ?? '-'}</td>
+                  <td className="px-5 py-4 font-semibold text-slate-500">{formatDateTime(item.createdAt)}</td>
+                  <td className="max-w-[320px] px-5 py-4 font-medium leading-6 text-slate-600">
+                    {item.detail || '-'}
+                  </td>
+                  <td className="px-5 py-4">
+                    <button
+                      className="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-100"
+                      onClick={() => void handleRemove(item)}
+                      type="button"
+                    >
+                      삭제
+                    </button>
                   </td>
                 </tr>
               ))}
+              {!isLoading && items.length === 0 ? (
+                <tr>
+                  <td className="px-5 py-10 text-center text-sm font-bold text-slate-500" colSpan={7}>
+                    등록된 블랙리스트 항목이 없습니다.
+                  </td>
+                </tr>
+              ) : null}
+              {isLoading ? (
+                <tr>
+                  <td className="px-5 py-10 text-center text-sm font-bold text-slate-500" colSpan={7}>
+                    불러오는 중입니다.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
+
+        <footer className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+          <button
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
+            disabled={page <= 0}
+            onClick={() => setPage((current) => Math.max(0, current - 1))}
+            type="button"
+          >
+            이전
+          </button>
+          <span className="text-sm font-bold text-slate-500">
+            {page + 1} / {Math.max(totalPages, 1)}
+          </span>
+          <button
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
+            disabled={!pageData?.hasNext}
+            onClick={() => setPage((current) => current + 1)}
+            type="button"
+          >
+            다음
+          </button>
+        </footer>
       </section>
     </div>
   );

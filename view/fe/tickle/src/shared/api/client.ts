@@ -82,7 +82,7 @@ export const apiClient = async <T, A = any, I = any>(
       const errorData = await response.json().catch(() => null);
       
       // 403 Forbidden (블랙리스트 등) 처리
-      if (response.status === 403) {
+      if (response.status === 403 && !path.includes('/api/v1/admin/')) {
         if (typeof window !== 'undefined') {
           window.location.href = '/blocked?reason=blacklist';
         }
