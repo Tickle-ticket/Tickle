@@ -38,7 +38,7 @@ export const apiClient = async <T, A = unknown, I = unknown>(
   path: string,
   options: RequestOptions = {},
   _isRetry = false,
-  schema?: Schema.Schema<A, I>
+  schema?: Schema.Schema.AnyNoContext
 ): Promise<T> => {
   const url = buildUrl(path, options.params);
   const { body, headers, credentials, ...restOptions } = options;

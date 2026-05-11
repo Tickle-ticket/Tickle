@@ -169,7 +169,7 @@ export type WindowRow = Schema.Schema.Type<typeof WindowRowSchema>;
 export type TrialJSON = Schema.Schema.Type<typeof TrialJSONSchema>;
 
 // ─── API Schema Helpers ──────────────────────────────────────
-export const createApiResponseSchema = <A, I>(dataSchema: Schema.Schema<A, I>) =>
+export const createApiResponseSchema = (dataSchema: Schema.Schema.AnyNoContext) =>
   Schema.Struct({
     status: Schema.Number,
     message: Schema.String,
