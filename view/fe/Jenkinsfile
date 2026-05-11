@@ -19,6 +19,15 @@ pipeline {
 
         SSH_CREDENTIAL_ID = 'fe-ec2-key'
         MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
+
+        NEXT_PUBLIC_API_URL = 'https://tickle-ticket.co.kr'
+        NEXT_PUBLIC_AUTH_API_URL = 'https://tickle-ticket.co.kr'
+        NEXT_PUBLIC_AI_PUBLIC_API_URL = 'http://70.12.246.186:8080'
+        NEXT_PUBLIC_API_MOCKING = 'disabled'
+        NEXT_PUBLIC_INTERNAL_SECRET = 'tickle-internal'
+        NEXT_PUBLIC_KAKAO_REST_API_KEY = '484f24406bdcf9b3bcd0a34c773cde99'
+        NEXT_PUBLIC_KAKAO_REDIRECT_URI = 'https://tickle-ticket.co.kr/oauth/callback'
+        NEXT_PUBLIC_PAYMENT_BASE_URL = 'https://tickle-ticket.co.kr'
     }
 
     stages {
@@ -37,10 +46,9 @@ pipeline {
                     echo '===== [2/4] pnpm 환경 구축 및 Next.js 빌드 ====='
                     sh 'npm install -g pnpm'
                     sh '''
-                        rm -rf node_modules
-                        pnpm install --no-frozen-lockfile --shamefully-hoist
+                        pnpm install --frozen-lockfile --shamefully-hoist
                         pnpm approve-builds || true
-                        NEXT_PUBLIC_API_MOCKING=disabled pnpm build
+                        pnpm build
                     '''
                 }
             }
@@ -57,13 +65,10 @@ pipeline {
                     sh """
                         cd ${env.PROJECT_PATH}
                         tar -czf deploy.tar.gz \
-                            .next \
+                            .next/standalone \
+                            .next/static \
                             public \
-                            package.json \
-                            pnpm-lock.yaml \
-                            next.config.ts \
-                            Dockerfile \
-                            .dockerignore
+                            Dockerfile
                     """
 
                     // 2. 서버 폴더 준비 및 소유권 설정
