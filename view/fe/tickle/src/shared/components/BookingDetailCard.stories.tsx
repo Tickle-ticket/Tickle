@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { BookingDetailCard } from './BookingDetailCard';
 
 const meta = {
-  title: 'Pages/PaymentSuccessMock',
+  title: 'user/PaymentMock',
   component: BookingDetailCard,
   parameters: {
     layout: 'fullscreen',
@@ -13,11 +13,17 @@ const meta = {
       <div className="min-h-screen bg-[#f8f8f8] flex flex-col font-sans p-6">
         <div className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full space-y-6">
-            <div className="w-full text-left">
-              <h1 className="text-2xl font-extrabold text-gray-900 text-center mb-6">
+            <div className="w-full text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-extrabold text-gray-900 mb-6">
                 예매가 완료되었습니다!
               </h1>
-              <Story />
+              <div className="text-left"><Story /></div>
             </div>
             <div className="flex gap-4 pt-4">
               <button className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">

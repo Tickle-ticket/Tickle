@@ -42,11 +42,12 @@ interface BookViewProps {
   initialModifyModeActive?: boolean;
   initialModifyingSchedule?: boolean;
   admitToken?: string;
+  storyMode?: boolean;
 }
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken }: BookViewProps) => {
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false }: BookViewProps) => {
   const isWaitlistMode = mode === 'WAITLIST';
   const isCancelMode = mode === 'CANCEL';
 
@@ -97,7 +98,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     }
   };
 
-  const { fetchOptions, submitPreorder, isOptionsLoading, isPreorderLoading, optionsData } = useBookingPreorder();
+  const { fetchOptions, submitPreorder, isOptionsLoading, isPreorderLoading, optionsData, setOptionsData } = useBookingPreorder();
 
   const bookingStep = useBookStore(s => s.bookingStep);
   const setBookingStep = useBookStore(s => s.setBookingStep);
@@ -123,7 +124,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     scheduleId,
     enableWs,
     mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING',
-    admitToken || null
+    admitToken || null,
+    storyMode
   );
 
   const { data: ownershipCountResponse } = useQuery({
@@ -181,15 +183,18 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const StageComponent = React.useMemo(() => {
     if (!venueId) return null;
     return React.lazy<React.ComponentType<any>>(() =>
-      import(`@/src/shared/components/Stage_${venueId}`)
+      import(`../../../shared/components/Stage_${venueId}`)
         .then(module => ({ default: module[`Stage_${venueId}`] }))
-        .catch(() => ({
-          default: () => (
-            <div className="flex items-center justify-center h-full min-h-[600px] text-gray-500 bg-gray-50 dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800">
-              <p className="font-medium text-lg">이 공연장의 도면은 아직 지원되지 않습니다.</p>
-            </div>
-          )
-        }))
+        .catch((err) => {
+          console.error("Failed to load stage", venueId, err);
+          return {
+            default: () => (
+              <div className="flex items-center justify-center h-full min-h-[600px] text-gray-500 bg-gray-50 dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800">
+                <p className="font-medium text-lg">이 공연장의 도면은 아직 지원되지 않습니다. ({venueId})</p>
+              </div>
+            )
+          };
+        })
     );
   }, [venueId]);
 
@@ -468,19 +473,49 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         .filter(Boolean) as number[];
 
       if (isWaitlistMode) {
-        if (!admitToken) {
-          throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
+        if (storyMode) {
+          setIsWaitlistCompleteModalOpen(true);
+        } else {
+          if (!admitToken) {
+            throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
+          }
+          await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
+          await finalizeTrial();
+          setIsWaitlistCompleteModalOpen(true);
         }
-        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
-        await finalizeTrial();
-        setIsWaitlistCompleteModalOpen(true);
       } else {
-        if (sessionSeatIds.length > 0) {
+        if (sessionSeatIds.length > 0 && !storyMode) {
           // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
           await seatApi.holdSeat(eventDetail.eventId, scheduleId!, admitToken || '', { sessionSeatIds });
 
           // 선점 성공 시 옵션(권종/할인) 데이터 조회
           await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), sessionSeatIds);
+        } else if (sessionSeatIds.length > 0 && storyMode) {
+          // storyMode일 경우 가격 옵션 목데이터 주입
+          const mockedSeats = Array.from(selectedSeats).map(seatId => {
+            const { priceGrade, price } = getSeatInfo(seatId);
+            const detailedInfo = getDetailedSeatInfo(seatId);
+            const sessionSeatId = seatsData[seatId]?.sessionSeatId || Math.floor(Math.random() * 1000);
+            
+            return {
+              sessionSeatId,
+              seatLabel: detailedInfo,
+              priceGrade,
+              priceInfos: [
+                { discountName: '일반', discountRate: 0, ticketPriceAmount: price },
+                { discountName: '청소년할인', discountRate: 20, ticketPriceAmount: price * 0.8 },
+                { discountName: '국가유공자할인', discountRate: 50, ticketPriceAmount: price * 0.5 },
+              ]
+            };
+          });
+
+          setOptionsData({
+            eventId: eventDetail.eventId,
+            sessionId: parseInt(scheduleId!, 10),
+            currencyCode: 'KRW',
+            totalTicketPriceAmount: mockedSeats.reduce((sum, s) => sum + s.priceInfos[0].ticketPriceAmount, 0),
+            seats: mockedSeats
+          } as any);
         }
 
         const gradeCounts: Record<string, number> = {};
@@ -495,7 +530,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         setPriceGradeTicketCounts(initial);
 
         // 🔥 인원 선택(권종) 단계로 넘어가기 직전에 데이터 수집 완전 종료 및 전송!
-        await finalizeTrial();
+        if (!storyMode) {
+          await finalizeTrial();
+        }
 
         setBookingStep('TICKET_TYPE');
       }
@@ -550,11 +587,11 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   return (
     <div className="flex h-screen w-full flex-col bg-white dark:bg-zinc-950 overflow-hidden animate-fade-in">
       {/* Header */}
-      <header className="w-full shrink-0 bg-white dark:bg-zinc-950 p-6 shadow-sm flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 z-10">
-        <div className="flex items-center gap-4">
+      <header className="w-full shrink-0 bg-white dark:bg-zinc-950 px-4 py-3 sm:p-6 shadow-sm flex items-center justify-between border-b border-gray-200 dark:border-zinc-800 z-10">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={handleCloseClick}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
             aria-label="닫기"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -562,34 +599,46 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
-          <h1 className="text-xl font-bold">{bookingStep === 'PAY_METHOD' ? '결제 수단 선택' : bookingStep === 'PAYMENT' ? '결제 하기' : '좌석 선택'}</h1>
+          <h1 className="text-base sm:text-xl font-bold truncate">{bookingStep === 'PAY_METHOD' ? '결제 수단 선택' : bookingStep === 'PAYMENT' ? '결제 하기' : '좌석 선택'}</h1>
         </div>
-        <div className="text-sm font-medium text-gray-500 flex items-center gap-2 bg-gray-50 dark:bg-zinc-800 px-4 py-2 rounded-full border border-gray-200 dark:border-zinc-700">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-          예매 가능 시간 <span className="text-red-500 font-extrabold ml-1">{formatTime(timeLeft)}</span>
+        <div className="text-xs sm:text-sm font-medium text-gray-500 flex items-center gap-1.5 sm:gap-2 bg-gray-50 dark:bg-zinc-800 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full border border-gray-200 dark:border-zinc-700">
+          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse"></span>
+          <span className="hidden sm:inline">예매 가능 시간</span> <span className="text-red-500 font-extrabold sm:ml-1">{formatTime(timeLeft)}</span>
         </div>
       </header>
 
-      {/* Main Content: Horizontal Split */}
-      <div className="flex flex-1 w-full overflow-hidden">
+      {/* Main Content */}
+      <div className="flex-1 w-full overflow-hidden relative">
 
-        {/* Left Side: Map Area */}
-        <SeatMapPanel
-          scheduleId={scheduleId}
-          isModifyingSchedule={isModifyingSchedule}
-          isSeatsLoading={isSeatsLoading}
-          venueId={venueId}
-          StageComponent={StageComponent}
-          seatsData={seatsData}
-          handleSeatClick={handleSeatClick}
-          isWaitlistMode={isWaitlistMode}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          seatPrices={SEAT_PRICES}
-        />
+        {/* Map Area — always present as base layer on desktop; full screen on mobile when schedule confirmed */}
+        <div className={`absolute inset-0 lg:relative lg:w-[60%] lg:h-full ${(!confirmedSchedule || isModifyingSchedule) ? 'hidden lg:block' : ''}`}>
+          <SeatMapPanel
+            scheduleId={scheduleId}
+            isModifyingSchedule={isModifyingSchedule}
+            isSeatsLoading={isSeatsLoading}
+            venueId={venueId}
+            StageComponent={StageComponent}
+            seatsData={seatsData}
+            handleSeatClick={handleSeatClick}
+            isWaitlistMode={isWaitlistMode}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            seatPrices={SEAT_PRICES}
+          />
+        </div>
 
-        {/* Right Side: Information & Checkout */}
-        <div className="w-[40%] h-full flex flex-col bg-gray-50 dark:bg-zinc-950 relative">
+        {/* Right Side Panel */}
+        {/* Mobile: when schedule NOT confirmed → full screen schedule picker */}
+        {/* Mobile: when schedule confirmed → transparent overlay floating on map */}
+        {/* Desktop: always side-by-side panel */}
+        <div className={`${(!confirmedSchedule || isModifyingSchedule)
+          ? 'relative w-full h-full lg:absolute lg:right-0 lg:top-0 lg:w-[40%] lg:h-full bg-gray-50 dark:bg-zinc-950 overflow-y-auto'
+          : `absolute inset-0 lg:right-0 lg:top-0 lg:left-auto lg:w-[40%] lg:bg-gray-50 dark:lg:bg-zinc-950 lg:overflow-y-auto lg:pointer-events-auto ${
+              bookingStep === 'SEAT'
+                ? 'pointer-events-none'
+                : 'pointer-events-auto bg-gray-50 dark:bg-zinc-950 overflow-y-auto z-30'
+            }`
+        } flex flex-col`}>
           {bookingStep === 'SEAT' && (
             <SeatSelectionPanel
               eventDetail={eventDetail}
@@ -643,6 +692,12 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   return;
                 }
                 try {
+                  if (storyMode) {
+                    setPreorderBookingId(9999);
+                    setBookingStep('PAYMENT');
+                    return;
+                  }
+
                   const res = await submitPreorder(
                     parseInt(eventDetail.eventId, 10),
                     parseInt(scheduleId!, 10),
@@ -694,6 +749,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           }}
           onConflictError={() => setIsConflictModalOpen(true)}
           onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
+          storyMode={storyMode}
         />
       )}
 

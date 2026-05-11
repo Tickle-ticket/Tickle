@@ -583,8 +583,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                     value={formData.email}
                     onChange={handleChange}
                     error={errors.email}
-                    style={{ letterSpacing: '-0.02em' }}
-                    className="[&_input]:text-[20px]"
                   />
                   <Input
                     label="비밀번호"
@@ -597,8 +595,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                     value={formData.password}
                     onChange={handleChange}
                     error={errors.password}
-                    style={{ letterSpacing: '-0.02em' }}
-                    className="[&_input]:text-[20px]"
                   />
                   <Input
                     label="비밀번호 확인"
@@ -611,8 +607,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                     value={formData.passwordConfirm}
                     onChange={handleChange}
                     error={errors.passwordConfirm}
-                    style={{ letterSpacing: '-0.02em' }}
-                    className="[&_input]:text-[20px]"
                   />
                 </div>
               </div>
@@ -633,8 +627,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                     onChange={handleChange}
                     onBlur={handleBlur}
                     error={errors.name}
-                    style={{ letterSpacing: '-0.02em' }}
-                    className="[&_input]:text-[20px]"
                   />
                   {!isAgencySignup ? (
                     <>
@@ -650,8 +642,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                         onChange={handleChange}
                         onBlur={handleBlur}
                         error={errors.nickname}
-                        style={{ letterSpacing: '-0.02em' }}
-                        className="[&_input]:text-[20px]"
                       />
                       <Input
                         label="생년월일"
@@ -664,8 +654,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                         value={formData.birthDate}
                         onChange={handleChange}
                         error={errors.birthDate}
-                        style={{ letterSpacing: '-0.02em' }}
-                        className="[&_input]:text-[20px]"
                       />
                     </>
                   ) : null}
@@ -702,8 +690,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                         onChange={handleChange}
                         disabled={isPhoneVerified}
                         error={errors.phone}
-                        style={{ letterSpacing: '-0.02em' }}
-                        className="[&_input]:text-[20px]"
                       />
                     </div>
                     <Button
@@ -731,8 +717,6 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                           value={verificationCode}
                           onChange={handleChange}
                           error={errors.verificationCode}
-                          style={{ letterSpacing: '-0.02em' }}
-                          className="[&_input]:text-[20px]"
                         />
                       </div>
                       <Button

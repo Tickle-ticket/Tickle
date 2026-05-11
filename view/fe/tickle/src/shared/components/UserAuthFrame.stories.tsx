@@ -20,41 +20,66 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const LoginLayout: Story = {
-  args: {
-    activeTab: 'login',
-    label: '관람객 로그인',
-    title: '예매에 사용할 계정으로 로그인해 주세요',
-    authTabs: [
-      { key: 'audience', label: '관람객', active: true },
-      { key: 'agency', label: '기획사' },
-      { key: 'signup', label: '회원가입' },
-    ],
-    children: (
-      <div className="space-y-5">
-        <Box variant="outline" className="rounded-[24px] p-6">
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-slate-500">이메일</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">you@tickle.kr</p>
-            </div>
-            <div className="border-t border-slate-200 pt-4">
-              <p className="text-sm font-medium text-slate-500">비밀번호</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">••••••••</p>
-            </div>
-          </div>
-        </Box>
-        <Button type="button" display="block" size="xlarge">
-          로그인
-        </Button>
-      </div>
-    ),
-    footer: (
-      <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
-        <span>비밀번호 찾기</span>
-        <span>|</span>
-        <span>회원가입</span>
-      </div>
-    ),
+import { LoginPageClient } from '../../app/login/LoginPageClient';
+
+import React, { useEffect, useState } from 'react';
+
+
+
+import { SignupPageClient } from '../../app/signup/SignupPageClient';
+import { SignupFormPageClient } from '../../app/signup/form/SignupFormPageClient';
+
+
+const InteractiveStoryRouter = () => {
+  const [route, setRoute] = useState('/login');
+
+  useEffect(() => {
+    const handleNav = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      setRoute(customEvent.detail);
+    };
+    window.addEventListener('storybook-auth-nav', handleNav);
+    return () => window.removeEventListener('storybook-auth-nav', handleNav);
+  }, []);
+
+  if (route.startsWith('/signup/form')) {
+    const isAgency = route.includes('type=agency');
+    return <SignupFormPageClient initialAccountType={isAgency ? 'agency' : 'audience'} key={route} />;
+  }
+
+  if (route.startsWith('/signup')) {
+    return <SignupPageClient />;
+  }
+
+  // key 프롭스를 줘서 라우트가 바뀔 때(mode 쿼리 변경)마다 강제로 다시 마운트하여 새로운 URL 값을 읽게 함
+  return <LoginPageClient key={route} />;
+};
+
+export const ActualLoginPage: Story = {
+  name: 'Actual Login Page (통합 테스트용)',
+  render: () => <InteractiveStoryRouter />,
+  parameters: {
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: '/login',
+      },
+    },
+  },
+};
+
+export const ActualLoginPageMobile: Story = {
+  name: 'Actual Login Page Mobile (통합 테스트용)',
+  render: () => <InteractiveStoryRouter />,
+  parameters: {
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: '/login',
+      },
+    },
+    viewport: {
+      defaultViewport: 'mobile1',
+    },
   },
 };

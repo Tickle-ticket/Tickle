@@ -13,9 +13,10 @@ interface QueueViewProps {
   onClose: () => void;
   fastMode?: boolean;
   scope?: 'BOOKING' | 'CANCELLATION_WAIT';
+  storyMode?: boolean;
 }
 
-export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING' }: QueueViewProps) => {
+export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', storyMode }: QueueViewProps) => {
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
@@ -61,6 +62,14 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
       if (isCancelled) return;
       if (!eventId || eventId === 'undefined') {
         console.error('Invalid eventId passed to QueueView:', eventId);
+        return;
+      }
+
+      if (storyMode) {
+        setStatus('WAITING');
+        setRank(1234);
+        setWaitingCount(1233);
+        setEstimatedWaitSeconds(450);
         return;
       }
 
@@ -214,11 +223,11 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-50/95 backdrop-blur-sm z-50 p-6 relative overflow-hidden">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-50/95 backdrop-blur-sm z-50 p-4 sm:p-6 relative overflow-hidden">
       {/* 장식용 배경 요소 */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <Box variant="flat" padding="large" className="z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col items-center animate-fade-in relative">
+      <Box variant="flat" padding="large" className="z-10 w-full max-w-sm sm:max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col items-center animate-fade-in relative">
         <button
           onClick={handleCloseClick}
           className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
@@ -249,7 +258,9 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
             </div>
 
             <div className="text-center w-full flex flex-col items-center">
-              <Text typography="t3" fontWeight="bold" color="primary" className="text-center">예매 대기 중입니다</Text>
+              <Text typography="t3" fontWeight="bold" color="primary" className="text-center">
+                {scope === 'CANCELLATION_WAIT' ? '취소표 대기 중입니다' : '예매 대기 중입니다'}
+              </Text>
               <Text typography="t6" color="secondary" className="mt-4 break-keep leading-relaxed text-center">
                 현재 접속 인원이 많아 대기 중입니다.<br />
                 새로고침하거나 뒤로가기 시 순서가 초기화됩니다.

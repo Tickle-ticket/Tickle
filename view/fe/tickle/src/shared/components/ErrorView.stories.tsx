@@ -8,7 +8,7 @@ import { ErrorView } from './ErrorView';
  * 부모 페이지에서 컴포넌트의 껍데기만 렌더링하며, 클릭 액션(`onAction`)은 부모가 주입합니다.
  */
 const meta = {
-  title: 'Shared/ErrorView',
+  title: 'user/ErrorView',
   component: ErrorView,
   parameters: {
     // 에러 뷰는 보통 화면 전체나 넓은 영역을 덮으므로 풀스크린을 권장

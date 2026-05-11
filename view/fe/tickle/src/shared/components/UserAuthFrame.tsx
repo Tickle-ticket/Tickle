@@ -94,8 +94,8 @@ export function UserAuthFrame({
         <main className={`mx-auto flex w-full flex-1 flex-col ${mainLayoutClass} ${contentWidth}`}>
           <Box variant="flat" padding="none" className="w-full bg-white">
             <div className="w-full">
-              <div className="mb-6 rounded-[28px] border border-slate-200 bg-slate-100/80 p-1.5">
-                <div className="grid grid-cols-3 gap-1.5">
+              <div className="mb-6 rounded-[20px] sm:rounded-[28px] border border-slate-200 bg-slate-100/80 p-1 sm:p-1.5">
+                <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
                   {tabs.map((item) => (
                     <button
                       key={item.key}
@@ -107,10 +107,15 @@ export function UserAuthFrame({
                         }
 
                         if (item.href) {
+                          if (typeof window !== 'undefined' && window.parent !== window) {
+                            // Storybook iframe 내에서 실행 중일 경우 URL을 강제로 변경하고 커스텀 이벤트 발생
+                            window.history.pushState({}, '', item.href);
+                            window.dispatchEvent(new CustomEvent('storybook-auth-nav', { detail: item.href }));
+                          }
                           router.push(item.href);
                         }
                       }}
-                      className={`min-h-[58px] rounded-[22px] px-4 text-base font-bold transition ${
+                      className={`min-h-[44px] sm:min-h-[58px] rounded-[16px] sm:rounded-[22px] px-2 sm:px-4 text-[13px] sm:text-base font-bold transition ${
                         item.active
                           ? 'bg-white text-slate-950 shadow-[0_10px_24px_rgba(15,23,42,0.08)]'
                           : 'text-slate-500 hover:text-slate-800'

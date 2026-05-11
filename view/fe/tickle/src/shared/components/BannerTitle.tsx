@@ -11,7 +11,7 @@ export const BannerTitle = ({
 
   return (
     <h2 
-      className={`text-3xl md:text-4xl font-black tracking-tighter leading-tight whitespace-pre-line break-keep line-clamp-2 md:line-clamp-3 mb-2 ${!color ? 'text-white' : ''} ${className}`}
+      className={`text-2xl md:text-4xl font-black tracking-tighter leading-tight whitespace-pre-line break-keep line-clamp-2 md:line-clamp-3 mb-1.5 drop-shadow-md ${!color ? 'text-white' : ''} ${className}`}
       style={color ? { color } : undefined}
     >
       {title}

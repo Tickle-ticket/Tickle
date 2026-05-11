@@ -7,6 +7,7 @@ import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { InfoCard } from '@/src/shared/components/InfoCard';
+import { SearchListCard } from '@/src/shared/components/SearchListCard';
 import { Text } from '@/src/shared/components/Text';
 
 import { Modal } from '@/src/shared/components/Modal';
@@ -86,10 +87,62 @@ export const UpcomingWishlistView = () => {
         </Text>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
+      {/* 모바일 가로 리스트(SearchListCard) 렌더링 - md 미만에서만 표시 */}
+      <div className="flex flex-col gap-3 md:hidden pb-20">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, idx) => (
+            <div key={idx} className="w-full">
+              <SearchListCard src="" title="" isLoading={true} />
+            </div>
+          ))
+        ) : upcoming && upcoming.length > 0 ? (
+          upcoming.map((item) => {
+            const isRemoved = wishlistMap[item.id] === false;
+            return (
+              <div
+                key={item.id}
+                className="w-full"
+                onClick={() => {
+                  useDetailStore.getState().openDetail(item.id, `poster-mypage-upcoming-list-${item.id}`);
+                  useMypageStore.getState().closeMypage();
+                }}
+              >
+                <SearchListCard
+                  layoutId={`poster-mypage-upcoming-list-${item.id}`}
+                  src={item.imageUrl}
+                  title={item.title}
+                  place={item.venue}
+                  day={item.date}
+                  showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
+                  targetDate={item.openDate}
+                  isWishlisted={!isRemoved}
+                  onWishlistToggle={(e) => handleToggle(e, item.id)}
+                  wishlistVariant={isRemoved ? 'greyPlus' : 'default'}
+                  badges={item.badges}
+                />
+              </div>
+            );
+          })
+        ) : (
+          <div className="w-full col-span-full flex flex-col items-center justify-center py-16 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
+              관심 있는 공연이 없습니다.
+            </Text>
+            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px] md:max-w-none">
+              홈 화면에서 기대되는 공연에 하트를 눌러보세요!
+            </Text>
+          </div>
+        )}
+      </div>
+
+      {/* 태블릿/데스크톱 그리드 뷰 (InfoCard) - md 이상에서만 표시 */}
+      <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 md:gap-6 pb-20 justify-items-center">
         {isLoading ? (
           Array.from({ length: 6 }).map((_, idx) => (
-            <div key={idx} className="w-full">
+            <div key={idx} className="w-full flex justify-center">
               <InfoCard src="" title="" isLoading={true} showTime={true} />
             </div>
           ))
@@ -124,15 +177,7 @@ export const UpcomingWishlistView = () => {
               </div>
             );
           })
-        ) : (
-          <div className="col-span-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-4">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-            <Text typography="t5" fontWeight="bold" color="secondary" className="mb-1">관심 있는 공연이 없습니다.</Text>
-            <Text typography="t6" color="tertiary">홈 화면에서 기대되는 공연에 하트를 눌러보세요!</Text>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* 에러 모달 */}

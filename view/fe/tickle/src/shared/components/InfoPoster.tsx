@@ -26,7 +26,7 @@ export const InfoPoster = ({
   };
 
   // 높이가 주어지지 않는 이상, 무조건 2:3 세로 형태를 유지하여 찌그러지거나 사라지지 않게 방어
-  const widthClass = width === undefined ? 'w-[240px] md:w-[280px]' : '';
+  const widthClass = width === undefined ? 'w-[150px] md:w-[200px] lg:w-[280px]' : '';
   const aspectClass = height === undefined ? 'aspect-[2/3]' : '';
   const defaultDimensions = `${widthClass} ${aspectClass}`;
 
