@@ -10,6 +10,7 @@ import { BookingCard } from '@/src/shared/components/BookingCard';
 import { MobileBookingCard } from '@/src/shared/components/MobileBookingCard';
 import { BookingDetailCard } from '@/src/shared/components/BookingDetailCard';
 import { Box } from '@/src/shared/components/Box';
+import { Badge } from '@/src/shared/components/Badge';
 import { useRouter } from 'next/navigation';
 import { BookingDetailView } from './BookingDetailView';
 
@@ -272,17 +273,22 @@ export const MyBookingsView = () => {
         showCancelButton={false}
         confirmText="닫기"
         onConfirm={handleClosePaymentModal}
+        className="!max-w-[400px] sm:!max-w-[450px]"
       >
-        <div className="p-2 sm:p-4">
-          <Text typography="t5" fontWeight="bold" className="mb-6 text-center text-gray-900">무통장 입금 정보</Text>
+        <div className="p-1 sm:p-2 w-full">
           {isPaymentLoading || (selectedPaymentId === null && isDetailLoading) ? (
             <div className="py-12 flex flex-col items-center justify-center">
               <div className="w-8 h-8 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
               <p className="text-gray-500 font-medium animate-pulse">결제 정보를 불러오는 중...</p>
             </div>
           ) : paymentDetail ? (
-            <Box variant="outline" className="p-0 sm:p-0 mb-2 overflow-hidden bg-white mt-4 w-full">
-              <Table
+            <div className="flex flex-col gap-4 w-full">
+              <Box variant="outline" className="p-0 sm:p-0 mb-2 overflow-hidden bg-white w-full">
+                <div className="bg-gray-50/80 border-b border-gray-200 px-5 py-4 flex items-center justify-center">
+                  <Text typography="t5" fontWeight="bold" className="text-center text-gray-800 break-keep">무통장 입금 정보</Text>
+                </div>
+                <div className="p-1">
+                  <Table
                 columns={[
                   { key: 'label', header: '', align: 'left', width: '70px', render: (row) => row.label },
                   { key: 'value', header: '', align: 'right', render: (row) => row.value }
@@ -294,17 +300,32 @@ export const MyBookingsView = () => {
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예금주</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.accountHolder || '-'}</Text> },
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 금액</Text>, value: <Text typography="t5" color="blue" fontWeight="extrabold">{paymentDetail.orderAmount?.toLocaleString()}원</Text> }
                 ]}
-                className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-gray-50/50 [&_td]:!py-3.5 [&_td]:!px-4 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-gray-100"
-              />
-              <div className="bg-red-50/80 p-4 flex flex-col items-center justify-center gap-1.5 border-t border-red-100">
-                <Text typography="t7" color="red" fontWeight="medium">입금 기한</Text>
-                <Text typography="t6" color="red" fontWeight="extrabold">
-                  {paymentDetail.depositDeadline ? new Date(paymentDetail.depositDeadline).toLocaleString('ko-KR', {
-                    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                  }) : '-'}
-                </Text>
-              </div>
-            </Box>
+                  className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-gray-50/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-gray-100"
+                />
+                <div className="bg-red-50/80 p-4 flex flex-col items-center justify-center gap-1.5 border-t border-red-100 mt-2">
+                  <Text typography="t7" color="red" fontWeight="medium">입금 기한</Text>
+                  <Text typography="t6" color="red" fontWeight="extrabold">
+                    {paymentDetail.depositDeadline ? new Date(paymentDetail.depositDeadline).toLocaleString('ko-KR', {
+                      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    }) : '-'}
+                  </Text>
+                </div>
+                </div>
+              </Box>
+              
+              {paymentDetail.seats && paymentDetail.seats.length > 0 && (
+                <div className="mt-6">
+                  <Text typography="t6" fontWeight="bold" className="block mb-3 text-left text-gray-900">상세 좌석 ({paymentDetail.seats.length}매)</Text>
+                  <div className="flex flex-row flex-wrap justify-start gap-2">
+                    {paymentDetail.seats.map((seat) => (
+                      <Badge key={seat.sessionSeatId} color="blue" variant="outline" size="medium" className="font-extrabold px-4 py-2 bg-white shadow-sm">
+                        {seat.rowLabel ? `${seat.rowLabel}열 ` : ''}{seat.seatNumber ? `${seat.seatNumber}번` : seat.seatLabel}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="py-12 text-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto text-red-400 mb-3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>

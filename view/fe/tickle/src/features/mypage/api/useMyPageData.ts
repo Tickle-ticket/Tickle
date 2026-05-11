@@ -29,6 +29,7 @@ export const useMyUpcomingWishlist = () => {
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
     },
+    staleTime: 0,
   });
 };
 export interface BookingData {
@@ -88,6 +89,7 @@ export const useMyBookings = () => {
         paymentId: (r as any).paymentId, // 백엔드에서 추가될 필드
       })) as BookingData[];
     },
+    staleTime: 0,
   });
 };
 
@@ -103,6 +105,7 @@ export const usePaymentStatus = (paymentId: number | null) => {
       return res.data;
     },
     enabled: !!paymentId,
+    staleTime: 0,
   });
 };
 
@@ -116,6 +119,7 @@ export const useBookingDetail = (bookingId: string | null) => {
     },
     enabled: !!bookingId,
     retry: false,
+    staleTime: 0,
   });
 };
 
@@ -126,6 +130,7 @@ export const usePastBookings = () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
       return response.data;
     },
+    staleTime: 0,
   });
 };
 
@@ -170,6 +175,7 @@ export const useWaitlistBookings = () => {
 
       return Object.values(grouped) as WaitlistBookingData[];
     },
+    staleTime: 0,
   });
 };
 

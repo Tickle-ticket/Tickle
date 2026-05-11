@@ -83,12 +83,9 @@ export const PaymentStatusResponseSchema = Schema.Struct({
   bookingStatus: Schema.String,
   orderAmount: Schema.Number,
   currencyCode: Schema.String,
-  // @ts-ignore effect의 버전에 따라 NullOr가 없거나 동작이 다를 수 있지만 기존 코드 보존
-  depositDeadline: Schema.NullOr ? Schema.NullOr(Schema.String) : Schema.Union(Schema.String, Schema.Null),
-  // @ts-ignore
-  bankAccount: Schema.NullOr ? Schema.NullOr(Schema.String) : Schema.Union(Schema.String, Schema.Null),
-  // @ts-ignore
-  accountHolder: Schema.NullOr ? Schema.NullOr(Schema.String) : Schema.Union(Schema.String, Schema.Null),
+  depositDeadline: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
+  bankAccount: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
+  accountHolder: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
   seats: Schema.Array(PaymentSeatSummarySchema),
 });
 

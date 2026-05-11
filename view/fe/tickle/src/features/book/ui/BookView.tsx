@@ -25,6 +25,7 @@ import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/compon
 import { useBookStore } from '../store/useBookStore';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
+import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
 import { TicketTypeStep } from './components/TicketTypeStep';
@@ -48,7 +49,8 @@ interface BookViewProps {
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
 export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false }: BookViewProps) => {
-  const isWaitlistMode = mode === 'WAITLIST';
+  const isShadowModeActive = isShadowMode(eventId);
+  const isWaitlistMode = mode === 'WAITLIST' || isShadowModeActive;
   const isCancelMode = mode === 'CANCEL';
 
   const { data: userProfile } = useUserProfile();
@@ -136,6 +138,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     queryKey: ['ownershipCount', eventDetail?.eventId, scheduleId, userProfile?.userId],
     queryFn: async () => {
       if (!eventDetail?.eventId || !scheduleId || !userProfile?.userId) return null;
+      if (isShadowMode(eventDetail.eventId)) return { totalCount: 0 };
       const res = await reservationApi.getOwnershipCount(eventDetail.eventId, scheduleId, userProfile.userId);
       return res.data;
     },
@@ -144,7 +147,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     gcTime: 0,
   });
 
-  const maxSelectable = Math.max(0, 4 - (ownershipCountResponse?.totalCount || 0));
+  const maxSelectable = isShadowModeActive ? 99 : Math.max(0, 4 - (ownershipCountResponse?.totalCount || 0));
 
   // 현재 선점 중인 상태를 ref로 추적하여, 렌더링마다 불필요하게 해제되지 않도록 함
   const isHoldingSeatRef = React.useRef(false);
@@ -402,7 +405,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       // 내 기존 좌석인 경우 (예약 변경 모드)
       const isMyInitialSeat = initialSeats.includes(seatId);
 
-      const isSelectable = isWaitlistMode ? !!info.waitable : (info.isAvailable || isMyInitialSeat);
+      const isSelectable = isShadowModeActive ? info.isAvailable : isWaitlistMode ? !!info.waitable : (info.isAvailable || isMyInitialSeat);
       const isSelected = isMyInitialSeat ? selectedSeatsToCancel.has(seatId) : selectedSeats.has(seatId);
       
       const reachedMax = selectedSeats.size >= maxSelectable;
@@ -420,7 +423,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       if (bookingStep === 'TICKET_TYPE' && !isSelected) {
         seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
       } else {
-        const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode) ? 'disabled' : (info.priceGrade?.toLowerCase() || '일반'));
+        const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode && !isShadowModeActive) ? 'disabled' : (info.priceGrade?.toLowerCase() || '일반'));
         const finalColor = (viewMode === 'congestion' && congestion !== 'none') ? congestion : gradeColor;
         seatsData[seatId] = { status, isSelected, color: finalColor as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
       }
@@ -500,7 +503,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         .filter(Boolean) as number[];
 
       if (isWaitlistMode) {
-        if (storyMode) {
+        if (storyMode || isShadowModeActive) {
           setIsWaitlistCompleteModalOpen(true);
         } else {
           if (!admitToken) {

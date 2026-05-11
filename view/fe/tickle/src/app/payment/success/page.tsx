@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import type { PaymentStatusResponse } from '@/src/shared/api/types/payment.types';
+import { useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/src/shared/components/Header';
 import { Modal } from '@/src/shared/components/Modal';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
@@ -15,6 +16,7 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { openMypage, closeMypage } = useMypageStore();
+  const queryClient = useQueryClient();
   
   const paymentIdParam = searchParams.get('paymentId');
   const bookingIdParam = searchParams.get('bookingId');
@@ -71,6 +73,10 @@ function PaymentSuccessContent() {
         const res = await paymentApi.getPaymentStatus(actualPaymentId);
         if (res.data) {
           setPaymentData(res.data);
+          
+          // 예매가 완료/대기 상태로 변경되었으므로 캐시 무효화
+          queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+          queryClient.invalidateQueries({ queryKey: ['pastBookings'] });
           
           const { reservationApi } = await import('@/src/shared/api/reservationApi');
           try {

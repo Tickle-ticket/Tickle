@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { isShadowMode, generateShadowMockSeats } from '@/src/shared/utils/shadowMode';
 
 export interface SeatStatusData {
   priceGrade: string;
@@ -33,10 +34,23 @@ export const useSeatData = (
       return;
     }
 
-    if (!enableWs) {
+    if (!enableWs && !isShadowMode(eventId)) {
       setSeatAvailability({});
       setIsLoading(false);
       return;
+    }
+
+    if (isShadowMode(eventId)) {
+      setVenueId(4001);
+
+      setSeatAvailability(generateShadowMockSeats());
+      setIsLoading(false);
+
+      const interval = setInterval(() => {
+        setSeatAvailability(generateShadowMockSeats());
+      }, 2500);
+
+      return () => clearInterval(interval);
     }
 
     let isMounted = true;
