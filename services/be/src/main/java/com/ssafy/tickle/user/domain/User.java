@@ -65,12 +65,12 @@ public class User {
 
     // 권한
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 30)
+    @Column(name = "role", nullable = false, columnDefinition = "varchar(30)")
     private UserRole role;
 
     // 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
+    @Column(name = "status", nullable = false, columnDefinition = "varchar(30)")
     private Status status;
 
     // 마지막 로그인 시각

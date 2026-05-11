@@ -41,7 +41,7 @@ public class EventImage {
 
     // 이미지 유형
     @Enumerated(EnumType.STRING)
-    @Column(name = "image_type", nullable = false, length = 30)
+    @Column(name = "image_type", nullable = false, columnDefinition = "varchar(30)")
     private ImageType imageType;
 
     // 이미지 URL

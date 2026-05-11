@@ -49,7 +49,7 @@ public class Organizer {
 
     // 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
+    @Column(name = "status", nullable = false, columnDefinition = "varchar(30)")
     private Status status;
 
     // 생성 시각

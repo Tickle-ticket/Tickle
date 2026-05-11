@@ -12,6 +12,7 @@ import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
+import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.seat.domain.EventSection;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
 import com.ssafy.tickle.venue.domain.VenueSeat;
@@ -48,9 +49,24 @@ public class AgencyEventSeatBatchService {
 
     private final EventRepository eventRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
+    private final EventSessionRepository eventSessionRepository;
     private final VenueSeatRepository venueSeatRepository;
     private final EventSectionRepository eventSectionRepository;
     private final JdbcTemplate jdbcTemplate;
+
+    /**
+     * 공연 좌석과 이미 등록된 회차별 좌석을 함께 생성합니다.
+     */
+    @Transactional
+    public void createSeats(
+            Long eventId,
+            List<AgencyCreateEventSeatGroupRequest> requests
+    ) {
+        List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
+        validateSessionsRegistered(sessions);
+        List<CreatedEventSeat> createdEventSeats = createEventSeats(eventId, requests);
+        createSessionSeats(sessions, createdEventSeats);
+    }
 
     /**
      * 공연장 좌석을 기준으로 공연 좌석을 생성합니다.
@@ -273,6 +289,12 @@ public class AgencyEventSeatBatchService {
     private Event getEventOrThrow(Long eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
+    }
+
+    private void validateSessionsRegistered(List<EventSession> sessions) {
+        if (sessions.isEmpty()) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "회차 등록 후 좌석을 등록해주세요.");
+        }
     }
 
     private EventPricePolicy getPricePolicy(

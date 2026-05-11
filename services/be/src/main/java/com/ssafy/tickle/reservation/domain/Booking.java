@@ -56,7 +56,7 @@ public class Booking {
 
     // 상태
     @Enumerated(EnumType.STRING)
-    @Column(name = "booking_status", nullable = false, length = 30)
+    @Column(name = "booking_status", nullable = false, columnDefinition = "varchar(30)")
     private Status bookingStatus;
 
     // 총 결제 금액

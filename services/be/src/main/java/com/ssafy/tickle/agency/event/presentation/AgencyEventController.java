@@ -180,7 +180,7 @@ public class AgencyEventController implements AgencyEventApiDoc {
             @PathVariable Long eventId,
             @Valid @RequestBody AgencyCreateEventSeatsRequest request
     ) {
-        agencyEventSeatBatchService.createEventSeats(eventId, request.seats());
+        agencyEventSeatBatchService.createSeats(eventId, request.seats());
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 

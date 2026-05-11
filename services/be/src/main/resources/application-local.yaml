@@ -18,6 +18,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        type:
+          preferred_enum_jdbc_type: VARCHAR
         jdbc:
           time_zone: Asia/Seoul
     # 실행 SQL 로그 출력 여부
