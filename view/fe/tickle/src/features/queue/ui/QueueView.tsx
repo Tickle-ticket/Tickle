@@ -104,18 +104,28 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         setStatus('WAITING');
 
         // 3. SSE 연결 (Stream)
+        console.log('[QueueView] 📡 Step 3: SSE 연결 시작...');
         const streamUrl = getQueueStreamUrl(eventId, queueToken);
+        console.log('[QueueView] SSE URL:', streamUrl);
         source = new EventSource(streamUrl);
 
+        source.onopen = () => {
+          console.log('[QueueView] ✅ SSE 연결 성공 (onopen)');
+        };
+
         source.onmessage = (event) => {
+          console.log('[QueueView] 📨 SSE 메시지 수신 (onmessage):', event.data);
           try {
             const data = JSON.parse(event.data);
+            console.log('[QueueView] SSE parsed data:', data);
 
             if (data.status === 'WAITING') {
+              console.log('[QueueView] 상태: WAITING', { rank: data.rank, waitingCount: data.waitingCount, estimatedWaitSeconds: data.estimatedWaitSeconds });
               setRank(data.rank);
               setWaitingCount(data.waitingCount);
               setEstimatedWaitSeconds(data.estimatedWaitSeconds);
             } else if (data.status === 'ADMITTED') {
+              console.log('[QueueView] 🎉 상태: ADMITTED! admitToken:', data.admitToken);
               source?.close();
 
               if (isExitModalOpenRef.current) {
@@ -124,26 +134,40 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
                 onAdmitted(data.admitToken);
               }
             } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
+              console.log('[QueueView] ❌ 상태:', data.status);
               setStatus('ERROR');
               source?.close();
+            } else {
+              console.log('[QueueView] ⚠️ 알 수 없는 상태:', data.status);
             }
           } catch (e) {
-            console.error('SSE parsing error', e);
+            console.error('[QueueView] SSE parsing error', e, 'raw data:', event.data);
           }
         };
 
+        // SSE named events도 캡처 (백엔드가 event: 이름 을 사용하는 경우)
+        source.addEventListener('queue-update', (event: any) => {
+          console.log('[QueueView] 📨 SSE named event "queue-update":', event.data);
+        });
+        source.addEventListener('admitted', (event: any) => {
+          console.log('[QueueView] 📨 SSE named event "admitted":', event.data);
+        });
+
         source.onerror = (err) => {
-          console.warn('EventSource connection error, browser will attempt to auto-reconnect...', err);
+          console.warn('[QueueView] ⚠️ SSE 연결 에러 (onerror):', err, 'readyState:', source?.readyState);
         };
 
         // 4. 상태 확인 (초기 스냅샷)
         try {
+          console.log('[QueueView] 📡 Step 4: /status 호출 중...');
           const statusRes = await getQueueStatus(eventId, queueToken, scope);
+          console.log('[QueueView] 📡 Step 4: /status 응답', statusRes.data);
           if (statusRes.data.status === 'WAITING') {
             setRank(statusRes.data.rank);
             setWaitingCount(statusRes.data.waitingCount);
             setEstimatedWaitSeconds(statusRes.data.estimatedWaitSeconds);
           } else if (statusRes.data.status === 'ADMITTED') {
+            console.log('[QueueView] 🎉 /status에서 바로 ADMITTED!');
             onAdmitted(statusRes.data.admitToken || 'at-immediate');
             return;
           }
