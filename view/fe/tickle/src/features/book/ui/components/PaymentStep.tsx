@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Toggle } from '@/src/shared/components/Toggle';
 import { useBookStore } from '../../store/useBookStore';
@@ -53,6 +53,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const router = useRouter();
   const [isKakaoPopupOpen, setIsKakaoPopupOpen] = useState(false);
   const [isStorybookMockOpen, setIsStorybookMockOpen] = useState(false);
+  const popupRef = useRef<Window | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [buyerName, setBuyerName] = useState(userProfile?.name || userProfile?.nickname || '');
   const [buyerEmail, setBuyerEmail] = useState(userProfile?.email || '');
@@ -349,6 +351,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             // PC: 새 창으로 띄우고 메시지 리스너 등록
             setIsKakaoPopupOpen(true);
             const popup = window.open(redirectUrl, 'kakaopay', 'width=500,height=700,scrollbars=yes');
+            popupRef.current = popup;
 
             // 부모 창에서 백엔드 결제 상태를 폴링하여 결제 완료를 감지
             // (카카오페이 리다이렉트가 다른 도메인으로 가므로 팝업 URL을 직접 읽을 수 없음)
@@ -425,6 +428,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 }
               }
             }, 2000);
+            pollingIntervalRef.current = checkPopupInterval;
           }
         }
       }
@@ -593,10 +597,23 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             결제가 완료되면 이 화면은 자동으로 넘어갑니다.
           </p>
           <button
-            onClick={() => setIsKakaoPopupOpen(false)}
+            onClick={() => {
+              if (popupRef.current) {
+                try { popupRef.current.close(); } catch (e) { /* 무시 */ }
+                popupRef.current = null;
+              }
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+              setIsKakaoPopupOpen(false);
+              setIsProcessing(false);
+              onError('결제 취소', '결제가 강제로 취소되었습니다.\n결제 수단을 다시 선택해주세요.');
+              setBookingStep('PAY_METHOD');
+            }}
             className="mt-8 px-6 py-2.5 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
           >
-            결제 창이 안 보이나요? (닫기)
+            결제 창이 안 보이나요? (강제 취소 및 닫기)
           </button>
         </div>
       )}
