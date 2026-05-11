@@ -4,6 +4,8 @@ import com.ssafy.tickle.auth.common.exception.BaseException;
 import com.ssafy.tickle.auth.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.auth.common.util.JwtProvider;
 import com.ssafy.tickle.auth.common.util.RedisTokenStore;
+import com.ssafy.tickle.auth.user.application.dto.KakaoLoginResult;
+import com.ssafy.tickle.auth.user.application.dto.TokenResult;
 import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.domain.AuthUser;
 import com.ssafy.tickle.auth.user.infrastructure.client.BeInternalClient;
@@ -16,7 +18,6 @@ import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.TokenResponse;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.junit.jupiter.api.BeforeEach;
@@ -147,7 +148,7 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.signUp(request);
+            TokenResult response = authService.signUp(request);
 
             assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
             assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
@@ -172,7 +173,7 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.signUp(request);
+            TokenResult response = authService.signUp(request);
 
             assertThat(response.userId()).isEqualTo(USER_ID);
         }
@@ -337,11 +338,11 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse response = authService.kakaoLogin(loginRequest);
+            KakaoLoginResult result = authService.kakaoLogin(loginRequest);
 
-            assertThat(response.isNewUser()).isFalse();
-            assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
-            assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
+            assertThat(result.response().isNewUser()).isFalse();
+            assertThat(result.response().accessToken()).isEqualTo(ACCESS_TOKEN);
+            assertThat(result.refreshToken()).isEqualTo(REFRESH_TOKEN);
             verify(authUserRepository, never()).save(any());
             verify(beInternalClient, never()).createUser(any());
         }
@@ -360,11 +361,12 @@ class AuthServiceTest {
             org.springframework.data.redis.core.ValueOperations valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
             given(stringRedisTemplate.opsForValue()).willReturn(valueOps);
 
-            com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse response = authService.kakaoLogin(loginRequest);
+            KakaoLoginResult result = authService.kakaoLogin(loginRequest);
 
-            assertThat(response.isNewUser()).isTrue();
-            assertThat(response.signUpToken()).isNotNull();
-            assertThat(response.accessToken()).isNull();
+            assertThat(result.response().isNewUser()).isTrue();
+            assertThat(result.response().signUpToken()).isNotNull();
+            assertThat(result.response().accessToken()).isNull();
+            assertThat(result.refreshToken()).isNull();
             verify(stringRedisTemplate.opsForValue()).set(anyString(), eq(SIGNUP_JSON), any(java.time.Duration.class));
         }
     }
@@ -399,7 +401,7 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.kakaoSignUp(signUpRequest);
+            TokenResult response = authService.kakaoSignUp(signUpRequest);
 
             assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
             verify(authUserRepository).save(any());
@@ -440,7 +442,7 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.login(loginRequest);
+            TokenResult response = authService.login(loginRequest);
 
             assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
             assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
@@ -536,7 +538,7 @@ class AuthServiceTest {
             given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(NEW_REFRESH);
             given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
 
-            TokenResponse response = authService.reissue(reissueRequest);
+            TokenResult response = authService.reissue(reissueRequest);
 
             assertThat(response.accessToken()).isEqualTo(NEW_ACCESS);
             assertThat(response.refreshToken()).isEqualTo(NEW_REFRESH);

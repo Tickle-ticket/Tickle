@@ -5,23 +5,32 @@ import com.ssafy.tickle.auth.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.auth.common.exception.code.SuccessCode;
 import com.ssafy.tickle.auth.common.response.BaseResponse;
 import com.ssafy.tickle.auth.user.application.AuthService;
+import com.ssafy.tickle.auth.user.application.dto.KakaoLoginResult;
 import com.ssafy.tickle.auth.user.application.PhoneVerificationService;
+import com.ssafy.tickle.auth.user.application.dto.TokenResult;
+import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
+import com.ssafy.tickle.auth.user.presentation.dto.AccessTokenResponse;
 import com.ssafy.tickle.auth.user.presentation.dto.AdminSignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeSendRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeVerifyRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.TokenResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
 
 /**
  * 인증 API를 제공하는 컨트롤러입니다.
@@ -31,8 +40,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController implements AuthApiDoc {
 
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    private static final String REFRESH_TOKEN_COOKIE_PATH = "/api/v1/auth";
+
     private final AuthService authService;
     private final PhoneVerificationService phoneVerificationService;
+
+    @Value("${jwt.refresh-token-expiry-seconds}")
+    private long refreshTokenExpirySeconds;
 
     /**
      * 어드민 계정 생성 API입니다.
@@ -42,13 +57,15 @@ public class AuthController implements AuthApiDoc {
      * @return 발급된 토큰 응답 (201 Created)
      */
     @PostMapping("/admin/signup")
-    public ResponseEntity<BaseResponse<TokenResponse>> createAdminAccount(
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> createAdminAccount(
             @RequestHeader("X-Admin-Secret") String secret,
             @Valid @RequestBody AdminSignUpRequest request
     ) {
+        TokenResult tokenResult = authService.createAdminAccount(request, secret);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BaseResponse.success(SuccessCode.CREATED, authService.createAdminAccount(request, secret)));
+                .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())
+                .body(BaseResponse.success(SuccessCode.CREATED, toAccessTokenResponse(tokenResult)));
     }
 
     /**
@@ -59,12 +76,14 @@ public class AuthController implements AuthApiDoc {
      */
     @Override
     @PostMapping("/signup")
-    public ResponseEntity<BaseResponse<TokenResponse>> signUp(
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> signUp(
             @Valid @RequestBody SignUpRequest request
     ) {
+        TokenResult tokenResult = authService.signUp(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BaseResponse.success(SuccessCode.CREATED, authService.signUp(request)));
+                .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())
+                .body(BaseResponse.success(SuccessCode.CREATED, toAccessTokenResponse(tokenResult)));
     }
 
     /**
@@ -75,12 +94,14 @@ public class AuthController implements AuthApiDoc {
      */
     @Override
     @PostMapping("/login")
-    public ResponseEntity<BaseResponse<TokenResponse>> login(
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> login(
             @Valid @RequestBody LoginRequest request
     ) {
+        TokenResult tokenResult = authService.login(request);
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(authService.login(request)));
+                .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())
+                .body(BaseResponse.success(toAccessTokenResponse(tokenResult)));
     }
 
 
@@ -96,9 +117,16 @@ public class AuthController implements AuthApiDoc {
     public ResponseEntity<BaseResponse<com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse>> kakaoLogin(
             @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request
     ) {
+        KakaoLoginResult result = authService.kakaoLogin(request);
+        if (result.refreshToken() != null) {
+            return ResponseEntity
+                    .ok()
+                    .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(result.refreshToken()).toString())
+                    .body(BaseResponse.success(result.response()));
+        }
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(authService.kakaoLogin(request)));
+                .body(BaseResponse.success(result.response()));
     }
 
     /**
@@ -108,12 +136,14 @@ public class AuthController implements AuthApiDoc {
      * @return 발급된 토큰 응답
      */
     @PostMapping("/kakao/signup")
-    public ResponseEntity<BaseResponse<TokenResponse>> kakaoSignUp(
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> kakaoSignUp(
             @Valid @RequestBody com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request
     ) {
+        TokenResult tokenResult = authService.kakaoSignUp(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BaseResponse.success(SuccessCode.CREATED, authService.kakaoSignUp(request)));
+                .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())
+                .body(BaseResponse.success(SuccessCode.CREATED, toAccessTokenResponse(tokenResult)));
     }
 
     /**
@@ -133,23 +163,53 @@ public class AuthController implements AuthApiDoc {
         authService.logout(authorization.substring(7));
         return ResponseEntity
                 .ok()
+                .header(HttpHeaders.SET_COOKIE, deleteRefreshTokenCookie().toString())
                 .body(BaseResponse.success(SuccessCode.OK));
     }
 
     /**
      * Access Token 재발급 API입니다.
      *
-     * @param request 재발급 요청 (refreshToken)
+     * @param refreshToken HttpOnly Cookie로 전달된 Refresh Token
      * @return 새로 발급된 토큰 응답
      */
     @Override
     @PostMapping("/reissue")
-    public ResponseEntity<BaseResponse<TokenResponse>> reissue(
-            @Valid @RequestBody ReissueRequest request
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> reissue(
+            @CookieValue(value = REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken
     ) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BaseException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND);
+        }
+        TokenResult tokenResult = authService.reissue(new ReissueRequest(refreshToken));
         return ResponseEntity
                 .ok()
-                .body(BaseResponse.success(authService.reissue(request)));
+                .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())
+                .body(BaseResponse.success(toAccessTokenResponse(tokenResult)));
+    }
+
+    private AccessTokenResponse toAccessTokenResponse(TokenResult tokenResult) {
+        return new AccessTokenResponse(tokenResult.accessToken());
+    }
+
+    private ResponseCookie createRefreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path(REFRESH_TOKEN_COOKIE_PATH)
+                .maxAge(Duration.ofSeconds(refreshTokenExpirySeconds))
+                .build();
+    }
+
+    private ResponseCookie deleteRefreshTokenCookie() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path(REFRESH_TOKEN_COOKIE_PATH)
+                .maxAge(Duration.ZERO)
+                .build();
     }
 
     /**

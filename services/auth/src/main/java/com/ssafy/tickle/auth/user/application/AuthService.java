@@ -4,6 +4,8 @@ import com.ssafy.tickle.auth.common.exception.BaseException;
 import com.ssafy.tickle.auth.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.auth.common.util.JwtProvider;
 import com.ssafy.tickle.auth.common.util.RedisTokenStore;
+import com.ssafy.tickle.auth.user.application.dto.KakaoLoginResult;
+import com.ssafy.tickle.auth.user.application.dto.TokenResult;
 import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.domain.AuthUser;
 import com.ssafy.tickle.auth.user.infrastructure.client.BeInternalClient;
@@ -14,10 +16,10 @@ import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
 import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
 import com.ssafy.tickle.auth.user.presentation.dto.AdminSignUpRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.TokenResponse;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +30,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -70,7 +71,7 @@ public class AuthService {
      * @return 발급된 Access Token / Refresh Token / userId
      */
     @Transactional
-    public TokenResponse createAdminAccount(AdminSignUpRequest request, String secretHeader) {
+    public TokenResult createAdminAccount(AdminSignUpRequest request, String secretHeader) {
         if (!adminSecret.equals(secretHeader)) {
             throw new BaseException(AuthErrorCode.INVALID_ADMIN_SECRET);
         }
@@ -126,7 +127,7 @@ public class AuthService {
      * @return 발급된 Access Token / Refresh Token / userId
      */
     @Transactional
-    public TokenResponse signUp(SignUpRequest request) {
+    public TokenResult signUp(SignUpRequest request) {
         validateSignUpRequest(request);
 
         Instant now = Instant.now();
@@ -176,7 +177,7 @@ public class AuthService {
      * @param request 로그인 요청 (email, password)
      * @return 발급된 Access Token / Refresh Token / userId
      */
-    public TokenResponse login(LoginRequest request) {
+    public TokenResult login(LoginRequest request) {
         AuthUser authUser = authUserRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BaseException(AuthErrorCode.USER_NOT_FOUND));
 
@@ -196,7 +197,7 @@ public class AuthService {
      * @return 카카오 로그인 응답 (신규 유저 여부 포함)
      */
     @Transactional
-    public KakaoLoginResponse kakaoLogin(com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request) {
+    public KakaoLoginResult kakaoLogin(com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginRequest request) {
         if (request == null || isBlank(request.code()) || isBlank(request.redirectUri())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST);
         }
@@ -216,8 +217,13 @@ public class AuthService {
                 .findByOauthProviderAndOauthProviderUserId(AuthUser.OAuthProvider.KAKAO, providerUserId);
 
         if (existingUser.isPresent()) {
-            TokenResponse tokens = issueTokens(existingUser.get());
-            return new KakaoLoginResponse(false, null, tokens.accessToken(), tokens.refreshToken(), tokens.userId(), tokens.organizerId());
+            TokenResult tokens = issueTokens(existingUser.get());
+            KakaoLoginResponse response = new KakaoLoginResponse(
+                    false,
+                    null,
+                    tokens.accessToken()
+            );
+            return new KakaoLoginResult(response, tokens.refreshToken());
         }
 
         // 신규 카카오 유저: 정보 임시 저장 후 가입 유도
@@ -230,7 +236,7 @@ public class AuthService {
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
         }
 
-        return new KakaoLoginResponse(true, signUpToken, null, null, null, null);
+        return new KakaoLoginResult(new KakaoLoginResponse(true, signUpToken, null), null);
     }
 
     /**
@@ -240,7 +246,7 @@ public class AuthService {
      * @return 발급된 Access Token / Refresh Token / userId
      */
     @Transactional
-    public TokenResponse kakaoSignUp(com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request) {
+    public TokenResult kakaoSignUp(com.ssafy.tickle.auth.user.presentation.dto.KakaoSignUpRequest request) {
         if (!phoneVerificationService.isVerified(request.phoneNumber())) {
             throw new BaseException(AuthErrorCode.PHONE_VERIFICATION_FAILED);
         }
@@ -305,7 +311,7 @@ public class AuthService {
      * @param request 재발급 요청 (refreshToken)
      * @return 새로 발급된 Access Token / Refresh Token / userId
      */
-    public TokenResponse reissue(ReissueRequest request) {
+    public TokenResult reissue(ReissueRequest request) {
         Long userId;
 
         try {
@@ -429,7 +435,7 @@ public class AuthService {
      * @param authUser 인증 사용자 엔티티
      * @return 발급된 토큰 응답
      */
-    private TokenResponse issueTokens(AuthUser authUser) {
+    private TokenResult issueTokens(AuthUser authUser) {
         String accessToken = jwtProvider.issueAccessToken(authUser.getId(), authUser.getRole());
         String refreshToken = jwtProvider.issueRefreshToken(authUser.getId());
         redisTokenStore.saveRefreshToken(
@@ -437,7 +443,7 @@ public class AuthService {
                 refreshToken,
                 jwtProvider.getRefreshTokenExpirySeconds()
         );
-        return new TokenResponse(accessToken, refreshToken, authUser.getId(), authUser.getOrganizerId());
+        return new TokenResult(accessToken, refreshToken, authUser.getId(), authUser.getOrganizerId());
     }
 
     /**
