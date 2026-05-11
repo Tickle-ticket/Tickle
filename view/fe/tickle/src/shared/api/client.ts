@@ -41,10 +41,11 @@ export const apiClient = async <T, A = unknown, I = unknown>(
   schema?: Schema.Schema.AnyNoContext
 ): Promise<T> => {
   const url = buildUrl(path, options.params);
-  const { body, headers, credentials, ...restOptions } = options;
+  const { body, headers, credentials, auth = 'required', ...restOptions } = options;
 
   const accessToken = getAccessToken();
   const isAuthEndpoint = AUTH_ENDPOINT_PATTERNS.some((pattern) => path.includes(pattern));
+  const shouldAttachAccessToken = auth !== 'none' && !!accessToken;
 
   // 크로스 오리진 여부 판별: 로컬 개발 환경(localhost)에서 원격 API 서버로 요청할 때
   // credentials: 'include'는 CORS preflight에서 Access-Control-Allow-Credentials가 필요하며
@@ -58,7 +59,7 @@ export const apiClient = async <T, A = unknown, I = unknown>(
     redirect: 'manual', // 302 자동 추적 방지
     headers: {
       ...(!(body instanceof FormData) && { 'Content-Type': 'application/json' }),
-      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+      ...(shouldAttachAccessToken && { Authorization: `Bearer ${accessToken}` }),
       ...headers,
     },
   };
@@ -74,7 +75,11 @@ export const apiClient = async <T, A = unknown, I = unknown>(
 
     // 401 또는 302(리다이렉트) 발생 시 인증 만료로 간주하여 TokenManager 핸들러로 위임
     // 단, accessToken이 없는 비회원 상태에서는 토큰 갱신을 시도하지 않음
-    if (!isAuthEndpoint && accessToken && (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302)) {
+    if (!isAuthEndpoint && shouldAttachAccessToken && (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302)) {
+      if (auth === 'optional') {
+        clearTokens();
+        return apiClient<T>(path, { ...options, auth: 'none' }, true, schema);
+      }
       return handle401<T>(path, options, _isRetry);
     }
 

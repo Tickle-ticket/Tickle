@@ -6,9 +6,9 @@ export interface ApiResponse<T = unknown> {
 
 export class ApiError extends Error {
   public status: number;
-  public data?: any;
+  public data?: unknown;
 
-  constructor(message: string, status: number, data?: any) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -18,5 +18,6 @@ export class ApiError extends Error {
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean>;
-  body?: any; // JSON 객체 또는 FormData를 모두 허용
+  body?: unknown;
+  auth?: 'required' | 'optional' | 'none';
 }

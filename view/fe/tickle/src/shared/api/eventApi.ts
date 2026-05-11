@@ -37,7 +37,7 @@ export const fetchEventList = async (params: EventListRequestParams = {}): Promi
   });
   return apiClient<ApiResponse<EventListResponseData>>(
     '/api/v1/events', 
-    { params: cleanParams },
+    { params: cleanParams, auth: 'optional' },
     false,
     createApiResponseSchema(EventListResponseDataSchema)
   );
@@ -58,7 +58,7 @@ export const getEventPriceAmount = (pricePolicy: EventPricePolicy) => {
 export const fetchEventDetail = async (eventId: number | string): Promise<ApiResponse<EventDetailResponseData>> => {
   return apiClient<ApiResponse<EventDetailResponseData>>(
     `/api/v1/events/${eventId}`,
-    {},
+    { auth: 'optional' },
     false,
     createApiResponseSchema(EventDetailResponseDataSchema)
   );
@@ -69,6 +69,7 @@ export const fetchRanking = async (categoryId?: number): Promise<ApiResponse<Cat
     '/api/v1/events/ranking', 
     {
       params: { ...(categoryId !== undefined && { categoryId }) },
+      auth: 'optional',
     },
     false,
     createApiResponseSchema(CategoryRankingResponseDataSchema)
@@ -80,6 +81,7 @@ export const fetchOpeningSoonEvents = async (): Promise<ApiResponse<OpeningSoonE
     '/api/v1/events/opening-soon', 
     {
       params: {},
+      auth: 'optional',
     },
     false,
     createApiResponseSchema(OpeningSoonEventsResponseDataSchema)
@@ -89,7 +91,7 @@ export const fetchOpeningSoonEvents = async (): Promise<ApiResponse<OpeningSoonE
 export const fetchCategories = async (): Promise<ApiResponse<CategoriesResponseData>> => {
   return apiClient<ApiResponse<CategoriesResponseData>>(
     '/api/v1/categories',
-    {},
+    { auth: 'optional' },
     false,
     createApiResponseSchema(CategoriesResponseDataSchema)
   );
