@@ -118,6 +118,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
+  const preorderBookingIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    preorderBookingIdRef.current = preorderBookingId;
+  }, [preorderBookingId]);
 
   const { data: seatAvailability, venueId, isLoading: isSeatsLoading, error: seatError } = useSeatData(
     eventDetail?.eventId || null,
@@ -155,10 +159,16 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       // 결제 성공/카카오페이 리다이렉트 등으로 인한 정상적인 이탈인 경우 방지
       const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
       
-      if (isHoldingSeatRef.current && !isNormalNavigation && eventDetail?.eventId && scheduleId) {
-        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch((err) => {
-          console.error('Failed to release seat on exit:', err);
-        });
+      if (!isNormalNavigation) {
+        if (preorderBookingIdRef.current) {
+          reservationApi.cancelReservation(preorderBookingIdRef.current).catch(err => {
+            console.error('Failed to cancel draft reservation on unmount:', err);
+          });
+        } else if (isHoldingSeatRef.current && eventDetail?.eventId && scheduleId) {
+          seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch((err) => {
+            console.error('Failed to release seat on exit:', err);
+          });
+        }
       }
     };
 
@@ -244,10 +254,22 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const handleConfirmExit = async () => {
     setIsExitModalOpen(false);
     let hasError = false;
-    if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
+
+    // 결제 단계 등에서 예약 초안(DRAFT)이 이미 생성된 경우
+    if (preorderBookingId) {
+      try {
+        await reservationApi.cancelReservation(preorderBookingId);
+        preorderBookingIdRef.current = null; // unmount 시 중복 호출 방지
+      } catch (err: any) {
+        console.error('Failed to cancel draft reservation on exit', err);
+      }
+    } 
+    // 예약 초안 생성 전 좌석 선점만 된 경우
+    else if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
       try {
         if (userProfile?.userId) {
           await seatApi.releaseSeat(eventDetail.eventId, scheduleId);
+          isHoldingSeatRef.current = false; // unmount 시 중복 호출 방지
         }
       } catch (err: any) {
         console.error('Failed to release seats on exit', err);
@@ -262,6 +284,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         }
       }
     }
+
     if (!hasError) {
       onClose();
     }
@@ -286,7 +309,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   useEffect(() => {
     if (timeLeft === 0 && bookingStep !== 'SEAT' && !isModifyModeActive) {
-      if (scheduleId && eventDetail && userProfile?.userId) {
+      if (preorderBookingId) {
+        reservationApi.cancelReservation(preorderBookingId).catch(console.error);
+      } else if (scheduleId && eventDetail && userProfile?.userId) {
         seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
       }
       setErrorModalConfig({
@@ -296,7 +321,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         onConfirm: onClose
       });
     }
-  }, [timeLeft, bookingStep, isModifyModeActive, scheduleId, eventDetail, userProfile, onClose]);
+  }, [timeLeft, bookingStep, isModifyModeActive, scheduleId, eventDetail, userProfile, onClose, preorderBookingId]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -746,8 +771,17 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           scheduleId={scheduleId}
           userId={userProfile?.userId}
           userProfile={userProfile}
-          onCancel={() => {
-            setBookingStep('TICKET_TYPE');
+          onCancel={async () => {
+            if (preorderBookingId) {
+              try {
+                await reservationApi.cancelReservation(preorderBookingId);
+                setPreorderBookingId(null);
+              } catch (err) {
+                console.error('Failed to cancel draft booking', err);
+              }
+            }
+            // 예약 초안이 취소되면 백엔드에서 좌석 선점도 풀리므로 안전하게 SEAT 단계로 돌아가 다시 선점하도록 유도합니다.
+            setBookingStep('SEAT');
           }}
           onConflictError={() => setIsConflictModalOpen(true)}
           onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
