@@ -136,6 +136,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       return res.data;
     },
     enabled: !!eventDetail?.eventId && !!scheduleId && !!userProfile?.userId,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const maxSelectable = Math.max(0, 4 - (ownershipCountResponse?.totalCount || 0));
