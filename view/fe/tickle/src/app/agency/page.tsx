@@ -1697,17 +1697,6 @@ export default function AgencyRegistrationPage() {
         displayOrder: index,
       }));
 
-    const earliestTicketOpenAt = registeredTicketSchedulePreviews.reduce(
-      (earliest, preview) =>
-        preview.ticketOpenAt.getTime() < earliest.getTime() ? preview.ticketOpenAt : earliest,
-      registeredTicketSchedulePreviews[0].ticketOpenAt,
-    );
-    const latestTicketCloseAt = registeredTicketSchedulePreviews.reduce(
-      (latest, preview) =>
-        preview.ticketCloseAt.getTime() > latest.getTime() ? preview.ticketCloseAt : latest,
-      registeredTicketSchedulePreviews[0].ticketCloseAt,
-    );
-
     setIsSubmittingRegistration(true);
 
     try {
@@ -1716,8 +1705,8 @@ export default function AgencyRegistrationPage() {
           venueId: resolvedSelectedVenue,
           categoryId: resolvedSelectedCategoryId,
           title: normalizedPerformanceTitle,
-          eventStartAt: earliestTicketOpenAt.toISOString(),
-          eventEndAt: latestTicketCloseAt.toISOString(),
+          eventStartAt: performanceOpenAt.toISOString(),
+          eventEndAt: performanceCloseAt.toISOString(),
           tags: performanceHashtags,
           notice: noticeText.trim(),
         },
