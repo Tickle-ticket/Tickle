@@ -69,7 +69,7 @@ export const authApi = {
 
   kakaoLogin: async (request: KakaoLoginRequest): Promise<ApiResponse<KakaoLoginResponse>> => {
     return apiClient<ApiResponse<KakaoLoginResponse>>(
-      buildLocalAuthUrl('/api/v1/auth/kakao/login'),
+      buildLocalAuthUrl('/oauth/kakao/login'),
       {
         method: 'POST',
         body: request,
