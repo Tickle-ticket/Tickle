@@ -96,7 +96,7 @@ public class CancellationRedistributionService {
 
         String phone = offer.getCancellationCandidate().getUser().getPhoneNumber();
         if (phone != null && !phone.isBlank()) {
-            smsNotificationService.sendCancellationNotifyMessage(phone, offer.getId());
+            smsNotificationService.sendCancellationNotifyMessage(phone);
         } else {
             log.warn("사용자 전화번호가 없어 문자를 발송할 수 없습니다. (userId: {})", offer.getCancellationCandidate().getUser().getId());
         }
@@ -383,7 +383,7 @@ public class CancellationRedistributionService {
             // SMS 발송
             String phone = candidate.getUser().getPhoneNumber();
             if (phone != null && !phone.isBlank()) {
-                smsNotificationService.sendCancellationNotifyMessage(phone, newOffer.getId());
+                smsNotificationService.sendCancellationNotifyMessage(phone);
             }
 
             // 좌석 상태 유지 (REALLOCATING)

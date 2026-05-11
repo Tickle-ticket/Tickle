@@ -82,7 +82,7 @@ class CancellationRedistributionServiceTest {
         assertThat(offer.getOfferStatus()).isEqualTo(CancellationOffer.OfferStatus.UNACCEPTED);
         assertThat(offer.getOfferedAt()).isNotNull();
         assertThat(offer.getOfferExpiresAt()).isNotNull();
-        verify(smsNotificationService).sendCancellationNotifyMessage("010-1234-5678", null);
+        verify(smsNotificationService).sendCancellationNotifyMessage("010-1234-5678");
     }
 
     @Test
