@@ -183,12 +183,11 @@ public interface AgencyEventApiDoc {
                                               "pricePolicies": [
                                                 {
                                                   "priceGrade": "VIP",
-                                                  "priceAmount": 220000,
-                                                  "discountInfo": [
+                                                  "defaultPriceAmount": 220000,
+                                                  "priceInfos": [
                                                     {
                                                       "discountName": "조기예매",
-                                                      "discountRate": 10.0,
-                                                      "actualPriceAmount": 198000
+                                                      "discountRate": 10.0
                                                     }
                                                   ],
                                                   "currencyCode": "KRW",
@@ -196,8 +195,8 @@ public interface AgencyEventApiDoc {
                                                 },
                                                 {
                                                   "priceGrade": "R",
-                                                  "priceAmount": 150000,
-                                                  "discountInfo": [],
+                                                  "defaultPriceAmount": 150000,
+                                                  "priceInfos": [],
                                                   "currencyCode": "KRW",
                                                   "displayOrder": 1
                                                 }

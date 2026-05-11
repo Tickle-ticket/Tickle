@@ -196,10 +196,9 @@ class AgencyEventBasicServiceTest {
                                 SeatGrade.VIP,
                                 new BigDecimal("220000"),
                                 List.of(
-                                        new AgencyCreateEventPricePolicyRequest.DiscountInfoRequest(
+                                        new AgencyCreateEventPricePolicyRequest.PriceInfoRequest(
                                                 "기본 할인",
-                                                new BigDecimal("10"),
-                                                new BigDecimal("198000")
+                                                new BigDecimal("10")
                                         )
                                 ),
                                 "KRW",
@@ -220,9 +219,27 @@ class AgencyEventBasicServiceTest {
         List<EventPricePolicy> savedPolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(event.getId());
         assertThat(savedPolicies).hasSize(2);
         assertThat(savedPolicies.get(0).getPriceGrade()).isEqualTo(SeatGrade.VIP);
-        assertThat(savedPolicies.get(0).getDiscountInfo()).hasSize(1);
+        assertThat(savedPolicies.get(0).getPriceAmount()).isEqualByComparingTo("220000");
+        assertThat(savedPolicies.get(0).getDiscountInfo())
+                .extracting(
+                        EventPricePolicy.DiscountInfo::discountName,
+                        EventPricePolicy.DiscountInfo::discountRate,
+                        EventPricePolicy.DiscountInfo::actualPriceAmount
+                )
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("일반", BigDecimal.ZERO, new BigDecimal("220000")),
+                        org.assertj.core.groups.Tuple.tuple("기본 할인", new BigDecimal("10"), new BigDecimal("198000.00"))
+                );
         assertThat(savedPolicies.get(1).getPriceGrade()).isEqualTo(SeatGrade.R);
-        assertThat(savedPolicies.get(1).getDiscountInfo()).isEmpty();
+        assertThat(savedPolicies.get(1).getDiscountInfo())
+                .extracting(
+                        EventPricePolicy.DiscountInfo::discountName,
+                        EventPricePolicy.DiscountInfo::discountRate,
+                        EventPricePolicy.DiscountInfo::actualPriceAmount
+                )
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple("일반", BigDecimal.ZERO, new BigDecimal("150000"))
+                );
     }
 
     @Test
