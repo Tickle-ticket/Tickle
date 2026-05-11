@@ -239,6 +239,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         const result = res.data;
         
         if (result.paymentMethod === 'BANK_TRANSFER') {
+          (window as any).__isNavigatingToPayment__ = true;
           router.push(`/payment/success?bookingId=${result.bookingId}&method=vbank`);
           return;
         } else if (result.paymentMethod === 'KAKAOPAY') {
@@ -313,6 +314,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       if (paymentMethod === 'BANK_TRANSFER' && selectRes.data?.bankTransfer) {
         // 1-step 방식: select-method 응답에 이미 무통장 입금 정보가 있는 경우
+        (window as any).__isNavigatingToPayment__ = true;
         router.push(`/payment/success?paymentId=${selectRes.data.bankTransfer.paymentId}&method=vbank`);
       } else if (nextAction === 'PREPARE_BANK_TRANSFER') {
         // 기존 2-step 방식에 대한 하위 호환성 유지
@@ -322,6 +324,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           { bookingId: preorderBookingId! }
         );
         if (bankRes.data) {
+          (window as any).__isNavigatingToPayment__ = true;
           router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
         }
       } else if (nextAction === 'PREPARE_KAKAOPAY' || paymentMethod === 'KAKAOPAY') {

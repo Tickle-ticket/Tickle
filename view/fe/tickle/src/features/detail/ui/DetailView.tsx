@@ -30,6 +30,7 @@ import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
+import { isShadowMode } from '@/src/shared/utils/shadowMode';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -116,7 +117,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   }, []);
 
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
-    if (!storyMode && !getAccessToken()) {
+    if (!storyMode && !getAccessToken() && !isShadowMode(activeEventId)) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -153,7 +154,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const handleFavoriteToggle = async () => {
     if (!activeEventId) return;
 
-    if (!storyMode && !getAccessToken()) {
+    if (!storyMode && !getAccessToken() && !isShadowMode(activeEventId)) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',

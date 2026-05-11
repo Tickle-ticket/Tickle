@@ -11,3 +11,16 @@ export const useSearchStore = create<SearchState>((set) => ({
   setSearchValue: (val) => set({ searchValue: val }),
   clearSearch: () => set({ searchValue: '' }),
 }));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    
+    if (q) {
+      useSearchStore.getState().setSearchValue(q);
+    } else {
+      useSearchStore.getState().clearSearch();
+    }
+  });
+}

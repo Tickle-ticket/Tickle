@@ -6,6 +6,7 @@ import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
 import { Modal } from '@/src/shared/components/Modal';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
+import { isShadowMode } from '@/src/shared/utils/shadowMode';
 
 interface QueueViewProps {
   eventId: string;
@@ -40,7 +41,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     if (isUserProfileLoading) return;
 
     const userId = userProfile?.userId;
-    if (!userId) {
+    if (!userId && !isShadowMode(eventId)) {
       setErrorModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -62,11 +63,14 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
       if (isCancelled) return;
       if (!eventId || eventId === 'undefined') return;
 
-      if (storyMode) {
+      if (storyMode || isShadowMode(eventId)) {
         setStatus('WAITING');
-        setRank(1234);
-        setWaitingCount(1233);
-        setEstimatedWaitSeconds(450);
+        setRank(1);
+        setWaitingCount(0);
+        setEstimatedWaitSeconds(1);
+        setTimeout(() => {
+          if (!isCancelled) onAdmitted('shadow-token');
+        }, 1500);
         return;
       }
 

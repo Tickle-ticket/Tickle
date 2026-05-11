@@ -28,7 +28,7 @@ export const useUserProfile = () => {
         phoneNumber: data.phoneNumber,
       } as UserProfileData;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     enabled: !!getAccessToken(),
   });
 };
