@@ -2,11 +2,32 @@ import time
 import uuid
 
 from serving.schemas import BatchItem, DetectionResult
-from serving.repository import insert_behavior_feature_records
+from serving.repository import (
+    insert_behavior_feature_gt_records,
+    insert_behavior_feature_records,
+)
+
+
+DIRECT_LABELS_BY_EVENT_ID = {
+    404: "BLOCK",
+    405: "ALLOW",
+}
 
 
 def make_record_id() -> str:
     return f"rec_{uuid.uuid4().hex[:16]}"
+
+
+def get_event_id(item: BatchItem) -> int | None:
+    event_id = item.payload.get("eventId") or item.payload.get("event_id")
+
+    if event_id is None:
+        return None
+
+    try:
+        return int(event_id)
+    except (TypeError, ValueError):
+        return None
 
 
 def should_flush(
@@ -41,6 +62,32 @@ def build_detection_results(
         )
 
     return results
+
+
+def split_gt_items(
+    batch_items: list[BatchItem],
+) -> tuple[list[DetectionResult], list[BatchItem]]:
+    gt_results = []
+    inference_items = []
+
+    for item in batch_items:
+        event_id = get_event_id(item)
+        label = DIRECT_LABELS_BY_EVENT_ID.get(event_id)
+
+        if label is None:
+            inference_items.append(item)
+            continue
+
+        gt_results.append(
+            DetectionResult(
+                record_id=make_record_id(),
+                item=item,
+                label=label,
+                p_macro=1.0 if label == "BLOCK" else 0.0,
+            )
+        )
+
+    return gt_results, inference_items
 
 
 def send_be_callbacks(
@@ -90,17 +137,22 @@ def process_batch(
     if not batch_items:
         return 0, 0, 0, 0
 
-    features_list = [item.payload["features"] for item in batch_items]
+    gt_results, inference_items = split_gt_items(batch_items)
+    detection_results = list(gt_results)
 
-    predictions = predictor.predict_batch(features_list)
-    detection_results = build_detection_results(batch_items, predictions)
+    if inference_items:
+        features_list = [item.payload["features"] for item in inference_items]
+
+        predictions = predictor.predict_batch(features_list)
+        detection_results.extend(build_detection_results(inference_items, predictions))
 
     be_sent_count, be_skipped_count, be_failed_count = send_be_callbacks(
         be_callback_client=be_callback_client,
         detection_results=detection_results,
     )
 
-    insert_behavior_feature_records(conn, detection_results)
+    insert_behavior_feature_gt_records(conn, gt_results)
+    insert_behavior_feature_records(conn, detection_results[len(gt_results):])
 
     return (
         len(detection_results),
