@@ -25,6 +25,7 @@ interface PaymentStepProps {
   cancellationId?: number;
   cancellationTotalAmount?: number;
   onPaymentComplete?: () => void;
+  isStandalone?: boolean;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -48,6 +49,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   cancellationId,
   cancellationTotalAmount,
   onPaymentComplete,
+  isStandalone = false,
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);

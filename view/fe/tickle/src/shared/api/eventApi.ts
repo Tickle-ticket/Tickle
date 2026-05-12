@@ -36,7 +36,7 @@ export const fetchEventList = async (params: EventListRequestParams = {}): Promi
     if (value !== undefined && value !== null) cleanParams[key] = value;
   });
   return apiClient<ApiResponse<EventListResponseData>>(
-    '/api/v1/events', 
+    '/api/v1/events',
     { params: cleanParams, auth: 'optional' },
     false,
     createApiResponseSchema(EventListResponseDataSchema)
@@ -66,7 +66,7 @@ export const fetchEventDetail = async (eventId: number | string): Promise<ApiRes
 
 export const fetchRanking = async (categoryId?: number): Promise<ApiResponse<CategoryRankingResponseData>> => {
   return apiClient<ApiResponse<CategoryRankingResponseData>>(
-    '/api/v1/events/ranking', 
+    '/api/v1/events/ranking',
     {
       params: { ...(categoryId !== undefined && { categoryId }) },
       auth: 'optional',
@@ -78,7 +78,7 @@ export const fetchRanking = async (categoryId?: number): Promise<ApiResponse<Cat
 
 export const fetchOpeningSoonEvents = async (): Promise<ApiResponse<OpeningSoonEventsResponseData>> => {
   return apiClient<ApiResponse<OpeningSoonEventsResponseData>>(
-    '/api/v1/events/opening-soon', 
+    '/api/v1/events/opening-soon',
     {
       params: {},
       auth: 'optional',
