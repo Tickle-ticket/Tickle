@@ -2495,7 +2495,7 @@ export default function AgencyRegistrationPage() {
 
           <Box
             variant="shadow"
-            className="space-y-5"
+            className="space-y-5 !overflow-visible"
             style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
