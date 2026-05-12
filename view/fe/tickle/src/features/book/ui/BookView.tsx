@@ -1,33 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import { useSeatData } from '@/src/features/book/api/useSeatData';
 import { seatApi } from '@/src/shared/api/seatApi';
-import { bookingApi } from '@/src/shared/api/bookingApi';
-import { paymentApi } from '@/src/shared/api/paymentApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
-import { useQuery } from '@tanstack/react-query';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 
-
-import { PriceLegend } from '@/src/shared/components/PriceLegend';
-import { InteractiveMapViewer } from '@/src/shared/components/InteractiveMapViewer';
-import { Calendar } from '@/src/shared/components/Calendar';
 import { useEventDetail } from '@/src/features/book/api/useEventDetail';
-import { CustomCAPTCHA } from '@/src/shared/components/CustomCAPTCHA';
-import { Seat } from '@/src/shared/components/Seat';
-import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
-import { Title } from '@/src/shared/components/Title';
-import { Accordion } from '@/src/shared/components/Accordion';
-import { Toggle } from '@/src/shared/components/Toggle';
-import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
 import { useBookStore } from '../store/useBookStore';
-import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
+import { useSeatStep } from '../api/useSeatStep';
+import { CaptchaStep } from './components/CaptchaStep';
 import { TicketTypeStep } from './components/TicketTypeStep';
 import { PaymentStep } from './components/PaymentStep';
 import { SeatSelectionPanel } from './components/SeatSelectionPanel';
@@ -45,11 +30,13 @@ interface BookViewProps {
   admitToken?: string;
   storyMode?: boolean;
   onLeaveQueue?: () => void;
+  onStepChange?: (step: string) => void;
+  onStepBack?: (targetStep: string) => void;
 }
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue }: BookViewProps) => {
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue, onStepChange, onStepBack }: BookViewProps) => {
   const isShadowModeActive = isShadowMode(eventId);
   const isWaitlistMode = mode === 'WAITLIST' || isShadowModeActive;
   const isCancelMode = mode === 'CANCEL';
@@ -63,10 +50,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const setSelectedTime = useBookStore(s => s.setSelectedTime);
   const selectedSeats = useBookStore(s => s.selectedSeats);
   const setSelectedSeats = useBookStore(s => s.setSelectedSeats);
-  const toggleSeat = useBookStore(s => s.toggleSeat);
   const selectedSeatsToCancel = useBookStore(s => s.selectedSeatsToCancel);
   const setSelectedSeatsToCancel = useBookStore(s => s.setSelectedSeatsToCancel);
-  const toggleCancelSeat = useBookStore(s => s.toggleCancelSeat);
   const isModifyingSchedule = useBookStore(s => s.isModifyingSchedule);
   const setIsModifyingSchedule = useBookStore(s => s.setIsModifyingSchedule);
   const confirmedSchedule = useBookStore(s => s.confirmedSchedule);
@@ -82,8 +67,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       ?.scheduleId
     ?? `${confirmedSchedule.date}-${confirmedSchedule.time}`
     : null;
-
-  const enableWs = !isCancelMode || isModifyModeActive;
 
   // Clawptcha State
   const [isBotVerified, setIsBotVerified] = useState(false);
@@ -127,29 +110,19 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     preorderBookingIdRef.current = preorderBookingId;
   }, [preorderBookingId]);
 
-  const { data: seatAvailability, venueId, isLoading: isSeatsLoading, error: seatError } = useSeatData(
-    eventDetail?.eventId || null,
+  const {
+    venueId, isSeatsLoading, seatError,
+    maxSelectable, seatsData, getSeatInfo, getDetailedSeatInfo,
+    handleSeatClick: rawHandleSeatClick,
+  } = useSeatStep({
+    eventDetail,
+    userProfile,
+    mode,
+    admitToken: admitToken || null,
+    storyMode,
+    initialSeats,
     scheduleId,
-    enableWs,
-    mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING',
-    admitToken || null,
-    storyMode
-  );
-
-  const { data: ownershipCountResponse } = useQuery({
-    queryKey: ['ownershipCount', eventDetail?.eventId, scheduleId, userProfile?.userId],
-    queryFn: async () => {
-      if (!eventDetail?.eventId || !scheduleId || !userProfile?.userId) return null;
-      if (isShadowMode(eventDetail.eventId)) return { totalCount: 0 };
-      const res = await reservationApi.getOwnershipCount(eventDetail.eventId, scheduleId, userProfile.userId);
-      return res.data;
-    },
-    enabled: !!eventDetail?.eventId && !!scheduleId && !!userProfile?.userId,
-    staleTime: 0,
-    gcTime: 0,
   });
-
-  const maxSelectable = isShadowModeActive ? 99 : Math.max(0, 4 - (ownershipCountResponse?.totalCount || 0));
 
   // 현재 선점 중인 상태를 ref로 추적하여, 렌더링마다 불필요하게 해제되지 않도록 함
   const isHoldingSeatRef = React.useRef(false);
@@ -157,6 +130,34 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   useEffect(() => {
     isHoldingSeatRef.current = bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId;
   }, [bookingStep, mode, eventDetail?.eventId, scheduleId]);
+
+  // 브라우저 뒤로가기(popstate)로 인한 단계 변경 감지 및 cleanup
+  const prevBookingStepRef = useRef(bookingStep);
+  useEffect(() => {
+    const prevStep = prevBookingStepRef.current;
+    prevBookingStepRef.current = bookingStep;
+
+    // 뒤로가기로 인한 단계 역행 감지
+    if (prevStep === 'PAY_METHOD' && bookingStep === 'PAYMENT') {
+      // 결제 수단 선택에서 약관 동의로 돌아올 때: 별도 cleanup 불필요
+      onStepBack?.('payment');
+    } else if ((prevStep === 'PAYMENT' || prevStep === 'PAY_METHOD') && (bookingStep === 'TICKET_TYPE' || bookingStep === 'SEAT')) {
+      // 결제 단계에서 돌아올 때: 예약 초안 취소
+      if (preorderBookingIdRef.current) {
+        reservationApi.cancelReservation(preorderBookingIdRef.current).catch(console.error);
+        setPreorderBookingId(null);
+        preorderBookingIdRef.current = null;
+      }
+      onStepBack?.(bookingStep === 'SEAT' ? 'book' : 'ticket_type');
+    } else if (prevStep === 'TICKET_TYPE' && bookingStep === 'SEAT') {
+      // 가격 선택에서 좌석 선택으로 돌아올 때: 좌석 선점 해제
+      if (eventDetail?.eventId && scheduleId) {
+        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
+        isHoldingSeatRef.current = false;
+      }
+      onStepBack?.('book');
+    }
+  }, [bookingStep, eventDetail?.eventId, scheduleId, onStepBack]);
 
   // 이탈 시 선점 좌석 자동 해제 로직
   useEffect(() => {
@@ -391,91 +392,12 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     );
   }
 
-  const seatsData: Record<string, { color?: SeatColor; status: SeatStatus; isSelected: boolean; congestion?: CongestionLevel; sessionSeatId?: number; detailedInfo?: string }> = {};
-
-  if (isCancelMode && !isModifyModeActive) {
-    // 취소 모드: 초기 좌석만 렌더링하고 나머지는 비활성화
-    initialSeats.forEach(seatId => {
-      const isSelected = selectedSeatsToCancel.has(seatId);
-      seatsData[seatId] = {
-        status: 'selectable',
-        isSelected: isSelected,
-        color: 'vip' as SeatColor, // mock grade color
-      };
-    });
-  } else if (seatAvailability) {
-    Object.entries(seatAvailability).forEach(([seatId, info]) => {
-      // 내 기존 좌석인 경우 (예약 변경 모드)
-      const isMyInitialSeat = initialSeats.includes(seatId);
-
-      const isSelectable = isShadowModeActive ? info.isAvailable : isWaitlistMode ? !!info.waitable : (info.isAvailable || isMyInitialSeat);
-      const isSelected = isMyInitialSeat ? selectedSeatsToCancel.has(seatId) : selectedSeats.has(seatId);
-      
-      const reachedMax = selectedSeats.size >= maxSelectable;
-      const canToggle = !reachedMax || isSelected || isMyInitialSeat;
-      const status: SeatStatus = (isSelectable && canToggle) ? 'selectable' : 'disabled';
-
-      let congestion: 'high' | 'medium' | 'low' | 'none' = 'none';
-      if (isWaitlistMode && !info.isAvailable) {
-        const count = info.waitingCount || 0;
-        if (count >= 10) congestion = 'high';
-        else if (count >= 5) congestion = 'medium';
-        else congestion = 'low';
-      }
-
-      if (bookingStep === 'TICKET_TYPE' && !isSelected) {
-        seatsData[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
-      } else {
-        const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode && !isShadowModeActive) ? 'disabled' : (info.priceGrade?.toLowerCase() || '일반'));
-        const finalColor = (viewMode === 'congestion' && congestion !== 'none') ? congestion : gradeColor;
-        seatsData[seatId] = { status, isSelected, color: finalColor as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
-      }
-    });
-  }
-
-  const getSeatInfo = (seatId: string) => {
-    if (initialSeats.includes(seatId)) {
-      const match = seatId.match(/^[a-zA-Z]+/);
-      let priceGrade = match ? match[0].toUpperCase() : 'VIP';
-      if (priceGrade === 'V') priceGrade = 'VIP';
-      const price = eventDetail?.zonePrices.find(p => p.priceGrade === priceGrade)?.price || 0;
-      return { priceGrade, price, waitingCount: 0 };
-    }
-    const priceGrade = seatAvailability?.[seatId]?.priceGrade || '일반';
-    const price = eventDetail?.zonePrices.find(p => p.priceGrade === priceGrade)?.price || 0;
-    const waitingCount = seatAvailability?.[seatId]?.waitingCount || 0;
-    return { priceGrade, price, waitingCount };
-  };
-
-  const getDetailedSeatInfo = (seatId: string) => {
-    return seatsData[seatId]?.detailedInfo || seatId;
-  };
-
+  // useSeatStep에서 제공하는 handleSeatClick을 래핑하여 에러 모달 표시
   const handleSeatClick = async (id: string, e?: React.MouseEvent) => {
-    if (e && !e.isTrusted) {
-      window.location.href = '/blocked';
-      return;
+    const result = await rawHandleSeatClick(id, e);
+    if (result?.error) {
+      setErrorModalConfig({ isOpen: true, title: result.title, message: result.message });
     }
-    const isMyInitialSeat = initialSeats.includes(id);
-    if (!selectedSeats.has(id) && !isMyInitialSeat && selectedSeats.size >= maxSelectable) {
-      if (!isShadowModeActive) {
-        setErrorModalConfig({ isOpen: true, title: '선택 제한', message: `최대 ${maxSelectable}개까지 선택 가능합니다.` });
-      }
-      return;
-    }
-
-    if (bookingStep === 'TICKET_TYPE') return;
-
-    // 취소 모드이거나 (예약 변경 모드 내의 초기 좌석)
-    if ((isCancelMode && !isModifyModeActive) || initialSeats.includes(id)) {
-      toggleCancelSeat(id);
-      return;
-    }
-
-    const seatData = seatsData[id];
-    if (!scheduleId || !seatData || seatData.status !== 'selectable' || !seatData.sessionSeatId) return;
-
-    toggleSeat(id);
   };
 
   const handleNextStep = async () => {
@@ -565,6 +487,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         }
 
         setBookingStep('TICKET_TYPE');
+        onStepChange?.('ticket_type');
       }
     } catch (err: any) {
       if (err.status === 409) {
@@ -585,32 +508,19 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   if (!isBotVerified) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 p-6 relative overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
-
-        <div className="z-10 animate-fade-in">
-          <CustomCAPTCHA
-            onSuccess={(token) => {
-              console.log('Bot verified!', token);
-              setIsBotVerified(true);
-            }}
-            onClose={handleCloseClick}
-          />
-        </div>
-
-        <BookingModals
-          isExitModalOpen={isExitModalOpen}
-          isWaitlistCompleteModalOpen={false}
-          isConflictModalOpen={false}
-          errorModalConfig={errorModalConfig}
-          handleCancelExit={handleCancelExit}
-          handleConfirmExit={handleConfirmExit}
-          handleCloseWaitlistComplete={() => { }}
-          handleCloseConflictModal={() => { }}
-          handleCloseErrorModal={() => setErrorModalConfig(prev => ({ ...prev, isOpen: false }))}
-        />
-      </div>
+      <CaptchaStep
+        onSuccess={(token) => {
+          console.log('Bot verified!', token);
+          setIsBotVerified(true);
+          onStepChange?.('seat');
+        }}
+        onClose={handleCloseClick}
+        isExitModalOpen={isExitModalOpen}
+        errorModalConfig={errorModalConfig}
+        handleCancelExit={handleCancelExit}
+        handleConfirmExit={handleConfirmExit}
+        handleCloseErrorModal={() => setErrorModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     );
   }
 
@@ -726,6 +636,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   if (storyMode) {
                     setPreorderBookingId(9999);
                     setBookingStep('PAYMENT');
+                    onStepChange?.('payment');
                     return;
                   }
 
@@ -738,6 +649,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   if (res?.bookingId) {
                     setPreorderBookingId(res.bookingId);
                     setBookingStep('PAYMENT');
+                    onStepChange?.('payment');
                   }
                 } catch (err: any) {
                   if (err.status === 400) {
@@ -791,6 +703,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
           onPaymentComplete={() => onLeaveQueue?.()}
           storyMode={storyMode}
+          onStepChange={onStepChange}
         />
       )}
 

@@ -156,30 +156,16 @@ export const MyBookingsView = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 pb-20 justify-items-center">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 pb-20 justify-items-center">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="w-full h-[400px] bg-gray-100 animate-pulse rounded-2xl" />
+          Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="w-full max-w-[300px] aspect-[1/1.5] sm:aspect-[2/3] bg-gray-100 animate-pulse rounded-2xl" />
           ))
         ) : filteredBookings.length > 0 ? (
           filteredBookings.map((item) => (
             <React.Fragment key={item.id}>
-              {/* Desktop/Tablet View */}
-              <div className="hidden md:block w-full">
+              <div className="w-full flex justify-center">
                 <BookingCard
-                  item={item}
-                  onOpenPayment={handleOpenPaymentModal}
-                  onOpenCancel={(id) => {
-                    setSelectedBookingForCancel({ id });
-                    setIsCancelModalOpen(true);
-                  }}
-                  onOpenDetail={handleOpenDetailModal}
-                  onOpenBarcode={handleOpenBarcodeModal}
-                />
-              </div>
-              {/* Mobile View */}
-              <div className="block md:hidden w-full">
-                <MobileBookingCard
                   item={item}
                   onOpenPayment={handleOpenPaymentModal}
                   onOpenCancel={(id) => {

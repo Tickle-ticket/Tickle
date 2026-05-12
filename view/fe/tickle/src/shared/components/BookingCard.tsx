@@ -61,144 +61,140 @@ export const BookingCard = ({
   onOpenDetail,
   onOpenBarcode,
 }: BookingCardProps) => {
+  const [isFlipped, setIsFlipped] = React.useState(false);
   const isPerformanceToday = isToday(item.performanceDate);
   const { data: detail } = useBookingDetail(item.id);
 
-  // 상태별 하단 액션 버튼 영역
-  const renderActions = () => {
-    switch (item.status) {
-      case 'PENDING_PAYMENT':
-        return (
-          <>
-            <button
-              onClick={() => onOpenPayment(item.paymentId || null, item.id)}
-              className="flex-1 py-2 sm:py-2.5 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white rounded-xl font-bold transition-colors text-xs sm:text-sm shadow-sm"
-            >
-              결제 정보
-            </button>
-            <button
-              onClick={() => onOpenCancel(item.id)}
-              className="flex-1 py-2 sm:py-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-200 rounded-xl font-bold transition-colors text-xs sm:text-sm shadow-sm"
-            >
-              예매 취소
-            </button>
-          </>
-        );
-      case 'CONFIRMED':
-      case 'BOOKED':
-        return (
-          <button
-            onClick={() => onOpenCancel(item.id)}
-            className="flex-1 py-2 sm:py-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-200 rounded-xl font-bold transition-colors text-xs sm:text-sm shadow-sm"
-          >
-            예매 취소
-          </button>
-        );
-      case 'CANCELLED':
-        return (
-          <span className="text-[11px] font-medium text-gray-400">취소된 예매입니다</span>
-        );
-      default:
-        return (
-          <button
-            onClick={() => onOpenDetail(item.id)}
-            className="px-3 py-1.5 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-400 rounded-lg text-[11px] font-medium border border-gray-200 transition-colors"
-          >
-            상세 보기
-          </button>
-        );
-    }
-  };
-
   return (
-    <div className={`relative w-full max-w-[600px] flex flex-row rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-white transition-all hover:shadow-md ${!item.imageUrl ? '' : ''}`}>
-      {/* 좌측: 포스터 영역 (이미지가 있을 때만 표시) */}
-      {item.imageUrl ? (
-        <div className="relative w-[110px] sm:w-[140px] shrink-0 bg-gray-100 border-r border-gray-100">
-          <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="rounded-none md:rounded-none h-full absolute inset-0 object-cover" />
-        </div>
-      ) : null}
-
-      {/* 우측: 정보 및 액션 영역 */}
-      <div className="flex flex-col flex-1 min-w-0 p-3 sm:p-5 relative">
-        {/* 상단: 상태 및 티켓 라벨 */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadge(item.status).color}`}>
-            {getStatusBadge(item.status).text}
-          </span>
-          <span className="text-[10px] font-extrabold text-blue-500/80 tracking-[0.2em] ml-auto bg-blue-50 px-2 py-0.5 rounded-md">
-            TICKET
-          </span>
-        </div>
-
-        {/* 중단: 공연 제목 및 장소 */}
-        <Text as="p" typography="t4" fontWeight="bold" ellipsis className="text-[#1e293b] w-full leading-snug sm:leading-tight mb-1">
-          {item.title}
-        </Text>
-        <Text typography="t7" fontWeight="medium" className="text-gray-500 truncate mb-3 sm:mb-4">
-          {item.venue}
-        </Text>
-
-        {/* 하단: 날짜, 시간 */}
-        <div className="flex gap-4 sm:gap-6 mb-2">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-bold text-gray-400">DATE</span>
-            <span className="text-xs sm:text-sm font-extrabold text-gray-800">{formatDateOnly(item.performanceDate)}</span>
+    <div 
+      className="relative w-full max-w-[260px] sm:max-w-[300px] mx-auto aspect-[1/1.55] sm:aspect-[2/3] cursor-pointer group"
+      style={{ perspective: '1000px' }}
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      <div 
+        className="w-full h-full relative rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-700 ease-in-out group-hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)]"
+        style={{ 
+          transformStyle: 'preserve-3d', 
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
+        }}
+      >
+        {/* 앞면: 포스터 */}
+        <div 
+          className="absolute inset-0 w-full h-full rounded-2xl overflow-hidden bg-gray-100"
+          style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+        >
+          <InfoPoster src={item.imageUrl || ''} alt={item.title} width="100%" height="100%" className="absolute inset-0 object-cover" />
+          <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors" />
+          
+          <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4">
+            <span className={`text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full shadow-md bg-white border-none ${getStatusBadge(item.status).text === '예매 취소' ? 'text-red-500' : 'text-blue-600'}`}>
+              {getStatusBadge(item.status).text}
+            </span>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-bold text-gray-400">TIME</span>
-            <span className="text-xs sm:text-sm font-extrabold text-gray-800">{formatTimeOnly(item.performanceDate)}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-bold text-gray-400">QTY</span>
-            <span className="text-xs sm:text-sm font-extrabold text-gray-800">{item.ticketCount}매</span>
+          
+          <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+            <Text as="p" typography="t5" fontWeight="bold" className="text-white w-full leading-normal mb-0.5 drop-shadow-md text-xs sm:text-base line-clamp-2 break-keep">
+              {item.title}
+            </Text>
+            <Text typography="t7" fontWeight="medium" className="text-gray-200 line-clamp-2 break-keep drop-shadow-md text-[10px] sm:text-xs leading-normal">
+              {item.venue}
+            </Text>
           </div>
         </div>
 
-        {/* 좌석 정보 (1줄 고정) */}
-        <div className="flex items-center gap-1.5 mb-6 sm:mb-auto overflow-hidden">
-          <span className="text-[10px] font-bold text-gray-400 shrink-0">SEAT</span>
-          {detail?.tickets && detail.tickets.length > 0 ? (
-            <div className="flex items-center gap-1 overflow-hidden">
-              {detail.tickets.slice(0, 2).map((t: any, i: number) => (
-                <span key={i} className="text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap shrink-0">
-                  {t.sectionName} {t.rowLabel}열 {t.seatNumber}번
-                </span>
-              ))}
-              {detail.tickets.length > 2 && (
-                <span className="text-[10px] font-bold text-gray-400 shrink-0">+{detail.tickets.length - 2}</span>
+        {/* 뒷면: 예매 정보 */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-white rounded-2xl overflow-hidden border border-gray-200 flex flex-col p-2.5 sm:p-4 md:p-5 shadow-inner"
+          style={{ 
+            backfaceVisibility: 'hidden', 
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)' 
+          }}
+        >
+          <div className="flex items-center gap-1.5 mb-1.5 sm:mb-3 shrink-0">
+            <span className={`text-[7px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full border whitespace-nowrap ${getStatusBadge(item.status).color}`}>
+              {getStatusBadge(item.status).text}
+            </span>
+            <span className="text-[7px] sm:text-[9px] font-extrabold text-blue-500/80 tracking-widest ml-auto bg-blue-50 px-1 sm:px-1.5 py-0.5 rounded-md">
+              TICKET
+            </span>
+          </div>
+
+          <Text as="p" typography="t5" fontWeight="bold" className="text-[#1e293b] w-full leading-snug mb-0.5 sm:mb-1.5 line-clamp-2 break-keep text-[11px] sm:text-[15px] shrink-0">
+            {item.title}
+          </Text>
+          <Text typography="t7" fontWeight="medium" className="text-gray-500 line-clamp-1 break-keep mb-1.5 sm:mb-3 text-[9px] sm:text-[12px] leading-snug shrink-0">
+            {item.venue}
+          </Text>
+
+          <div className="flex flex-col gap-1.5 sm:gap-2 mb-auto bg-gray-50 p-1.5 sm:p-3 md:p-4 rounded-xl border border-gray-100 shrink-0">
+            <div className="flex gap-1.5 sm:gap-4">
+              <div className="flex flex-col gap-0.5 w-1/2">
+                <span className="text-[7px] sm:text-[10px] font-bold text-gray-400 tracking-wider">DATE</span>
+                <span className="text-[10px] sm:text-[14px] font-extrabold text-gray-800">{formatDateOnly(item.performanceDate)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5 w-1/2">
+                <span className="text-[7px] sm:text-[10px] font-bold text-gray-400 tracking-wider">TIME</span>
+                <span className="text-[10px] sm:text-[14px] font-extrabold text-gray-800">{formatTimeOnly(item.performanceDate)}</span>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-0.5 sm:gap-1 w-full mt-0.5 sm:mt-1">
+              <span className="text-[7px] sm:text-[10px] font-bold text-gray-400 tracking-wider">SEAT ({item.ticketCount}매)</span>
+              {detail?.tickets && detail.tickets.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {detail.tickets.slice(0, 3).map((t: any, i: number) => (
+                    <span key={i} className="text-[8px] sm:text-[11px] font-semibold text-gray-700 bg-white px-1 py-0.5 sm:px-1.5 sm:py-0.5 rounded border border-gray-200 whitespace-nowrap shadow-sm">
+                      {t.sectionName} {t.rowLabel}열 {t.seatNumber}번
+                    </span>
+                  ))}
+                  {detail.tickets.length > 3 && (
+                    <span className="text-[8px] sm:text-[11px] font-bold text-gray-400 self-center">+{detail.tickets.length - 3}</span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-[9px] sm:text-[12px] font-medium text-gray-500">{item.seatInfo}</span>
               )}
             </div>
-          ) : (
-            <span className="text-xs font-medium text-gray-500">{item.seatInfo}</span>
-          )}
-        </div>
+          </div>
 
-        {/* 점선 구분선 및 액션 버튼들 */}
-        <div className="flex gap-2 sm:gap-3 mt-auto pt-3 sm:pt-4 border-t-2 border-dashed border-gray-100 relative">
-          <div className="absolute top-[-10px] left-[-22px] sm:left-[-30px] w-5 h-5 bg-[#f8f8f8] rounded-full border-r-2 border-gray-100 shadow-[inset_-2px_0_3px_rgba(0,0,0,0.01)]" />
-          
-          {renderActions()}
+          {/* 하단 버튼 영역 */}
+          <div className="flex flex-col gap-1 sm:gap-2 mt-1.5 sm:mt-3 pt-1.5 sm:pt-3 border-t border-gray-100 w-full relative z-10 shrink-0" onClick={(e) => e.stopPropagation()}>
+             {item.status !== 'CANCELLED' && (
+               <div className="flex gap-1.5 sm:gap-2 w-full">
+                 {/* 결제 대기 시: 결제 정보 */}
+                 {item.status === 'PENDING_PAYMENT' && (
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); onOpenPayment(item.paymentId || null, item.id); }}
+                     className="flex-1 py-1.5 sm:py-2 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white rounded-lg font-bold transition-colors text-[10px] sm:text-xs shadow-sm"
+                   >
+                     결제하기
+                   </button>
+                 )}
 
-          {/* 바코드 버튼 (우측 끝) */}
-          {isPerformanceToday ? (
-            <button
-              onClick={() => onOpenBarcode(`${item.id.toUpperCase().replace('-', '')}8X9A`)}
-              className="w-10 sm:w-12 shrink-0 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
-              title="바코드 보기"
-            >
-              <div className="h-5 w-3/5 opacity-60 grayscale" style={{ backgroundImage: 'repeating-linear-gradient(to right, #1e293b, #1e293b 1px, transparent 1px, transparent 2px, #1e293b 2px, #1e293b 3px, transparent 3px, transparent 5px, #1e293b 5px, #1e293b 7px, transparent 7px, transparent 8px)' }}></div>
-              <span className="text-[8px] sm:text-[9px] font-bold text-gray-500 mt-1">CODE</span>
-            </button>
-          ) : (
-            <div
-              className="w-10 sm:w-12 shrink-0 flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-gray-100 opacity-50 cursor-not-allowed"
-              title="관람 당일 활성화"
-            >
-              <div className="h-5 w-3/5 grayscale" style={{ backgroundImage: 'repeating-linear-gradient(to right, #94a3b8, #94a3b8 1px, transparent 1px, transparent 2px, #94a3b8 2px, #94a3b8 3px, transparent 3px, transparent 5px, #94a3b8 5px, #94a3b8 7px, transparent 7px, transparent 8px)' }}></div>
-              <span className="text-[8px] font-bold text-gray-400 mt-1">D-DAY</span>
-            </div>
-          )}
+                 {/* 예매 완료 시: 당일에만 바코드 버튼 */}
+                 {(item.status === 'CONFIRMED' || item.status === 'BOOKED') && isPerformanceToday && (
+                   <button
+                     onClick={(e) => { e.stopPropagation(); onOpenBarcode(`${item.id.toUpperCase().replace('-', '')}8X9A`); }}
+                     className="flex-1 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors text-[10px] sm:text-xs shadow-sm flex items-center justify-center gap-1"
+                   >
+                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5v14M21 5v14M8 5v14M12 5v14M16 5v14"/></svg>
+                     바코드
+                   </button>
+                 )}
+
+                 {/* 공통: 예매 취소 */}
+                 {(item.status === 'PENDING_PAYMENT' || item.status === 'CONFIRMED' || item.status === 'BOOKED') && (
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); onOpenCancel(item.id); }}
+                     className="flex-1 py-1.5 sm:py-2 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-200 rounded-lg font-bold transition-colors text-[10px] sm:text-xs shadow-sm"
+                   >
+                     예매 취소
+                   </button>
+                 )}
+               </div>
+             )}
+          </div>
         </div>
       </div>
     </div>

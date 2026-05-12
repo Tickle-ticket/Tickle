@@ -78,7 +78,7 @@ export const useMyBookings = () => {
       return response.data.items.map((r) => ({
         id: String(r.bookingId),
         eventId: '',
-        imageUrl: '',
+        imageUrl: (r as any).posterUrl || (r as any).imageUrl || '',
         title: r.eventTitle,
         venue: r.venueName,
         performanceDate: r.sessionStartAt,

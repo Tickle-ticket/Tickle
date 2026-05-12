@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import { Toggle } from '@/src/shared/components/Toggle';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { PaymentInfoStep } from './PaymentInfoStep';
+import { PayMethodStep } from './PayMethodStep';
 import { useBookStore } from '../../store/useBookStore';
 import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import { purchaseCancellation } from '@/src/shared/api/cancellationApi';
-import { bookingApi } from '@/src/shared/api/bookingApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +25,7 @@ interface PaymentStepProps {
   cancellationTotalAmount?: number;
   onPaymentComplete?: () => void;
   isStandalone?: boolean;
+  onStepChange?: (step: string) => void;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -50,6 +50,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   cancellationTotalAmount,
   onPaymentComplete,
   isStandalone = false,
+  onStepChange,
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
@@ -61,30 +62,16 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const popupRef = useRef<Window | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [buyerName, setBuyerName] = useState(userProfile?.name || '');
-  const [buyerEmail, setBuyerEmail] = useState(userProfile?.email || '');
-  const [buyerPhone, setBuyerPhone] = useState(userProfile?.phoneNumber || '');
+  // 약관 동의 상태 (PaymentInfoStep에서 관리, canPay로 보고받음)
+  const [canPay, setCanPay] = useState(false);
+  const handleCanPay = useCallback((val: boolean) => setCanPay(val), []);
 
-  const [agreeAll, setAgreeAll] = useState(false);
-  const [agreeTerm1, setAgreeTerm1] = useState(false);
-  const [agreeTerm2, setAgreeTerm2] = useState(false);
-  const [termExpand1, setTermExpand1] = useState(false);
-  const [termExpand2, setTermExpand2] = useState(false);
-
-  const [payCategory, setPayCategory] = useState<'pay' | 'other'>('pay');
+  // 결제 수단 상태 (PayMethodStep에서 관리, 보고받음)
   const [selectedPayMethod, setSelectedPayMethod] = useState<string | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [prevStep, setPrevStep] = useState<string>(bookingStep);
-
-  useEffect(() => {
-    if (userProfile) {
-      setBuyerName(userProfile.name || '');
-      setBuyerEmail(userProfile.email || '');
-      setBuyerPhone(userProfile.phoneNumber || '');
-    }
-  }, [userProfile]);
 
   useEffect(() => {
     if (bookingStep !== prevStep) {
@@ -140,75 +127,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const finalPrice = cancellationTotalAmount || Math.round(ticketPrice * 1.05); // 5% 예매 수수료 포함
   const bookingFee = finalPrice - ticketPrice;
 
-  const handleAgreeAll = (val: boolean) => {
-    setAgreeAll(val);
-    setAgreeTerm1(val);
-    setAgreeTerm2(val);
-  };
 
-  const canPay = buyerName.trim() && buyerEmail.trim() && buyerPhone.trim() && agreeTerm1 && agreeTerm2;
 
-  const payMethods = [
-    {
-      id: 'kakaopay',
-      label: '카카오페이',
-      selectedColor: 'border-[#FEE500] bg-[#FEE500] text-[#381E1F]',
-      icon: <Image src="/images/payment_icon_yellow_small.png" alt="카카오페이" width={60} height={20} className="h-5 object-contain mr-2" style={{ width: 'auto' }} />,
-      disabled: false
-    },
-    {
-      id: 'naverpay',
-      label: '네이버페이',
-      selectedColor: 'border-[#03C75A] bg-[#03C75A] text-white',
-      icon: <Image src="/images/logo_npaybk_large.svg" alt="네이버페이" width={60} height={20} className="h-5 object-contain mr-2" style={{ width: 'auto' }} />,
-      disabled: true
-    },
-    {
-      id: 'tosspay',
-      label: '토스페이',
-      selectedColor: 'border-[#3182F6] bg-[#3182F6] text-white',
-      icon: <Image src="/images/Toss_Symbol_Primary.png" alt="토스페이" width={60} height={20} className="h-5 object-contain mr-2" style={{ width: 'auto' }} />,
-      disabled: true
-    },
-    {
-      id: 'payco',
-      label: 'PAYCO',
-      selectedColor: 'border-[#E31C18] bg-[#E31C18] text-white',
-      icon: <span className="w-5 h-5 flex items-center justify-center bg-white text-[#E31C18] border border-[#E31C18] rounded-[4px] text-[13px] font-black mr-2 leading-none italic">P</span>,
-      disabled: true
-    },
-  ];
-
-  const otherMethods = [
-    {
-      id: 'credit',
-      label: '신용카드',
-      selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-      icon: null,
-      disabled: true
-    },
-    {
-      id: 'bank',
-      label: '계좌이체',
-      selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-      icon: null,
-      disabled: true
-    },
-    {
-      id: 'phone',
-      label: '휴대폰 결제',
-      selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-      icon: null,
-      disabled: true
-    },
-    {
-      id: 'vbank',
-      label: '무통장입금',
-      selectedColor: 'border-blue-500 bg-blue-500 text-white shadow-md',
-      icon: null,
-      disabled: false
-    },
-  ];
 
   const handlePayment = async () => {
     const isShadow = storyMode || isShadowMode(eventId);
@@ -578,7 +498,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       return (
         <button
           disabled={!canPay || isProcessing}
-          onClick={() => setBookingStep('PAY_METHOD')}
+          onClick={() => { setBookingStep('PAY_METHOD'); onStepChange?.('pay_method'); }}
           className={`w-full py-4 rounded-2xl font-extrabold text-lg transition-all ${canPay && !isProcessing
             ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-lg shadow-blue-600/25'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -693,122 +613,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className="absolute inset-0 overflow-y-auto px-4 sm:px-8 pb-[100px] lg:pb-8 flex flex-col gap-6 pt-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
-                {/* 예매자 정보 */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl">
-                    <h3 className="font-extrabold text-[16px] text-gray-900">예매자 정보</h3>
-                  </div>
-                  <div className="p-5 flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <label className="sm:w-24 text-sm font-bold text-gray-600 shrink-0">예매자 이름</label>
-                      <input
-                        type="text"
-                        value={buyerName}
-                        onChange={e => setBuyerName(e.target.value)}
-                        placeholder="이름 입력"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <label className="sm:w-24 text-sm font-bold text-gray-600 shrink-0">이메일</label>
-                      <input
-                        type="email"
-                        value={buyerEmail}
-                        onChange={e => setBuyerEmail(e.target.value)}
-                        placeholder="이메일 입력"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
-                      />
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <label className="sm:w-24 text-sm font-bold text-gray-600 shrink-0">전화번호</label>
-                      <input
-                        type="tel"
-                        value={buyerPhone}
-                        onChange={e => setBuyerPhone(e.target.value)}
-                        placeholder="전화번호 입력"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 약관 동의 */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4 lg:mb-0">
-                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl">
-                    <h3 className="font-extrabold text-[16px] text-gray-900">약관 동의</h3>
-                  </div>
-                  <div className="p-5 flex flex-col gap-3">
-                    {/* 전체 동의 */}
-                    <div className="flex items-center gap-3 px-4 py-4 bg-blue-50 rounded-xl border border-blue-200">
-                      <Toggle checked={agreeAll} onChange={handleAgreeAll} size="small" />
-                      <span className="font-bold text-blue-700 text-sm">전체 동의합니다.</span>
-                    </div>
-
-                    {/* 예매 이용 약관 */}
-                    <div className={`rounded-xl border transition-colors ${agreeTerm1 ? 'border-blue-200' : 'border-gray-200'}`}>
-                      <div className="flex items-center gap-3 px-4 py-3.5">
-                        <Toggle checked={agreeTerm1} onChange={(val) => { setAgreeTerm1(val); if (!val) setAgreeAll(false); else if (agreeTerm2) setAgreeAll(true); }} size="small" />
-                        <span className="flex-1 text-sm text-gray-700">예매 이용 약관 (필수)</span>
-                        <button
-                          onClick={() => setTermExpand1(!termExpand1)}
-                          className="p-1 hover:bg-gray-100:bg-zinc-700 rounded-full transition-colors"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                            className={`transition-transform duration-300 text-gray-400 ${termExpand1 ? 'rotate-180' : ''}`}
-                          >
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                          </svg>
-                        </button>
-                      </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${termExpand1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden min-h-0">
-                          <div className="px-4 pb-4">
-                            <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-500 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                              <p className="font-bold mb-2">제1조 (목적)</p>
-                              <p className="mb-2">이 약관은 티클(이하 "회사")이 제공하는 온라인 예매 서비스의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
-                              <p className="font-bold mb-2">제2조 (예매 서비스)</p>
-                              <p className="mb-2">예매 완료 후 취소 시 취소 수수료가 부과될 수 있으며, 공연일 기준 7일 전까지 무료 취소가 가능합니다. 공연 당일 취소 및 환불은 불가합니다.</p>
-                              <p className="font-bold mb-2">제3조 (티켓 양도)</p>
-                              <p>예매된 티켓은 타인에게 양도할 수 없으며, 부정 양도 적발 시 입장이 제한될 수 있습니다.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 개인정보 수집 동의 */}
-                    <div className={`rounded-xl border transition-colors ${agreeTerm2 ? 'border-blue-200' : 'border-gray-200'}`}>
-                      <div className="flex items-center gap-3 px-4 py-3.5">
-                        <Toggle checked={agreeTerm2} onChange={(val) => { setAgreeTerm2(val); if (!val) setAgreeAll(false); else if (agreeTerm1) setAgreeAll(true); }} size="small" />
-                        <span className="flex-1 text-sm text-gray-700">개인정보 수집 동의 (필수)</span>
-                        <button
-                          onClick={() => setTermExpand2(!termExpand2)}
-                          className="p-1 hover:bg-gray-100:bg-zinc-700 rounded-full transition-colors"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                            className={`transition-transform duration-300 text-gray-400 ${termExpand2 ? 'rotate-180' : ''}`}
-                          >
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                          </svg>
-                        </button>
-                      </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${termExpand2 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden min-h-0">
-                          <div className="px-4 pb-4">
-                            <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-500 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                              <p className="font-bold mb-2">수집 항목</p>
-                              <p className="mb-2">예매자 이름, 이메일, 전화번호, 결제 정보</p>
-                              <p className="font-bold mb-2">수집 목적</p>
-                              <p className="mb-2">예매 확인 및 안내, 본인 확인, 고객 상담, 마케팅 정보 제공 (선택 동의 시)</p>
-                              <p className="font-bold mb-2">보유 기간</p>
-                              <p>공연 종료 후 3개월까지 보관하며, 관련 법령에 의한 보존이 필요한 경우 해당 기간 동안 보관합니다.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <PaymentInfoStep userProfile={userProfile} onCanPay={handleCanPay} />
               </motion.div>
             ) : (
               <motion.div
@@ -821,95 +626,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className="absolute inset-0 overflow-y-auto px-4 sm:px-8 pb-[100px] lg:pb-8 flex flex-col gap-6 pt-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
-                {/* 결제 수단 선택 */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4 lg:mb-0">
-                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl flex items-center justify-between">
-                    <h3 className="font-extrabold text-[16px] text-gray-900">결제 수단</h3>
-                  </div>
-                  <div className="p-5 flex flex-col gap-3">
-                    {/* 페이 결제 */}
-                    <div
-                      className={`rounded-xl border-2 transition-all cursor-pointer ${payCategory === 'pay'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      onClick={() => { setPayCategory('pay'); setSelectedPayMethod(null); }}
-                    >
-                      <div className="flex items-center gap-3 px-4 py-3.5">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${payCategory === 'pay' ? 'border-blue-500' : 'border-gray-300'
-                          }`}>
-                          {payCategory === 'pay' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
-                        </div>
-                        <span className={`font-bold text-sm ${payCategory === 'pay' ? 'text-blue-700' : 'text-gray-700'
-                          }`}>페이 결제</span>
-                      </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${payCategory === 'pay' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden min-h-0">
-                          <div className="px-4 pb-4 pt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {payMethods.map(m => (
-                              <button
-                                key={m.id}
-                                disabled={m.disabled}
-                                onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
-                                className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
-                                  ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed'
-                                  : `hover:z-10 ${selectedPayMethod === m.id
-                                    ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 z-0'
-                                  }`
-                                  }`}
-                              >
-                                {m.icon}
-                                {m.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 다른 결제 방법 */}
-                    <div
-                      className={`rounded-xl border-2 transition-all cursor-pointer ${payCategory === 'other'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      onClick={() => { setPayCategory('other'); setSelectedPayMethod(null); }}
-                    >
-                      <div className="flex items-center gap-3 px-4 py-3.5">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${payCategory === 'other' ? 'border-blue-500' : 'border-gray-300'
-                          }`}>
-                          {payCategory === 'other' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
-                        </div>
-                        <span className={`font-bold text-sm ${payCategory === 'other' ? 'text-blue-700' : 'text-gray-700'
-                          }`}>다른 결제 방법</span>
-                      </div>
-                      <div className={`grid transition-all duration-300 ease-in-out ${payCategory === 'other' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                        <div className="overflow-hidden min-h-0">
-                          <div className="px-4 pb-4 pt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {otherMethods.map(m => (
-                              <button
-                                key={m.id}
-                                disabled={m.disabled}
-                                onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
-                                className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
-                                  ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed'
-                                  : `hover:z-10 ${selectedPayMethod === m.id
-                                    ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 z-0'
-                                  }`
-                                  }`}
-                              >
-                                {m.icon}
-                                {m.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <PayMethodStep selectedPayMethod={selectedPayMethod} setSelectedPayMethod={setSelectedPayMethod} />
               </motion.div>
             )}
           </AnimatePresence>
