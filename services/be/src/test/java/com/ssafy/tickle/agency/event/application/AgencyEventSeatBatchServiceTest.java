@@ -19,6 +19,9 @@ import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.domain.VenueSeat;
 import com.ssafy.tickle.venue.domain.VenueSection;
@@ -81,9 +84,13 @@ class AgencyEventSeatBatchServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private Organizer organizer;
     private Venue venue;
     private Category category;
+    private User agencyUser;
     private VenueSection vipSection;
     private VenueSection rSection;
     private VenueSeat vipSeat1;
@@ -96,6 +103,7 @@ class AgencyEventSeatBatchServiceTest {
         organizer = organizerRepository.save(createOrganizer("테스트 기획사"));
         venue = venueRepository.save(createVenue("테스트 공연장"));
         category = categoryRepository.save(createCategory("콘서트"));
+        agencyUser = userRepository.save(createAgencyUser(1001L, organizer.getId()));
 
         vipSection = venueSectionRepository.save(createVenueSection(venue, "VIP", 1));
         rSection = venueSectionRepository.save(createVenueSection(venue, "R", 2));
@@ -114,6 +122,7 @@ class AgencyEventSeatBatchServiceTest {
         eventSessionRepository.deleteAllInBatch();
         eventPricePolicyRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
         venueSeatRepository.deleteAllInBatch();
         venueSectionRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
@@ -136,6 +145,7 @@ class AgencyEventSeatBatchServiceTest {
         ));
 
         agencyEventSeatBatchService.createSeats(
+                agencyUser.getId(),
                 event.getId(),
                 List.of(
                         new AgencyCreateEventSeatGroupRequest(SeatGrade.VIP, List.of(vipSeat1.getId(), vipSeat2.getId())),
@@ -170,6 +180,7 @@ class AgencyEventSeatBatchServiceTest {
         ));
 
         assertThatThrownBy(() -> agencyEventSeatBatchService.createEventSeats(
+                agencyUser.getId(),
                 event.getId(),
                 List.of(
                         new AgencyCreateEventSeatGroupRequest(SeatGrade.VIP, List.of(vipSeat1.getId())),
@@ -188,6 +199,7 @@ class AgencyEventSeatBatchServiceTest {
         eventPricePolicyRepository.save(createPricePolicy(event, SeatGrade.VIP, 220000));
 
         assertThatThrownBy(() -> agencyEventSeatBatchService.createEventSeats(
+                agencyUser.getId(),
                 event.getId(),
                 List.of(new AgencyCreateEventSeatGroupRequest(SeatGrade.R, List.of(rSeat1.getId())))
         ))
@@ -221,6 +233,17 @@ class AgencyEventSeatBatchServiceTest {
     private Category createCategory(String categoryName) {
         return Category.builder()
                 .categoryName(categoryName)
+                .build();
+    }
+
+    private User createAgencyUser(Long userId, Long organizerId) {
+        return User.builder()
+                .id(userId)
+                .userNo("USER-" + userId)
+                .name("기획자")
+                .role(UserRole.ORGANIZER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizerId)
                 .build();
     }
 

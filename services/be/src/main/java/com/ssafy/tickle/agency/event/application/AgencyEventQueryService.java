@@ -20,6 +20,7 @@ import com.ssafy.tickle.seat.domain.SessionSeat;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSeatRepository;
 import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -58,7 +59,7 @@ public class AgencyEventQueryService {
     /**
      * 기획사 공연 목록을 조회합니다.
      *
-     * @param organizerId 기획사 식별자
+     * @param userId JWT에서 추출한 사용자 식별자
      * @param page 페이지 번호
      * @param size 페이지 크기
      * @return 공연 목록 응답
@@ -118,7 +119,7 @@ public class AgencyEventQueryService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        if (user.getOrganizerId() == null) {
+        if (user.getRole() != UserRole.ORGANIZER || user.getOrganizerId() == null) {
             throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "기획사 권한이 없는 사용자입니다.");
         }
 

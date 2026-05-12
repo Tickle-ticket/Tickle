@@ -36,6 +36,7 @@ public class AgencyEventDeleteService {
     private final EventSectionRepository eventSectionRepository;
     private final EventSessionRepository eventSessionRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
+    private final AgencyAuthorizationService agencyAuthorizationService;
 
     /**
      * 공연과 공연에 종속된 하위 데이터를 함께 삭제합니다.
@@ -43,10 +44,8 @@ public class AgencyEventDeleteService {
      * @param eventId 공연 식별자
      */
     @Transactional
-    public void deleteEvent(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
-
+    public void deleteEvent(Long userId, Long eventId) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
         validateDeletable(event);
 
         // FK 제약을 피하기 위해 하위 데이터부터 순서대로 제거

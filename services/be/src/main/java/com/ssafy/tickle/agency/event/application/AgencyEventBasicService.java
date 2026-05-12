@@ -4,12 +4,6 @@ import com.ssafy.tickle.common.domain.SeatGrade;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.S3Uploader;
-import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
-import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
-import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePolicyRequest;
-import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyCreateEventResponse;
-import com.ssafy.tickle.common.exception.BaseException;
-import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.category.domain.Category;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventImage;
@@ -19,12 +13,12 @@ import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.category.infrastructure.persistence.CategoryRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
-import com.ssafy.tickle.organizer.domain.Organizer;
-import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
-import com.ssafy.tickle.user.domain.User;
-import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
+import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventBasicRequest;
+import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePoliciesRequest;
+import com.ssafy.tickle.agency.event.presentation.dto.request.AgencyCreateEventPricePolicyRequest;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyCreateEventResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,11 +49,10 @@ public class AgencyEventBasicService {
     private final EventRepository eventRepository;
     private final EventImageRepository eventImageRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
-    private final OrganizerRepository organizerRepository;
     private final CategoryRepository categoryRepository;
     private final VenueRepository venueRepository;
-    private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
+    private final AgencyAuthorizationService agencyAuthorizationService;
 
     /**
      * 공연 기본정보를 등록합니다.
@@ -115,8 +108,8 @@ public class AgencyEventBasicService {
      * @param request 가격 정책 등록 요청 DTO
      */
     @Transactional
-    public void createPricePolicies(Long eventId, AgencyCreateEventPricePoliciesRequest request) {
-        Event event = getEvent(eventId);
+    public void createPricePolicies(Long userId, Long eventId, AgencyCreateEventPricePoliciesRequest request) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
         validatePricePoliciesNotRegistered(eventId);
         savePricePolicies(event, request.pricePolicies());
     }
@@ -284,24 +277,11 @@ public class AgencyEventBasicService {
         }
     }
 
-    private Event getEvent(Long eventId) {
-        return eventRepository.findById(eventId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
-    }
-
     /**
      * 유저 식별자를 통해 소속 기획사를 조회합니다.
      */
     private Organizer getOrganizerByUserId(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "사용자를 찾을 수 없습니다."));
-        
-        if (user.getOrganizerId() == null) {
-            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "기획사 권한이 없는 사용자입니다.");
-        }
-
-        return organizerRepository.findById(user.getOrganizerId())
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "소속 기획사를 찾을 수 없습니다."));
+        return agencyAuthorizationService.getOrganizer(userId);
     }
 
     /**

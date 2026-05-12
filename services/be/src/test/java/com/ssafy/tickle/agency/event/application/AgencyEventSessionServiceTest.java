@@ -12,6 +12,9 @@ import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.organizer.domain.Organizer;
 import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.venue.domain.Venue;
 import com.ssafy.tickle.venue.infrastructure.persistence.VenueRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -51,21 +54,27 @@ class AgencyEventSessionServiceTest {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private Organizer organizer;
     private Venue venue;
     private Category category;
+    private User agencyUser;
 
     @BeforeEach
     void setUp() {
         organizer = organizerRepository.save(createOrganizer("테스트 기획사"));
         venue = venueRepository.save(createVenue("테스트 공연장"));
         category = categoryRepository.save(createCategory("콘서트"));
+        agencyUser = userRepository.save(createAgencyUser(1001L, organizer.getId()));
     }
 
     @AfterEach
     void tearDown() {
         eventSessionRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
         venueRepository.deleteAllInBatch();
         categoryRepository.deleteAllInBatch();
         organizerRepository.deleteAllInBatch();
@@ -97,7 +106,7 @@ class AgencyEventSessionServiceTest {
                 )
         ));
 
-        List<EventSession> sessions = agencyEventSessionService.createSessions(event.getId(), request);
+        List<EventSession> sessions = agencyEventSessionService.createSessions(agencyUser.getId(), event.getId(), request);
 
         assertThat(sessions).hasSize(3);
         assertThat(sessions)
@@ -125,6 +134,7 @@ class AgencyEventSessionServiceTest {
         Event event = eventRepository.save(createEvent("다회 등록 공연"));
 
         agencyEventSessionService.createSessions(
+                agencyUser.getId(),
                 event.getId(),
                 new AgencyCreateEventSessionsRequest(List.of(
                         new AgencyCreateEventSessionRequest(
@@ -137,6 +147,7 @@ class AgencyEventSessionServiceTest {
         );
 
         agencyEventSessionService.createSessions(
+                agencyUser.getId(),
                 event.getId(),
                 new AgencyCreateEventSessionsRequest(List.of(
                         new AgencyCreateEventSessionRequest(
@@ -167,10 +178,21 @@ class AgencyEventSessionServiceTest {
                 )
         ));
 
-        assertThatThrownBy(() -> agencyEventSessionService.createSessions(event.getId(), request))
+        assertThatThrownBy(() -> agencyEventSessionService.createSessions(agencyUser.getId(), event.getId(), request))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
+    }
+
+    private User createAgencyUser(Long userId, Long organizerId) {
+        return User.builder()
+                .id(userId)
+                .userNo("USER-" + userId)
+                .name("기획자")
+                .role(UserRole.ORGANIZER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizerId)
+                .build();
     }
 
     private Organizer createOrganizer(String organizerName) {

@@ -11,7 +11,6 @@ import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
-import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.seat.domain.EventSection;
 import com.ssafy.tickle.seat.infrastructure.persistence.EventSectionRepository;
@@ -47,24 +46,26 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class AgencyEventSeatBatchService {
 
-    private final EventRepository eventRepository;
     private final EventPricePolicyRepository eventPricePolicyRepository;
     private final EventSessionRepository eventSessionRepository;
     private final VenueSeatRepository venueSeatRepository;
     private final EventSectionRepository eventSectionRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final AgencyAuthorizationService agencyAuthorizationService;
 
     /**
      * 공연 좌석과 이미 등록된 회차별 좌석을 함께 생성합니다.
      */
     @Transactional
     public void createSeats(
+            Long userId,
             Long eventId,
             List<AgencyCreateEventSeatGroupRequest> requests
     ) {
+        agencyAuthorizationService.getOwnedEvent(userId, eventId);
         List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
         validateSessionsRegistered(sessions);
-        List<CreatedEventSeat> createdEventSeats = createEventSeats(eventId, requests);
+        List<CreatedEventSeat> createdEventSeats = createEventSeats(userId, eventId, requests);
         createSessionSeats(sessions, createdEventSeats);
     }
 
@@ -73,10 +74,11 @@ public class AgencyEventSeatBatchService {
      */
     @Transactional
     public List<CreatedEventSeat> createEventSeats(
+            Long userId,
             Long eventId,
             List<AgencyCreateEventSeatGroupRequest> requests
     ) {
-        Event event = getEventOrThrow(eventId);
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
         Long venueId = event.getVenue().getId();
         Map<SeatGrade, EventPricePolicy> pricePolicyByGrade = getPricePolicyByGrade(eventId);
 
@@ -284,11 +286,6 @@ public class AgencyEventSeatBatchService {
         if (!venueId.equals(venueSeat.getVenueId())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "다른 공연장의 좌석이 포함되어 있습니다.");
         }
-    }
-
-    private Event getEventOrThrow(Long eventId) {
-        return eventRepository.findById(eventId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
     }
 
     private void validateSessionsRegistered(List<EventSession> sessions) {

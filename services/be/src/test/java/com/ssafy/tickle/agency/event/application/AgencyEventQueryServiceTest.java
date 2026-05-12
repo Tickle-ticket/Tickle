@@ -217,6 +217,24 @@ class AgencyEventQueryServiceTest {
     }
 
     @Test
+    @DisplayName("ORGANIZER 권한이 아니면 기획사 공연 목록 조회 시 예외가 발생한다")
+    void getEvents_notOrganizerRole() {
+        User normalUser = userRepository.save(User.builder()
+                .id(2002L)
+                .userNo("USER-2002")
+                .name("일반회원")
+                .role(UserRole.USER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizer.getId())
+                .build());
+
+        assertThatThrownBy(() -> agencyEventQueryService.getEvents(normalUser.getId(), 0, 20))
+                .isInstanceOf(BaseException.class)
+                .extracting("errorCode")
+                .isEqualTo(GlobalErrorCode.ACCESS_DENIED);
+    }
+
+    @Test
     @DisplayName("공연 상세 조회 시 기본정보, 가격정책, 회차를 함께 반환한다")
     void getEventDetail_success() {
         AgencyEventDetailResponse response = agencyEventQueryService.getEventDetail(detailEvent.getId());
