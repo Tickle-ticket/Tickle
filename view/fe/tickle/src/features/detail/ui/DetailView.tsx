@@ -99,6 +99,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
   const { setStage, finalize } = useTrialCollector({
     enabled: flowState === 'NONE',
+    initialStage: 'detail',
 
     behaviorEvent: {
       eventId: activeEventId ? Number(activeEventId) : null,
