@@ -512,6 +512,98 @@ function TicketScheduleRuleField({
   );
 }
 
+function DiscountPresetSelectField({
+  value,
+  onChange,
+}: {
+  value: SeatDiscountDraft['preset'];
+  onChange: (preset: SeatDiscountDraft['preset']) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const selectedOption = discountPresetOptions.find((option) => option.value === value) ?? discountPresetOptions[0];
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="mb-1 text-[13px] font-medium text-gray-500">할인 유형</span>
+      <div className="relative" ref={dropdownRef}>
+        <button
+          type="button"
+          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-gray-900 outline-none transition-colors sm:text-[22px] ${
+            isOpen ? 'border-blue-500' : 'border-gray-300'
+          }`}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <span className="truncate text-left">{selectedOption.label}</span>
+          <svg
+            className={`ml-3 h-5 w-5 shrink-0 transition-transform ${
+              isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'
+            }`}
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.512a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+
+        {isOpen ? (
+          <div
+            className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
+            role="listbox"
+          >
+            <div className="max-h-72 overflow-y-auto p-2">
+              {discountPresetOptions.map((option) => {
+                const isSelected = option.value === value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`w-full rounded-xl px-4 py-2.5 text-left text-sm font-black transition-colors ${
+                      isSelected
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function DateRangeModal({
   isOpen,
   title,
@@ -2164,7 +2256,7 @@ export default function AgencyRegistrationPage() {
                   ) : null}
                 </div>
                 <span className="text-xs font-medium text-slate-400">
-                  DB에 등록된 공연장만 선택할 수 있습니다.
+                  등록된 공연장만 선택할 수 있습니다.
                 </span>
               </div>
 
@@ -2284,9 +2376,6 @@ export default function AgencyRegistrationPage() {
                                 회차 시간 {preview.timeValue}
                               </p>
                             </div>
-                            <Badge color="blue" size="small">
-                              {preview.dateKey}
-                            </Badge>
                           </div>
 
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -2346,8 +2435,8 @@ export default function AgencyRegistrationPage() {
               </p>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-              <div className="space-y-4">
+            <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+              <div className="flex h-full flex-col gap-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-bold text-slate-500">좌석 금액 설정</p>
@@ -2367,15 +2456,14 @@ export default function AgencyRegistrationPage() {
                       />
                     ))}
                   </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-bold tracking-[0.08em] text-slate-400">가격 가이드</p>
-                    <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
-                      상위 등급과 하위 등급 간 간격이 너무 크면 운영 검수에서 조정 요청이 들어올 수 있습니다.
-                    </p>
-                  </div>
                 </div>
 
+                <div className="mt-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-bold tracking-[0.08em] text-slate-400">가격 가이드</p>
+                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
+                    상위 등급과 하위 등급 간 간격이 너무 크면 운영 검수에서 조정 요청이 들어올 수 있습니다.
+                  </p>
+                </div>
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -2407,7 +2495,7 @@ export default function AgencyRegistrationPage() {
 
           <Box
             variant="shadow"
-            className="space-y-5"
+            className="space-y-5 !overflow-visible"
             style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -2440,32 +2528,18 @@ export default function AgencyRegistrationPage() {
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex-1 space-y-4">
-                        <div>
-                          <p className="text-sm font-bold text-slate-500">
-                            {`할인 ${index + 1}`}
-                          </p>
-                          <div className="mt-3">
-                            <SegmentedControl
-                              options={discountPresetOptions.map((option) => ({
-                                label: option.label,
-                                value: option.value,
-                              }))}
-                              value={discount.preset}
-                              onChange={(value) =>
-                                handleSeatDiscountPresetChange(
-                                  discount.id,
-                                  value as SeatDiscountDraft['preset'],
-                                )
-                              }
-                              columns={2}
-                              rows={2}
-                              size="medium"
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
+                        <p className="text-sm font-bold text-slate-500">
+                          {`할인 ${index + 1}`}
+                        </p>
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <DiscountPresetSelectField
+                          value={discount.preset}
+                          onChange={(preset) =>
+                            handleSeatDiscountPresetChange(discount.id, preset)
+                          }
+                        />
+
+                        <div className={`grid gap-4 ${discount.preset === 'custom' ? 'md:grid-cols-2' : ''}`}>
                           {discount.preset === 'custom' ? (
                             <Input
                               label={'할인명'}
@@ -2477,16 +2551,7 @@ export default function AgencyRegistrationPage() {
                               )}
                               placeholder={'할인명 입력'}
                             />
-                          ) : (
-                            <div className="flex flex-col gap-1">
-                              <span className="mb-1 text-[13px] font-medium text-gray-500">
-                                {'선택된 할인'}
-                              </span>
-                              <div className="border-b-[2px] border-gray-300 py-2 text-base text-gray-900">
-                                {discountPresetNameMap[discount.preset]}
-                              </div>
-                            </div>
-                          )}
+                          ) : null}
 
                           <Input
                             label={'할인율 (%)'}
@@ -2501,7 +2566,7 @@ export default function AgencyRegistrationPage() {
                       </div>
 
                       <Button
-                        color="light"
+                        color="dark"
                         variant="weak"
                         size="medium"
                         onClick={() => handleSeatDiscountRemove(discount.id)}

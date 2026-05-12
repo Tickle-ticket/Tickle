@@ -12,6 +12,7 @@ export interface AdminSidebarItem {
 export interface AdminSidebarProps {
   items?: AdminSidebarItem[];
   brandLabel?: string;
+  badgeLabel?: string;
   title?: string;
   className?: string;
 }
@@ -30,7 +31,7 @@ function isActivePath(pathname: string | null, href: string) {
     return false;
   }
 
-  if (href === '/admin') {
+  if (href === '/admin' || href === '/agency') {
     return pathname === href;
   }
 
@@ -40,6 +41,7 @@ function isActivePath(pathname: string | null, href: string) {
 export function AdminSidebar({
   items = defaultItems,
   brandLabel = 'Tickle Admin',
+  badgeLabel = 'ADMIN',
   title = '관리자',
   className = '',
 }: AdminSidebarProps) {
@@ -61,7 +63,7 @@ export function AdminSidebar({
               priority
             />
             <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-black tracking-widest text-white">
-              ADMIN
+              {badgeLabel}
             </span>
           </div>
 
