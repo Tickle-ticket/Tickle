@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.S3Uploader;
 import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.infrastructure.client.AuthInternalClient;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.user.presentation.dto.MyInfoResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
+    private final AuthInternalClient authInternalClient;
 
     /**
      * 현재 로그인한 사용자의 정보를 조회합니다.
@@ -77,7 +79,13 @@ public class UserService {
     @Transactional
     public void withdrawMyInfo(Long userId) {
         validateUserId(userId);
-        userRepository.delete(getAccessibleUser(userId));
+        User user = getAccessibleUser(userId);
+
+        // 1. 인증 서버에 사용자 삭제 요청 (먼저 처리하여 로그인을 막음)
+        authInternalClient.deleteUser(userId);
+
+        // 2. 코어 서버에서 사용자 삭제
+        userRepository.delete(user);
     }
 
     private void validateHasAnyChange(MultipartFile profileImage, String nickname, String phoneNumber) {

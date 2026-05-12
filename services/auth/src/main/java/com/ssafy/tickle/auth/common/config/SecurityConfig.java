@@ -49,8 +49,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/phone/send",
                                 "/api/v1/auth/phone/verify"
                         ).permitAll()
-                        // 모니터링 / 문서
+                        // 모니터링 / 문서 / 내부 API
                         .requestMatchers(
+                                "/internal/**",
                                 "/actuator/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
