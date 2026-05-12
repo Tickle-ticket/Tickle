@@ -56,7 +56,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const popupRef = useRef<Window | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [buyerName, setBuyerName] = useState(userProfile?.name || userProfile?.nickname || '');
+  const [buyerName, setBuyerName] = useState(userProfile?.name || '');
   const [buyerEmail, setBuyerEmail] = useState(userProfile?.email || '');
   const [buyerPhone, setBuyerPhone] = useState(userProfile?.phoneNumber || '');
 
@@ -75,7 +75,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
   useEffect(() => {
     if (userProfile) {
-      setBuyerName(userProfile.name || userProfile.nickname || '');
+      setBuyerName(userProfile.name || '');
       setBuyerEmail(userProfile.email || '');
       setBuyerPhone(userProfile.phoneNumber || '');
     }
