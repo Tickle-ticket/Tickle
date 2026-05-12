@@ -25,7 +25,6 @@ import { Button } from '@/src/shared/components/Button';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
-import { PerformanceScheduleAddedModal } from '@/src/shared/components/PerformanceScheduleAddedModal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 
@@ -47,7 +46,7 @@ const registrationStepItems = [
   },
   {
     title: '티켓/공연 일정',
-    sections: '티켓 일정 기준, 공연 일정 등록',
+    sections: '공연 일정 등록, 티켓 일정 기준',
     detail: '예매 오픈/종료 기준과 회차 일정을 설정합니다.',
   },
   {
@@ -247,6 +246,35 @@ const formatTimeValue = (value: Date) => {
   return `${hours}:${minutes}`;
 };
 
+type ScheduleTimePeriod = 'am' | 'pm';
+
+const getScheduleTimePeriod = (timeValue: string): ScheduleTimePeriod => {
+  const hours = Number(timeValue.slice(0, 2));
+  return Number.isFinite(hours) && hours < 12 ? 'am' : 'pm';
+};
+
+const scheduleTimeQuickOptions = Array.from({ length: 48 }, (_, index) => {
+  const totalMinutes = index * 30;
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+  const minutes = String(totalMinutes % 60).padStart(2, '0');
+  return `${hours}:${minutes}`;
+});
+
+const scheduleTimeQuickOptionsByPeriod: Record<ScheduleTimePeriod, string[]> = {
+  am: scheduleTimeQuickOptions.slice(0, 24),
+  pm: scheduleTimeQuickOptions.slice(24),
+};
+
+const scheduleWeekdayOptions = [
+  { label: '월', weekday: 1 },
+  { label: '화', weekday: 2 },
+  { label: '수', weekday: 3 },
+  { label: '목', weekday: 4 },
+  { label: '금', weekday: 5 },
+  { label: '토', weekday: 6 },
+  { label: '일', weekday: 0 },
+];
+
 const buildEnabledDateRange = (startDate: Date, totalDays: number) => {
   const dates: string[] = [];
   const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
@@ -288,11 +316,6 @@ type IntroImageItem = {
 
 type PerformanceScheduleMap = Record<string, string[]>;
 
-type AddedScheduleNotice = {
-  timeValue: string;
-  dateLabels: string[];
-};
-
 type TicketScheduleRule = {
   days: number;
 };
@@ -302,6 +325,7 @@ type TicketSchedulePreview = {
   dateKey: string;
   timeValue: string;
   scheduleAt: Date;
+  sessionEndAt: Date;
   ticketOpenAt: Date;
   ticketCloseAt: Date;
 };
@@ -350,14 +374,10 @@ const withTimeFromDate = (sourceDate: Date, timeSourceDate: Date) => {
   return nextDate;
 };
 
-const buildTicketScheduleDate = (
-  scheduleAt: Date,
-  rule: TicketScheduleRule,
-  timeSourceDate: Date,
-) => {
-  const nextDate = new Date(scheduleAt);
+const buildTicketScheduleDate = (referenceAt: Date, rule: TicketScheduleRule) => {
+  const nextDate = new Date(referenceAt);
   nextDate.setDate(nextDate.getDate() - rule.days);
-  return withTimeFromDate(nextDate, timeSourceDate);
+  return nextDate;
 };
 
 const buildSessionEndAt = (scheduleAt: Date, fallbackEndTimeSource: Date) => {
@@ -420,6 +440,257 @@ const createImagePreviewItem = (file: File): IntroImageItem => ({
   file,
   previewUrl: URL.createObjectURL(file),
 });
+
+function AgencyPerformancePreviewModal({
+  isOpen,
+  onClose,
+  title,
+  categoryName,
+  venueName,
+  startAt,
+  endAt,
+  posterImage,
+  introImages,
+  notice,
+  hashtags,
+  seatPrices,
+  seatDiscounts,
+  schedules,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  categoryName: string;
+  venueName: string;
+  startAt: Date;
+  endAt: Date;
+  posterImage: IntroImageItem | null;
+  introImages: IntroImageItem[];
+  notice: string;
+  hashtags: string[];
+  seatPrices: Record<SeatGradeKey, string>;
+  seatDiscounts: SeatDiscountDraft[];
+  schedules: TicketSchedulePreview[];
+}) {
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const dateFormatter = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const periodLabel = `${dateFormatter.format(startAt)} ~ ${dateFormatter.format(endAt)}`;
+  const priceItems = seatGradeFields.map((field) => ({
+    ...field,
+    price: seatPrices[field.key].trim(),
+  }));
+  const activeDiscounts = seatDiscounts
+    .map((discount) => {
+      const name =
+        discount.preset === 'custom'
+          ? discount.customDiscountName.trim()
+          : discountPresetNameMap[discount.preset];
+      const rate = discount.discountRate.trim();
+
+      return { name, rate };
+    })
+    .filter((discount) => discount.name.length > 0 && discount.rate.length > 0);
+  const scheduleItems = schedules.slice(0, 8);
+  const hiddenScheduleCount = Math.max(0, schedules.length - scheduleItems.length);
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-[#f8f8f8] text-slate-950">
+      <div className="flex h-full w-full overflow-hidden">
+        <aside className="relative hidden h-full w-[38%] min-w-[360px] bg-slate-200 lg:block">
+          {posterImage ? (
+            <Image
+              src={posterImage.previewUrl}
+              alt="공연 포스터 미리보기"
+              fill
+              unoptimized
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm font-bold text-slate-500">
+              포스터 이미지 없음
+            </div>
+          )}
+        </aside>
+
+        <main className="h-full min-w-0 flex-1 overflow-y-auto">
+          <div className="sticky top-0 z-20 flex min-h-[72px] items-center justify-between border-b border-slate-200 bg-[#f8f8f8]/95 px-5 py-3 backdrop-blur md:px-10">
+            <div>
+              <p className="text-xs font-black tracking-[0.16em] text-blue-600">PREVIEW</p>
+              <p className="mt-1 text-sm font-bold text-slate-500">등록 후 상세 화면 미리보기</p>
+            </div>
+            <Button color="dark" variant="weak" size="medium" onClick={onClose}>
+              닫기
+            </Button>
+          </div>
+
+          <div className="mx-auto max-w-3xl px-5 pb-16 pt-6 md:px-0">
+            <div className="relative mb-6 aspect-[3/4] overflow-hidden rounded-3xl bg-slate-200 lg:hidden">
+              {posterImage ? (
+                <Image
+                  src={posterImage.previewUrl}
+                  alt="공연 포스터 미리보기"
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              ) : null}
+            </div>
+
+            <section className="max-w-2xl">
+              <div className="flex flex-wrap gap-2">
+                {categoryName ? (
+                  <Badge color="blue" variant="outline">
+                    {categoryName}
+                  </Badge>
+                ) : null}
+                {hashtags.map((hashtag) => (
+                  <Badge key={hashtag} color="grey" variant="outline">
+                    {hashtag}
+                  </Badge>
+                ))}
+              </div>
+
+              <h1 className="mt-4 whitespace-pre-line text-4xl font-black leading-tight tracking-normal text-slate-950 md:text-6xl">
+                {title || '공연명 미입력'}
+              </h1>
+              <div className="mt-5 space-y-2 text-base font-semibold text-slate-700 md:text-lg">
+                <p>{venueName || '공연장 미선택'}</p>
+                <p>{periodLabel}</p>
+              </div>
+
+              <div className="mt-8 grid w-full max-w-[420px] grid-cols-2 gap-2">
+                <Button color="dark" size="large" display="block" disabled>
+                  예매하기
+                </Button>
+                <Button color="light" size="large" display="block" disabled>
+                  취소표 대기하기
+                </Button>
+              </div>
+            </section>
+
+            <section className="mt-14 space-y-8 border-t border-slate-200 pt-8">
+              <Box variant="flat" className="border border-black/5">
+                <h2 className="text-xl font-black text-slate-950">공연 정보</h2>
+                <div className="mt-5 space-y-5">
+                  <div>
+                    <p className="text-sm font-bold text-blue-600">장소</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-600">{venueName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-blue-600">공지사항</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-600">
+                      {notice.trim() || '등록된 공지사항이 없습니다.'}
+                    </p>
+                  </div>
+                </div>
+              </Box>
+
+              <Box variant="flat" className="border border-black/5">
+                <h2 className="text-xl font-black text-slate-950">가격 정보</h2>
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
+                  {priceItems.map((item) => (
+                    <div
+                      key={item.key}
+                      className="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0"
+                    >
+                      <Badge color={item.badgeColor} size="small">
+                        {item.label}
+                      </Badge>
+                      <span className="text-sm font-black text-slate-950">
+                        {item.price ? `${new Intl.NumberFormat('ko-KR').format(Number(item.price))}원` : '미입력'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {activeDiscounts.length > 0 ? (
+                  <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-sm font-black text-slate-700">할인 정보</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {activeDiscounts.map((discount) => (
+                        <span
+                          key={`${discount.name}-${discount.rate}`}
+                          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                        >
+                          {discount.name} {discount.rate}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </Box>
+
+              <Box variant="flat" className="border border-black/5">
+                <h2 className="text-xl font-black text-slate-950">공연 일정</h2>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {scheduleItems.map((schedule) => (
+                    <div key={schedule.id} className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                      <p className="text-sm font-black text-slate-900">
+                        {formatScheduleDateTimePreviewLabel(schedule.scheduleAt)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        예매 {formatScheduleDateTimePreviewLabel(schedule.ticketOpenAt)} 오픈
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {hiddenScheduleCount > 0 ? (
+                  <p className="mt-4 text-sm font-semibold text-slate-500">
+                    외 {hiddenScheduleCount}개 회차가 더 있습니다.
+                  </p>
+                ) : null}
+              </Box>
+
+              <Box variant="flat" className="border border-black/5 bg-slate-50">
+                <h2 className="text-xl font-black text-slate-950">상세 정보</h2>
+                {introImages.length > 0 ? (
+                  <div className="mt-5 space-y-4">
+                    {introImages.map((image, index) => (
+                      <div key={image.id} className="relative overflow-hidden rounded-2xl bg-white">
+                        <Image
+                          src={image.previewUrl}
+                          alt={`공연 소개 이미지 ${index + 1}`}
+                          width={1200}
+                          height={800}
+                          unoptimized
+                          className="h-auto w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-5 flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-sm font-bold text-slate-400">
+                    상세 이미지 없음
+                  </div>
+                )}
+              </Box>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
 
 function DateTimeTriggerField({
   label,
@@ -849,9 +1120,10 @@ export default function AgencyRegistrationPage() {
   const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
   const [performanceSchedules, setPerformanceSchedules] = useState<PerformanceScheduleMap>({});
   const [scheduleTimeInputValue, setScheduleTimeInputValue] = useState('19:30');
-  const [addedScheduleNotice, setAddedScheduleNotice] = useState<AddedScheduleNotice | null>(null);
+  const [scheduleTimePeriod, setScheduleTimePeriod] = useState<ScheduleTimePeriod>('pm');
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
+  const [isPerformancePreviewOpen, setIsPerformancePreviewOpen] = useState(false);
   const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
   const [seatPolicyVenueId, setSeatPolicyVenueId] = useState<number | null>(null);
   const [isSeatPolicyDirty, setIsSeatPolicyDirty] = useState(false);
@@ -868,6 +1140,7 @@ export default function AgencyRegistrationPage() {
   const introImageInputRef = useRef<HTMLInputElement | null>(null);
   const introImageRegistryRef = useRef<IntroImageItem[]>([]);
   const introImageDragDepthRef = useRef(0);
+  const registrationPageTopRef = useRef<HTMLDivElement | null>(null);
   const categoryOptions = useMemo(
     () =>
       categories.map((category) => ({
@@ -976,6 +1249,7 @@ export default function AgencyRegistrationPage() {
 
     return performanceSchedules[selectedScheduleDateKey] ?? [];
   }, [performanceSchedules, selectedScheduleDateKey]);
+  const visibleScheduleTimeQuickOptions = scheduleTimeQuickOptionsByPeriod[scheduleTimePeriod];
 
   const registeredPerformanceCount = useMemo(
     () => Object.values(performanceSchedules).reduce((total, times) => total + times.length, 0),
@@ -1040,27 +1314,21 @@ export default function AgencyRegistrationPage() {
             .filter((timeValue) => isValidScheduleTime(timeValue))
             .map((timeValue) => {
               const scheduleAt = withSelectedTime(scheduleDate, timeValue);
+              const sessionEndAt = buildSessionEndAt(scheduleAt, performanceCloseAt);
 
               return {
                 id: `${dateKey}-${timeValue}`,
                 dateKey,
                 timeValue,
                 scheduleAt,
-                ticketOpenAt: buildTicketScheduleDate(
-                  scheduleAt,
-                  ticketOpenRule,
-                  performanceOpenAt,
-                ),
-                ticketCloseAt: buildTicketScheduleDate(
-                  scheduleAt,
-                  ticketCloseRule,
-                  performanceCloseAt,
-                ),
+                sessionEndAt,
+                ticketOpenAt: buildTicketScheduleDate(scheduleAt, ticketOpenRule),
+                ticketCloseAt: buildTicketScheduleDate(scheduleAt, ticketCloseRule),
               };
             });
         })
         .sort((left, right) => left.scheduleAt.getTime() - right.scheduleAt.getTime()),
-    [performanceCloseAt, performanceOpenAt, performanceSchedules, ticketCloseRule, ticketOpenRule],
+    [performanceCloseAt, performanceSchedules, ticketCloseRule, ticketOpenRule],
   );
   const activeTicketSchedulePreviews = useMemo(
     () =>
@@ -1071,7 +1339,7 @@ export default function AgencyRegistrationPage() {
         : registeredTicketSchedulePreviews,
     [registeredTicketSchedulePreviews, selectedScheduleDateKeys],
   );
-  const ticketSchedulePreviewItems = activeTicketSchedulePreviews.slice(0, 3);
+  const ticketSchedulePreviewItems = activeTicketSchedulePreviews.slice(0, 1);
   const hiddenTicketSchedulePreviewCount = Math.max(0, activeTicketSchedulePreviews.length - ticketSchedulePreviewItems.length);
   const hasInvalidTicketWindow = registeredTicketSchedulePreviews.some(
     (preview) => preview.ticketOpenAt.getTime() >= preview.ticketCloseAt.getTime(),
@@ -1079,7 +1347,7 @@ export default function AgencyRegistrationPage() {
   const hasTicketWindowAfterScheduleStart = registeredTicketSchedulePreviews.some(
     (preview) =>
       preview.ticketOpenAt.getTime() >= preview.scheduleAt.getTime() ||
-      preview.ticketCloseAt.getTime() >= preview.scheduleAt.getTime(),
+      preview.ticketCloseAt.getTime() > preview.scheduleAt.getTime(),
   );
 
   useEffect(() => {
@@ -1428,6 +1696,39 @@ export default function AgencyRegistrationPage() {
     }
   };
 
+  const handleScheduleWeekdayToggle = (weekday: number) => {
+    const targetDateKeys = performanceScheduleDateKeys.filter((dateKey) => {
+      const scheduleDate = parseDateKey(dateKey);
+      return scheduleDate?.getDay() === weekday;
+    });
+
+    if (targetDateKeys.length === 0) {
+      return;
+    }
+
+    const selectedDateKeySet = new Set(selectedScheduleDateKeys);
+    const isEveryTargetSelected = targetDateKeys.every((dateKey) => selectedDateKeySet.has(dateKey));
+
+    if (isEveryTargetSelected) {
+      targetDateKeys.forEach((dateKey) => selectedDateKeySet.delete(dateKey));
+    } else {
+      targetDateKeys.forEach((dateKey) => selectedDateKeySet.add(dateKey));
+    }
+
+    const nextSelectedDateKeys = Array.from(selectedDateKeySet).sort();
+    setSelectedScheduleDateKeys(nextSelectedDateKeys);
+
+    if (!isEveryTargetSelected) {
+      setSelectedScheduleDate(parseDateKey(targetDateKeys[0]));
+      return;
+    }
+
+    if (selectedScheduleDateKey && !nextSelectedDateKeys.includes(selectedScheduleDateKey)) {
+      const fallbackDateKey = nextSelectedDateKeys[0] ?? null;
+      setSelectedScheduleDate(fallbackDateKey ? parseDateKey(fallbackDateKey) : null);
+    }
+  };
+
   const handlePerformanceOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
     const parsed = parseDateTimeLabel(nextValue);
@@ -1502,8 +1803,6 @@ export default function AgencyRegistrationPage() {
     }
 
     const nextSchedules = { ...performanceSchedules };
-    const addedDateKeys: string[] = [];
-
     targetDateKeys.forEach((dateKey) => {
       const currentTimes = nextSchedules[dateKey] ?? [];
 
@@ -1512,21 +1811,48 @@ export default function AgencyRegistrationPage() {
       }
 
       nextSchedules[dateKey] = [...currentTimes, timeValue].sort();
-      addedDateKeys.push(dateKey);
     });
 
-    if (addedDateKeys.length === 0) {
+    setPerformanceSchedules(nextSchedules);
+  };
+
+  const handleScheduleQuickTimeSelect = (timeValue: string) => {
+    setScheduleTimeInputValue(timeValue);
+    setScheduleTimePeriod(getScheduleTimePeriod(timeValue));
+
+    if (selectedScheduleDateKeys.length === 0) {
       return;
     }
 
-    setPerformanceSchedules(nextSchedules);
-    setAddedScheduleNotice({
-      timeValue,
-      dateLabels: addedDateKeys
-        .map((dateKey) => parseDateKey(dateKey))
-        .filter((value): value is Date => value !== null)
-        .map((value) => formatScheduleDateShortLabel(value)),
-    });
+    const isEverySelectedDateRegistered = selectedScheduleDateKeys.every((dateKey) =>
+      (performanceSchedules[dateKey] ?? []).includes(timeValue),
+    );
+
+    if (isEverySelectedDateRegistered) {
+      setPerformanceSchedules((current) => {
+        const nextSchedules = { ...current };
+
+        selectedScheduleDateKeys.forEach((dateKey) => {
+          const nextTimes = (nextSchedules[dateKey] ?? []).filter((entry) => entry !== timeValue);
+
+          if (nextTimes.length === 0) {
+            delete nextSchedules[dateKey];
+            return;
+          }
+
+          nextSchedules[dateKey] = nextTimes;
+        });
+
+        return nextSchedules;
+      });
+      return;
+    }
+
+    handleScheduleTimeAdd(timeValue);
+  };
+
+  const handleAllPerformanceSchedulesClear = () => {
+    setPerformanceSchedules({});
   };
 
   const handleScheduleTimeRemove = (dateKey: string, timeValue: string) => {
@@ -1558,8 +1884,17 @@ export default function AgencyRegistrationPage() {
     });
   };
 
+  const scrollRegistrationPageToTop = () => {
+    window.requestAnimationFrame(() => {
+      registrationPageTopRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  };
+
   const goToPreviousRegistrationStep = () => {
-    setActiveRegistrationStep((current) => Math.max(0, current - 1));
+    moveToRegistrationStep(Math.max(0, activeRegistrationStep - 1));
   };
 
   const getRegistrationStepValidationMessage = (stepIndex: number) => {
@@ -1609,6 +1944,7 @@ export default function AgencyRegistrationPage() {
       setRegistrationErrorMessage(null);
       setRegistrationSuccessMessage(null);
       setActiveRegistrationStep(targetStep);
+      scrollRegistrationPageToTop();
       return;
     }
 
@@ -1625,10 +1961,26 @@ export default function AgencyRegistrationPage() {
     setRegistrationErrorMessage(null);
     setRegistrationSuccessMessage(null);
     setActiveRegistrationStep(targetStep);
+    scrollRegistrationPageToTop();
   };
 
   const goToNextRegistrationStep = () => {
     moveToRegistrationStep(Math.min(registrationStepItems.length - 1, activeRegistrationStep + 1));
+  };
+
+  const handlePerformancePreviewOpen = () => {
+    const validationMessage =
+      getRegistrationStepValidationMessage(0) ?? getRegistrationStepValidationMessage(1);
+
+    if (validationMessage) {
+      setRegistrationSuccessMessage(null);
+      setRegistrationErrorMessage(validationMessage);
+      return;
+    }
+
+    setRegistrationErrorMessage(null);
+    setRegistrationSuccessMessage(null);
+    setIsPerformancePreviewOpen(true);
   };
 
   const handleRegistrationSubmit = async () => {
@@ -1810,7 +2162,7 @@ export default function AgencyRegistrationPage() {
         sessions: {
           sessions: registeredTicketSchedulePreviews.map((preview) => ({
             startAt: preview.scheduleAt.toISOString(),
-            endAt: buildSessionEndAt(preview.scheduleAt, performanceCloseAt).toISOString(),
+            endAt: preview.sessionEndAt.toISOString(),
             salesOpenAt: preview.ticketOpenAt.toISOString(),
             salesCloseAt: preview.ticketCloseAt.toISOString(),
           })),
@@ -1903,7 +2255,7 @@ export default function AgencyRegistrationPage() {
   );
 
   return (
-    <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+    <div ref={registrationPageTopRef} className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <header className="flex flex-col gap-4">
         <div>
           <p className="text-sm font-bold text-blue-600">공연 등록</p>
@@ -2156,7 +2508,7 @@ export default function AgencyRegistrationPage() {
                 activeRegistrationStep === 0 || activeRegistrationStep === 1
                   ? undefined
                   : 'none',
-              order: activeRegistrationStep === 0 ? 1 : undefined,
+              order: activeRegistrationStep === 0 ? 1 : activeRegistrationStep === 1 ? 2 : undefined,
             }}
           >
             <div
@@ -2337,7 +2689,7 @@ export default function AgencyRegistrationPage() {
 
                   <TicketScheduleRuleField
                     label="티켓 종료 기준"
-                    description="각 회차의 공연일을 기준으로 며칠 전에 예매를 닫을지 설정합니다."
+                    description="각 회차의 공연 시작 시각을 기준으로 며칠 전에 예매를 닫을지 설정합니다."
                     rule={ticketCloseRule}
                     onDaysChange={(days) =>
                       setTicketCloseRule((current) => ({ ...current, days }))
@@ -2374,6 +2726,9 @@ export default function AgencyRegistrationPage() {
                               </p>
                               <p className="mt-1 text-xs font-medium text-slate-400">
                                 회차 시간 {preview.timeValue}
+                              </p>
+                              <p className="mt-1 text-xs font-medium text-slate-400">
+                                공연 종료 {formatDateTimeLabel(preview.sessionEndAt)}
                               </p>
                             </div>
                           </div>
@@ -2415,7 +2770,7 @@ export default function AgencyRegistrationPage() {
 
                   {hasTicketWindowAfterScheduleStart ? (
                     <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-700">
-                      일부 회차는 현재 설정대로면 공연 시작 이후에도 예매가 열려 있습니다. 같은 날 종료를 쓰는 경우 공연 종료 시각을 확인해 주세요.
+                      일부 회차는 현재 설정대로면 티켓 오픈 또는 종료가 회차 시작 이후입니다. 기준을 다시 확인해 주세요.
                     </div>
                   ) : null}
                 </div>
@@ -2685,7 +3040,10 @@ export default function AgencyRegistrationPage() {
           <Box
             variant="shadow"
             className="space-y-5"
-            style={{ display: activeRegistrationStep === 1 ? undefined : 'none' }}
+            style={{
+              display: activeRegistrationStep === 1 ? undefined : 'none',
+              order: activeRegistrationStep === 1 ? 1 : undefined,
+            }}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -2714,6 +3072,46 @@ export default function AgencyRegistrationPage() {
                   <p className="mt-1 text-xs font-medium text-slate-400">
                     총 {performanceScheduleDateKeys.length}일 범위에서 회차를 등록합니다.
                   </p>
+
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-black text-slate-500">요일 선택</p>
+                      <span className="text-xs font-semibold text-slate-400">선택/해제</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-7 gap-1.5">
+                      {scheduleWeekdayOptions.map((option) => {
+                        const weekdayDateKeys = performanceScheduleDateKeys.filter((dateKey) => {
+                          const scheduleDate = parseDateKey(dateKey);
+                          return scheduleDate?.getDay() === option.weekday;
+                        });
+                        const selectedCount = weekdayDateKeys.filter((dateKey) =>
+                          selectedScheduleDateKeys.includes(dateKey),
+                        ).length;
+                        const isEverySelected = weekdayDateKeys.length > 0 && selectedCount === weekdayDateKeys.length;
+                        const isPartiallySelected = selectedCount > 0 && !isEverySelected;
+
+                        return (
+                          <button
+                            key={option.weekday}
+                            type="button"
+                            onClick={() => handleScheduleWeekdayToggle(option.weekday)}
+                            disabled={weekdayDateKeys.length === 0}
+                            aria-pressed={isEverySelected}
+                            className={`rounded-xl px-2 py-2 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                              isEverySelected
+                                ? 'bg-blue-600 text-white'
+                                : isPartiallySelected
+                                  ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
+                                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                            }`}
+                            title={`${option.label}요일 ${selectedCount}/${weekdayDateKeys.length}일 선택`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
                   <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
                     {performanceScheduleDateKeys.map((dateKey) => {
@@ -2762,13 +3160,23 @@ export default function AgencyRegistrationPage() {
                 </div>
 
                 <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <div>
-                    <p className="text-sm font-bold text-slate-500">선택 날짜</p>
-                    <p className="mt-2 text-2xl font-black text-slate-950">
-                      {selectedScheduleDateCount > 1
-                        ? `${selectedScheduleDateCount}일 선택`
-                        : selectedDateLabel}
-                    </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-slate-500">선택 날짜</p>
+                      <p className="mt-2 text-2xl font-black text-slate-950">
+                        {selectedScheduleDateCount > 1
+                          ? `${selectedScheduleDateCount}일 선택`
+                          : selectedDateLabel}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAllPerformanceSchedulesClear}
+                      disabled={registeredPerformanceCount === 0}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      전체 초기화
+                    </button>
                   </div>
 
                   <p className="mt-4 text-sm font-medium leading-6 text-slate-600">
@@ -2778,11 +3186,11 @@ export default function AgencyRegistrationPage() {
                   </p>
 
                   {selectedScheduleDateLabels.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
                       {selectedScheduleDateLabels.map((label) => (
                         <span
                           key={label}
-                          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-500 ring-1 ring-black/5"
+                          className="inline-flex h-8 items-center justify-center rounded-full bg-white px-3 text-center text-xs font-bold text-slate-500 ring-1 ring-black/5"
                         >
                           {label}
                         </span>
@@ -2794,40 +3202,99 @@ export default function AgencyRegistrationPage() {
                     </div>
                   )}
 
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4">
+                    <div>
+                      <div>
+                        <p className="text-sm font-black text-slate-700">30분 단위 선택</p>
+                        <p className="mt-1 text-xs font-medium text-slate-400">
+                          시간을 누르면 선택된 날짜에 바로 회차가 추가됩니다.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+                      {(['am', 'pm'] as const).map((period) => {
+                        const isActive = scheduleTimePeriod === period;
+
+                        return (
+                          <button
+                            key={period}
+                            type="button"
+                            onClick={() => setScheduleTimePeriod(period)}
+                            className={`rounded-xl px-3 py-2 text-sm font-black transition ${
+                              isActive
+                                ? 'bg-white text-slate-950 shadow-sm'
+                                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
+                            }`}
+                          >
+                            {period === 'am' ? '오전' : '오후'}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 grid max-h-[180px] grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-6 lg:grid-cols-6">
+                      {visibleScheduleTimeQuickOptions.map((timeValue) => {
+                        const isRegisteredOnSelectedDate =
+                          selectedScheduleDateKeys.length > 0
+                            ? selectedScheduleDateKeys.every((dateKey) =>
+                                (performanceSchedules[dateKey] ?? []).includes(timeValue),
+                              )
+                            : selectedScheduleTimes.includes(timeValue);
+
+                        return (
+                          <button
+                            key={timeValue}
+                            type="button"
+                            onClick={() => handleScheduleQuickTimeSelect(timeValue)}
+                            aria-pressed={isRegisteredOnSelectedDate}
+                            className={`rounded-2xl border px-3 py-2 text-sm font-black transition ${
+                              isRegisteredOnSelectedDate
+                                ? 'border-2 border-blue-600 bg-white text-slate-700'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {timeValue}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {selectedScheduleDateCount === 0 ? (
+                      <p className="mt-3 text-xs font-semibold text-amber-600">
+                        운영 날짜를 먼저 선택하면 시간 버튼으로 회차를 바로 추가할 수 있습니다.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-end">
                     <label className="flex min-w-0 flex-1 flex-col gap-2">
-                      <span className="text-sm font-bold text-slate-500">시간 입력</span>
+                      <span className="text-sm font-bold text-slate-500">직접 입력</span>
                       <input
                         type="time"
-                        step={600}
+                        step={60}
                         value={scheduleTimeInputValue}
-                        onChange={(event) => setScheduleTimeInputValue(event.target.value)}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setScheduleTimeInputValue(nextValue);
+
+                          if (isValidScheduleTime(nextValue)) {
+                            setScheduleTimePeriod(getScheduleTimePeriod(nextValue));
+                          }
+                        }}
                         className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                       />
                     </label>
                     <Button
                       color="primary"
                       size="medium"
-                      disabled={selectedScheduleDateCount === 0}
+                      disabled={selectedScheduleDateCount === 0 || !isValidScheduleTime(scheduleTimeInputValue)}
                       onClick={() => handleScheduleTimeAdd()}
                     >
                       선택 날짜에 회차 추가
                     </Button>
                   </div>
                 </div>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                <p className="text-sm font-bold text-slate-500">등록 상태</p>
-                <p className="mt-3 text-[28px] font-black tracking-tight text-slate-950">
-                  {selectedScheduleTimes.length}
-                  <span className="ml-1 text-lg font-bold text-slate-500">회차</span>
-                </p>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-                  {selectedScheduleDateCount > 0
-                    ? `${selectedVenueInfo?.label}에서 ${selectedDateLabel} 기준 회차를 확인하고, 선택된 ${selectedScheduleDateCount}일에 일괄 추가합니다.`
-                    : `${selectedVenueInfo?.label}에서 날짜를 선택하면 해당 날짜 기준 회차를 확인할 수 있습니다.`}
-                </p>
               </div>
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5">
@@ -2944,6 +3411,7 @@ export default function AgencyRegistrationPage() {
                   variant="weak"
                   display="block"
                   size="medium"
+                  onClick={handlePerformancePreviewOpen}
                   disabled={isSubmittingRegistration}
                 >
                   미리보기
@@ -2982,6 +3450,23 @@ export default function AgencyRegistrationPage() {
         </div>
       </section>
 
+      <AgencyPerformancePreviewModal
+        isOpen={isPerformancePreviewOpen}
+        onClose={() => setIsPerformancePreviewOpen(false)}
+        title={performanceTitle.trim()}
+        categoryName={selectedCategoryInfo?.categoryName ?? ''}
+        venueName={selectedVenueInfo.label}
+        startAt={performanceOpenAt}
+        endAt={performanceCloseAt}
+        posterImage={posterImage}
+        introImages={introImages}
+        notice={noticeText}
+        hashtags={performanceHashtags}
+        seatPrices={seatPrices}
+        seatDiscounts={seatDiscounts}
+        schedules={registeredTicketSchedulePreviews}
+      />
+
       {isSeatPolicyModalOpen ? (
         <AgencySeatPolicyModal
           key={seatPolicyModalKey}
@@ -3017,14 +3502,6 @@ export default function AgencyRegistrationPage() {
         />
       ) : null}
 
-      {addedScheduleNotice ? (
-        <PerformanceScheduleAddedModal
-          isOpen={Boolean(addedScheduleNotice)}
-          onClose={() => setAddedScheduleNotice(null)}
-          addedTime={addedScheduleNotice.timeValue}
-          addedDateLabels={addedScheduleNotice.dateLabels}
-        />
-      ) : null}
     </div>
   );
 }

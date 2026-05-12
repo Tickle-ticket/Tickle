@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';
 import { authApi } from '@/src/shared/api/authApi';
 import { setAccessToken } from '@/src/shared/api/tokenManager';
-import { ApiError } from '@/src/shared/api/types';
+import { getAccessTokenRoles } from '@/src/shared/api/tokenClaims';
 import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { KakaoLoginButton } from '@/src/shared/components/KakaoLoginButton';
@@ -97,7 +97,13 @@ export function LoginPageClient() {
 
       if (response.data) {
         setAccessToken(response.data.accessToken);
-        const targetUrl = redirect && redirect.startsWith('/') ? redirect : '/';
+        const roles = getAccessTokenRoles(response.data.accessToken);
+        const defaultTargetUrl = roles.includes('ADMIN')
+          ? '/admin'
+          : roles.includes('ORGANIZER')
+            ? '/agency'
+            : '/';
+        const targetUrl = redirect && redirect.startsWith('/') ? redirect : defaultTargetUrl;
         router.push(targetUrl);
       }
     } catch (error) {

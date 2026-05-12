@@ -8,6 +8,7 @@ import { http } from '@/src/shared/api/http';
 import { getFavoriteEvents, createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { getAccessTokenRoles } from '@/src/shared/api/tokenClaims';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { BannerTitle } from '@/src/shared/components/BannerTitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
@@ -175,6 +176,9 @@ export const HomeView = () => {
 
   const { selectedDetailId, isDetailBannerOpen, openDetail, closeDetail, clickedLayoutId } = useDetailStore();
   const { data: detailData, isLoading: detailLoading } = useDetailData(selectedDetailId || undefined);
+  const accessRoles = getAccessTokenRoles();
+  const canEnterAgency = accessRoles.includes('ORGANIZER');
+  const canEnterAdmin = accessRoles.includes('ADMIN');
 
 
   useEffect(() => {
@@ -392,6 +396,41 @@ export const HomeView = () => {
             </motion.div>
           ) : (
             <motion.div key="home" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0 flex flex-col">
+              {(canEnterAgency || canEnterAdmin) ? (
+                <section className="mt-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-black text-slate-950">관리 페이지 바로가기</p>
+                        <p className="mt-1 text-sm font-medium text-slate-500">
+                          현재 계정 권한으로 접근 가능한 페이지입니다.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {canEnterAgency ? (
+                          <button
+                            type="button"
+                            onClick={() => router.push('/agency')}
+                            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white transition hover:bg-slate-800"
+                          >
+                            Agency 페이지
+                          </button>
+                        ) : null}
+                        {canEnterAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => router.push('/admin')}
+                            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
+                          >
+                            Admin 페이지
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+
               {/* Section 1: 랭킹 */}
               <section className="mt-4">
                 <div className="flex items-center mb-4">
