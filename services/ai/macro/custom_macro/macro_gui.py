@@ -30,7 +30,9 @@ DEFAULT_DATA = {
         "between_event_sec": 0.05,
         "mouse_steps": 3,
         "use_retina_scale": False,
-        "ocr_server_url": "http://127.0.0.1:8010"
+        "ocr_server_url": "http://127.0.0.1:8010",
+        "ocr_security_retry_max": 8,
+        "ocr_security_retry_interval_sec": 0.25
     },
     "security": {
         "mode": "manual",
@@ -99,6 +101,8 @@ def ensure_data_shape(data):
     runtime.setdefault("mouse_steps", 3)
     runtime.setdefault("use_retina_scale", False)
     runtime.setdefault("ocr_server_url", "http://127.0.0.1:8010")
+    runtime.setdefault("ocr_security_retry_max", 8)
+    runtime.setdefault("ocr_security_retry_interval_sec", 0.25)
 
     security = data["security"]
     security.setdefault("mode", "manual")
@@ -187,6 +191,15 @@ def build_runtime(data) -> RuntimeConfig:
 def get_ocr_server_url(data) -> str:
     runtime = data.setdefault("runtime", {})
     return runtime.get("ocr_server_url", "http://127.0.0.1:8010")
+
+
+def get_ocr_security_retry_config(data) -> tuple[int, float]:
+    runtime = data.setdefault("runtime", {})
+    retry_max = int(runtime.get("ocr_security_retry_max", 8) or 8)
+    retry_max = max(1, min(retry_max, 30))
+    interval = float(runtime.get("ocr_security_retry_interval_sec", 0.25) or 0.25)
+    interval = max(0.05, min(interval, 5.0))
+    return retry_max, interval
 
 
 def box_to_text(box):
@@ -1149,14 +1162,33 @@ class MacroTab(tk.Frame):
                         )
 
                     elif event_type == "ocr_security":
-                        capture_screen(SCREENSHOT_PATH)
+                        retry_max, retry_interval = get_ocr_security_retry_config(self.data)
+                        last_error = None
+                        result = None
 
-                        result = request_security_challenge(
-                            image_path=SCREENSHOT_PATH,
-                            server_url=ocr_server_url,
-                            security_config=security_config,
-                            timeout_sec=90,
-                        )
+                        for attempt in range(1, retry_max + 1):
+                            if not _running:
+                                break
+
+                            capture_screen(SCREENSHOT_PATH)
+
+                            try:
+                                result = request_security_challenge(
+                                    image_path=SCREENSHOT_PATH,
+                                    server_url=ocr_server_url,
+                                    security_config=security_config,
+                                    timeout_sec=90,
+                                )
+                                last_error = None
+                                break
+                            except Exception as error:
+                                last_error = error
+                                print(f"[ocr_security] attempt {attempt}/{retry_max} failed: {error}")
+                                # UI animation / rendering timing can cause OCR to fail if captured too early.
+                                time.sleep(retry_interval)
+
+                        if result is None:
+                            raise RuntimeError(f"ocr_security failed after {retry_max} retries: {last_error}")
 
                         sequence = result["sequence"]
                         buttons = result["buttons"]
