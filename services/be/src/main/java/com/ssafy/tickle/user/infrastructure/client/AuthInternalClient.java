@@ -31,10 +31,19 @@ public class AuthInternalClient {
      */
     public void deleteUser(Long userId) {
         log.info("Auth 서버 사용자 삭제 요청: userId={}", userId);
-        authRestClient.delete()
-                .uri("/internal/v1/auth/users/{userId}", userId)
-                .header("X-Internal-Secret", internalSecret)
-                .retrieve()
-                .body(new ParameterizedTypeReference<BaseResponse<Void>>() {});
+        try {
+            authRestClient.delete()
+                    .uri("/internal/v1/auth/users/{userId}", userId)
+                    .header("X-Internal-Secret", internalSecret)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<BaseResponse<Void>>() {});
+        } catch (org.springframework.web.client.RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                log.info("Auth 서버에 해당 사용자가 존재하지 않아 삭제를 생략합니다: userId={}", userId);
+            } else {
+                log.warn("Auth 서버 사용자 삭제 실패 (HTTP {}): userId={}, msg={}", e.getStatusCode(), userId, e.getMessage());
+                throw e;
+            }
+        }
     }
 }
