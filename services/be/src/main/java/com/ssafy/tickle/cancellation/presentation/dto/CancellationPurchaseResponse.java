@@ -7,6 +7,10 @@ import java.time.Instant;
 
 @Schema(description = "취소표 구매 응답 DTO (결제 수단별 필드 포함)")
 public record CancellationPurchaseResponse(
+        @Schema(description = "공연 식별자")
+        Long eventId,
+        @Schema(description = "회차 식별자")
+        Long scheduleId,
         @Schema(description = "결제 수단")
         Payment.MethodType paymentMethod,
         @Schema(description = "예매 식별자")
@@ -34,6 +38,8 @@ public record CancellationPurchaseResponse(
      * 카카오페이 결제용 응답을 생성합니다.
      */
     public static CancellationPurchaseResponse forKakaoPay(
+            Long eventId,
+            Long scheduleId,
             Long bookingId,
             String bookingNo,
             BigDecimal orderAmount,
@@ -41,6 +47,8 @@ public record CancellationPurchaseResponse(
             String redirectUrl
     ) {
         return new CancellationPurchaseResponse(
+                eventId,
+                scheduleId,
                 Payment.MethodType.KAKAOPAY,
                 bookingId,
                 bookingNo,
@@ -55,6 +63,8 @@ public record CancellationPurchaseResponse(
      * 무통장 입금용 응답을 생성합니다.
      */
     public static CancellationPurchaseResponse forBankTransfer(
+            Long eventId,
+            Long scheduleId,
             Long bookingId,
             String bookingNo,
             BigDecimal orderAmount,
@@ -64,6 +74,8 @@ public record CancellationPurchaseResponse(
             Instant depositDeadline
     ) {
         return new CancellationPurchaseResponse(
+                eventId,
+                scheduleId,
                 Payment.MethodType.BANK_TRANSFER,
                 bookingId,
                 bookingNo,

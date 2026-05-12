@@ -69,7 +69,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
      * 랭킹 계산용 이벤트 목록을 자체 기준으로 조회합니다.
      * 현재는 생성일 기준으로 정렬되어 있습니다.
      *
-     * @param status 이벤트 상태
+     * @param now 현재 시각
      * @param categoryId 카테고리 식별자(없으면 전체)
      * @return 생성일 정렬 이벤트 목록
      */
@@ -77,11 +77,12 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("""
             select e
             from Event e
-            where e.status = :status
+            where e.salesStartAt <= :now
+              and e.salesEndAt >= :now
               and (:categoryId is null or e.category.id = :categoryId)
             """)
     List<Event> findRankingEvents(
-            @Param("status") Event.Status status,
+            @Param("now") Instant now,
             @Param("categoryId") Long categoryId,
             Pageable pageable
 

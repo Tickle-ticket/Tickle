@@ -189,7 +189,7 @@ public class EventService {
         }
 
         List<Event> rankingEvents = eventRepository.findRankingEvents(
-                Event.Status.OPENED,
+                Instant.now(),
                 categoryId,
                 PageRequest.of(
                         0,
