@@ -65,4 +65,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("bookingId") Long bookingId,
             @Param("userId") Long userId
     );
+
+    /**
+     * 취소표 제안 ID로 예매 내역을 조회합니다.
+     *
+     * @param cancellationOfferId 취소표 제안 식별자
+     * @return 예매 엔티티 (없으면 Optional.empty)
+     */
+    Optional<Booking> findByCancellationOfferId(Long cancellationOfferId);
 }

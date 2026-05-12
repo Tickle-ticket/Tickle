@@ -112,7 +112,21 @@ public class CancellationRedistributionService {
         CancellationOffer offer = offerRepository.findByIdWithDetails(offerId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "제안을 찾을 수 없습니다."));
 
-        validateOfferOwnershipAndTimer(offer, userId);
+        if (!offer.getCancellationCandidate().getUser().getId().equals(userId)) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표만 구매할 수 있습니다.");
+        }
+
+        if (offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED) {
+            return retryCancellationPurchase(offer, request, userId);
+        }
+
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
+            throw new BaseException(GlobalErrorCode.CONFLICT, "유효한 취소표 구매 대기 상태가 아닙니다.");
+        }
+        if (Instant.now().isAfter(offer.getOfferExpiresAt())) {
+            throw new BaseException(GlobalErrorCode.CONFLICT, "취소표 구매 가능 시간(1시간)이 초과되었습니다.");
+        }
+
         // 제안 이후 사용자가 일반 예매를 늘렸을 수 있으므로 구매 진입 직전 4매 제한을 다시 확인합니다.
         validateBookingAndWaitingLimit(offer.getCancellationCandidate());
 
@@ -158,15 +172,11 @@ public class CancellationRedistributionService {
                     userId,
                     new KakaoPayReadyRequest(booking.getId()));
 
-            // 상태 전이 (READY)
-            booking.markPendingPayment();
-            ticket.markPendingPayment();
-            seat.markPendingPayment();
-
-            // WebSocket 동기화
+            // 카카오페이는 승인 전까지 DRAFT 및 HELD 상태를 유지해야 합니다.
+            // WebSocket 동기화 (HELD)
             eventPublisher.publishEvent(
                     new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()),
-                            SessionSeat.SaleStatus.PENDING));
+                            SessionSeat.SaleStatus.HELD));
 
             return CancellationPurchaseResponse.forKakaoPay(
                     booking.getId(),
@@ -261,6 +271,78 @@ public class CancellationRedistributionService {
         return createdAt.plusDays(1)
                 .with(PaymentConstants.BANK_TRANSFER_DEADLINE_TIME)
                 .toInstant();
+    }
+
+    private CancellationPurchaseResponse retryCancellationPurchase(CancellationOffer offer, CancellationPurchaseRequest request, Long userId) {
+        Booking booking = bookingRepository.findByCancellationOfferId(offer.getId())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "예매 내역을 찾을 수 없습니다."));
+
+        if (booking.getBookingStatus() == Booking.Status.CONFIRMED) {
+            throw new BaseException(GlobalErrorCode.CONFLICT, "이미 결제가 완료된 예매입니다.");
+        }
+        if (booking.getBookingStatus() == Booking.Status.CANCELLED) {
+            throw new BaseException(GlobalErrorCode.CONFLICT, "이미 취소된 예매입니다.");
+        }
+
+        SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
+        BigDecimal totalAmount = booking.getTotalPaymentAmount();
+
+        if (request.paymentMethod() == Payment.MethodType.KAKAOPAY) {
+            if (booking.getBookingStatus() == Booking.Status.PENDING_PAYMENT) {
+                throw new BaseException(GlobalErrorCode.CONFLICT, "무통장 입금 대기 중인 예매는 카카오페이로 변경할 수 없습니다.");
+            }
+
+            KakaoPayReadyResponse kakaoResponse = kakaoPayPaymentService.readyKakaoPay(
+                    seat.getSession().getEvent().getId(),
+                    seat.getSession().getId(),
+                    userId,
+                    new KakaoPayReadyRequest(booking.getId()));
+
+            return CancellationPurchaseResponse.forKakaoPay(
+                    booking.getId(),
+                    booking.getBookingNo(),
+                    totalAmount,
+                    PaymentConstants.CURRENCY_KRW,
+                    kakaoResponse.nextRedirectPcUrl());
+        } else {
+            if (booking.getBookingStatus() == Booking.Status.PENDING_PAYMENT) {
+                throw new BaseException(GlobalErrorCode.CONFLICT, "이미 무통장 입금 대기 중인 예매입니다.");
+            }
+
+            Payment payment = paymentRepository.save(
+                    Payment.pendingBankTransfer(
+                            booking,
+                            totalAmount,
+                            PaymentConstants.CURRENCY_KRW,
+                            PaymentConstants.BANK_TRANSFER_PROVIDER));
+
+            booking.markPendingPayment();
+            BookingTicket ticket = bookingTicketRepository.findByBookingId(booking.getId()).get(0);
+            ticket.markPendingPayment();
+            seat.markPendingPayment();
+
+            paymentTransactionRepository.save(PaymentTransaction.pendingSale(payment, UUID.randomUUID().toString()));
+            bookingTicketStatusHistoryRepository.save(
+                    BookingTicketStatusHistory.builder()
+                            .bookingTicket(ticket)
+                            .fromStatus(BookingTicket.Status.DRAFT.name())
+                            .toStatus(BookingTicket.Status.PENDING_PAYMENT.name())
+                            .build());
+
+            eventPublisher.publishEvent(
+                    new SeatStatusChangedEvent(this, seat.getSession().getId(), List.of(seat.getId()),
+                            SessionSeat.SaleStatus.PENDING));
+
+            Instant deadline = getDepositDeadline(payment);
+            return CancellationPurchaseResponse.forBankTransfer(
+                    booking.getId(),
+                    booking.getBookingNo(),
+                    totalAmount,
+                    PaymentConstants.CURRENCY_KRW,
+                    PaymentConstants.BANK_TRANSFER_ACCOUNT,
+                    PaymentConstants.BANK_TRANSFER_ACCOUNT_HOLDER,
+                    deadline);
+        }
     }
 
     /**
