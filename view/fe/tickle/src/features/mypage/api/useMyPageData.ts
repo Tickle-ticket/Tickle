@@ -177,7 +177,25 @@ export const useWaitlistBookings = () => {
         return acc;
       }, {});
 
-      return Object.values(grouped) as WaitlistBookingData[];
+      const groupedArray = Object.values(grouped) as WaitlistBookingData[];
+      
+      groupedArray.forEach((group: any) => {
+        group.seats.sort((a: any, b: any) => {
+          const aOffered = a.status === 'OFFERED' ? 1 : 0;
+          const bOffered = b.status === 'OFFERED' ? 1 : 0;
+          if (aOffered !== bOffered) return bOffered - aOffered;
+          return (a.waitlistNumber || 999) - (b.waitlistNumber || 999);
+        });
+      });
+
+      // 그룹 자체도 가장 대기 순번이 빠른 것이 먼저 오도록 정렬
+      groupedArray.sort((a: any, b: any) => {
+        const aMin = a.seats[0]?.status === 'OFFERED' ? -1 : (a.seats[0]?.waitlistNumber || 999);
+        const bMin = b.seats[0]?.status === 'OFFERED' ? -1 : (b.seats[0]?.waitlistNumber || 999);
+        return aMin - bMin;
+      });
+
+      return groupedArray;
     },
     staleTime: 0,
   });

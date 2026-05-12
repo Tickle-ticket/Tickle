@@ -1,4 +1,35 @@
 import React from 'react';
+import { useCancellationDetail } from '@/src/features/cancellation/api/useCancellationDetail';
+
+const OfferTimer = ({ cancellationId }: { cancellationId: number }) => {
+  const { data } = useCancellationDetail(cancellationId);
+  const [timeLeft, setTimeLeft] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!data?.offerExpiresAt) return;
+    const updateTimer = () => {
+      const remaining = new Date(data.offerExpiresAt).getTime() - Date.now();
+      setTimeLeft(Math.max(0, Math.floor(remaining / 1000)));
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [data?.offerExpiresAt]);
+
+  if (timeLeft === null) return null;
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  
+  return (
+    <div className="flex flex-col items-center relative z-10">
+      <span className="text-[10px] text-rose-400 font-bold mb-0.5 tracking-wide">결제 만료까지</span>
+      <span className="text-rose-600 text-2xl font-black tabular-nums tracking-tighter drop-shadow-sm leading-none bg-rose-50/80 px-2 py-0.5 rounded-xl">
+        {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+      </span>
+    </div>
+  );
+};
 
 // 사람 아이콘 SVG 컴포넌트
 const PersonIcon = ({ highlighted, color }: { highlighted?: boolean; color?: string }) => (
@@ -65,9 +96,9 @@ export const WaitlistSeatCard = ({ seat, onSelectOffer, onCancel }: WaitlistSeat
   const myPosition = rank; // 1-based
 
   return (
-    <div className={`rounded-2xl border ${themeBorder} ${themeBg} p-4 transition-all hover:shadow-lg hover:-translate-y-0.5`}>
+    <div className={`relative rounded-2xl border ${themeBorder} ${themeBg} p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 overflow-hidden`}>
       {/* 상단: 뱃지 + 액션 버튼 */}
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="flex items-start justify-between gap-2 mb-3 relative z-10">
         <div className="shrink-0">
           {isOffered ? (
             <span className={`text-[11px] font-extrabold ${themeColor} ${badgeBg} px-2 py-0.5 rounded-full`}>배정 완료</span>
@@ -102,7 +133,7 @@ export const WaitlistSeatCard = ({ seat, onSelectOffer, onCancel }: WaitlistSeat
       </div>
 
       {/* 하단: 좌석 정보(좌) + 대기열 시각화(우) */}
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-end justify-between gap-3 relative z-10 mt-2">
         <div className="min-w-0 flex-1 pb-0.5">
           <p className="text-sm font-bold text-gray-800 truncate">{seat.info}</p>
           <p className="text-[11px] text-gray-400 font-medium truncate mt-0.5">
@@ -111,12 +142,8 @@ export const WaitlistSeatCard = ({ seat, onSelectOffer, onCancel }: WaitlistSeat
         </div>
 
         {isOffered ? (
-          <div className="shrink-0 flex items-end">
-            <div className="flex flex-col items-center justify-end h-[46px] relative">
-              <div className="animate-bounce">
-                <PersonIcon highlighted={true} color="text-rose-500" />
-              </div>
-            </div>
+          <div className="shrink-0 flex items-end justify-center h-[46px]">
+            {seat.cancellationOfferId && <OfferTimer cancellationId={seat.cancellationOfferId} />}
           </div>
         ) : (
           <div className="shrink-0 flex items-end">

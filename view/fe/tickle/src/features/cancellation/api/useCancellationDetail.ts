@@ -10,8 +10,8 @@ export const useCancellationDetail = (cancellationId: number | string | null) =>
         throw new Error('취소표 ID가 없습니다.');
       }
       const response = await getCancellationDetail(cancellationId);
-      // ApiResponse 형식에 맞춰 데이터 반환 (status가 0이면 성공)
-      if (response.status !== 0) {
+      // apiClient는 HTTP 200일 때 JSON body를 그대로 반환 (status: 200 or 0)
+      if (response.status !== 200 && response.status !== 0) {
         throw new Error(response.message || '취소표 정보를 불러오는 데 실패했습니다.');
       }
       return response.data;

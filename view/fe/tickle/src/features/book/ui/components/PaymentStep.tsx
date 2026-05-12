@@ -9,6 +9,7 @@ import { bookingApi } from '@/src/shared/api/bookingApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isShadowMode } from '@/src/shared/utils/shadowMode';
 
 interface PaymentStepProps {
   optionsData?: BookingOptionsResponse;
@@ -23,6 +24,7 @@ interface PaymentStepProps {
   storyMode?: boolean;
   cancellationId?: number;
   cancellationTotalAmount?: number;
+  onPaymentComplete?: () => void;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -45,6 +47,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   storyMode = false,
   cancellationId,
   cancellationTotalAmount,
+  onPaymentComplete,
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
@@ -206,15 +209,17 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   ];
 
   const handlePayment = async () => {
-    if (!storyMode && !cancellationId && (!scheduleId || !preorderBookingId || !selectedPayMethod)) {
+    const isShadow = storyMode || isShadowMode(eventId);
+
+    if (!isShadow && !cancellationId && (!scheduleId || !preorderBookingId || !selectedPayMethod)) {
       console.error('Missing required payment parameters:', { scheduleId, preorderBookingId, selectedPayMethod });
       return;
     }
-    if (storyMode && !selectedPayMethod) {
+    if (isShadow && !selectedPayMethod) {
       console.error('Missing selectedPayMethod:', { selectedPayMethod });
       return;
     }
-    if (!userId) {
+    if (!isShadow && !userId) {
       onError('로그인 필요', '로그인이 필요합니다.');
       window.location.href = '/login';
       return;
@@ -224,10 +229,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     try {
       const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
 
-      if (storyMode) {
+      if (isShadow) {
         if (paymentMethod === 'KAKAOPAY') {
           setIsStorybookMockOpen(true);
         } else {
+          onPaymentComplete?.();
           router.push(`/payment/success?paymentId=mock_vbank_123&method=vbank`);
         }
         setIsProcessing(false);
@@ -240,6 +246,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         
         if (result.paymentMethod === 'BANK_TRANSFER') {
           (window as any).__isNavigatingToPayment__ = true;
+          onPaymentComplete?.();
           router.push(`/payment/success?bookingId=${result.bookingId}&method=vbank`);
           return;
         } else if (result.paymentMethod === 'KAKAOPAY') {
@@ -248,6 +255,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             if (isMobile) {
               (window as any).__isNavigatingToPayment__ = true;
+              onPaymentComplete?.();
               window.location.href = redirectUrl;
             } else {
               setIsKakaoPopupOpen(true);
@@ -268,6 +276,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                           paymentHandled = true;
                           setIsKakaoPopupOpen(false);
                           (window as any).__isNavigatingToPayment__ = true;
+                          onPaymentComplete?.();
                           router.push(`/payment/success?bookingId=${bookingId}`);
                           return;
                         }
@@ -291,6 +300,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                       try { popup.close(); } catch (e) {}
                       setIsKakaoPopupOpen(false);
                       (window as any).__isNavigatingToPayment__ = true;
+                      onPaymentComplete?.();
                       router.push(`/payment/success?bookingId=${bookingId}`);
                     }
                   } catch (e) {}
@@ -315,6 +325,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       if (paymentMethod === 'BANK_TRANSFER' && selectRes.data?.bankTransfer) {
         // 1-step 방식: select-method 응답에 이미 무통장 입금 정보가 있는 경우
         (window as any).__isNavigatingToPayment__ = true;
+        onPaymentComplete?.();
         router.push(`/payment/success?paymentId=${selectRes.data.bankTransfer.paymentId}&method=vbank`);
       } else if (nextAction === 'PREPARE_BANK_TRANSFER') {
         // 기존 2-step 방식에 대한 하위 호환성 유지
@@ -325,6 +336,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         );
         if (bankRes.data) {
           (window as any).__isNavigatingToPayment__ = true;
+          onPaymentComplete?.();
           router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
         }
       } else if (nextAction === 'PREPARE_KAKAOPAY' || paymentMethod === 'KAKAOPAY') {
@@ -376,6 +388,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                         paymentHandled = true;
                         setIsKakaoPopupOpen(false);
                         (window as any).__isNavigatingToPayment__ = true;
+                        onPaymentComplete?.();
                         router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
                         return;
                       }
@@ -408,6 +421,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     setIsKakaoPopupOpen(false);
 
                     (window as any).__isNavigatingToPayment__ = true;
+                    onPaymentComplete?.();
                     router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
                   } else if (paymentStatus === 'CANCELLED' || paymentStatus === 'FAILED') {
                     // 결제 실패/취소

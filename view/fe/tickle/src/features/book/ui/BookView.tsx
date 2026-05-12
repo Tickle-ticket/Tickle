@@ -44,11 +44,12 @@ interface BookViewProps {
   initialModifyingSchedule?: boolean;
   admitToken?: string;
   storyMode?: boolean;
+  onLeaveQueue?: () => void;
 }
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false }: BookViewProps) => {
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue }: BookViewProps) => {
   const isShadowModeActive = isShadowMode(eventId);
   const isWaitlistMode = mode === 'WAITLIST' || isShadowModeActive;
   const isCancelMode = mode === 'CANCEL';
@@ -290,6 +291,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     }
 
     if (!hasError) {
+      onLeaveQueue?.();
       onClose();
     }
   };
@@ -785,6 +787,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           }}
           onConflictError={() => setIsConflictModalOpen(true)}
           onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
+          onPaymentComplete={() => onLeaveQueue?.()}
           storyMode={storyMode}
         />
       )}

@@ -59,19 +59,15 @@ export const useHomeBanners = () => {
       const categoriesResponse = await fetchCategories();
       const categories = categoriesResponse.data.categories;
 
-      // 2. 전체 랭킹 1위 및 각 카테고리별 랭킹 1위 조회 (병렬)
-      const rankingPromises = [
-        fetchRanking(undefined), // 전체 랭킹
-        ...categories.map((category) => fetchRanking(category.categoryId))
-      ];
+      // 2. 각 카테고리별 랭킹 1위 조회 (병렬)
+      const rankingPromises = categories.map((category) => fetchRanking(category.categoryId));
       const rankingResponses = await Promise.allSettled(rankingPromises);
 
       const banners: BannerData[] = [];
 
       rankingResponses.forEach((result, index) => {
         if (result.status === 'fulfilled') {
-          // index 0은 전체, 그 이후는 categories[index - 1]
-          const categoryName = index === 0 ? '전체' : categories[index - 1].categoryName;
+          const categoryName = categories[index].categoryName;
           const topRanking = result.value.data.rankings?.[0];
 
           if (topRanking) {
@@ -99,29 +95,12 @@ export const useHomeRanking = (categoryId?: number) => {
     queryKey: ['homeRanking', categoryId],
     queryFn: async () => {
       try {
-        if (categoryId === undefined) {
-          const response = await fetchRanking(categoryId);
-          const data = response.data;
-          const performances = (data.rankings || []).map(mapRankingItemToPerformance);
-          return performances;
-        }
-        
         const response = await fetchRanking(categoryId);
-        const rankingItems = response.data.rankings.map(mapRankingItemToPerformance);
-
-        if (rankingItems.length > 0) {
-          return rankingItems;
-        }
+        return (response.data.rankings || []).map(mapRankingItemToPerformance);
       } catch (error) {
-        console.warn('Home ranking fallback to event list:', error);
+        console.error('Failed to fetch home ranking:', error);
+        return [];
       }
-
-      const response = await fetchEventList({ categoryId, page: 0, size: 20 });
-      const now = Date.now();
-
-      return response.data.items
-        .filter((item) => !item.salesStartAt || new Date(item.salesStartAt).getTime() <= now)
-        .map(mapEventItemToPerformance);
     },
     staleTime: 1000,
   });
