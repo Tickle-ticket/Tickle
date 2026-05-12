@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type MypageTabType = 'USER' | 'UPCOMING' | 'MY_TICKETS' | 'PAST_TICKETS' | 'WAITLIST' | 'PAYMENTS';
+export type MypageTabType = 'USER' | 'EDIT_PROFILE' | 'UPCOMING' | 'MY_TICKETS' | 'PAST_TICKETS' | 'WAITLIST' | 'PAYMENTS';
 
 interface MypageState {
   isMypageOpen: boolean;

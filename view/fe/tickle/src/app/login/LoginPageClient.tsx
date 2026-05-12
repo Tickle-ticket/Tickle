@@ -102,10 +102,7 @@ export function LoginPageClient() {
       }
     } catch (error) {
       console.error('Login failed', error);
-      setPasswordError(
-        error instanceof ApiError && error.status === 404
-          ? '로그인 API에 연결할 수 없습니다. 인증 서버 주소를 확인해 주세요.'
-          : '로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해 주세요.'
+      setPasswordError('로그인에 실패했습니다. 이메일과 비밀번호를 다시 확인해 주세요.'
       );
     } finally {
       setIsLoading(false);

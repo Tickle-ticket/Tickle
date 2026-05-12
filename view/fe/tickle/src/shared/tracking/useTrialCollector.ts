@@ -9,6 +9,8 @@ interface UseTrialCollectorOptions {
   enabled: boolean;
   /** 사용자 ID */
   userId?: number | null;
+  /** 초기 단계 (기본값: captcha) */
+  initialStage?: TrialStage;
   /** AI Ingest Server 행동 이벤트 전송용 메타데이터 */
   behaviorEvent?: {
     eventId?: number | null;
@@ -17,7 +19,7 @@ interface UseTrialCollectorOptions {
   };
 }
 
-export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCollectorOptions) => {
+export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent }: UseTrialCollectorOptions) => {
   const collectorRef = useRef<TrialCollector | null>(null);
   const behaviorEventRef = useRef(behaviorEvent);
 
@@ -49,7 +51,7 @@ export const useTrialCollector = ({ enabled, userId, behaviorEvent }: UseTrialCo
   useEffect(() => {
     if (!enabled) return;
 
-    const collector = new TrialCollector({ userId });
+    const collector = new TrialCollector({ userId, initialStage });
     collectorRef.current = collector;
 
     // ── Event Handlers ──────────────────────────────────────

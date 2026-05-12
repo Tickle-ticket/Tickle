@@ -1,18 +1,18 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-
 import React, { useState } from 'react';
-import { Box } from '@/src/shared/components/Box';
-import { Title } from '@/src/shared/components/Title';
-import { Text } from '@/src/shared/components/Text';
+import { useRouter } from 'next/navigation';
 import { Avatar } from '@/src/shared/components/Avatar';
-import { Button } from '@/src/shared/components/Button';
-import { Input } from '@/src/shared/components/Input';
+import { Box } from '@/src/shared/components/Box';
 import { Modal } from '@/src/shared/components/Modal';
-import { useUserProfile, useUpdateUserProfile, useWithdrawUser } from '@/src/shared/api/useUserProfile';
+import { Text } from '@/src/shared/components/Text';
+import { useUpdateUserProfile, useUserProfile, useWithdrawUser } from '@/src/shared/api/useUserProfile';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
+
+const getErrorStatus = (error: unknown) =>
+  typeof error === 'object' && error !== null && 'status' in error
+    ? Number((error as { status?: unknown }).status)
+    : undefined;
 
 export const UserManagementView = () => {
   const router = useRouter();
@@ -21,182 +21,81 @@ export const UserManagementView = () => {
   const updateProfileMutation = useUpdateUserProfile();
   const withdrawMutation = useWithdrawUser();
 
-  const [isEditingNickname, setIsEditingNickname] = useState(false);
-  const [nickname, setNickname] = useState(data?.nickname || data?.name || '티클유저');
-
-  const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState(data?.phoneNumber || '010-0000-0000');
-
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
-  const [errorModalConfig, setErrorModalConfig] = useState({ isOpen: false, title: '', message: '' });
+  const [noticeModal, setNoticeModal] = useState({ isOpen: false, title: '', message: '' });
 
-  // 프로필 이미지 파일 업로드 핸들러
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && data?.userId) {
-      updateProfileMutation.mutate(
-        { profileImage: file },
-        {
-          onError: (err: any) => {
-            if (err.status === 400) {
-              setErrorModalConfig({ isOpen: true, title: '잘못된 입력', message: '지원하지 않는 이미지 형식이거나 용량이 초과되었습니다.' });
-            } else if (err.status === 404) {
-              setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
-            } else {
-              setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '프로필 이미지 변경 중 오류가 발생했습니다.' });
-            }
-          }
-        }
-      );
+  const showProfileImageError = (error: unknown) => {
+    const status = getErrorStatus(error);
+    if (status === 400) {
+      setNoticeModal({ isOpen: true, title: '입력값 확인', message: '지원하지 않는 이미지 형식이거나 용량이 초과되었습니다.' });
+      return;
     }
+    if (status === 404) {
+      setNoticeModal({ isOpen: true, title: '사용자 없음', message: '사용자 정보를 찾을 수 없습니다.' });
+      return;
+    }
+    setNoticeModal({ isOpen: true, title: '오류 발생', message: '프로필 이미지 변경 중 오류가 발생했습니다.' });
+  };
+
+  const handleProfileImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    updateProfileMutation.mutate(
+      { profileImage: file },
+      {
+        onSuccess: () => {
+          setNoticeModal({ isOpen: true, title: '변경 완료', message: '프로필 이미지가 변경되었습니다.' });
+        },
+        onError: showProfileImageError,
+      },
+    );
   };
 
   return (
-    <div className="flex flex-col gap-8 w-full animate-fade-in">
-      {/* 1. 회원 정보 (프로필 카드) */}
+    <div className="flex w-full flex-col gap-8 animate-fade-in">
       <Box variant="flat" padding="large" className="w-full border border-black/5 bg-[#fcfcfc]">
-        <div className="flex flex-col md:flex-row items-center gap-10 w-full">
-          {/* Avatar Section */}
-          <div className="relative group shrink-0">
-            <Avatar
-              size={100}
-              src={data?.avatarUrl || ''}
-              isLoading={isLoading}
-            />
-            {/* 사진 변경 버튼 (파일 업로드) */}
-            <label 
-              className={`absolute bottom-0 right-0 w-9 h-9 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center text-blue-500 hover:text-blue-600 hover:scale-105 transition-all cursor-pointer ${updateProfileMutation.isPending ? 'opacity-50 pointer-events-none' : ''}`}
+        <div className="flex w-full flex-col items-center gap-10 md:flex-row">
+          <div className="relative shrink-0">
+            <Avatar size={100} src={data?.avatarUrl || ''} isLoading={isLoading} />
+            <label
+              className={`absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-gray-200 bg-white text-blue-500 shadow-md transition-all hover:scale-105 hover:text-blue-600 ${
+                updateProfileMutation.isPending ? 'pointer-events-none opacity-50' : ''
+              }`}
+              title="프로필 이미지 변경"
             >
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
                 onChange={handleProfileImageChange}
                 disabled={updateProfileMutation.isPending}
               />
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
             </label>
           </div>
 
-          {/* User Info Fields */}
-          <div className="flex flex-col gap-4 w-full max-w-lg">
-            {/* 닉네임 */}
-            <Box variant="outline" padding="small" className="flex items-center gap-4 w-full min-h-[56px] py-3 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
-              <div className="w-16 sm:w-20 shrink-0">
-                <Text typography="t6" fontWeight="bold" color="tertiary">닉네임</Text>
+          <div className="flex w-full max-w-xl flex-col gap-4">
+            <Box variant="outline" padding="small" className="flex min-h-[56px] w-full items-center gap-4 py-3 !rounded-xl shadow-sm">
+              <div className="w-20 shrink-0">
+                <Text typography="t6" fontWeight="bold" color="tertiary">이름</Text>
               </div>
-              <div className="flex-1 min-w-0">
-                {isEditingNickname ? (
-                  <input
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="w-full text-[16px] sm:text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
-                    autoFocus
-                  />
-                ) : (
-                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[16px] sm:!text-[18px] break-all">
-                    {nickname}
-                  </Text>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  if (isEditingNickname && data?.userId) {
-                    updateProfileMutation.mutate(
-                      { nickname },
-                      {
-                        onError: (err: any) => {
-                          if (err.status === 400) {
-                            setErrorModalConfig({ isOpen: true, title: '잘못된 입력', message: '닉네임 형식이 올바르지 않습니다.' });
-                          } else if (err.status === 404) {
-                            setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
-                          } else {
-                            setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '닉네임 변경 중 오류가 발생했습니다.' });
-                          }
-                          setNickname(data.nickname || data.name || '티클유저'); // 실패 시 롤백
-                        }
-                      }
-                    );
-                  }
-                  setIsEditingNickname(!isEditingNickname);
-                }}
-                className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${isEditingNickname
-                  ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                  : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                  }`}
-                title="수정"
-              >
-                {isEditingNickname ? (
-                  <span className="px-1">저장</span>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                  </svg>
-                )}
-              </button>
+              <Text typography="t4" fontWeight="bold" color="primary" className="break-all">
+                {data?.realName || '-'}
+              </Text>
             </Box>
 
-            {/* 전화번호 (수정 가능) */}
-            <Box variant="outline" padding="small" className="flex items-center gap-4 w-full min-h-[56px] py-3 !rounded-xl shadow-sm transition-all hover:shadow-md hover:border-blue-200">
-              <div className="w-16 sm:w-20 shrink-0">
-                <Text typography="t6" fontWeight="bold" color="tertiary">전화번호</Text>
+            <Box variant="outline" padding="small" className="flex min-h-[56px] w-full items-center gap-4 py-3 !rounded-xl shadow-sm">
+              <div className="w-20 shrink-0">
+                <Text typography="t6" fontWeight="bold" color="tertiary">이메일</Text>
               </div>
-              <div className="flex-1 min-w-0">
-                {isEditingPhone ? (
-                  <input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full text-[16px] sm:text-[18px] font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent pb-1 focus:border-blue-600 transition-colors"
-                    autoFocus
-                    placeholder="010-0000-0000"
-                  />
-                ) : (
-                  <Text typography="t4" fontWeight="bold" color="primary" className="!text-[16px] sm:!text-[18px] tracking-tight break-all">
-                    {phoneNumber}
-                  </Text>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  if (isEditingPhone && data?.userId) {
-                    updateProfileMutation.mutate(
-                      { phoneNumber },
-                      {
-                        onError: (err: any) => {
-                          if (err.status === 400) {
-                            setErrorModalConfig({ isOpen: true, title: '잘못된 입력', message: '전화번호 형식이 올바르지 않습니다.' });
-                          } else if (err.status === 404) {
-                            setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
-                          } else {
-                            setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '전화번호 변경 중 오류가 발생했습니다.' });
-                          }
-                          setPhoneNumber(data.phoneNumber || '010-0000-0000'); // 실패 시 롤백
-                        }
-                      }
-                    );
-                  }
-                  setIsEditingPhone(!isEditingPhone);
-                }}
-                className={`text-sm font-bold px-2 py-2 rounded-lg transition-colors flex items-center justify-center shrink-0 ${isEditingPhone
-                  ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                  : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                  }`}
-                title="수정"
-              >
-                {isEditingPhone ? (
-                  <span className="px-1">저장</span>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                  </svg>
-                )}
-              </button>
+              <Text typography="t5" color="secondary" className="break-all">
+                {data?.email || '-'}
+              </Text>
             </Box>
           </div>
         </div>
@@ -216,57 +115,50 @@ export const UserManagementView = () => {
               closeMypage();
             }, 150);
           }}
-          className="flex items-center justify-between w-full p-5 hover:bg-gray-50 transition-colors border-b border-gray-100"
+          className="flex w-full items-center border-b border-gray-100 p-5 text-left transition-colors hover:bg-gray-50"
         >
           <Text typography="t5" fontWeight="bold" color="primary">고객 지원 (FAQ)</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </Link>
         <button
           onClick={() => setIsWithdrawModalOpen(true)}
-          className="flex items-center justify-between w-full p-5 hover:bg-red-50 transition-colors group"
+          className="group flex w-full items-center p-5 text-left transition-colors hover:bg-red-50"
         >
-          <Text typography="t5" fontWeight="bold" className="text-red-500 group-hover:text-red-600 transition-colors">회원 탈퇴</Text>
-          <Text typography="t6" className="text-red-300">›</Text>
+          <Text typography="t5" fontWeight="bold" className="text-red-500 group-hover:text-red-600">회원 탈퇴</Text>
         </button>
       </Box>
 
-      {/* 회원 탈퇴 모달 */}
       <Modal
         isOpen={isWithdrawModalOpen}
         onClose={() => setIsWithdrawModalOpen(false)}
         title="회원 탈퇴"
-        description="정말로 회원을 탈퇴하시겠습니까? 탈퇴 후에는 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다."
+        description="정말로 회원을 탈퇴하시겠습니까? 탈퇴 후에는 계정 정보를 복구할 수 없습니다."
         confirmText="탈퇴하기"
         cancelText="취소"
         onConfirm={() => {
           withdrawMutation.mutate(undefined, {
-            onSuccess: () => {
-                setIsWithdrawModalOpen(false);
-              },
-              onError: (err: any) => {
-                setIsWithdrawModalOpen(false);
-                if (err.status === 400) {
-                  setErrorModalConfig({ isOpen: true, title: '잘못된 요청', message: '사용자 식별자가 누락되었습니다.' });
-                } else if (err.status === 404) {
-                  setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '사용자 정보를 찾을 수 없습니다.' });
-                } else {
-                  setErrorModalConfig({ isOpen: true, title: '오류 발생', message: '회원 탈퇴 처리 중 오류가 발생했습니다.' });
-                }
+            onError: (error) => {
+              setIsWithdrawModalOpen(false);
+              const status = getErrorStatus(error);
+              if (status === 404) {
+                setNoticeModal({ isOpen: true, title: '사용자 없음', message: '사용자 정보를 찾을 수 없습니다.' });
+                return;
               }
-            });
+              setNoticeModal({ isOpen: true, title: '오류 발생', message: '회원 탈퇴 처리 중 오류가 발생했습니다.' });
+            },
+          });
         }}
         isLoading={withdrawMutation.isPending}
       />
 
-      {/* 에러 모달 */}
       <Modal
-        isOpen={errorModalConfig.isOpen}
-        onClose={() => setErrorModalConfig({ ...errorModalConfig, isOpen: false })}
-        title={errorModalConfig.title}
-        description={errorModalConfig.message}
+        isOpen={noticeModal.isOpen}
+        onClose={() => setNoticeModal({ ...noticeModal, isOpen: false })}
+        title={noticeModal.title}
+        description={noticeModal.message}
         confirmText="확인"
         showCancelButton={false}
-        onConfirm={() => setErrorModalConfig({ ...errorModalConfig, isOpen: false })}
+        onConfirm={() => setNoticeModal({ ...noticeModal, isOpen: false })}
       />
     </div>
   );
