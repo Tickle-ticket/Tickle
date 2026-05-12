@@ -90,8 +90,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
      */
     @Override
     @GetMapping("/events/{eventId}")
-    public ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(@PathVariable Long eventId) {
-        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventDetail(eventId)));
+    public ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(
+            @UserId Long userId,
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventDetail(userId, eventId)));
     }
 
     /**
@@ -102,8 +105,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
      */
     @Override
     @GetMapping("/events/{eventId}/seats")
-    public ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(@PathVariable Long eventId) {
-        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventSeats(eventId)));
+    public ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(
+            @UserId Long userId,
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventSeats(userId, eventId)));
     }
 
     /**

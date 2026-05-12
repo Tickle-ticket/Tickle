@@ -55,6 +55,7 @@ public class AgencyEventQueryService {
     private final EventSeatRepository eventSeatRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final UserRepository userRepository;
+    private final AgencyAuthorizationService agencyAuthorizationService;
 
     /**
      * 기획사 공연 목록을 조회합니다.
@@ -92,8 +93,8 @@ public class AgencyEventQueryService {
      * @param eventId 공연 식별자
      * @return 공연 상세 응답
      */
-    public AgencyEventDetailResponse getEventDetail(Long eventId) {
-        Event event = getEventOrThrow(eventId);
+    public AgencyEventDetailResponse getEventDetail(Long userId, Long eventId) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
         List<EventImage> images = eventImageRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
         List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
         List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
@@ -106,8 +107,8 @@ public class AgencyEventQueryService {
      * @param eventId 공연 식별자
      * @return 공연 좌석 응답
      */
-    public AgencyEventSeatResponse getEventSeats(Long eventId) {
-        Event event = getEventOrThrow(eventId);
+    public AgencyEventSeatResponse getEventSeats(Long userId, Long eventId) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
         List<EventSeat> seats = eventSeatRepository.findByEventSection_Event_IdOrderByEventSection_DisplayOrderAscRowLabelAscSeatNumberAsc(eventId);
         return AgencyEventSeatResponse.from(event, seats);
     }
@@ -128,17 +129,6 @@ public class AgencyEventQueryService {
         }
 
         return user.getOrganizerId();
-    }
-
-    /**
-     * 공연을 조회합니다.
-     *
-     * @param eventId 공연 식별자
-     * @return 공연 엔티티
-     */
-    private Event getEventOrThrow(Long eventId) {
-        return eventRepository.findWithDetailsById(eventId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
     }
 
     /**

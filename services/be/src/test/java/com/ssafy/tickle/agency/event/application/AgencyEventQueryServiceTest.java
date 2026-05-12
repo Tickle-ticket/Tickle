@@ -237,7 +237,7 @@ class AgencyEventQueryServiceTest {
     @Test
     @DisplayName("공연 상세 조회 시 기본정보, 가격정책, 회차를 함께 반환한다")
     void getEventDetail_success() {
-        AgencyEventDetailResponse response = agencyEventQueryService.getEventDetail(detailEvent.getId());
+        AgencyEventDetailResponse response = agencyEventQueryService.getEventDetail(agencyUser.getId(), detailEvent.getId());
 
         assertThat(response.eventId()).isEqualTo(detailEvent.getId());
         assertThat(response.basicInfo().organizerId()).isEqualTo(organizer.getId());
@@ -267,9 +267,28 @@ class AgencyEventQueryServiceTest {
     }
 
     @Test
+    @DisplayName("다른 기획사 공연 상세를 조회하면 예외가 발생한다")
+    void getEventDetail_otherOrganizerDenied() {
+        Organizer otherOrganizer = organizerRepository.save(createOrganizer("다른 기획사"));
+        User otherAgencyUser = userRepository.save(User.builder()
+                .id(2003L)
+                .userNo("USER-2003")
+                .name("다른기획자")
+                .role(UserRole.ORGANIZER)
+                .status(User.Status.ACTIVE)
+                .organizerId(otherOrganizer.getId())
+                .build());
+
+        assertThatThrownBy(() -> agencyEventQueryService.getEventDetail(otherAgencyUser.getId(), detailEvent.getId()))
+                .isInstanceOf(BaseException.class)
+                .extracting("errorCode")
+                .isEqualTo(GlobalErrorCode.ACCESS_DENIED);
+    }
+
+    @Test
     @DisplayName("공연 좌석 조회 시 가격 등급별로 eventSeatId를 묶어서 반환한다")
     void getEventSeats_success() {
-        AgencyEventSeatResponse response = agencyEventQueryService.getEventSeats(detailEvent.getId());
+        AgencyEventSeatResponse response = agencyEventQueryService.getEventSeats(agencyUser.getId(), detailEvent.getId());
 
         assertThat(response.eventId()).isEqualTo(detailEvent.getId());
         assertThat(response.venueId()).isEqualTo(venue.getId());

@@ -77,6 +77,9 @@ public interface AgencyEventApiDoc {
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
     ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1001")
+            @UserId
+            Long userId,
             @Parameter(description = "공연 식별자", required = true, example = "3011")
             Long eventId
     );
@@ -98,6 +101,9 @@ public interface AgencyEventApiDoc {
             content = @Content(schema = @Schema(implementation = BaseResponse.class))
     )
     ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1001")
+            @UserId
+            Long userId,
             @Parameter(description = "공연 식별자", required = true, example = "3011")
             Long eventId
     );
