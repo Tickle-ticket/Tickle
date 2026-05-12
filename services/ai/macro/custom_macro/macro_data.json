@@ -15,15 +15,15 @@
         {
           "type": "click",
           "memo": "취소표 대기하기 클릭",
-          "x": 1165,
-          "y": 504,
+          "x": 1935,
+          "y": 944,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "wait",
           "memo": "대기열 이후 화면 전환 대기",
-          "seconds": 0.8
+          "seconds": 1.8
         },
         {
           "type": "ocr_security",
@@ -33,69 +33,69 @@
         {
           "type": "wait",
           "memo": "",
-          "seconds": 3.0
+          "seconds": 3.1
         },
         {
           "type": "click",
           "memo": "",
-          "x": 1577,
-          "y": 553,
+          "x": 2308,
+          "y": 1045,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 1345,
-          "y": 732,
+          "x": 2042,
+          "y": 1472,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 669,
-          "y": 408,
+          "x": 1011,
+          "y": 680,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 707,
-          "y": 408,
+          "x": 1075,
+          "y": 680,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 739,
-          "y": 408,
+          "x": 1133,
+          "y": 680,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 776,
-          "y": 408,
+          "x": 1197,
+          "y": 680,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 1802,
-          "y": 976,
+          "x": 2640,
+          "y": 1591,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "click",
           "memo": "",
-          "x": 960,
-          "y": 662,
+          "x": 1444,
+          "y": 1120,
           "button": "left",
           "delay": 0.0
         }
@@ -105,17 +105,17 @@
   "security": {
     "mode": "manual",
     "order_box": [
-      814,
-      385,
-      1100,
-      460
+      1167,
+      569,
+      1714,
+      715
     ],
     "keypad_box": [
-      776,
-      493,
-      1145,
-      790
+      1154,
+      791,
+      1730,
+      1370
     ],
-    "ocr_scale": 1
+    "ocr_scale": 2
   }
 }

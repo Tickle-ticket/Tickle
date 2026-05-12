@@ -1,30 +1,210 @@
 import os
 import re
-from typing import Optional, Tuple, List, Dict, Any
+import json
+import shutil
+import uuid
+import hashlib
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, Tuple, List, Dict, Any, TYPE_CHECKING
 
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance
-from paddleocr import PaddleOCR
+
+# NOTE: Paddle/PaddleOCR GPU wheels on Windows ship CUDA/cuDNN DLLs in
+# `site-packages/nvidia/*/bin`. The Windows DLL loader won't always find these
+# unless we add them explicitly before importing `paddle`.
+def _ensure_windows_nvidia_dll_paths() -> None:
+    if os.name != "nt":
+        return
+
+    try:
+        import site
+        from pathlib import Path
+
+        candidates = []
+        for sp in site.getsitepackages():
+            sp_path = Path(sp)
+            nvidia_dir = sp_path / "nvidia"
+            if not nvidia_dir.is_dir():
+                continue
+            # Add every `bin` folder under site-packages/nvidia/**/bin
+            for bin_dir in nvidia_dir.glob("**/bin"):
+                if bin_dir.is_dir():
+                    candidates.append(bin_dir)
+
+        for bin_dir in candidates:
+            try:
+                os.add_dll_directory(str(bin_dir))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _lazy_import_paddleocr():
+    _ensure_windows_nvidia_dll_paths()
+    from paddleocr import PaddleOCR  # type: ignore
+
+    return PaddleOCR
 
 
 SCREENSHOT_PATH = "screen.png"
 DEBUG_IMAGE_PATH = "debug_result.png"
 
-OCR_MIN_SCORE = 0.25
+OCR_MIN_SCORE = float(os.getenv("OCR_MIN_SCORE") or "0.18")
+OCR_LABEL_DIR = os.getenv("OCR_LABEL_DIR") or str(Path(__file__).resolve().parent / "data" / "labels")
 
 Box = Tuple[int, int, int, int]
 
 _ocr = None
+_ocr_use_gpu = None
 
 
-def get_ocr():
-    global _ocr
+def _parse_bool_env(value: Optional[str]) -> Optional[bool]:
+    if value is None:
+        return None
+
+    raw = str(value).strip().lower()
+    if raw in ("1", "true", "t", "yes", "y", "on"):
+        return True
+    if raw in ("0", "false", "f", "no", "n", "off"):
+        return False
+    if raw in ("auto", ""):
+        return None
+
+    return None
+
+
+def _load_ocr_config() -> Dict[str, Any]:
+    # Optional config file (preferred over hardcoding; env vars can still override).
+    # Default path: ./ocr_config.json (same folder as this file)
+    try:
+        config_path = Path(os.getenv("OCR_CONFIG_PATH") or "").expanduser()
+    except Exception:
+        config_path = Path()
+
+    if not config_path:
+        config_path = Path(__file__).resolve().parent / "ocr_config.json"
+
+    try:
+        if not config_path.is_file():
+            return {}
+
+        with config_path.open("r", encoding="utf-8") as f:
+            data = json.load(f) or {}
+
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        return {}
+
+    return {}
+
+
+def _paddle_cuda_available() -> bool:
+    try:
+        import paddle
+
+        if not paddle.is_compiled_with_cuda():
+            return False
+
+        # Typical values: "cpu", "gpu:0"
+        dev = str(paddle.device.get_device() or "").lower()
+        return dev.startswith("gpu")
+    except Exception:
+        return False
+
+
+def _build_ocr(use_gpu: bool):
+    PaddleOCR = _lazy_import_paddleocr()
+    config = _load_ocr_config()
+    lang = None
+    if isinstance(config, dict):
+        lang = config.get("lang")
+    lang = str(lang).strip().lower() if lang else ""
+    if not lang:
+        # This solver mainly targets digit-only challenges; English models tend to be
+        # more reliable for digits than Korean multilingual models.
+        lang = "en"
+
+    base_kwargs = {
+        "use_angle_cls": True,
+        "lang": lang,
+    }
+
+    # PaddleOCR has multiple major versions with different init args.
+    # - Some accept `use_gpu` directly.
+    # - Newer pipeline versions reject unknown args (ValueError: "Unknown argument: use_gpu").
+    try:
+        return PaddleOCR(**base_kwargs, use_gpu=use_gpu)
+    except (TypeError, ValueError) as exc:
+        message = str(exc)
+        if "use_gpu" not in message:
+            raise
+
+        # Fallback: choose device via Paddle (works for newer pipelines).
+        try:
+            import paddle
+
+            paddle.device.set_device("gpu:0" if use_gpu else "cpu")
+        except Exception:
+            pass
+
+        return PaddleOCR(**base_kwargs)
+
+
+def get_ocr(prefer_gpu: Optional[bool] = None):
+    global _ocr, _ocr_use_gpu
 
     if _ocr is None:
-        _ocr = PaddleOCR(use_angle_cls=True, lang="korean")
+        env_choice = _parse_bool_env(os.getenv("OCR_USE_GPU"))
+        if env_choice is None:
+            env_choice = _parse_bool_env(os.getenv("PADDLEOCR_USE_GPU"))
+
+        config_choice = None
+        if env_choice is None:
+            config = _load_ocr_config()
+            config_choice = _parse_bool_env(config.get("use_gpu") if isinstance(config, dict) else None)
+
+        prefer_gpu_effective = (
+            env_choice if env_choice is not None else (config_choice if config_choice is not None else prefer_gpu)
+        )
+        if prefer_gpu_effective is None:
+            prefer_gpu_effective = True
+
+        if prefer_gpu_effective and _paddle_cuda_available():
+            try:
+                _ocr = _build_ocr(use_gpu=True)
+                _ocr_use_gpu = True
+                return _ocr
+            except Exception:
+                # GPU init can fail (missing CUDA libs/driver mismatch). Fall back to CPU.
+                _ocr = None
+
+        _ocr = _build_ocr(use_gpu=False)
+        _ocr_use_gpu = False
 
     return _ocr
+
+
+def get_ocr_runtime_info() -> Dict[str, Any]:
+    info: Dict[str, Any] = {
+        "use_gpu": _ocr_use_gpu,
+        "paddle_cuda_available": _paddle_cuda_available(),
+    }
+
+    try:
+        import paddle
+
+        info["paddle_device"] = str(paddle.device.get_device())
+        info["paddle_compiled_with_cuda"] = bool(paddle.is_compiled_with_cuda())
+    except Exception:
+        pass
+
+    return info
 
 
 def parse_box(value) -> Optional[Box]:
@@ -151,6 +331,264 @@ def prepare_ocr_image(image_path: str, save_path: str, scale: int = 2):
     img.save(save_path)
 
     return save_path, float(scale)
+
+
+def _heuristic_fix_1_vs_7(image_path: str, predicted: str) -> str:
+    """
+    Heuristic disambiguation for frequent OCR confusion between '1' and '7'.
+    Works on a cropped digit patch (slot/cell).
+    """
+    pred = str(predicted or "").strip()
+    if pred not in ("1", "7"):
+        return pred
+
+    try:
+        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            return pred
+
+        # Normalize size and enhance contrast
+        img = cv2.resize(img, (64, 64), interpolation=cv2.INTER_CUBIC)
+        img = cv2.GaussianBlur(img, (3, 3), 0)
+
+        # Binarize: digit strokes become white
+        _, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # Remove tiny noise
+        kernel = np.ones((2, 2), np.uint8)
+        th = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel, iterations=1)
+
+        # Remove rounded-rect border influence by masking margins, then keep the largest component.
+        h, w = th.shape
+        margin_x = int(w * 0.12)
+        margin_y = int(h * 0.12)
+        if margin_x > 0:
+            th[:, :margin_x] = 0
+            th[:, w - margin_x :] = 0
+        if margin_y > 0:
+            th[:margin_y, :] = 0
+            th[h - margin_y :, :] = 0
+
+        # Keep largest connected component (the digit), drop any leftover border fragments.
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(th, connectivity=8)
+        if num_labels > 1:
+            # stats[0] is background
+            largest = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+            th = np.where(labels == largest, 255, 0).astype(np.uint8)
+
+        if h == 0 or w == 0:
+            return pred
+
+        row_sum = th.sum(axis=1) / 255.0  # number of white pixels per row
+        col_sum = th.sum(axis=0) / 255.0  # number of white pixels per col
+
+        top_band = row_sum[: int(h * 0.22)]
+        mid_cols = col_sum[int(w * 0.42) : int(w * 0.58)]
+
+        top_h = float(top_band.max() if len(top_band) else 0.0)
+        mid_v = float(mid_cols.max() if len(mid_cols) else 0.0)
+
+        # Normalize by dimension for scale invariance
+        top_h_n = top_h / float(w)
+        mid_v_n = mid_v / float(h)
+
+        # Robust cue: '7' usually contains a long diagonal stroke; '1' does not.
+        edges = cv2.Canny(th, 50, 150)
+        lines = cv2.HoughLinesP(edges, 1, np.pi / 180.0, threshold=25, minLineLength=18, maxLineGap=3)
+        diag_votes = 0
+        vert_votes = 0
+        if lines is not None:
+            for x1, y1, x2, y2 in lines.reshape(-1, 4):
+                dx = float(x2 - x1)
+                dy = float(y2 - y1)
+                if dx == 0 and dy == 0:
+                    continue
+                angle = abs(np.degrees(np.arctan2(dy, dx)))
+                # Normalize to [0, 90]
+                if angle > 90:
+                    angle = 180 - angle
+                length = (dx * dx + dy * dy) ** 0.5
+                if length < 16:
+                    continue
+                if 20 <= angle <= 70:
+                    diag_votes += 1
+                elif angle >= 80:
+                    vert_votes += 1
+
+        # Prefer diagonal evidence for 7
+        if diag_votes >= 2:
+            return "7"
+        if vert_votes >= 2 and diag_votes == 0:
+            return "1"
+
+        # Fallback cue: compare dominance of top horizontal vs center vertical.
+        # Note: digit '1' may have a small top serif, so require a stronger top bar to call '7'.
+        if top_h_n > 0.68 and (top_h_n - mid_v_n) > 0.16:
+            return "7"
+        if mid_v_n > 0.62 and (mid_v_n - top_h_n) > 0.10:
+            return "1"
+
+        return pred
+    except Exception:
+        return pred
+
+
+def _digit_to_unit_vector(mask: np.ndarray, size: int = 48) -> Optional[np.ndarray]:
+    """
+    Convert a binary mask (0/255) into a normalized 0/1 vector with fixed size.
+    """
+    if mask is None:
+        return None
+    try:
+        if mask.ndim != 2:
+            return None
+        if mask.shape[0] <= 0 or mask.shape[1] <= 0:
+            return None
+
+        # Tight crop to foreground
+        ys, xs = np.where(mask > 0)
+        if len(xs) == 0 or len(ys) == 0:
+            return None
+        x1, x2 = int(xs.min()), int(xs.max())
+        y1, y2 = int(ys.min()), int(ys.max())
+        crop = mask[y1 : y2 + 1, x1 : x2 + 1]
+
+        crop = cv2.resize(crop, (size, size), interpolation=cv2.INTER_NEAREST)
+        v = (crop.astype(np.float32) / 255.0).reshape(-1)
+        n = float(np.linalg.norm(v))
+        if n <= 1e-6:
+            return None
+        return v / n
+    except Exception:
+        return None
+
+
+def _mask_blue_digit(bgr: np.ndarray) -> Optional[np.ndarray]:
+    """
+    Extract blue digit strokes from a slot image (returns binary 0/255 mask).
+    """
+    if bgr is None:
+        return None
+    try:
+        hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+        # Broad "blue" range in OpenCV HSV (H: 0-179)
+        lower = np.array([90, 40, 40], dtype=np.uint8)
+        upper = np.array([140, 255, 255], dtype=np.uint8)
+        mask = cv2.inRange(hsv, lower, upper)
+
+        # Clean up and keep largest component
+        kernel = np.ones((3, 3), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        if num_labels <= 1:
+            return mask
+        largest = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+        mask = np.where(labels == largest, 255, 0).astype(np.uint8)
+        return mask
+    except Exception:
+        return None
+
+
+def _mask_dark_digit(bgr: np.ndarray) -> Optional[np.ndarray]:
+    """
+    Extract dark(gray/black) digit strokes from keypad crops (returns binary 0/255 mask).
+    """
+    if bgr is None:
+        return None
+    try:
+        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+        # Invert so strokes become white
+        _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        # Remove border influence
+        h, w = th.shape
+        mx = int(w * 0.12)
+        my = int(h * 0.12)
+        if mx > 0:
+            th[:, :mx] = 0
+            th[:, w - mx :] = 0
+        if my > 0:
+            th[:my, :] = 0
+            th[h - my :, :] = 0
+
+        kernel = np.ones((2, 2), np.uint8)
+        th = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel, iterations=1)
+        return th
+    except Exception:
+        return None
+
+
+def _template_match_digit(slot_bgr: np.ndarray, templates: Dict[str, np.ndarray]) -> Tuple[Optional[str], float]:
+    """
+    Match a blue slot digit against keypad-derived templates using cosine similarity.
+    """
+    if not templates:
+        return None, 0.0
+    mask = _mask_blue_digit(slot_bgr)
+    vec = _digit_to_unit_vector(mask)
+    if vec is None:
+        return None, 0.0
+
+    best_digit = None
+    best_score = -1.0
+    for digit, tmpl in templates.items():
+        if tmpl is None:
+            continue
+        try:
+            score = float(np.dot(vec, tmpl))
+        except Exception:
+            continue
+        if score > best_score:
+            best_score = score
+            best_digit = digit
+
+    return best_digit, float(best_score if best_score > -1.0 else 0.0)
+
+
+def build_keypad_digit_templates(keypad_path: str, keypad_items: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
+    """
+    Build digit templates from keypad OCR boxes (one template per digit, best score wins).
+    """
+    templates: Dict[str, np.ndarray] = {}
+    best_scores: Dict[str, float] = {}
+
+    try:
+        img = cv2.imread(keypad_path, cv2.IMREAD_COLOR)
+        if img is None:
+            return {}
+
+        for item in keypad_items or []:
+            if item.get("score", 0) < min(OCR_MIN_SCORE, 0.10):
+                continue
+            digits = extract_digits_from_text(item.get("text", ""))
+            if len(digits) != 1:
+                continue
+            digit = digits[0]
+            x1, y1, x2, y2 = [int(float(v)) for v in item.get("box", [0, 0, 0, 0])]
+            if x2 <= x1 or y2 <= y1:
+                continue
+
+            pad = 6
+            x1 = max(0, x1 - pad)
+            y1 = max(0, y1 - pad)
+            x2 = min(img.shape[1], x2 + pad)
+            y2 = min(img.shape[0], y2 + pad)
+            crop = img[y1:y2, x1:x2]
+            mask = _mask_dark_digit(crop)
+            vec = _digit_to_unit_vector(mask)
+            if vec is None:
+                continue
+
+            score = float(item.get("score", 0.0))
+            if digit not in templates or score > best_scores.get(digit, -1.0):
+                templates[digit] = vec
+                best_scores[digit] = score
+
+        return templates
+    except Exception:
+        return {}
 
 
 def parse_paddle_v3_result(page_result, scale: float):
@@ -360,10 +798,67 @@ def derive_security_boxes(modal_box: Box):
 
 
 def extract_digits_from_text(text: str):
-    return re.findall(r"\d", text or "")
+    raw = str(text or "")
+    if not raw:
+        return []
+
+    # Common OCR confusions for simple keypad digits.
+    # Keep this conservative: only map glyphs that are very frequently misread.
+    char_map = {
+        "O": "0",
+        "o": "0",
+        "D": "0",
+        "Q": "0",
+        "I": "1",
+        "l": "1",
+        "|": "1",
+        "!": "1",
+        "Z": "2",
+        "z": "2",
+        "S": "5",
+        "s": "5",
+        "G": "6",
+        "B": "8",
+        "b": "6",  # sometimes "6" is read as "b"
+        "T": "7",
+        "?": "7",
+    }
+
+    digits: List[str] = []
+
+    # Normalize fullwidth digits to ASCII.
+    for ch in raw:
+        if "０" <= ch <= "９":
+            digits.append(str(ord(ch) - ord("０")))
+            continue
+
+        # Circled digits ①..⑨ (U+2460..U+2468)
+        codepoint = ord(ch)
+        if 0x2460 <= codepoint <= 0x2468:
+            digits.append(str(codepoint - 0x2460 + 1))
+            continue
+
+        # Double circled digits ⓵..⓽ (U+24F5..U+24FD)
+        if 0x24F5 <= codepoint <= 0x24FD:
+            digits.append(str(codepoint - 0x24F5 + 1))
+            continue
+
+        if ch.isdigit():
+            digits.append(ch)
+            continue
+
+        mapped = char_map.get(ch)
+        if mapped is not None:
+            digits.append(mapped)
+
+    if digits:
+        return digits
+
+    # Last resort: extract any ASCII digits from the string.
+    return re.findall(r"\d", raw)
 
 
-def choose_best_digit_from_items(items: List[Dict[str, Any]]) -> Optional[str]:
+def choose_best_digit_from_items(items: List[Dict[str, Any]], min_score: float = OCR_MIN_SCORE) -> Optional[str]:
     candidates = []
 
     for item in items:
@@ -374,7 +869,7 @@ def choose_best_digit_from_items(items: List[Dict[str, Any]]) -> Optional[str]:
         if not digits:
             continue
 
-        if score < OCR_MIN_SCORE:
+        if score < float(min_score or 0.0):
             continue
 
         for digit in digits:
@@ -385,6 +880,32 @@ def choose_best_digit_from_items(items: List[Dict[str, Any]]) -> Optional[str]:
 
     candidates.sort(key=lambda x: x[0], reverse=True)
     return candidates[0][1]
+
+
+def choose_best_digit_with_score(
+    items: List[Dict[str, Any]],
+    min_score: float = OCR_MIN_SCORE,
+) -> Tuple[Optional[str], float]:
+    """
+    Same selection logic as choose_best_digit_from_items, but returns (digit, score).
+    """
+    candidates: List[Tuple[float, str]] = []
+    for item in items:
+        score = float(item.get("score", 0.0))
+        if score < float(min_score or 0.0):
+            continue
+        text = str(item.get("text", "")).strip()
+        digits = extract_digits_from_text(text)
+        if not digits:
+            continue
+        for digit in digits:
+            candidates.append((score, digit))
+
+    if not candidates:
+        return None, 0.0
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1], float(candidates[0][0])
 
 
 def split_order_box_into_slots(order_box: Box) -> List[Box]:
@@ -428,9 +949,12 @@ def extract_sequence_by_slots(
     image_path: str,
     order_box: Box,
     ocr_scale: int,
+    templates: Optional[Dict[str, np.ndarray]] = None,
 ):
-    sequence = []
+    sequence: List[str] = []
     slot_boxes = split_order_box_into_slots(order_box)
+    slot_scores: List[float] = []
+    overrides = _load_label_overrides()
 
     temp_paths = []
 
@@ -441,22 +965,65 @@ def extract_sequence_by_slots(
 
             crop_image(image_path, slot_box, slot_path)
 
+            # Try template matching first (learning-free, uses keypad-derived templates).
+            try:
+                if templates:
+                    slot_bgr = cv2.imread(slot_path, cv2.IMREAD_COLOR)
+                    if slot_bgr is not None:
+                        t_digit, t_score = _template_match_digit(slot_bgr, templates)
+                        if t_digit is not None and t_score >= 0.35:
+                            sequence.append(t_digit)
+                            slot_scores.append(float(max(0.0, min(1.0, t_score))))
+                            continue
+            except Exception:
+                pass
+
+            slot_hash = _sha256_file(slot_path)
+            if slot_hash and slot_hash in overrides:
+                sequence.append(overrides[slot_hash])
+                slot_scores.append(1.0)
+                continue
+
             # scale이 1이면 작은 숫자가 흔들릴 수 있으니 order 슬롯은 최소 2로 보정
             slot_scale = max(2, int(ocr_scale))
             items = run_ocr(slot_path, scale=slot_scale)
 
-            digit = choose_best_digit_from_items(items)
+            digit, digit_score = choose_best_digit_with_score(items, min_score=min(OCR_MIN_SCORE, 0.10))
+            candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
 
             if digit is None:
                 # 한 번 더 큰 scale로 재시도
                 retry_scale = max(3, slot_scale + 1)
                 items = run_ocr(slot_path, scale=retry_scale)
-                digit = choose_best_digit_from_items(items)
+                digit, digit_score = choose_best_digit_with_score(items, min_score=min(OCR_MIN_SCORE, 0.10))
+                if not candidates:
+                    candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
 
             if digit is not None:
+                digit = _heuristic_fix_1_vs_7(slot_path, digit)
                 sequence.append(digit)
+                slot_scores.append(float(digit_score))
+            else:
+                slot_scores.append(0.0)
 
-        return sequence, slot_boxes
+            # Record what OCR predicted so it can be corrected later.
+            try:
+                if slot_hash:
+                    unlabeled_copy = _save_unlabeled_image_copy(slot_path, kind=f"order_slot_{idx}", image_hash=slot_hash)
+                    _append_pending_label({
+                        "ts": datetime.now().isoformat(timespec="seconds"),
+                        "kind": "order",
+                        "slot_index": idx,
+                        "hash": slot_hash,
+                        "predicted": digit,
+                        "score": float(digit_score or 0.0),
+                        "candidates": candidates,
+                        "image": unlabeled_copy,
+                    })
+            except Exception:
+                pass
+
+        return sequence, slot_boxes, slot_scores
 
     finally:
         for path in temp_paths:
@@ -468,7 +1035,7 @@ def extract_sequence_fallback(order_items):
     filtered = []
 
     for item in order_items:
-        if item.get("score", 0) < OCR_MIN_SCORE:
+        if item.get("score", 0) < min(OCR_MIN_SCORE, 0.10):
             continue
 
         digits = extract_digits_from_text(item.get("text", ""))
@@ -514,6 +1081,121 @@ def extract_keypad_buttons(keypad_items, offset_x: int, offset_y: int):
     return buttons
 
 
+def _split_box_into_grid(box: Box, rows: int, cols: int, pad_ratio: float = 0.06) -> List[Box]:
+    left, top, right, bottom = box
+    w = right - left
+    h = bottom - top
+    if w <= 0 or h <= 0:
+        return []
+
+    inner_left = int(left + w * 0.04)
+    inner_right = int(right - w * 0.04)
+    inner_top = int(top + h * 0.04)
+    inner_bottom = int(bottom - h * 0.04)
+
+    inner_w = inner_right - inner_left
+    inner_h = inner_bottom - inner_top
+    if inner_w <= 0 or inner_h <= 0:
+        return []
+
+    cell_w = inner_w / float(cols)
+    cell_h = inner_h / float(rows)
+
+    boxes: List[Box] = []
+    for r in range(rows):
+        for c in range(cols):
+            x1 = int(inner_left + c * cell_w)
+            x2 = int(inner_left + (c + 1) * cell_w)
+            y1 = int(inner_top + r * cell_h)
+            y2 = int(inner_top + (r + 1) * cell_h)
+
+            pad_x = int((x2 - x1) * pad_ratio)
+            pad_y = int((y2 - y1) * pad_ratio)
+            boxes.append((x1 + pad_x, y1 + pad_y, x2 - pad_x, y2 - pad_y))
+
+    return boxes
+
+
+def extract_keypad_buttons_by_grid(
+    image_path: str,
+    keypad_box: Box,
+    ocr_scale: int,
+) -> Dict[str, List[float]]:
+    # Fallback: split keypad into 3x3 cells and OCR each cell.
+    cells = _split_box_into_grid(keypad_box, rows=3, cols=3, pad_ratio=0.10)
+    if not cells:
+        return {}
+
+    buttons: Dict[str, List[float]] = {}
+    temp_paths: List[str] = []
+    overrides = _load_label_overrides()
+
+    try:
+        for idx, cell in enumerate(cells):
+            cell_path = f"{image_path}_keypad_cell_{idx}.png"
+            temp_paths.append(cell_path)
+            crop_image(image_path, cell, cell_path)
+
+            cell_hash = _sha256_file(cell_path)
+            if cell_hash and cell_hash in overrides:
+                digit = overrides[cell_hash]
+                digit = _heuristic_fix_1_vs_7(cell_path, digit)
+                if digit in buttons:
+                    continue
+                cx = (cell[0] + cell[2]) / 2.0
+                cy = (cell[1] + cell[3]) / 2.0
+                buttons[digit] = [float(cx), float(cy)]
+                continue
+
+            # Per-cell OCR benefits from higher scale.
+            cell_scale = max(3, int(ocr_scale) + 1)
+            items = run_ocr(cell_path, scale=cell_scale)
+            digit = choose_best_digit_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+            candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+
+            if digit is None:
+                # Retry with even higher scale.
+                items = run_ocr(cell_path, scale=max(4, cell_scale + 1))
+                digit = choose_best_digit_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+                if not candidates:
+                    candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+
+            if digit is None:
+                continue
+
+            digit = _heuristic_fix_1_vs_7(cell_path, digit)
+
+            try:
+                if cell_hash:
+                    unlabeled_copy = _save_unlabeled_image_copy(cell_path, kind=f"keypad_cell_{idx}", image_hash=cell_hash)
+                    _append_pending_label({
+                        "ts": datetime.now().isoformat(timespec="seconds"),
+                        "kind": "keypad",
+                        "cell_index": idx,
+                        "hash": cell_hash,
+                        "predicted": digit,
+                        "candidates": candidates,
+                        "image": unlabeled_copy,
+                    })
+            except Exception:
+                pass
+
+            if digit in buttons:
+                # Keep the first occurrence; duplicates are likely misreads.
+                continue
+
+            cx = (cell[0] + cell[2]) / 2.0
+            cy = (cell[1] + cell[3]) / 2.0
+            buttons[digit] = [float(cx), float(cy)]
+
+        return buttons
+
+    finally:
+        for path in temp_paths:
+            if os.path.exists(path):
+                os.remove(path)
+
+
 def save_debug_image(
     image_path: str,
     sequence,
@@ -555,6 +1237,270 @@ def save_debug_image(
     img.save(DEBUG_IMAGE_PATH)
 
 
+def _safe_copy(src: str, dst: str) -> None:
+    try:
+        if src and os.path.exists(src):
+            shutil.copy2(src, dst)
+    except Exception:
+        pass
+
+
+def _sha256_file(path: str) -> Optional[str]:
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return None
+
+
+def _load_json_file(path: Path) -> Any:
+    try:
+        if not path.is_file():
+            return None
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _write_json_file(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _load_label_overrides() -> Dict[str, str]:
+    """
+    Map: sha256(image_bytes) -> digit string ("0".."9").
+    User can edit this file while automation runs.
+    """
+    overrides_path = Path(OCR_LABEL_DIR) / "label_overrides.json"
+    data = _load_json_file(overrides_path)
+    if isinstance(data, dict):
+        out: Dict[str, str] = {}
+        for k, v in data.items():
+            if isinstance(k, str) and isinstance(v, str) and v.strip().isdigit():
+                out[k] = v.strip()
+        return out
+    return {}
+
+
+def _append_pending_label(record: Dict[str, Any]) -> None:
+    """
+    Append a jsonl record for manual inspection/correction.
+    """
+    try:
+        base = Path(OCR_LABEL_DIR)
+        base.mkdir(parents=True, exist_ok=True)
+        pending_path = base / "pending.jsonl"
+        with pending_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _save_unlabeled_image_copy(src_path: str, kind: str, image_hash: str) -> Optional[str]:
+    try:
+        base = Path(OCR_LABEL_DIR) / "unlabeled"
+        base.mkdir(parents=True, exist_ok=True)
+        dst = base / f"{kind}__{image_hash}.png"
+        if not dst.exists():
+            shutil.copy2(src_path, dst)
+        return str(dst)
+    except Exception:
+        return None
+
+
+def _digit_candidates_from_items(items: List[Dict[str, Any]], min_score: float) -> List[Dict[str, Any]]:
+    """
+    Produce a compact candidate list: [{digit, score, text}] sorted by score desc.
+    """
+    candidates: List[Tuple[float, str, str]] = []
+    for item in items or []:
+        try:
+            score = float(item.get("score", 0.0))
+        except Exception:
+            score = 0.0
+        if score < float(min_score or 0.0):
+            continue
+        text = str(item.get("text", "")).strip()
+        digits = extract_digits_from_text(text)
+        for d in digits:
+            candidates.append((score, d, text))
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for score, d, text in candidates:
+        if d in seen:
+            continue
+        seen.add(d)
+        out.append({"digit": d, "score": float(score), "text": text})
+        if len(out) >= 5:
+            break
+    return out
+
+
+def _save_failure_bundle(
+    image_path: str,
+    error: Exception,
+    *,
+    modal_box: Optional[Box],
+    order_box: Optional[Box],
+    keypad_box: Optional[Box],
+    ocr_scale: int,
+    mode: str,
+    sequence: Optional[List[str]] = None,
+    buttons: Optional[Dict[str, List[float]]] = None,
+    order_slot_boxes: Optional[List[Box]] = None,
+    order_slot_scores: Optional[List[float]] = None,
+    order_items: Optional[List[Dict[str, Any]]] = None,
+    keypad_items: Optional[List[Dict[str, Any]]] = None,
+    grid_buttons: Optional[Dict[str, List[float]]] = None,
+) -> Optional[str]:
+    """
+    Persist failure artifacts so we can build a dataset without breaking automation.
+    Bundle includes source screenshot, debug overlay, crops, and raw OCR JSON.
+
+    Enable unconditionally by keeping this function called on exceptions.
+    """
+    try:
+        base_dir = Path(__file__).resolve().parent / "failures"
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        bundle_dir = base_dir / f"{ts}_{uuid.uuid4().hex[:8]}"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save main images
+        _safe_copy(image_path, str(bundle_dir / "screen.png"))
+        _safe_copy(DEBUG_IMAGE_PATH, str(bundle_dir / "debug_result.png"))
+
+        # Save crops (best effort)
+        try:
+            if order_box is not None:
+                crop_image(image_path, order_box, str(bundle_dir / "order.png"))
+        except Exception:
+            pass
+        try:
+            if keypad_box is not None:
+                crop_image(image_path, keypad_box, str(bundle_dir / "keypad.png"))
+        except Exception:
+            pass
+
+        # Save order slot crops if available
+        if order_slot_boxes:
+            for idx, box in enumerate(order_slot_boxes):
+                try:
+                    crop_image(image_path, box, str(bundle_dir / f"order_slot_{idx}.png"))
+                except Exception:
+                    continue
+
+        payload = {
+            "error": {
+                "type": type(error).__name__,
+                "message": str(error),
+            },
+            "context": {
+                "mode": mode,
+                "ocr_scale": int(ocr_scale),
+                "modal_box": box_to_text(modal_box) if modal_box is not None else None,
+                "order_box": box_to_text(order_box) if order_box is not None else None,
+                "keypad_box": box_to_text(keypad_box) if keypad_box is not None else None,
+            },
+            "outputs": {
+                "sequence": sequence or [],
+                "order_slot_scores": order_slot_scores or [],
+                "buttons": buttons or {},
+                "grid_buttons": grid_buttons or {},
+            },
+            "raw": {
+                "order_items": order_items or [],
+                "keypad_items": keypad_items or [],
+            },
+        }
+
+        (bundle_dir / "failure.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return str(bundle_dir)
+    except Exception:
+        return None
+
+
+def _save_sample_bundle(
+    image_path: str,
+    *,
+    modal_box: Optional[Box],
+    order_box: Optional[Box],
+    keypad_box: Optional[Box],
+    ocr_scale: int,
+    mode: str,
+    sequence: Optional[List[str]] = None,
+    buttons: Optional[Dict[str, List[float]]] = None,
+    order_slot_boxes: Optional[List[Box]] = None,
+    order_slot_scores: Optional[List[float]] = None,
+    order_items: Optional[List[Dict[str, Any]]] = None,
+    keypad_items: Optional[List[Dict[str, Any]]] = None,
+    grid_buttons: Optional[Dict[str, List[float]]] = None,
+) -> Optional[str]:
+    """
+    Persist a non-failure sample for dataset building (e.g., ambiguous digits).
+    """
+    try:
+        base_dir = Path(__file__).resolve().parent / "samples"
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        bundle_dir = base_dir / f"{ts}_{uuid.uuid4().hex[:8]}"
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+
+        _safe_copy(image_path, str(bundle_dir / "screen.png"))
+        _safe_copy(DEBUG_IMAGE_PATH, str(bundle_dir / "debug_result.png"))
+
+        try:
+            if order_box is not None:
+                crop_image(image_path, order_box, str(bundle_dir / "order.png"))
+        except Exception:
+            pass
+        try:
+            if keypad_box is not None:
+                crop_image(image_path, keypad_box, str(bundle_dir / "keypad.png"))
+        except Exception:
+            pass
+
+        if order_slot_boxes:
+            for idx, box in enumerate(order_slot_boxes):
+                try:
+                    crop_image(image_path, box, str(bundle_dir / f"order_slot_{idx}.png"))
+                except Exception:
+                    continue
+
+        payload = {
+            "context": {
+                "mode": mode,
+                "ocr_scale": int(ocr_scale),
+                "modal_box": box_to_text(modal_box) if modal_box is not None else None,
+                "order_box": box_to_text(order_box) if order_box is not None else None,
+                "keypad_box": box_to_text(keypad_box) if keypad_box is not None else None,
+            },
+            "outputs": {
+                "sequence": sequence or [],
+                "order_slot_scores": order_slot_scores or [],
+                "buttons": buttons or {},
+                "grid_buttons": grid_buttons or {},
+            },
+            "raw": {
+                "order_items": order_items or [],
+                "keypad_items": keypad_items or [],
+            },
+        }
+
+        (bundle_dir / "sample.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return str(bundle_dir)
+    except Exception:
+        return None
+
+
 def resolve_security_boxes(
     image_path: str,
     mode: str = "auto",
@@ -585,6 +1531,7 @@ def solve_security_challenge(
     keypad_box=None,
     ocr_scale: int = 2,
 ):
+    ocr_scale = max(2, int(ocr_scale or 2))
     modal_box, resolved_order_box, resolved_keypad_box = resolve_security_boxes(
         image_path=image_path,
         mode=mode,
@@ -594,13 +1541,65 @@ def solve_security_challenge(
 
     keypad_path = image_path + "_keypad.png"
     order_slot_boxes = []
+    order_items = None
+    keypad_items = None
+    grid_buttons = None
+    sequence = []
+    buttons = {}
+    order_slot_scores = []
+    timings: Dict[str, Any] = {
+        "started_at": datetime.now().isoformat(timespec="seconds"),
+        "steps": [],
+    }
+
+    def _time_step(name: str, fn):
+        start = time.perf_counter()
+        out = fn()
+        timings["steps"].append({"name": name, "ms": round((time.perf_counter() - start) * 1000.0, 2)})
+        return out
 
     try:
         # order는 3개 슬롯으로 나눠서 각각 OCR
-        sequence, order_slot_boxes = extract_sequence_by_slots(
-            image_path=image_path,
-            order_box=resolved_order_box,
-            ocr_scale=ocr_scale,
+        # Keypad first: contains all digits and is easier/more stable to recognize.
+        _time_step("crop_keypad", lambda: crop_image(image_path, resolved_keypad_box, keypad_path))
+        keypad_items = _time_step("ocr_keypad", lambda: run_ocr(keypad_path, scale=max(2, int(ocr_scale))))
+
+        buttons = _time_step(
+            "extract_keypad_buttons",
+            lambda: extract_keypad_buttons(
+                keypad_items,
+                offset_x=resolved_keypad_box[0],
+                offset_y=resolved_keypad_box[1],
+            ),
+        )
+
+        if len(buttons) < 8:
+            grid_buttons = _time_step(
+                "grid_keypad_buttons",
+                lambda: extract_keypad_buttons_by_grid(
+                    image_path=image_path,
+                    keypad_box=resolved_keypad_box,
+                    ocr_scale=ocr_scale,
+                ),
+            )
+            # Merge: keep existing OCR hits, fill missing from grid OCR.
+            for digit, point in grid_buttons.items():
+                buttons.setdefault(digit, point)
+
+        # Build templates from keypad digits to improve order-slot recognition (esp. 1 vs 7).
+        templates = _time_step(
+            "build_keypad_templates",
+            lambda: build_keypad_digit_templates(keypad_path, keypad_items or []),
+        )
+
+        sequence, order_slot_boxes, order_slot_scores = _time_step(
+            "extract_order_sequence",
+            lambda: extract_sequence_by_slots(
+                image_path=image_path,
+                order_box=resolved_order_box,
+                ocr_scale=ocr_scale,
+                templates=templates,
+            ),
         )
 
         # 슬롯 방식이 실패하면 기존 방식으로 한 번 더 fallback
@@ -608,9 +1607,9 @@ def solve_security_challenge(
             order_path = image_path + "_order.png"
 
             try:
-                crop_image(image_path, resolved_order_box, order_path)
-                order_items = run_ocr(order_path, scale=max(2, int(ocr_scale)))
-                fallback_sequence = extract_sequence_fallback(order_items)
+                _time_step("crop_order_fallback", lambda: crop_image(image_path, resolved_order_box, order_path))
+                order_items = _time_step("ocr_order_fallback", lambda: run_ocr(order_path, scale=max(2, int(ocr_scale))))
+                fallback_sequence = _time_step("extract_order_fallback", lambda: extract_sequence_fallback(order_items))
 
                 if len(fallback_sequence) > len(sequence):
                     sequence = fallback_sequence
@@ -619,25 +1618,47 @@ def solve_security_challenge(
                 if os.path.exists(order_path):
                     os.remove(order_path)
 
-        crop_image(image_path, resolved_keypad_box, keypad_path)
-        keypad_items = run_ocr(keypad_path, scale=max(1, int(ocr_scale)))
-
-        buttons = extract_keypad_buttons(
-            keypad_items,
-            offset_x=resolved_keypad_box[0],
-            offset_y=resolved_keypad_box[1],
+        _time_step(
+            "save_debug_image",
+            lambda: save_debug_image(
+                image_path=image_path,
+                sequence=sequence,
+                buttons=buttons,
+                modal_box=modal_box,
+                order_box=resolved_order_box,
+                keypad_box=resolved_keypad_box,
+                mode=mode,
+                order_slot_boxes=order_slot_boxes,
+            ),
         )
 
-        save_debug_image(
-            image_path=image_path,
-            sequence=sequence,
-            buttons=buttons,
-            modal_box=modal_box,
-            order_box=resolved_order_box,
-            keypad_box=resolved_keypad_box,
-            mode=mode,
-            order_slot_boxes=order_slot_boxes,
-        )
+        # Capture ambiguous samples for later labeling/training (does not affect the result).
+        try:
+            capture_ambiguous = _parse_bool_env(os.getenv("OCR_CAPTURE_AMBIGUOUS"))
+            if capture_ambiguous is None:
+                capture_ambiguous = True
+
+            if capture_ambiguous:
+                has_17 = any(d in ("1", "7") for d in (sequence or []))
+                low_conf = any((float(s) if s is not None else 0.0) < 0.25 for s in (order_slot_scores or []))
+                if has_17 or low_conf:
+                    _save_sample_bundle(
+                        image_path=image_path,
+                        modal_box=modal_box,
+                        order_box=resolved_order_box,
+                        keypad_box=resolved_keypad_box,
+                        ocr_scale=int(ocr_scale),
+                        mode=mode,
+                        sequence=sequence,
+                        buttons=buttons,
+                        order_slot_boxes=order_slot_boxes,
+                        order_slot_scores=order_slot_scores,
+                        order_items=order_items,
+                        keypad_items=keypad_items,
+                        grid_buttons=grid_buttons,
+                    )
+        except Exception:
+            pass
 
         if len(sequence) < 3:
             raise RuntimeError(f"보안 인증 숫자 순서를 충분히 찾지 못했습니다. sequence={sequence}")
@@ -656,8 +1677,32 @@ def solve_security_challenge(
             "order_box": box_to_text(resolved_order_box),
             "keypad_box": box_to_text(resolved_keypad_box),
             "ocr_scale": int(ocr_scale),
+            "timings": timings,
         }
+
+    except Exception as exc:
+        bundle_dir = _save_failure_bundle(
+            image_path=image_path,
+            error=exc,
+            modal_box=modal_box,
+            order_box=resolved_order_box,
+            keypad_box=resolved_keypad_box,
+            ocr_scale=int(ocr_scale),
+            mode=mode,
+            sequence=sequence,
+            buttons=buttons,
+            order_slot_boxes=order_slot_boxes,
+            order_slot_scores=order_slot_scores,
+            order_items=order_items,
+            keypad_items=keypad_items,
+            grid_buttons=grid_buttons,
+        )
+        if bundle_dir:
+            raise RuntimeError(f"{exc} (saved failure bundle: {bundle_dir})") from exc
+        raise
 
     finally:
         if os.path.exists(keypad_path):
             os.remove(keypad_path)
+if TYPE_CHECKING:
+    from paddleocr import PaddleOCR  # pragma: no cover

@@ -1,1 +1,6 @@
 /*.png
+/config
+/failures
+/samples
+/data/labels
+/fail
