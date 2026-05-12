@@ -3,7 +3,9 @@ package com.ssafy.tickle.payment.application;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
 import com.ssafy.tickle.cancellation.domain.CancellationErrorCode;
+import com.ssafy.tickle.cancellation.domain.CancellationOffer;
 import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
+import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationOfferRepository;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.payment.config.PaymentConstants;
@@ -62,6 +64,7 @@ public class KakaoPayPaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final CancellationCandidateRepository cancellationCandidateRepository;
+    private final CancellationOfferRepository cancellationOfferRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final SeatHoldKeyStore seatHoldKeyStore;
     private final ApplicationEventPublisher eventPublisher;
@@ -387,11 +390,15 @@ public class KakaoPayPaymentService {
         List<BookingTicketStatusHistory> statusHistories = new ArrayList<>();
 
         // 승인 직전에도 다른 대기/제안이 늘어난 경우를 막아 최종 BOOKED 수량 정합성을 보장합니다.
-        validateBookingAndWaitingLimit(booking, tickets.size());
+        CancellationOffer cancellationOffer = findCancellationOffer(booking);
+        validateBookingAndWaitingLimit(booking, tickets.size(), cancellationOffer);
 
         // 상위 결제가 승인되면 예매도 최종 확정 상태로 함께 전이한다.
         payment.approve(payment.getOrderAmount());
         booking.confirm();
+        if (cancellationOffer != null) {
+            cancellationOffer.getCancellationCandidate().purchase(payment.getApprovedAt());
+        }
 
         // 상태 이력은 실제 이전 상태를 기준으로 남겨야 하므로 전이 전에 fromStatus를 확보한다.
         for (BookingTicket ticket : tickets) {
@@ -517,6 +524,57 @@ public class KakaoPayPaymentService {
                         saleStatus
                 )
         );
+    }
+
+    /**
+     * 취소표 예매이면 연결된 취소표 제안을 조회합니다.
+     *
+     * @param booking 승인 대상 예매
+     * @return 취소표 제안, 일반 예매이면 null
+     */
+    private CancellationOffer findCancellationOffer(Booking booking) {
+        if (!booking.isCancellationBooking()) {
+            return null;
+        }
+        return cancellationOfferRepository.findByIdWithDetails(booking.getCancellationOfferId())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "취소표 제안을 찾을 수 없습니다."));
+    }
+
+    /**
+     * 취소표 예매의 카카오페이 승인 전 수량 제한을 검증합니다.
+     *
+     * <p>현재 승인 중인 취소표 후보는 이미 OFFERED 상태로 점유 중이므로
+     * 중복 카운트하지 않도록 제외한 뒤 새 티켓 수량을 합산합니다.</p>
+     *
+     * @param booking 승인 대상 예매
+     * @param newTicketCount 승인 대상 티켓 수
+     * @param cancellationOffer 취소표 제안, 일반 예매이면 null
+     */
+    private void validateBookingAndWaitingLimit(
+            Booking booking,
+            int newTicketCount,
+            CancellationOffer cancellationOffer
+    ) {
+        if (cancellationOffer == null) {
+            validateBookingAndWaitingLimit(booking, newTicketCount);
+            return;
+        }
+
+        long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                OWNED_TICKET_STATUSES
+        );
+        long activeCandidateCount = cancellationCandidateRepository.countByUserIdAndSessionIdAndIdNotAndStatuses(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                cancellationOffer.getCancellationCandidate().getId(),
+                List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
+        );
+
+        if (ownedTicketCount + activeCandidateCount + newTicketCount > MAX_BOOKING_AND_WAITING_COUNT) {
+            throw new BaseException(CancellationErrorCode.CANDIDATE_LIMIT_EXCEEDED);
+        }
     }
 
     /**

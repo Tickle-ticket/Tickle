@@ -34,11 +34,11 @@ public interface CancellationOfferRepository extends JpaRepository<CancellationO
     Optional<CancellationOffer> findByIdWithDetails(@Param("id") Long id);
 
     /**
-     * 특정 상태이고 만료 시각이 지난 제안 목록을 조회합니다.
+     * 특정 상태들 중 만료 시각이 지난 제안 목록을 조회합니다.
      */
-    java.util.List<CancellationOffer> findAllByOfferStatusAndOfferExpiresAtBefore(
-            CancellationOffer.OfferStatus offerStatus,
-            java.time.Instant now
+    List<CancellationOffer> findAllByOfferStatusInAndOfferExpiresAtBefore(
+            List<CancellationOffer.OfferStatus> offerStatuses,
+            Instant now
     );
 
     /**

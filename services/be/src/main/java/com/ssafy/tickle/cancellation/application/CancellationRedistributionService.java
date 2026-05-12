@@ -133,8 +133,6 @@ public class CancellationRedistributionService {
         // 1. 제안 수락
         Instant acceptedAt = Instant.now();
         offer.accept(acceptedAt);
-        // 구매 단계부터는 BookingTicket의 PENDING_PAYMENT/BOOKED가 4매 제한을 담당하므로 candidate 점유를 해제합니다.
-        offer.getCancellationCandidate().purchase(acceptedAt);
 
         SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
         
@@ -199,6 +197,7 @@ public class CancellationRedistributionService {
             booking.markPendingPayment();
             ticket.markPendingPayment();
             seat.markPendingPayment();
+            offer.getCancellationCandidate().purchase(Instant.now());
 
             paymentTransactionRepository.save(PaymentTransaction.pendingSale(payment, UUID.randomUUID().toString()));
             bookingTicketStatusHistoryRepository.save(
@@ -243,6 +242,15 @@ public class CancellationRedistributionService {
         return ticketPriceAmount.multiply(PaymentConstants.TICKET_SERVICE_FEE_RATE).setScale(0, RoundingMode.DOWN);
     }
 
+    /**
+     * 취소표 구매 진입 전 회차별 예매/대기 수량 제한을 검증합니다.
+     *
+     * <p>현재 후보는 아직 OFFERED 상태로 점유 중이므로 활성 대기 수량에 포함됩니다.
+     * 이후 무통장 입금 대기 또는 카카오페이 승인 성공 시 PURCHASED로 전환되어
+     * BookingTicket의 PENDING_PAYMENT/BOOKED 수량이 점유를 담당합니다.</p>
+     *
+     * @param candidate 구매 진입 또는 재진입을 시도하는 취소표 후보
+     */
     private void validateBookingAndWaitingLimit(CancellationCandidate candidate) {
         Long userId = candidate.getUser().getId();
         Long sessionId = candidate.getSessionSeat().getSession().getId();
@@ -288,6 +296,8 @@ public class CancellationRedistributionService {
             throw new BaseException(GlobalErrorCode.CONFLICT, "이미 취소된 예매입니다.");
         }
 
+        validateBookingAndWaitingLimit(offer.getCancellationCandidate());
+
         SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
         BigDecimal totalAmount = booking.getTotalPaymentAmount();
 
@@ -326,6 +336,7 @@ public class CancellationRedistributionService {
             BookingTicket ticket = bookingTicketRepository.findByBookingId(booking.getId()).get(0);
             ticket.markPendingPayment();
             seat.markPendingPayment();
+            offer.getCancellationCandidate().purchase(Instant.now());
 
             paymentTransactionRepository.save(PaymentTransaction.pendingSale(payment, UUID.randomUUID().toString()));
             bookingTicketStatusHistoryRepository.save(
@@ -365,15 +376,26 @@ public class CancellationRedistributionService {
             throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표 제안만 거절할 수 있습니다.");
         }
 
-        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED
+                && offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
             return; // 이미 만료되었거나 다른 상태면 무시
         }
 
         log.info("취소표 제안 거절(Pass) 처리: offerId={}, userId={}", offerId, userId);
         Instant passedAt = Instant.now();
+        boolean removedDraftBooking = deleteDraftBookingForOffer(offer);
+        if (offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED && !removedDraftBooking) {
+            return;
+        }
+
         offer.pass(passedAt);
         // PASSED candidate는 더 이상 대기/제안 점유 수량으로 보지 않습니다.
         offer.getCancellationCandidate().pass(passedAt);
+        if (removedDraftBooking) {
+            SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
+            seat.cancelForReallocation();
+            sessionSeatRepository.save(seat);
+        }
 
         // 즉시 다음 사람에게 기회 부여
         processRedistribution(offer.getCancellationCandidate().getSessionSeat());
@@ -406,19 +428,48 @@ public class CancellationRedistributionService {
      */
     @Transactional
     public void processExpiredOffers() {
-        List<CancellationOffer> expiredOffers = offerRepository.findAllByOfferStatusAndOfferExpiresAtBefore(
-                CancellationOffer.OfferStatus.UNACCEPTED,
+        List<CancellationOffer> expiredOffers = offerRepository.findAllByOfferStatusInAndOfferExpiresAtBefore(
+                List.of(CancellationOffer.OfferStatus.UNACCEPTED, CancellationOffer.OfferStatus.ACCEPTED),
                 Instant.now());
 
         for (CancellationOffer offer : expiredOffers) {
             log.info("취소표 제안 만료 처리: offerId={}, userId={}", offer.getId(),
                     offer.getCancellationCandidate().getUser().getId());
+            boolean removedDraftBooking = deleteDraftBookingForOffer(offer);
+            if (offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED && !removedDraftBooking) {
+                continue;
+            }
+
             Instant expiredAt = Instant.now();
             offer.expire(expiredAt);
             // EXPIRED candidate는 더 이상 대기/제안 점유 수량으로 보지 않습니다.
             offer.getCancellationCandidate().expire(expiredAt);
+            if (removedDraftBooking) {
+                SessionSeat seat = offer.getCancellationCandidate().getSessionSeat();
+                seat.cancelForReallocation();
+                sessionSeatRepository.save(seat);
+            }
             processRedistribution(offer.getCancellationCandidate().getSessionSeat());
         }
+    }
+
+    /**
+     * 취소표 제안에 연결된 결제 전 DRAFT 예매를 삭제합니다.
+     *
+     * <p>카카오페이 실패/취소 후 남은 DRAFT 예매만 정리 대상입니다.
+     * 무통장 입금 대기나 확정 예매는 결제/예매 상태가 이미 책임을 가지므로 삭제하지 않습니다.</p>
+     *
+     * @param offer 정리 대상 취소표 제안
+     * @return DRAFT 예매 삭제 여부
+     */
+    private boolean deleteDraftBookingForOffer(CancellationOffer offer) {
+        return bookingRepository.findByCancellationOfferId(offer.getId())
+                .filter(booking -> booking.getBookingStatus() == Booking.Status.DRAFT)
+                .map(booking -> {
+                    bookingRepository.delete(booking);
+                    return true;
+                })
+                .orElse(false);
     }
 
     /**
