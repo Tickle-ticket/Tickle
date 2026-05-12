@@ -72,7 +72,7 @@ def connect_db():
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "PostgreSQL의 behavior_feature_records에서 학습용 데이터를 추출합니다.\n"
+            "PostgreSQL의 behavior feature 테이블에서 학습용 데이터를 추출합니다.\n"
             "- 출력 필드: trialID, label, features(=기존 metrics)\n"
             "- trialID는 마지막 trialID를 입력받아 다음 값부터 순차 부여합니다."
         )
@@ -96,7 +96,13 @@ def main() -> None:
         "--from-db-id",
         type=int,
         default=0,
-        help="이전에 내보낸 마지막 DB id(behavior_feature_records.id). 기본값 0(처음부터).",
+        help="이전에 내보낸 마지막 DB id. 기본값 0(처음부터).",
+    )
+    parser.add_argument(
+        "--table",
+        choices=("behavior_feature_records", "behavior_feature_records_gt"),
+        default="behavior_feature_records",
+        help="추출할 테이블명. 기본값: behavior_feature_records.",
     )
     parser.add_argument("--limit", type=int, default=None, help="이번 실행에서 최대 N건만 추출.")
     parser.add_argument("--batch-size", type=int, default=2000, help="DB에서 한 번에 읽을 row 수.")
@@ -139,11 +145,11 @@ def main() -> None:
                 cur.execute(
                     """
                     SELECT id, label, features
-                    FROM public.behavior_feature_records
+                    FROM public.{table_name}
                     WHERE id > %s
                     ORDER BY id
                     LIMIT %s
-                    """,
+                    """.format(table_name=args.table),
                     (last_db_id, page_size),
                 )
 
@@ -174,6 +180,7 @@ def main() -> None:
         json.dumps(
             {
                 "exported": exported,
+                "table": args.table,
                 "out": str(out_path),
                 "last_db_id": max_db_id_seen,
             },
