@@ -50,9 +50,10 @@ def build_insert_rows(
     return rows
 
 
-def insert_behavior_feature_records(
+def insert_records(
     conn,
     detection_results: list[DetectionResult],
+    table_name: str,
 ) -> None:
     rows = build_insert_rows(detection_results)
 
@@ -60,7 +61,7 @@ def insert_behavior_feature_records(
         return
 
     query = """
-        INSERT INTO behavior_feature_records (
+        INSERT INTO {table_name} (
             record_id,
             type,
             schedule_id,
@@ -73,7 +74,7 @@ def insert_behavior_feature_records(
         )
         VALUES %s
         ON CONFLICT (record_id) DO NOTHING
-    """
+    """.format(table_name=table_name)
 
     with conn.cursor() as cursor:
         execute_values(
@@ -84,3 +85,17 @@ def insert_behavior_feature_records(
         )
 
     conn.commit()
+
+
+def insert_behavior_feature_records(
+    conn,
+    detection_results: list[DetectionResult],
+) -> None:
+    insert_records(conn, detection_results, "behavior_feature_records")
+
+
+def insert_behavior_feature_gt_records(
+    conn,
+    detection_results: list[DetectionResult],
+) -> None:
+    insert_records(conn, detection_results, "behavior_feature_records_gt")
