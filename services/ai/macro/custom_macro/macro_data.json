@@ -1,0 +1,121 @@
+{
+  "runtime": {
+    "click_duration_sec": 0.01,
+    "between_click_sec": 0.01,
+    "between_event_sec": 0.05,
+    "mouse_steps": 1,
+    "use_retina_scale": false,
+    "ocr_server_url": "http://127.0.0.1:8010"
+  },
+  "macros": [
+    {
+      "name": "전체 플로우",
+      "hotkey": "f9",
+      "events": [
+        {
+          "type": "click",
+          "memo": "취소표 대기하기 클릭",
+          "x": 1935,
+          "y": 944,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "wait",
+          "memo": "대기열 이후 화면 전환 대기",
+          "seconds": 1.8
+        },
+        {
+          "type": "ocr_security",
+          "delay": 0,
+          "memo": "보안 인증 숫자 OCR 클릭"
+        },
+        {
+          "type": "wait",
+          "memo": "",
+          "seconds": 3.1
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 2308,
+          "y": 1045,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 2042,
+          "y": 1472,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 1011,
+          "y": 680,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 1075,
+          "y": 680,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 1133,
+          "y": 680,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 1197,
+          "y": 680,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 2640,
+          "y": 1591,
+          "button": "left",
+          "delay": 0.0
+        },
+        {
+          "type": "click",
+          "memo": "",
+          "x": 1444,
+          "y": 1120,
+          "button": "left",
+          "delay": 0.0
+        }
+      ]
+    }
+  ],
+  "security": {
+    "mode": "manual",
+    "order_box": [
+      1167,
+      569,
+      1714,
+      715
+    ],
+    "keypad_box": [
+      1154,
+      791,
+      1730,
+      1370
+    ],
+    "ocr_scale": 2
+  }
+}
