@@ -369,7 +369,7 @@ public class CancellationRedistributionService {
             Instant now = Instant.now();
             // 제안 받은 candidate는 취소 API 대상에서 빠지도록 WAITING에서 OFFERED로 먼저 전이합니다.
             candidate.offer(now);
-            CancellationOffer newOffer = offerRepository.saveAndFlush(
+            CancellationOffer newOffer = offerRepository.save(
                     CancellationOffer.builder()
                             .cancellationCandidate(candidate)
                             .offerStatus(CancellationOffer.OfferStatus.UNACCEPTED)
