@@ -27,10 +27,9 @@ public class SmsNotificationService {
      * @param to 휴대폰 번호
      */
     public void sendCancellationNotifyMessage(String to) {
-        String text =
-                "[Tickle] 취소표 발생 안내\n\n" +
+        String text = "[Tickle] 취소표 발생 안내\n\n" +
                 "회원님이 대기하신 좌석에 취소표가 발생했습니다.\n" +
-                "1시간 내에 예매를 완료하지 않으면 다음 대기자에게 기회가 넘어갑니다.\n" +
+                "1시간 내에 예매를 완료하지 않으면 다음 대기자에게 기회가 넘어갑니다.\n\n" +
                 "결제 링크: https://tickle-ticket.co.kr/?view=mypage&tab=WAITLIST";
 
         Message message = new Message();
