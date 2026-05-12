@@ -31,6 +31,7 @@ import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { leaveQueue } from '@/src/shared/api/queueApi';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -78,6 +79,9 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [isWaitlistMoreThanOneDayLeft, setIsWaitlistMoreThanOneDayLeft] = useState(false);
   const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
   const [admitToken, setAdmitToken] = useState<string | null>(null);
+  const [queueToken, setQueueToken] = useState<string | null>(null);
+  const queueTokenRef = useRef<string | null>(null);
+  const flowScopeRef = useRef<'BOOKING' | 'CANCELLATION_WAIT'>('BOOKING');
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
   const isFavorite = activeEventId ? !!wishlistMap[activeEventId] : false;
@@ -112,8 +116,12 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     setStage('detail');
   }, [setStage]);
 
-  const handleQueueAdmitted = useCallback((token: string) => {
+  const handleQueueAdmitted = useCallback((token: string, qToken?: string) => {
     setAdmitToken(token);
+    if (qToken) {
+      setQueueToken(qToken);
+      queueTokenRef.current = qToken;
+    }
     setFlowState((prev) => (prev === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK'));
   }, []);
 
@@ -136,8 +144,49 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 지금까지 수집된 DETAIL 데이터 전송
     finalize();
 
+    flowScopeRef.current = state === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING';
     setFlowState(state);
+
+    // 뒤로가기 감지를 위해 히스토리 엔트리 추가
+    window.history.pushState({ tickleFlow: true }, '');
   };
+
+  const flowStateRef = useRef(flowState);
+  useEffect(() => {
+    flowStateRef.current = flowState;
+  }, [flowState]);
+
+  // 대기열 활성 상태에서 브라우저 뒤로가기/새로고침 시 leaveQueue 호출
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (queueTokenRef.current && activeEventId) {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+        const scope = flowScopeRef.current;
+        const url = `${baseUrl}/api/v1/queues/${activeEventId}/leave?queueToken=${queueTokenRef.current}&scope=${scope}`;
+        navigator.sendBeacon(url);
+      }
+    };
+
+    const handlePopState = () => {
+      // 플로우가 활성 상태일 때만 처리
+      if (flowStateRef.current === 'NONE') return;
+
+      if (queueTokenRef.current && activeEventId) {
+        leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch(() => { });
+        queueTokenRef.current = null;
+        setQueueToken(null);
+      }
+      setFlowState('NONE');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [activeEventId]);
 
   useEffect(() => {
     if (data && activeEventId) {
@@ -298,17 +347,17 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         }
         return getScrollParent(node.parentElement);
       };
-      
+
       const scrollParent = getScrollParent(element);
       const isWindow = scrollParent === document.documentElement;
-      
+
       const elementRect = element.getBoundingClientRect();
       const parentRect = isWindow ? { top: 0 } : scrollParent.getBoundingClientRect();
       const scrollTop = isWindow ? window.pageYOffset : scrollParent.scrollTop;
-      
+
       const offset = 80; // sticky header offset
       const targetY = elementRect.top - parentRect.top + scrollTop - offset;
-      
+
       if (isWindow) {
         window.scrollTo({ top: targetY, behavior: 'smooth' });
       } else {
@@ -671,14 +720,39 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
             scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
             onAdmitted={handleQueueAdmitted}
-            onClose={() => setFlowState('NONE')}
+            onClose={() => {
+              setFlowState('NONE');
+              queueTokenRef.current = null;
+              setQueueToken(null);
+            }}
+            onTokenFetched={(token) => {
+              queueTokenRef.current = token;
+              setQueueToken(token);
+            }}
             storyMode={storyMode}
           />
         </div>
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
         <div className="fixed inset-0 z-[70] bg-white overflow-y-auto">
-          <BookView eventId={activeEventId} mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'} admitToken={admitToken || undefined} onClose={() => setFlowState('NONE')} storyMode={storyMode} />
+          <BookView
+            eventId={activeEventId}
+            mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'}
+            admitToken={admitToken || undefined}
+            onClose={() => {
+              setFlowState('NONE');
+              queueTokenRef.current = null;
+              setQueueToken(null);
+            }}
+            onLeaveQueue={() => {
+              if (queueTokenRef.current && activeEventId) {
+                leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch(() => { });
+                queueTokenRef.current = null;
+                setQueueToken(null);
+              }
+            }}
+            storyMode={storyMode}
+          />
         </div>
       )}
 

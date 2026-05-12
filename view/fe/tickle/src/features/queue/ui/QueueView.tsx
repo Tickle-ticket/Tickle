@@ -10,14 +10,15 @@ import { isShadowMode } from '@/src/shared/utils/shadowMode';
 
 interface QueueViewProps {
   eventId: string;
-  onAdmitted: (admitToken: string) => void;
+  onAdmitted: (admitToken: string, queueToken?: string) => void;
   onClose: () => void;
   fastMode?: boolean;
   scope?: 'BOOKING' | 'CANCELLATION_WAIT';
   storyMode?: boolean;
+  onTokenFetched?: (queueToken: string) => void;
 }
 
-export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', storyMode }: QueueViewProps) => {
+export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', storyMode, onTokenFetched }: QueueViewProps) => {
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
@@ -69,7 +70,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         setWaitingCount(0);
         setEstimatedWaitSeconds(1);
         setTimeout(() => {
-          if (!isCancelled) onAdmitted('shadow-token');
+          if (!isCancelled) onAdmitted('shadow-token', undefined);
         }, 1500);
         return;
       }
@@ -80,7 +81,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         setWaitingCount(1);
         setEstimatedWaitSeconds(1);
         setTimeout(() => {
-          if (!isCancelled) onAdmitted('test-fast-token');
+          if (!isCancelled) onAdmitted('test-fast-token', undefined);
         }, 500);
         return;
       }
@@ -101,9 +102,10 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         if (isCancelled) return;
         const { queueToken } = tokenRes.data;
         queueTokenRef.current = queueToken;
+        onTokenFetched?.(queueToken);
 
         if (tokenRes.data.status === 'ADMITTED') {
-          onAdmitted('at-immediate');
+          onAdmitted('at-immediate', queueToken);
           return;
         }
 
@@ -132,7 +134,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
               if (isExitModalOpenRef.current) {
                 pendingAdmitTokenRef.current = data.admitToken;
               } else {
-                onAdmitted(data.admitToken);
+                onAdmitted(data.admitToken, queueTokenRef.current || undefined);
               }
             } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
               setStatus('ERROR');
@@ -206,7 +208,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     setIsExitModalOpen(false);
     isExitModalOpenRef.current = false;
     if (pendingAdmitTokenRef.current) {
-      onAdmitted(pendingAdmitTokenRef.current);
+      onAdmitted(pendingAdmitTokenRef.current, queueTokenRef.current || undefined);
     }
   };
 
