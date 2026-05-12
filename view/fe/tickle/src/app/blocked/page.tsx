@@ -26,8 +26,8 @@ function BlockedContent() {
 
 export default function BlockedPage() {
   return (
-    <div className="h-screen w-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 p-6">
-      <div className="w-full max-w-[480px] bg-white dark:bg-zinc-900 rounded-[32px] shadow-[0_18px_46px_rgba(15,23,42,0.04)] border border-slate-100 dark:border-zinc-800 overflow-hidden transform transition-all">
+    <div className="h-screen w-screen flex items-center justify-center bg-slate-50 p-6">
+      <div className="w-full max-w-[480px] bg-white rounded-[32px] shadow-[0_18px_46px_rgba(15,23,42,0.04)] border border-slate-100 overflow-hidden transform transition-all">
         <Suspense fallback={<div></div>}>
           <BlockedContent />
         </Suspense>

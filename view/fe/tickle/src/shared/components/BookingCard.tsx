@@ -3,7 +3,7 @@ import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { InfoTime } from '@/src/shared/components/InfoTime';
 import { Table } from '@/src/shared/components/Table';
-import { BookingData } from '@/src/features/mypage/api/useMyPageData';
+import { BookingData, useBookingDetail } from '@/src/features/mypage/api/useMyPageData';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -62,6 +62,7 @@ export const BookingCard = ({
   onOpenBarcode,
 }: BookingCardProps) => {
   const isPerformanceToday = isToday(item.performanceDate);
+  const { data: detail } = useBookingDetail(item.id);
 
   // 상태별 하단 액션 버튼 영역
   const renderActions = () => {
@@ -70,16 +71,14 @@ export const BookingCard = ({
         return (
           <>
             <button
-              onClick={() => {
-                onOpenPayment(item.paymentId || null, item.id);
-              }}
-              className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white rounded-xl font-bold transition-colors text-sm shadow-sm"
+              onClick={() => onOpenPayment(item.paymentId || null, item.id)}
+              className="flex-1 py-2 sm:py-2.5 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white rounded-xl font-bold transition-colors text-xs sm:text-sm shadow-sm"
             >
               결제 정보
             </button>
             <button
               onClick={() => onOpenCancel(item.id)}
-              className="flex-1 py-3 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-200 rounded-xl font-bold transition-colors text-sm shadow-sm"
+              className="flex-1 py-2 sm:py-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-200 rounded-xl font-bold transition-colors text-xs sm:text-sm shadow-sm"
             >
               예매 취소
             </button>
@@ -87,97 +86,119 @@ export const BookingCard = ({
         );
       case 'CONFIRMED':
       case 'BOOKED':
+        return (
+          <button
+            onClick={() => onOpenCancel(item.id)}
+            className="flex-1 py-2 sm:py-2.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 border border-red-200 rounded-xl font-bold transition-colors text-xs sm:text-sm shadow-sm"
+          >
+            예매 취소
+          </button>
+        );
       case 'CANCELLED':
+        return (
+          <span className="text-[11px] font-medium text-gray-400">취소된 예매입니다</span>
+        );
       default:
         return (
           <button
             onClick={() => onOpenDetail(item.id)}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl font-bold transition-colors text-sm shadow-sm"
+            className="px-3 py-1.5 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-400 rounded-lg text-[11px] font-medium border border-gray-200 transition-colors"
           >
-            상세 정보 {item.status !== 'CANCELLED' && '및 취소'}
+            상세 보기
           </button>
         );
     }
   };
 
   return (
-    <div className="relative w-full max-w-[280px] flex flex-col rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-white">
-      {/* 포스터 및 카운트다운 영역 */}
-      <div className="relative w-full aspect-[2/3] overflow-hidden bg-gray-100 border-b border-gray-200">
-        <div className="absolute bottom-0 left-0 w-full h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none z-10"></div>
-        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-          <InfoTime targetDate={item.performanceDate} className="pointer-events-auto" />
+    <div className={`relative w-full max-w-[600px] flex flex-row rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-white transition-all hover:shadow-md ${!item.imageUrl ? '' : ''}`}>
+      {/* 좌측: 포스터 영역 (이미지가 있을 때만 표시) */}
+      {item.imageUrl ? (
+        <div className="relative w-[110px] sm:w-[140px] shrink-0 bg-gray-100 border-r border-gray-100">
+          <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="rounded-none md:rounded-none h-full absolute inset-0 object-cover" />
         </div>
-        <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="rounded-none md:rounded-none max-w-full" />
-      </div>
+      ) : null}
 
-      <div className="flex flex-col w-full bg-white">
-        {/* 공연 이름 및 장소 */}
-        <div className="w-full flex flex-col items-center justify-center pt-5 pb-4 px-5 bg-white">
-          <div className="flex flex-col items-center w-full mb-2">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-extrabold text-blue-500 tracking-[0.2em] opacity-80">BOOKING TICKET</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusBadge(item.status).color}`}>
-                {getStatusBadge(item.status).text}
-              </span>
-            </div>
-            <Text typography="t4" fontWeight="bold" textAlign="center" className="text-[#1e293b] w-full truncate px-1">
-              {item.title}
-            </Text>
-          </div>
-          <div className="flex items-center gap-1.5 text-gray-500 mt-1.5 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-            <Text typography="t7" fontWeight="medium" className="truncate text-gray-600">
-              {item.venue}
-            </Text>
-          </div>
+      {/* 우측: 정보 및 액션 영역 */}
+      <div className="flex flex-col flex-1 min-w-0 p-3 sm:p-5 relative">
+        {/* 상단: 상태 및 티켓 라벨 */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadge(item.status).color}`}>
+            {getStatusBadge(item.status).text}
+          </span>
+          <span className="text-[10px] font-extrabold text-blue-500/80 tracking-[0.2em] ml-auto bg-blue-50 px-2 py-0.5 rounded-md">
+            TICKET
+          </span>
         </div>
 
-        {/* 바코드 UI */}
-        <div className="w-full px-5 pb-4">
-          {isPerformanceToday ? (
-            <div
-              className="flex flex-col items-center justify-center pt-3 pb-2 cursor-pointer hover:bg-gray-50 transition-colors rounded-xl border border-gray-100"
-              onClick={() => onOpenBarcode(`${item.id.toUpperCase().replace('-', '')}8X9A`)}
-              title="바코드 크게 보기"
-            >
-              <div className="h-8 w-4/5 opacity-40 grayscale" style={{ backgroundImage: 'repeating-linear-gradient(to right, #1e293b, #1e293b 2px, transparent 2px, transparent 4px, #1e293b 4px, #1e293b 5px, transparent 5px, transparent 8px, #1e293b 8px, #1e293b 11px, transparent 11px, transparent 13px)' }}></div>
-              <div className="text-[10px] tracking-[0.4em] text-gray-400 mt-2 font-mono font-semibold">{item.id.toUpperCase().replace('-', '')}8X9A</div>
+        {/* 중단: 공연 제목 및 장소 */}
+        <Text as="p" typography="t4" fontWeight="bold" ellipsis className="text-[#1e293b] w-full leading-snug sm:leading-tight mb-1">
+          {item.title}
+        </Text>
+        <Text typography="t7" fontWeight="medium" className="text-gray-500 truncate mb-3 sm:mb-4">
+          {item.venue}
+        </Text>
+
+        {/* 하단: 날짜, 시간 */}
+        <div className="flex gap-4 sm:gap-6 mb-2">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-gray-400">DATE</span>
+            <span className="text-xs sm:text-sm font-extrabold text-gray-800">{formatDateOnly(item.performanceDate)}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-gray-400">TIME</span>
+            <span className="text-xs sm:text-sm font-extrabold text-gray-800">{formatTimeOnly(item.performanceDate)}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-gray-400">QTY</span>
+            <span className="text-xs sm:text-sm font-extrabold text-gray-800">{item.ticketCount}매</span>
+          </div>
+        </div>
+
+        {/* 좌석 정보 (1줄 고정) */}
+        <div className="flex items-center gap-1.5 mb-6 sm:mb-auto overflow-hidden">
+          <span className="text-[10px] font-bold text-gray-400 shrink-0">SEAT</span>
+          {detail?.tickets && detail.tickets.length > 0 ? (
+            <div className="flex items-center gap-1 overflow-hidden">
+              {detail.tickets.slice(0, 2).map((t: any, i: number) => (
+                <span key={i} className="text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap shrink-0">
+                  {t.sectionName} {t.rowLabel}열 {t.seatNumber}번
+                </span>
+              ))}
+              {detail.tickets.length > 2 && (
+                <span className="text-[10px] font-bold text-gray-400 shrink-0">+{detail.tickets.length - 2}</span>
+              )}
             </div>
           ) : (
-            <div
-              className="flex flex-col items-center justify-center pt-3 pb-2 rounded-xl border border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed select-none"
-              title="관람 당일에 바코드가 활성화됩니다"
-            >
-              <div className="h-8 w-4/5 grayscale" style={{ backgroundImage: 'repeating-linear-gradient(to right, #94a3b8, #94a3b8 2px, transparent 2px, transparent 4px, #94a3b8 4px, #94a3b8 5px, transparent 5px, transparent 8px, #94a3b8 8px, #94a3b8 11px, transparent 11px, transparent 13px)' }}></div>
-              <div className="text-[10px] tracking-[0.1em] text-gray-400 mt-2 font-bold">관람 당일 활성화</div>
-            </div>
+            <span className="text-xs font-medium text-gray-500">{item.seatInfo}</span>
           )}
         </div>
 
-        {/* 하단 기타 정보 */}
-        <div className="w-full bg-white px-4 pb-4 pt-5 border-t-2 border-dashed border-gray-200 relative mt-auto">
-          <div className="absolute top-[-8px] left-[-12px] w-6 h-6 bg-[#f8f8f8] rounded-full border-r border-gray-200 shadow-[inset_-2px_0_3px_rgba(0,0,0,0.03)]" />
-          <div className="absolute top-[-8px] right-[-12px] w-6 h-6 bg-[#f8f8f8] rounded-full border-l border-gray-200 shadow-[inset_2px_0_3px_rgba(0,0,0,0.03)]" />
+        {/* 점선 구분선 및 액션 버튼들 */}
+        <div className="flex gap-2 sm:gap-3 mt-auto pt-3 sm:pt-4 border-t-2 border-dashed border-gray-100 relative">
+          <div className="absolute top-[-10px] left-[-22px] sm:left-[-30px] w-5 h-5 bg-[#f8f8f8] rounded-full border-r-2 border-gray-100 shadow-[inset_-2px_0_3px_rgba(0,0,0,0.01)]" />
+          
+          {renderActions()}
 
-          <div className="bg-[#f8fafc] rounded-xl overflow-hidden border border-[#e2e8f0] shadow-sm">
-            <Table
-              columns={[
-                { key: 'perfDate', header: '관람 일자', align: 'center' },
-                { key: 'perfTime', header: '관람 시간', align: 'center' }
-              ]}
-              data={[{
-                perfDate: formatDateOnly(item.performanceDate),
-                perfTime: formatTimeOnly(item.performanceDate)
-              }]}
-              tableLayout="fixed"
-              className="[&_thead]:!bg-[#f1f5f9] [&_thead]:!border-b [&_thead]:!border-[#e2e8f0] [&_tbody]:!divide-none hover:[&_tr]:!bg-transparent [&_th]:!py-2 [&_th]:!px-1 [&_td]:!py-2.5 [&_td]:!px-1 [&_th_span]:!text-[11px] [&_th_span]:!font-bold [&_th_span]:!text-[#64748b] [&_td_span]:!text-[12px] [&_td_span]:!font-extrabold [&_td_span]:!text-[#334155]"
-            />
-          </div>
-
-          {/* 하단 액션 버튼들 */}
-          <div className="flex gap-2 mt-4">
-            {renderActions()}
-          </div>
+          {/* 바코드 버튼 (우측 끝) */}
+          {isPerformanceToday ? (
+            <button
+              onClick={() => onOpenBarcode(`${item.id.toUpperCase().replace('-', '')}8X9A`)}
+              className="w-10 sm:w-12 shrink-0 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
+              title="바코드 보기"
+            >
+              <div className="h-5 w-3/5 opacity-60 grayscale" style={{ backgroundImage: 'repeating-linear-gradient(to right, #1e293b, #1e293b 1px, transparent 1px, transparent 2px, #1e293b 2px, #1e293b 3px, transparent 3px, transparent 5px, #1e293b 5px, #1e293b 7px, transparent 7px, transparent 8px)' }}></div>
+              <span className="text-[8px] sm:text-[9px] font-bold text-gray-500 mt-1">CODE</span>
+            </button>
+          ) : (
+            <div
+              className="w-10 sm:w-12 shrink-0 flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-gray-100 opacity-50 cursor-not-allowed"
+              title="관람 당일 활성화"
+            >
+              <div className="h-5 w-3/5 grayscale" style={{ backgroundImage: 'repeating-linear-gradient(to right, #94a3b8, #94a3b8 1px, transparent 1px, transparent 2px, #94a3b8 2px, #94a3b8 3px, transparent 3px, transparent 5px, #94a3b8 5px, #94a3b8 7px, transparent 7px, transparent 8px)' }}></div>
+              <span className="text-[8px] font-bold text-gray-400 mt-1">D-DAY</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

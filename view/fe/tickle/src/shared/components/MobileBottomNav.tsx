@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HomeIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/outline';
 import { HomeIcon as HomeSolid, MagnifyingGlassIcon as SearchSolid, UserIcon as UserSolid } from '@heroicons/react/24/solid';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
@@ -26,7 +26,8 @@ export const MobileBottomNav = () => {
     };
   }, []);
 
-  const isHome = !searchValue && !isMypageOpen;
+  const pathname = usePathname();
+  const isHome = !searchValue && !isMypageOpen && pathname === '/';
   const isSearch = !!searchValue;
   const isMypage = isMypageOpen;
 

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Header } from '@/src/shared/components/Header';
 import { Footer } from '@/src/shared/components/Footer';
+import { MobileBottomNav } from '@/src/shared/components/MobileBottomNav';
 import { Title } from '@/src/shared/components/Title';
 import { Box } from '@/src/shared/components/Box';
 
@@ -104,6 +105,7 @@ export default function NoticePage() {
 
         <Footer />
       </main>
+      <MobileBottomNav />
     </div>
   );
 }

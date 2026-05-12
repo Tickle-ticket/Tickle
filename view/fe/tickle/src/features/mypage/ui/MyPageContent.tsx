@@ -19,7 +19,7 @@ export const MyPageContent = () => {
   const tabs = [
     { id: 'USER', label: '회원 관리' },
     { id: 'UPCOMING', label: '관심 있는 개봉 예정 공연' },
-    { id: 'MY_TICKETS', label: '내 예매' },
+    { id: 'MY_TICKETS', label: '나의 예매' },
     { id: 'PAST_TICKETS', label: '과거 예매 조회' },
     { id: 'WAITLIST', label: '나의 취소표 관리' },
     { id: 'PAYMENTS', label: '결제 관리' },

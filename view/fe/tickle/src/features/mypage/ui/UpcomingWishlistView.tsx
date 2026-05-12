@@ -113,6 +113,7 @@ export const UpcomingWishlistView = () => {
                   title={item.title}
                   place={item.venue}
                   day={item.date}
+                  disabled={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
                   showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
                   targetDate={item.openDate}
                   isWishlisted={!isRemoved}
@@ -165,7 +166,7 @@ export const UpcomingWishlistView = () => {
                     title={item.title}
                     place={item.venue}
                     day={item.date}
-                    disabled={true}
+                    disabled={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
                     showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
                     targetDate={item.openDate}
                     isWishlisted={!isRemoved}

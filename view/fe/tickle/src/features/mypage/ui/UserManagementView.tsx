@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import React, { useState } from 'react';
 import { Box } from '@/src/shared/components/Box';
@@ -207,16 +208,19 @@ export const UserManagementView = () => {
           <Text typography="t5" fontWeight="bold" color="primary">비밀번호 변경</Text>
           <Text typography="t6" color="tertiary">›</Text>
         </button>
-        <button
-          onClick={() => {
-            closeMypage();
-            router.push('/support/faq');
+        <Link
+          href="/support/faq"
+          onClick={(e) => {
+            // 라우팅이 완전히 시작되도록 약간의 지연 후 전역 상태 초기화
+            setTimeout(() => {
+              closeMypage();
+            }, 150);
           }}
           className="flex items-center justify-between w-full p-5 hover:bg-gray-50 transition-colors border-b border-gray-100"
         >
           <Text typography="t5" fontWeight="bold" color="primary">고객 지원 (FAQ)</Text>
           <Text typography="t6" color="tertiary">›</Text>
-        </button>
+        </Link>
         <button
           onClick={() => setIsWithdrawModalOpen(true)}
           className="flex items-center justify-between w-full p-5 hover:bg-red-50 transition-colors group"

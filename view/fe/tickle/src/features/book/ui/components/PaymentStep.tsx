@@ -454,14 +454,14 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
   const renderSummaryContent = () => (
     <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800">
-        <div className="px-5 py-4 bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 rounded-t-2xl">
-          <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">좌석 정보</h3>
+      <div className="bg-white rounded-2xl border border-gray-200">
+        <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl">
+          <h3 className="font-extrabold text-[16px] text-gray-900">좌석 정보</h3>
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-zinc-800">
+        <div className="divide-y divide-gray-100">
           {cancellationId ? (
             <div className="px-5 py-4 flex flex-col gap-1.5">
-              <span className="font-bold text-gray-900 dark:text-white text-[15px]">취소표 1매</span>
+              <span className="font-bold text-gray-900 text-[15px]">취소표 1매</span>
               <span className="text-[13px] text-gray-500 leading-none">배정된 취소표</span>
             </div>
           ) : Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
@@ -489,14 +489,14 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
                     <span className={`w-3 h-3 rounded-full ${dotClass}`} />
-                    <span className="font-bold text-gray-900 dark:text-white text-[15px]">{priceGrade}석</span>
+                    <span className="font-bold text-gray-900 text-[15px]">{priceGrade}석</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2.5 ml-5 mt-0.5">
                     <span className="text-[13px] text-gray-500 leading-none">{seats.map(s => s.seatLabel).join(', ')}</span>
                     <div className="flex flex-wrap gap-1.5">
                       {Object.entries(counts).filter(([, c]: [string, any]) => (c as number) > 0).map(([typeId, count]: [string, any]) => {
                         return (
-                          <span key={typeId} className="text-[11px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium px-2 py-0.5 rounded-md">
+                          <span key={typeId} className="text-[11px] bg-blue-50 text-blue-600 font-medium px-2 py-0.5 rounded-md">
                             {typeId} {count as number}매
                           </span>
                         );
@@ -504,7 +504,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     </div>
                   </div>
                 </div>
-                <span className="font-extrabold text-gray-900 dark:text-white text-sm">
+                <span className="font-extrabold text-gray-900 text-sm">
                   {priceGradeTotalPrice > 0 ? `${priceGradeTotalPrice.toLocaleString()}원` : ''}
                 </span>
               </div>
@@ -513,22 +513,22 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800">
-        <div className="px-5 py-4 bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 rounded-t-2xl">
-          <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">결제 금액</h3>
+      <div className="bg-white rounded-2xl border border-gray-200">
+        <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl">
+          <h3 className="font-extrabold text-[16px] text-gray-900">결제 금액</h3>
         </div>
         <div className="p-5 flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">티켓 금액</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-white">{ticketPrice.toLocaleString()}원</span>
+            <span className="text-sm text-gray-600">티켓 금액</span>
+            <span className="text-sm font-bold text-gray-900">{ticketPrice.toLocaleString()}원</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600 dark:text-gray-400">예매 수수료 (5%)</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-white">{bookingFee.toLocaleString()}원</span>
+            <span className="text-sm text-gray-600">예매 수수료 (5%)</span>
+            <span className="text-sm font-bold text-gray-900">{bookingFee.toLocaleString()}원</span>
           </div>
-          <div className="h-px bg-gray-200 dark:bg-zinc-700 my-1" />
+          <div className="h-px bg-gray-200 my-1" />
           <div className="flex justify-between items-center">
-            <span className="text-base font-extrabold text-gray-900 dark:text-white">총 결제 금액</span>
+            <span className="text-base font-extrabold text-gray-900">총 결제 금액</span>
             <span className="text-xl font-extrabold text-blue-600">{finalPrice.toLocaleString()}원</span>
           </div>
         </div>
@@ -537,7 +537,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   );
 
   const renderBackButton = (containerClassName: string) => (
-    <div className={`p-4 sm:p-6 bg-white dark:bg-zinc-950 z-20 shrink-0 border-b border-gray-100 dark:border-zinc-800 ${containerClassName}`}>
+    <div className={`p-4 sm:p-6 bg-white z-20 shrink-0 border-b border-gray-100 ${containerClassName}`}>
       <button
         onClick={() => {
           if (bookingStep === 'PAYMENT') {
@@ -547,7 +547,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           }
         }}
         disabled={isProcessing}
-        className="px-4 py-2 text-gray-600 dark:text-gray-300 font-bold text-sm border border-gray-300 dark:border-zinc-600 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2 w-max"
+        className="px-4 py-2 text-gray-600 font-bold text-sm border border-gray-300 rounded-xl hover:bg-gray-50:bg-zinc-800 transition-colors flex items-center gap-2 w-max"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
@@ -588,14 +588,14 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 top-[73px] flex flex-col lg:flex-row bg-gray-50 dark:bg-zinc-950 z-40 animate-fade-in border-t border-gray-200 dark:border-zinc-800 overflow-hidden">
+    <div className="absolute inset-0 top-[73px] flex flex-col lg:flex-row bg-gray-50 z-40 animate-fade-in border-t border-gray-200 overflow-hidden">
       
       {/* 팝업 오버레이 */}
       {isKakaoPopupOpen && (
-        <div className="absolute inset-0 z-50 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+        <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6" />
-          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">결제 진행 중입니다</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-center leading-relaxed">
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-3">결제 진행 중입니다</h2>
+          <p className="text-gray-500 text-center leading-relaxed">
             새 창에서 카카오페이 결제를 완료해 주세요.<br />
             결제가 완료되면 이 화면은 자동으로 넘어갑니다.
           </p>
@@ -614,7 +614,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               onError('결제 취소', '결제가 강제로 취소되었습니다.\n결제 수단을 다시 선택해주세요.');
               setBookingStep('PAY_METHOD');
             }}
-            className="mt-8 px-6 py-2.5 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+            className="mt-8 px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200:bg-zinc-700 transition-colors"
           >
             결제 창이 안 보이나요? (강제 취소 및 닫기)
           </button>
@@ -625,15 +625,15 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       {renderBackButton("lg:hidden")}
 
       {/* Mobile Top Summary (Visible only on mobile/tablet) */}
-      <div className="lg:hidden w-full px-4 sm:px-6 pb-4 bg-white dark:bg-zinc-950 z-30 shrink-0 border-b border-gray-100 dark:border-zinc-800">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+      <div className="lg:hidden w-full px-4 sm:px-6 pb-4 bg-white z-30 shrink-0 border-b border-gray-100">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div 
-            className="flex items-center justify-between p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800"
+            className="flex items-center justify-between p-4 cursor-pointer transition-colors hover:bg-gray-50:bg-zinc-800"
             onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
           >
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-700 dark:text-gray-300">총 결제 금액</span>
-              <span className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{finalPrice.toLocaleString()}원</span>
+              <span className="font-bold text-gray-700">총 결제 금액</span>
+              <span className="font-extrabold text-blue-600 text-lg">{finalPrice.toLocaleString()}원</span>
             </div>
             <button className="p-1 text-gray-400 transition-transform duration-300">
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isSummaryExpanded ? 'rotate-180' : ''}>
@@ -647,7 +647,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="bg-gray-50 dark:bg-zinc-950 border-t border-gray-100 dark:border-zinc-800"
+                className="bg-gray-50 border-t border-gray-100"
               >
                 <div className="max-h-[50vh] overflow-y-auto">
                   {renderSummaryContent()}
@@ -659,12 +659,12 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       </div>
 
       {/* Main Content Area (Left on desktop, bottom on mobile) */}
-      <div className="w-full lg:w-[60%] flex-1 flex flex-col relative overflow-hidden bg-white dark:bg-zinc-950 lg:border-r border-gray-200 dark:border-zinc-800">
+      <div className="w-full lg:w-[60%] flex-1 flex flex-col relative overflow-hidden bg-white lg:border-r border-gray-200">
         
         {/* Desktop-only Back Button */}
         {renderBackButton("hidden lg:block")}
 
-        <div className="flex-1 relative overflow-hidden bg-white dark:bg-zinc-950">
+        <div className="flex-1 relative overflow-hidden bg-white">
           <AnimatePresence initial={false} custom={slideDirection}>
             {bookingStep === 'PAYMENT' ? (
               <motion.div
@@ -678,64 +678,64 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 className="absolute inset-0 overflow-y-auto px-4 sm:px-8 pb-[100px] lg:pb-8 flex flex-col gap-6 pt-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 {/* 예매자 정보 */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
-                  <div className="px-5 py-4 bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 rounded-t-2xl">
-                    <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">예매자 정보</h3>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl">
+                    <h3 className="font-extrabold text-[16px] text-gray-900">예매자 정보</h3>
                   </div>
                   <div className="p-5 flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <label className="sm:w-24 text-sm font-bold text-gray-600 dark:text-gray-400 shrink-0">예매자 이름</label>
+                      <label className="sm:w-24 text-sm font-bold text-gray-600 shrink-0">예매자 이름</label>
                       <input
                         type="text"
                         value={buyerName}
                         onChange={e => setBuyerName(e.target.value)}
                         placeholder="이름 입력"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
+                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
                       />
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <label className="sm:w-24 text-sm font-bold text-gray-600 dark:text-gray-400 shrink-0">이메일</label>
+                      <label className="sm:w-24 text-sm font-bold text-gray-600 shrink-0">이메일</label>
                       <input
                         type="email"
                         value={buyerEmail}
                         onChange={e => setBuyerEmail(e.target.value)}
                         placeholder="이메일 입력"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
+                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
                       />
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <label className="sm:w-24 text-sm font-bold text-gray-600 dark:text-gray-400 shrink-0">전화번호</label>
+                      <label className="sm:w-24 text-sm font-bold text-gray-600 shrink-0">전화번호</label>
                       <input
                         type="tel"
                         value={buyerPhone}
                         onChange={e => setBuyerPhone(e.target.value)}
                         placeholder="전화번호 입력"
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
+                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder:text-gray-400"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* 약관 동의 */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm mb-4 lg:mb-0">
-                  <div className="px-5 py-4 bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 rounded-t-2xl">
-                    <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">약관 동의</h3>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4 lg:mb-0">
+                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl">
+                    <h3 className="font-extrabold text-[16px] text-gray-900">약관 동의</h3>
                   </div>
                   <div className="p-5 flex flex-col gap-3">
                     {/* 전체 동의 */}
-                    <div className="flex items-center gap-3 px-4 py-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-3 px-4 py-4 bg-blue-50 rounded-xl border border-blue-200">
                       <Toggle checked={agreeAll} onChange={handleAgreeAll} size="small" />
-                      <span className="font-bold text-blue-700 dark:text-blue-400 text-sm">전체 동의합니다.</span>
+                      <span className="font-bold text-blue-700 text-sm">전체 동의합니다.</span>
                     </div>
 
                     {/* 예매 이용 약관 */}
-                    <div className={`rounded-xl border transition-colors ${agreeTerm1 ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-zinc-700'}`}>
+                    <div className={`rounded-xl border transition-colors ${agreeTerm1 ? 'border-blue-200' : 'border-gray-200'}`}>
                       <div className="flex items-center gap-3 px-4 py-3.5">
                         <Toggle checked={agreeTerm1} onChange={(val) => { setAgreeTerm1(val); if (!val) setAgreeAll(false); else if (agreeTerm2) setAgreeAll(true); }} size="small" />
-                        <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">예매 이용 약관 (필수)</span>
+                        <span className="flex-1 text-sm text-gray-700">예매 이용 약관 (필수)</span>
                         <button
                           onClick={() => setTermExpand1(!termExpand1)}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full transition-colors"
+                          className="p-1 hover:bg-gray-100:bg-zinc-700 rounded-full transition-colors"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                             className={`transition-transform duration-300 text-gray-400 ${termExpand1 ? 'rotate-180' : ''}`}
@@ -747,7 +747,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                       <div className={`grid transition-all duration-300 ease-in-out ${termExpand1 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="px-4 pb-4">
-                            <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                            <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-500 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                               <p className="font-bold mb-2">제1조 (목적)</p>
                               <p className="mb-2">이 약관은 티클(이하 "회사")이 제공하는 온라인 예매 서비스의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.</p>
                               <p className="font-bold mb-2">제2조 (예매 서비스)</p>
@@ -761,13 +761,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     </div>
 
                     {/* 개인정보 수집 동의 */}
-                    <div className={`rounded-xl border transition-colors ${agreeTerm2 ? 'border-blue-200 dark:border-blue-800' : 'border-gray-200 dark:border-zinc-700'}`}>
+                    <div className={`rounded-xl border transition-colors ${agreeTerm2 ? 'border-blue-200' : 'border-gray-200'}`}>
                       <div className="flex items-center gap-3 px-4 py-3.5">
                         <Toggle checked={agreeTerm2} onChange={(val) => { setAgreeTerm2(val); if (!val) setAgreeAll(false); else if (agreeTerm1) setAgreeAll(true); }} size="small" />
-                        <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">개인정보 수집 동의 (필수)</span>
+                        <span className="flex-1 text-sm text-gray-700">개인정보 수집 동의 (필수)</span>
                         <button
                           onClick={() => setTermExpand2(!termExpand2)}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full transition-colors"
+                          className="p-1 hover:bg-gray-100:bg-zinc-700 rounded-full transition-colors"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                             className={`transition-transform duration-300 text-gray-400 ${termExpand2 ? 'rotate-180' : ''}`}
@@ -779,7 +779,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                       <div className={`grid transition-all duration-300 ease-in-out ${termExpand2 ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden min-h-0">
                           <div className="px-4 pb-4">
-                            <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-4 text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                            <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-500 leading-relaxed max-h-32 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                               <p className="font-bold mb-2">수집 항목</p>
                               <p className="mb-2">예매자 이름, 이메일, 전화번호, 결제 정보</p>
                               <p className="font-bold mb-2">수집 목적</p>
@@ -806,16 +806,16 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 className="absolute inset-0 overflow-y-auto px-4 sm:px-8 pb-[100px] lg:pb-8 flex flex-col gap-6 pt-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               >
                 {/* 결제 수단 선택 */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm mb-4 lg:mb-0">
-                  <div className="px-5 py-4 bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700 rounded-t-2xl flex items-center justify-between">
-                    <h3 className="font-extrabold text-[16px] text-gray-900 dark:text-white">결제 수단</h3>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm mb-4 lg:mb-0">
+                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 rounded-t-2xl flex items-center justify-between">
+                    <h3 className="font-extrabold text-[16px] text-gray-900">결제 수단</h3>
                   </div>
                   <div className="p-5 flex flex-col gap-3">
                     {/* 페이 결제 */}
                     <div
                       className={`rounded-xl border-2 transition-all cursor-pointer ${payCategory === 'pay'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-zinc-700 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                       onClick={() => { setPayCategory('pay'); setSelectedPayMethod(null); }}
                     >
@@ -824,7 +824,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                           }`}>
                           {payCategory === 'pay' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
                         </div>
-                        <span className={`font-bold text-sm ${payCategory === 'pay' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                        <span className={`font-bold text-sm ${payCategory === 'pay' ? 'text-blue-700' : 'text-gray-700'
                           }`}>페이 결제</span>
                       </div>
                       <div className={`grid transition-all duration-300 ease-in-out ${payCategory === 'pay' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
@@ -836,10 +836,10 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                                 disabled={m.disabled}
                                 onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
                                 className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
-                                  ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
+                                  ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed'
                                   : `hover:z-10 ${selectedPayMethod === m.id
                                     ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                    : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 z-0'
                                   }`
                                   }`}
                               >
@@ -855,8 +855,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     {/* 다른 결제 방법 */}
                     <div
                       className={`rounded-xl border-2 transition-all cursor-pointer ${payCategory === 'other'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-zinc-700 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                       onClick={() => { setPayCategory('other'); setSelectedPayMethod(null); }}
                     >
@@ -865,7 +865,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                           }`}>
                           {payCategory === 'other' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
                         </div>
-                        <span className={`font-bold text-sm ${payCategory === 'other' ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                        <span className={`font-bold text-sm ${payCategory === 'other' ? 'text-blue-700' : 'text-gray-700'
                           }`}>다른 결제 방법</span>
                       </div>
                       <div className={`grid transition-all duration-300 ease-in-out ${payCategory === 'other' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
@@ -877,10 +877,10 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                                 disabled={m.disabled}
                                 onClick={(e) => { e.stopPropagation(); setSelectedPayMethod(m.id); }}
                                 className={`relative py-4 rounded-xl font-bold text-sm transition-all border-2 flex items-center justify-center ${m.disabled
-                                  ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed dark:bg-zinc-800 dark:border-zinc-800 dark:text-gray-500'
+                                  ? 'bg-gray-50 border-gray-100 text-gray-400 opacity-60 cursor-not-allowed'
                                   : `hover:z-10 ${selectedPayMethod === m.id
                                     ? `${m.selectedColor} shadow-sm scale-[1.02] z-10`
-                                    : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-600 hover:border-gray-400 z-0'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 z-0'
                                   }`
                                   }`}
                               >
@@ -901,15 +901,15 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       </div>
 
       {/* Desktop Right Summary (Visible only on desktop) */}
-      <div className="hidden lg:flex lg:w-[40%] h-full flex-col bg-gray-50 dark:bg-zinc-950 shrink-0 z-20">
+      <div className="hidden lg:flex lg:w-[40%] h-full flex-col bg-gray-50 shrink-0 z-20">
         {renderSummaryContent()}
-        <div className="p-6 shrink-0 border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="p-6 shrink-0 border-t border-gray-200 bg-white">
           {renderPaymentButton()}
         </div>
       </div>
 
       {/* Mobile Fixed Payment Button */}
-      <div className="lg:hidden fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-white dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-800 z-40">
+      <div className="lg:hidden fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-white border-t border-gray-200 z-40">
         {renderPaymentButton()}
       </div>
 

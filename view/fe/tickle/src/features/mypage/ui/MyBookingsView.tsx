@@ -156,7 +156,7 @@ export const MyBookingsView = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20 justify-items-center">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 pb-20 justify-items-center">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="w-full h-[400px] bg-gray-100 animate-pulse rounded-2xl" />
