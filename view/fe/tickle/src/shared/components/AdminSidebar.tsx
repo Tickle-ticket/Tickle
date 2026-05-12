@@ -18,6 +18,7 @@ export interface AdminSidebarProps {
 }
 
 const defaultItems: AdminSidebarItem[] = [
+  { label: '홈으로', href: '/' },
   { label: '블랙리스트 관리', href: '/admin' },
   { label: '대기열 상태', href: '/admin/queue' },
   { label: '봇 탐지 현황', href: '/admin/bot-detection' },
