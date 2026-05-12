@@ -11,6 +11,7 @@ import java.time.Instant;
  * 사용자의 예매 대기 신청 요약 응답입니다.
  *
  * @param cancellationCandidateId 예매 대기 신청 식별자
+ * @param cancellationOfferId 취소표 제안 식별자
  * @param eventId 공연 식별자
  * @param eventTitle 공연명
  * @param scheduleId 회차 식별자
@@ -30,6 +31,7 @@ import java.time.Instant;
  */
 public record CancellationWaitCandidateSummaryResponse(
         Long cancellationCandidateId,
+        Long cancellationOfferId,
         Long eventId,
         String eventTitle,
         Long scheduleId,
@@ -57,13 +59,15 @@ public record CancellationWaitCandidateSummaryResponse(
      */
     public static CancellationWaitCandidateSummaryResponse of(
             CancellationCandidate candidate,
-            int currentRank
+            int currentRank,
+            Long cancellationOfferId
     ) {
         SessionSeat sessionSeat = candidate.getSessionSeat();
         EventSeat eventSeat = sessionSeat.getEventSeat();
 
         return new CancellationWaitCandidateSummaryResponse(
                 candidate.getId(),
+                cancellationOfferId,
                 sessionSeat.getSession().getEvent().getId(),
                 sessionSeat.getSession().getEvent().getTitle(),
                 sessionSeat.getSession().getId(),

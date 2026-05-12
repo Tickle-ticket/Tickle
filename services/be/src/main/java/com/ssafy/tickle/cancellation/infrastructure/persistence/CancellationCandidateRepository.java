@@ -193,7 +193,7 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
      * 사용자의 예매 대기 신청 목록을 상세 정보와 함께 조회합니다.
      *
      * @param userId 사용자 식별자
-     * @param status 조회할 대기 후보 상태
+     * @param statuses 조회할 대기 후보 상태 목록
      * @return 예매 대기 신청 목록
      */
     @Query("""
@@ -204,12 +204,12 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
             join fetch ss.eventSeat es
             join fetch es.eventSection sec
             where c.user.id = :userId
-              and c.status = :status
+              and c.status in :statuses
             order by c.createdAt desc
             """)
-    List<CancellationCandidate> findAllByUserIdAndStatusWithDetails(
+    List<CancellationCandidate> findAllByUserIdAndStatusesWithDetails(
             @Param("userId") Long userId,
-            @Param("status") CancellationCandidate.Status status
+            @Param("statuses") List<CancellationCandidate.Status> statuses
     );
 
     /**
