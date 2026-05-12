@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 좌석 단위 예매 대기 신청의 큐 검증과 락 수명을 관리하는 서비스 클래스입니다.
@@ -99,14 +101,43 @@ public class CancellationWaitCandidateService {
      */
     @Transactional(readOnly = true)
     public CancellationWaitCandidateListResponse getMyCandidates(Long userId) {
-        List<CancellationWaitCandidateSummaryResponse> candidates = cancellationCandidateRepository
-                .findAllByUserIdAndStatusWithDetails(userId, CancellationCandidate.Status.WAITING)
+        List<CancellationCandidate> candidates = cancellationCandidateRepository
+                .findAllByUserIdAndStatusesWithDetails(
+                        userId,
+                        List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
+                );
+        Map<Long, Long> offerIdByCandidateId = findOfferIdByCandidateId(candidates);
+
+        List<CancellationWaitCandidateSummaryResponse> responses = candidates
                 .stream()
                 // 저장된 waitingRank는 이력 순번이므로 현재 남은 WAITING 기준 순위로 다시 계산합니다.
-                .map(candidate -> CancellationWaitCandidateSummaryResponse.of(candidate, currentRank(candidate)))
+                .map(candidate -> CancellationWaitCandidateSummaryResponse.of(
+                        candidate,
+                        currentRank(candidate),
+                        offerIdByCandidateId.get(candidate.getId())
+                ))
                 .toList();
 
-        return new CancellationWaitCandidateListResponse(candidates);
+        return new CancellationWaitCandidateListResponse(responses);
+    }
+
+    private Map<Long, Long> findOfferIdByCandidateId(List<CancellationCandidate> candidates) {
+        List<Long> candidateIds = candidates.stream()
+                .filter(candidate -> candidate.getStatus() == CancellationCandidate.Status.OFFERED)
+                .map(CancellationCandidate::getId)
+                .toList();
+
+        if (candidateIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return cancellationOfferRepository.findOfferIdsByCandidateIds(candidateIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        CancellationOfferRepository.CandidateOfferIdProjection::getCandidateId,
+                        CancellationOfferRepository.CandidateOfferIdProjection::getOfferId,
+                        (first, second) -> first
+                ));
     }
 
     /**

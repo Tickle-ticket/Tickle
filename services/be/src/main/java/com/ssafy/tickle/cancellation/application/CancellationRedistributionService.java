@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -333,7 +334,7 @@ public class CancellationRedistributionService {
     /**
      * 특정 좌석에 대해 다음 대기자를 찾아 재배분 프로세스를 진행합니다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processRedistribution(SessionSeat seat) {
         // 1. 현재 좌석에 대해 유효한(진행 중인) 제안이 있는지 확인하여 중복 방지
         Optional<CancellationOffer> activeOffer = offerRepository.findLatestBySessionSeatId(seat.getId());
@@ -369,7 +370,7 @@ public class CancellationRedistributionService {
             Instant now = Instant.now();
             // 제안 받은 candidate는 취소 API 대상에서 빠지도록 WAITING에서 OFFERED로 먼저 전이합니다.
             candidate.offer(now);
-            CancellationOffer newOffer = offerRepository.saveAndFlush(
+            CancellationOffer newOffer = offerRepository.save(
                     CancellationOffer.builder()
                             .cancellationCandidate(candidate)
                             .offerStatus(CancellationOffer.OfferStatus.UNACCEPTED)

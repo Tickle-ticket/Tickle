@@ -54,12 +54,28 @@ public interface CancellationOfferRepository extends JpaRepository<CancellationO
     Optional<CancellationOffer> findLatestBySessionSeatId(@Param("sessionSeatId") Long sessionSeatId);
 
     /**
+     * 예매 대기 신청별 취소표 제안 식별자를 조회합니다.
+     */
+    @Query("""
+            select co.cancellationCandidate.id as candidateId, co.id as offerId
+            from CancellationOffer co
+            where co.cancellationCandidate.id in :candidateIds
+            """)
+    List<CandidateOfferIdProjection> findOfferIdsByCandidateIds(@Param("candidateIds") List<Long> candidateIds);
+
+    /**
      * 특정 예매 대기 신청에 연결된 제안 존재 여부를 조회합니다.
      *
      * @param candidateId 예매 대기 후보 식별자
      * @return 제안 존재 여부
      */
     boolean existsByCancellationCandidateId(Long candidateId);
+
+    interface CandidateOfferIdProjection {
+
+        Long getCandidateId();
+        Long getOfferId();
+    }
 
     /**
      * 사용자가 유효한 미수락 제안을 받은 회차 좌석 식별자를 조회합니다.
