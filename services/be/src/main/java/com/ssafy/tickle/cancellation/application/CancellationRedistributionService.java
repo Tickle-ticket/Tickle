@@ -303,6 +303,8 @@ public class CancellationRedistributionService {
                     new KakaoPayReadyRequest(booking.getId()));
 
             return CancellationPurchaseResponse.forKakaoPay(
+                    seat.getSession().getEvent().getId(),
+                    seat.getSession().getId(),
                     booking.getId(),
                     booking.getBookingNo(),
                     totalAmount,
@@ -339,6 +341,8 @@ public class CancellationRedistributionService {
 
             Instant deadline = getDepositDeadline(payment);
             return CancellationPurchaseResponse.forBankTransfer(
+                    seat.getSession().getEvent().getId(),
+                    seat.getSession().getId(),
                     booking.getId(),
                     booking.getBookingNo(),
                     totalAmount,
