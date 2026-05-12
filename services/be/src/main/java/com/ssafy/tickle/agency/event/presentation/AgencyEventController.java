@@ -65,7 +65,7 @@ public class AgencyEventController implements AgencyEventApiDoc {
     /**
      * 기획사 공연 목록을 조회합니다.
      *
-     * @param organizerId 기획사 식별자
+     * @param userId JWT에서 추출한 사용자 식별자
      * @param page 페이지 번호
      * @param size 페이지 크기
      * @return 공연 목록 응답
@@ -90,8 +90,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
      */
     @Override
     @GetMapping("/events/{eventId}")
-    public ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(@PathVariable Long eventId) {
-        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventDetail(eventId)));
+    public ResponseEntity<BaseResponse<AgencyEventDetailResponse>> getEventDetail(
+            @UserId Long userId,
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventDetail(userId, eventId)));
     }
 
     /**
@@ -102,8 +105,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
      */
     @Override
     @GetMapping("/events/{eventId}/seats")
-    public ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(@PathVariable Long eventId) {
-        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventSeats(eventId)));
+    public ResponseEntity<BaseResponse<AgencyEventSeatResponse>> getEventSeats(
+            @UserId Long userId,
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity.ok(BaseResponse.success(agencyEventQueryService.getEventSeats(userId, eventId)));
     }
 
     /**
@@ -143,10 +149,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @Override
     @PostMapping("/events/{eventId}/price-policies")
     public ResponseEntity<BaseResponse<Void>> createPricePolicies(
+            @UserId Long userId,
             @PathVariable Long eventId,
             @Valid @RequestBody AgencyCreateEventPricePoliciesRequest request
     ) {
-        agencyEventBasicService.createPricePolicies(eventId, request);
+        agencyEventBasicService.createPricePolicies(userId, eventId, request);
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
@@ -160,10 +167,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @Override
     @PostMapping("/events/{eventId}/sessions")
     public ResponseEntity<BaseResponse<Void>> createSessions(
+            @UserId Long userId,
             @PathVariable Long eventId,
             @Valid @RequestBody AgencyCreateEventSessionsRequest request
     ) {
-        agencyEventSessionService.createSessions(eventId, request);
+        agencyEventSessionService.createSessions(userId, eventId, request);
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
@@ -177,10 +185,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
     @Override
     @PostMapping("/events/{eventId}/seats")
     public ResponseEntity<BaseResponse<Void>> createSeats(
+            @UserId Long userId,
             @PathVariable Long eventId,
             @Valid @RequestBody AgencyCreateEventSeatsRequest request
     ) {
-        agencyEventSeatBatchService.createSeats(eventId, request.seats());
+        agencyEventSeatBatchService.createSeats(userId, eventId, request.seats());
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 
@@ -192,8 +201,11 @@ public class AgencyEventController implements AgencyEventApiDoc {
      */
     @Override
     @DeleteMapping("/events/{eventId}")
-    public ResponseEntity<BaseResponse<Void>> deleteEvent(@PathVariable Long eventId) {
-        agencyEventDeleteService.deleteEvent(eventId);
+    public ResponseEntity<BaseResponse<Void>> deleteEvent(
+            @UserId Long userId,
+            @PathVariable Long eventId
+    ) {
+        agencyEventDeleteService.deleteEvent(userId, eventId);
         return ResponseEntity.ok(BaseResponse.success(SuccessCode.OK, null));
     }
 }

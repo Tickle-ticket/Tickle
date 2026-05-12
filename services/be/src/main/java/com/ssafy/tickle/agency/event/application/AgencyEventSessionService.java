@@ -6,7 +6,6 @@ import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.Event;
 import com.ssafy.tickle.event.domain.EventSession;
-import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 기획사 공연 회차 등록을 담당합니다.
@@ -28,15 +26,15 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class AgencyEventSessionService {
 
-    private final EventRepository eventRepository;
     private final EventSessionRepository eventSessionRepository;
+    private final AgencyAuthorizationService agencyAuthorizationService;
 
     /**
      * 공연의 회차를 등록합니다.
      */
     @Transactional
-    public List<EventSession> createSessions(Long eventId, AgencyCreateEventSessionsRequest request) {
-        Event event = getEvent(eventId);
+    public List<EventSession> createSessions(Long userId, Long eventId, AgencyCreateEventSessionsRequest request) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
         List<AgencyCreateEventSessionRequest> sessionRequests = new ArrayList<>(request.sessions());
         sessionRequests.sort(Comparator.comparing(AgencyCreateEventSessionRequest::startAt));
         List<EventSession> sessions = new ArrayList<>(sessionRequests.size());
@@ -70,11 +68,6 @@ public class AgencyEventSessionService {
         if (!request.salesOpenAt().isBefore(request.salesCloseAt())) {
             throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "회차 예매 시작 시각은 종료 시각보다 빨라야 합니다.");
         }
-    }
-
-    private Event getEvent(Long eventId) {
-        return eventRepository.findById(eventId)
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "공연을 찾을 수 없습니다."));
     }
 
     private void updateEventSalesPeriod(Event event) {

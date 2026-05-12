@@ -182,6 +182,17 @@ public class Booking {
     }
 
     /**
+     * 취소표 재배분을 통해 생성된 예매인지 확인합니다.
+     *
+     * <p>일반 예매와 취소표 예매는 결제 완료 후처리와 취소 시 좌석 복귀 정책이 다릅니다.</p>
+     *
+     * @return 취소표 예매 여부
+     */
+    public boolean isCancellationBooking() {
+        return this.cancellationOfferId != null;
+    }
+
+    /**
      * 예매 초안을 무통장 입금 대기 상태로 전환합니다.
      *
      * <p>이 시점부터는 입금 완료 또는 만료 처리를 기다리는 상태로 본다.</p>

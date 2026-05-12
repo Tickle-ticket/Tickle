@@ -109,6 +109,7 @@ class AgencyEventDeleteServiceTest {
         Venue venue = venueRepository.save(createVenue("삭제 테스트 공연장"));
         Category category = categoryRepository.save(createCategory("콘서트"));
         User user = userRepository.save(createUser("delete-user-1", "delete1@test.com"));
+        User agencyUser = userRepository.save(createAgencyUser(1002L, organizer.getId()));
 
         Event event = eventRepository.save(createEvent(
                 organizer,
@@ -127,7 +128,7 @@ class AgencyEventDeleteServiceTest {
                 .event(event)
                 .build());
 
-        agencyEventDeleteService.deleteEvent(event.getId());
+        agencyEventDeleteService.deleteEvent(agencyUser.getId(), event.getId());
 
         assertThat(eventRepository.findById(event.getId())).isEmpty();
         assertThat(eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(event.getId())).isEmpty();
@@ -144,6 +145,7 @@ class AgencyEventDeleteServiceTest {
         Organizer organizer = organizerRepository.save(createOrganizer("삭제 실패 기획사"));
         Venue venue = venueRepository.save(createVenue("삭제 실패 공연장"));
         Category category = categoryRepository.save(createCategory("콘서트"));
+        User agencyUser = userRepository.save(createAgencyUser(1002L, organizer.getId()));
         Event event = eventRepository.save(createEvent(
                 organizer,
                 venue,
@@ -152,7 +154,7 @@ class AgencyEventDeleteServiceTest {
                 Instant.now().minusSeconds(60)
         ));
 
-        assertThatThrownBy(() -> agencyEventDeleteService.deleteEvent(event.getId()))
+        assertThatThrownBy(() -> agencyEventDeleteService.deleteEvent(agencyUser.getId(), event.getId()))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(GlobalErrorCode.INVALID_REQUEST);
@@ -163,7 +165,10 @@ class AgencyEventDeleteServiceTest {
     @Test
     @DisplayName("존재하지 않는 공연을 삭제하려고 하면 예외가 발생한다")
     void deleteEvent_notFound() {
-        assertThatThrownBy(() -> agencyEventDeleteService.deleteEvent(Long.MAX_VALUE))
+        Organizer organizer = organizerRepository.save(createOrganizer("삭제 실패 기획사"));
+        User agencyUser = userRepository.save(createAgencyUser(1002L, organizer.getId()));
+
+        assertThatThrownBy(() -> agencyEventDeleteService.deleteEvent(agencyUser.getId(), Long.MAX_VALUE))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
@@ -209,6 +214,17 @@ class AgencyEventDeleteServiceTest {
                 .birthDate(LocalDate.of(1999, 1, 1))
                 .role(UserRole.USER)
                 .status(User.Status.ACTIVE)
+                .build();
+    }
+
+    private User createAgencyUser(Long userId, Long organizerId) {
+        return User.builder()
+                .id(userId)
+                .userNo("USER-" + userId)
+                .name("기획자")
+                .role(UserRole.ORGANIZER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizerId)
                 .build();
     }
 

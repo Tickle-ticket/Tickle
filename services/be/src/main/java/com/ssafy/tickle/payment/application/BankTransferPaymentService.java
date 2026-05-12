@@ -2,7 +2,9 @@ package com.ssafy.tickle.payment.application;
 
 import com.ssafy.tickle.cancellation.domain.CancellationCandidate;
 import com.ssafy.tickle.cancellation.domain.CancellationErrorCode;
+import com.ssafy.tickle.cancellation.domain.CancellationOffer;
 import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationCandidateRepository;
+import com.ssafy.tickle.cancellation.infrastructure.persistence.CancellationOfferRepository;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.event.domain.EventSession;
@@ -61,6 +63,7 @@ public class BankTransferPaymentService {
     private final BookingTicketRepository bookingTicketRepository;
     private final BookingTicketStatusHistoryRepository bookingTicketStatusHistoryRepository;
     private final CancellationCandidateRepository cancellationCandidateRepository;
+    private final CancellationOfferRepository cancellationOfferRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentTransactionRepository paymentTransactionRepository;
 
@@ -169,7 +172,8 @@ public class BankTransferPaymentService {
                 .toList();
 
         // 결제 진입 직전에도 취소표 WAITING/OFFERED 점유와 합산해 4매 제한을 다시 확인합니다.
-        validateBookingAndWaitingLimit(booking, tickets.size());
+        CancellationOffer cancellationOffer = findCancellationOffer(booking);
+        validateBookingAndWaitingLimit(booking, tickets.size(), cancellationOffer);
 
         // 결제 확정 시점에도 Redis hold 키가 아직 살아 있는지 먼저 확인한다.
         validateHeldSeatsInRedis(booking.getSession().getId(), booking.getUser().getId(), seatIds);
@@ -196,7 +200,7 @@ public class BankTransferPaymentService {
                 )
         );
 
-        processPendingPaymentTransition(booking, payment, tickets, heldSeats);
+        processPendingPaymentTransition(booking, payment, tickets, heldSeats, cancellationOffer);
 
         // 결제 준비가 끝나면 좌석 hold 키는 제거하고, 좌석 상태는 PENDING으로 publish 한다.
         Instant deadline = getDepositDeadline(payment);
@@ -218,11 +222,13 @@ public class BankTransferPaymentService {
             Booking booking,
             Payment payment,
             List<BookingTicket> tickets,
-            List<SessionSeat> heldSeats
+            List<SessionSeat> heldSeats,
+            CancellationOffer cancellationOffer
     ) {
         // 무통장 입금 수단이 확정되면 예매는 입금 대기 상태가 된다.
         booking.markPendingPayment();
         bookingRepository.save(booking);
+        markCancellationCandidatePurchasedIfNeeded(cancellationOffer);
 
         // 티켓과 좌석도 결제 준비 상태에 맞춰 함께 전이시킨다.
         tickets.forEach(BookingTicket::markPendingPayment);
@@ -243,6 +249,33 @@ public class BankTransferPaymentService {
         );
     }
 
+    /**
+     * 취소표 예매이면 연결된 취소표 제안을 조회합니다.
+     *
+     * @param booking 결제 대상 예매
+     * @return 취소표 제안, 일반 예매이면 null
+     */
+    private CancellationOffer findCancellationOffer(Booking booking) {
+        if (!booking.isCancellationBooking()) {
+            return null;
+        }
+
+        return cancellationOfferRepository.findByIdWithDetails(booking.getCancellationOfferId())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "취소표 제안을 찾을 수 없습니다."));
+    }
+
+    /**
+     * 취소표 무통장 입금 대기 진입 시 후보를 구매 완료 점유 상태로 전환합니다.
+     *
+     * @param cancellationOffer 취소표 제안, 일반 예매이면 null
+     */
+    private void markCancellationCandidatePurchasedIfNeeded(CancellationOffer cancellationOffer) {
+        if (cancellationOffer == null) {
+            return;
+        }
+        cancellationOffer.getCancellationCandidate().purchase(Instant.now());
+    }
+
     private void validateBookingAndWaitingLimit(Booking booking, int newTicketCount) {
         long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
                 booking.getUser().getId(),
@@ -252,6 +285,43 @@ public class BankTransferPaymentService {
         long activeCandidateCount = cancellationCandidateRepository.countByUserIdAndSessionIdAndStatuses(
                 booking.getUser().getId(),
                 booking.getSession().getId(),
+                List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
+        );
+
+        if (ownedTicketCount + activeCandidateCount + newTicketCount > MAX_BOOKING_AND_WAITING_COUNT) {
+            throw new BaseException(CancellationErrorCode.CANDIDATE_LIMIT_EXCEEDED);
+        }
+    }
+
+    /**
+     * 취소표 예매의 결제 진입 수량 제한을 검증합니다.
+     *
+     * <p>현재 결제 중인 취소표 후보는 이미 OFFERED 상태로 점유 중이므로
+     * 중복 카운트하지 않도록 제외한 뒤 새 티켓 수량을 합산합니다.</p>
+     *
+     * @param booking 예매 초안
+     * @param newTicketCount 결제 진입 티켓 수
+     * @param cancellationOffer 취소표 제안, 일반 예매이면 null
+     */
+    private void validateBookingAndWaitingLimit(
+            Booking booking,
+            int newTicketCount,
+            CancellationOffer cancellationOffer
+    ) {
+        if (cancellationOffer == null) {
+            validateBookingAndWaitingLimit(booking, newTicketCount);
+            return;
+        }
+
+        long ownedTicketCount = bookingTicketRepository.countByUserIdAndSessionIdAndTicketStatusIn(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                OWNED_TICKET_STATUSES
+        );
+        long activeCandidateCount = cancellationCandidateRepository.countByUserIdAndSessionIdAndIdNotAndStatuses(
+                booking.getUser().getId(),
+                booking.getSession().getId(),
+                cancellationOffer.getCancellationCandidate().getId(),
                 List.of(CancellationCandidate.Status.WAITING, CancellationCandidate.Status.OFFERED)
         );
 
@@ -274,6 +344,7 @@ public class BankTransferPaymentService {
     ) {
         payment.cancel();
         payment.getBooking().expirePayment();
+        expireCancellationOfferIfNeeded(payment.getBooking());
         tickets.forEach(BookingTicket::expire);
         seats.forEach(SessionSeat::expirePendingPayment);
 
@@ -295,6 +366,22 @@ public class BankTransferPaymentService {
                                 .build())
                         .toList()
         );
+    }
+
+    /**
+     * 취소표 무통장 입금 대기 예매가 만료되면 연결된 제안을 만료 처리합니다.
+     *
+     * <p>제안을 닫아야 이후 REALLOCATING 좌석 재배분이 ACCEPTED offer에 막히지 않습니다.
+     * 예매와 티켓은 삭제하지 않고 PAYMENT_EXPIRED/EXPIRED 상태 이력으로 남깁니다.</p>
+     *
+     * @param booking 만료 처리된 예매
+     */
+    private void expireCancellationOfferIfNeeded(Booking booking) {
+        CancellationOffer offer = findCancellationOffer(booking);
+        if (offer == null || offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
+            return;
+        }
+        offer.expire(Instant.now());
     }
 
     /**

@@ -186,6 +186,35 @@ class AgencyEventBasicServiceTest {
     }
 
     @Test
+    @DisplayName("ORGANIZER 권한이 아니면 공연 기본정보 등록 시 예외가 발생한다")
+    void createBasicEvent_notOrganizerRole() {
+        User normalUser = userRepository.save(User.builder()
+                .id(1002L)
+                .userNo("USER-1002")
+                .name("일반회원")
+                .role(UserRole.USER)
+                .status(User.Status.ACTIVE)
+                .organizerId(organizer.getId())
+                .build());
+        AgencyCreateEventBasicRequest request = new AgencyCreateEventBasicRequest(
+                venue.getId(),
+                category.getId(),
+                "권한 없는 공연",
+                Instant.parse("2026-07-01T10:00:00Z"),
+                Instant.parse("2026-07-01T12:00:00Z"),
+                List.of(),
+                null
+        );
+
+        assertThatThrownBy(() -> agencyEventBasicService.createBasicEvent(
+                normalUser.getId(), request, mockPosterImage, List.of()
+        ))
+                .isInstanceOf(BaseException.class)
+                .extracting("errorCode")
+                .isEqualTo(GlobalErrorCode.ACCESS_DENIED);
+    }
+
+    @Test
     @DisplayName("공연 가격정책을 등록하면 가격 정책이 저장된다")
     void createPricePolicies_success() {
         Event event = eventRepository.save(createEvent("가격 정책 공연"));
@@ -214,7 +243,7 @@ class AgencyEventBasicServiceTest {
                 )
         );
 
-        agencyEventBasicService.createPricePolicies(event.getId(), request);
+        agencyEventBasicService.createPricePolicies(agencyUser.getId(), event.getId(), request);
 
         List<EventPricePolicy> savedPolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(event.getId());
         assertThat(savedPolicies).hasSize(2);
@@ -260,7 +289,7 @@ class AgencyEventBasicServiceTest {
                 )
         );
 
-        assertThatThrownBy(() -> agencyEventBasicService.createPricePolicies(event.getId(), request))
+        assertThatThrownBy(() -> agencyEventBasicService.createPricePolicies(agencyUser.getId(), event.getId(), request))
                 .isInstanceOf(BaseException.class)
                 .extracting("errorCode")
                 .isEqualTo(GlobalErrorCode.INVALID_REQUEST);

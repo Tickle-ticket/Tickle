@@ -123,10 +123,10 @@ public class ReservationService {
                 .toList();
 
         boolean isDraft = booking.getBookingStatus() == Booking.Status.DRAFT;
-        boolean isCancellationOffer = booking.getCancellationOfferId() != null;
+        boolean isCancellationBooking = booking.isCancellationBooking();
         SessionSeat.SaleStatus nextSeatStatus;
 
-        if (isDraft && !isCancellationOffer) {
+        if (isDraft && !isCancellationBooking) {
             // 일반 DRAFT: 결제 전이므로 좌석을 AVAILABLE로 즉시 복귀
             seats.forEach(SessionSeat::release);
             nextSeatStatus = SessionSeat.SaleStatus.AVAILABLE;
@@ -142,7 +142,7 @@ public class ReservationService {
         sessionSeatRepository.saveAll(seats);
 
         // 취소표 구매로 만들어진 예매라면 티켓 취소 후 ACCEPTED offer를 닫고 다음 대기자에게 기회를 넘깁니다.
-        if (isCancellationOffer) {
+        if (isCancellationBooking) {
             cancellationRedistributionService.releaseAcceptedOfferAfterReservationCancel(
                     booking.getCancellationOfferId(),
                     userId
