@@ -43,6 +43,5 @@ export const updateMyInfo = async (request: UpdateMyInfoRequest): Promise<ApiRes
 export const withdrawMyInfo = async (): Promise<ApiResponse<void>> => {
   return apiClient<ApiResponse<void>>(buildUserApiUrl('/api/v1/users/me'), {
     method: 'DELETE',
-    params: {},
   });
 };

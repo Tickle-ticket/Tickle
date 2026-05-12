@@ -34,7 +34,7 @@ const buildUrl = (path: string, params?: RequestOptions['params']) => {
   return url.toString();
 };
 
-export const apiClient = async <T, A = unknown, I = unknown>(
+export const apiClient = async <T>(
   path: string,
   options: RequestOptions = {},
   _isRetry = false,
@@ -58,7 +58,7 @@ export const apiClient = async <T, A = unknown, I = unknown>(
     credentials: credentials ?? (isAuthEndpoint ? 'include' : isCrossOrigin ? 'same-origin' : 'include'),
     redirect: 'manual', // 302 자동 추적 방지
     headers: {
-      ...(!(body instanceof FormData) && { 'Content-Type': 'application/json' }),
+      ...(body !== undefined && !(body instanceof FormData) && { 'Content-Type': 'application/json' }),
       ...(shouldAttachAccessToken && { Authorization: `Bearer ${accessToken}` }),
       ...headers,
     },
