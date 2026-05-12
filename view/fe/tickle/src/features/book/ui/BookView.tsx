@@ -481,8 +481,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const handleNextStep = async () => {
     if (selectedSeats.size === 0) return;
 
+    const isShadow = storyMode || isShadowModeActive;
     const userId = userProfile?.userId;
-    if (!userId) {
+    if (!isShadow && !userId) {
       setErrorModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -708,8 +709,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               optionsData={optionsData}
               isSubmitting={isPreorderLoading}
               onSubmitPreorder={async (seatIds, optionSelections) => {
+                const isShadow = storyMode || isShadowModeActive;
                 const userId = userProfile?.userId;
-                if (!userId) {
+                if (!isShadow && !userId) {
                   setErrorModalConfig({
                     isOpen: true,
                     title: '로그인 필요',
