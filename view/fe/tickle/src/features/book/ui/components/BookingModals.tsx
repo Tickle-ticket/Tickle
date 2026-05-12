@@ -50,17 +50,17 @@ export const BookingModals: React.FC<BookingModalsProps> = ({
       {/* 이미 선점된 좌석 알림 모달 */}
       {isConflictModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-[400px] shadow-2xl overflow-hidden animate-slide-up relative flex flex-col">
+          <div className="bg-white rounded-3xl w-full max-w-[400px] shadow-2xl overflow-hidden animate-slide-up relative flex flex-col">
             <div className="p-8 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                   <line x1="12" y1="9" x2="12" y2="13"></line>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
               </div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-3">이미 선점된 좌석입니다</h2>
-              <p className="text-gray-500 dark:text-gray-400 text-[15px] leading-relaxed mb-8">
+              <h2 className="text-2xl font-black text-gray-900 mb-3">이미 선점된 좌석입니다</h2>
+              <p className="text-gray-500 text-[15px] leading-relaxed mb-8">
                 선택하신 좌석 중 누군가 먼저 결제를 진행 중인 좌석이 포함되어 있습니다. 좌석을 다시 선택해 주세요.
               </p>
               <button

@@ -82,6 +82,8 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   const discountAmount = originalPrice - totalPrice;
 
   const handleCount = (priceGrade: string, typeId: string, delta: number) => {
+    let becameFull = false;
+
     setPriceGradeTicketCounts((prev: any) => {
       const priceGradeCounts = { ...(prev[priceGrade] || {}) };
       const current = priceGradeCounts[typeId] || 0;
@@ -95,8 +97,25 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       if (otherTotal + newVal > maxForPriceGrade) return prev;
 
       priceGradeCounts[typeId] = newVal;
+      
+      if (delta > 0 && otherTotal + newVal === maxForPriceGrade) {
+        becameFull = true;
+      }
+
       return { ...prev, [priceGrade]: priceGradeCounts };
     });
+
+    if (becameFull) {
+      setTimeout(() => {
+        const grades = Object.keys(priceGradeSeats);
+        const nextGrade = grades.find(g => {
+          if (g === priceGrade) return false;
+          return getPriceGradeTotal(g) < priceGradeSeats[g].length;
+        });
+        
+        setOpenPriceGrade(nextGrade || null);
+      }, 350);
+    }
   };
 
   const handleSubmit = () => {
@@ -128,20 +147,20 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   const isAllSeatsAssigned = Object.keys(priceGradeSeats).every(g => getPriceGradeTotal(g) === priceGradeSeats[g].length);
 
   return (
-    <div className="absolute inset-0 bg-gray-50 dark:bg-zinc-950 flex flex-col z-30 animate-fade-in">
+    <div className="absolute inset-0 bg-gray-50 flex flex-col z-30 animate-fade-in">
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center gap-3 shrink-0">
+      <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center gap-3 shrink-0">
         <button
           onClick={onCancel}
           disabled={isSubmitting}
-          className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+          className="p-1.5 sm:p-2 hover:bg-gray-100:bg-zinc-800 rounded-full transition-colors"
           aria-label="뒤로"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <h2 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white">인원 선택</h2>
+        <h2 className="text-lg sm:text-xl font-extrabold text-gray-900">인원 선택</h2>
       </div>
 
       {/* Grade list with Accordions */}
@@ -155,7 +174,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
             const isFull = currentTotal >= maxCount;
 
             return (
-              <div key={priceGrade} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
+              <div key={priceGrade} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                 <Accordion
                   isOpen={openPriceGrade === priceGrade}
                   onToggle={(isOpen) => setOpenPriceGrade(isOpen ? priceGrade : null)}
@@ -163,7 +182,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                     <div className="flex items-center justify-between w-full pr-2">
                       <div className="flex items-center gap-3">
                         <span className={`w-3.5 h-3.5 rounded-full ${dotClass}`} />
-                        <span className="font-bold text-gray-900 dark:text-white text-[15px]">{priceGrade}석</span>
+                        <span className="font-bold text-gray-900 text-[15px]">{priceGrade}석</span>
                         <span className="text-xs text-gray-400 font-medium">{seats.map(s => s.seatLabel).join(', ')}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -197,13 +216,13 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                           <div
                             key={type.discountName}
                             className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all ${count > 0
-                              ? 'border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-800'
-                              : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800'
+                              ? 'border-blue-200 bg-blue-50/50'
+                              : 'border-gray-200 bg-white'
                               }`}
                           >
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
-                                <span className={`font-bold text-[14px] ${count > 0 ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                                <span className={`font-bold text-[14px] ${count > 0 ? 'text-blue-700' : 'text-gray-700'}`}>
                                   {type.discountName}
                                 </span>
                                 {type.discountRate > 0 && (
@@ -219,8 +238,8 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                                 onClick={() => handleCount(priceGrade, type.discountName, -1)}
                                 disabled={!canRemove}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold transition-all ${canRemove
-                                  ? 'bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 active:scale-90'
-                                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600 cursor-not-allowed'
+                                  ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 active:scale-90'
+                                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
                                   }`}
                               >
                                 −
@@ -232,7 +251,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                                 disabled={!canAdd}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold transition-all ${canAdd
                                   ? 'bg-blue-500 text-white hover:bg-blue-600 active:scale-90'
-                                  : 'bg-gray-100 dark:bg-zinc-800 text-gray-300 dark:text-zinc-600 cursor-not-allowed'
+                                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
                                   }`}
                               >
                                 +
@@ -251,7 +270,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       </div>
 
       {/* Bottom checkout bar */}
-      <div className="p-3 sm:p-6 border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-3">
+      <div className="p-3 sm:p-6 border-t border-gray-200 bg-white flex justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-3">
         <div className="flex flex-col gap-0.5 sm:gap-1 min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="text-xs sm:text-sm text-gray-400 font-medium">좌석 금액</span>

@@ -7,15 +7,17 @@ import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Modal } from '@/src/shared/components/Modal';
 import { CancellationDetailView } from '@/src/features/cancellation/ui/CancellationDetailView';
 import { MobileWaitlistCard } from '@/src/shared/components/MobileWaitlistCard';
+import { WaitlistSeatCard } from '@/src/shared/components/WaitlistSeatCard';
+
 import { WaitlistDetailView } from './WaitlistDetailView';
 
 export const WaitlistManagementView = () => {
   const { data: waitlist, isLoading } = useWaitlistBookings();
 
-  // Cancel Flow State
+  // Cancel Flow State (개별 좌석 단위)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
-  const [selectedWaitlistForCancel, setSelectedWaitlistForCancel] = useState<any | null>(null);
+  const [selectedSeatForCancel, setSelectedSeatForCancel] = useState<any | null>(null);
 
   // Mobile Detail Flow State
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
@@ -33,15 +35,15 @@ export const WaitlistManagementView = () => {
     }
   };
 
-  const handleOpenCancelModal = (item: any) => {
-    setSelectedWaitlistForCancel(item);
+  const handleOpenCancelModal = (seat: any) => {
+    setSelectedSeatForCancel(seat);
     setIsCancelModalOpen(true);
   };
 
   const handleCloseCancelModal = () => {
     setIsCancelModalOpen(false);
     setTimeout(() => {
-      setSelectedWaitlistForCancel(null);
+      setSelectedSeatForCancel(null);
     }, 300);
   };
 
@@ -52,13 +54,9 @@ export const WaitlistManagementView = () => {
   };
 
   const handleExecuteCancel = async () => {
-    if (!selectedWaitlistForCancel) return;
+    if (!selectedSeatForCancel) return;
     try {
-      const cancelPromises = selectedWaitlistForCancel.seats.map((seat: any) =>
-        cancelWaitlistMutation.mutateAsync(seat.id)
-      );
-      await Promise.all(cancelPromises);
-      // alert 띄우지 않음
+      await cancelWaitlistMutation.mutateAsync(selectedSeatForCancel.id);
       setIsWarningModalOpen(false);
       handleCloseCancelModal();
     } catch (err) {
@@ -69,144 +67,72 @@ export const WaitlistManagementView = () => {
   };
 
 
+  // 모든 좌석을 flat하게 펼쳐서 공연 정보를 붙이고, 대기 순번으로 정렬
+  const flatSeats = React.useMemo(() => {
+    if (!waitlist) return [];
+    const seats: any[] = [];
+    waitlist.forEach((item) => {
+      item.seats?.forEach((seat: any) => {
+        seats.push({
+          ...seat,
+          eventTitle: item.title,
+          eventDate: item.performanceDate,
+          eventImage: item.imageUrl,
+          parentItem: item, // 취소 시 부모 참조용
+        });
+      });
+    });
+    // 대기 순번 오름차순 (배정 완료 = 0 이하가 가장 앞)
+    seats.sort((a, b) => a.waitlistNumber - b.waitlistNumber);
+    return seats;
+  }, [waitlist]);
+
+  // 3개 그룹으로 분류
+  const offeredSeats = flatSeats.filter((s) => s.waitlistNumber <= 0);
+  const soonSeats = flatSeats.filter((s) => s.waitlistNumber >= 1 && s.waitlistNumber <= 5);
+  const waitingSeats = flatSeats.filter((s) => s.waitlistNumber > 5);
+
+  const renderSeatCard = (seat: any) => {
+    return (
+      <WaitlistSeatCard
+        key={seat.id}
+        seat={seat}
+        onSelectOffer={setSelectedOfferId}
+        onCancel={handleOpenCancelModal}
+      />
+    );
+  };
+
+  // 섹션 헤더 렌더링 헬퍼
+  const renderSectionHeader = (emoji: string, title: string, count: number, color: string) => (
+    <div className="flex items-center gap-2.5 mb-3">
+      <span className="text-lg">{emoji}</span>
+      <span className={`text-sm font-extrabold ${color}`}>{title}</span>
+      <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{count}</span>
+    </div>
+  );
+
   return (
     <div className="w-full animate-fade-in relative">
       <div className="mb-6 flex items-center justify-between">
         <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-blue-600">{waitlist?.length || 0}</span>건의 취소표 대기 내역이 있습니다.
+          총 <span className="font-bold text-blue-600">{flatSeats.length}</span>건의 좌석 대기 중
         </Text>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20 justify-items-center">
+      <div className="flex flex-col gap-6 pb-20">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="w-full h-[450px] bg-gray-100 animate-pulse rounded-2xl" />
+            <div key={idx} className="w-full h-20 bg-gray-100 animate-pulse rounded-2xl" />
           ))
-        ) : waitlist && waitlist.length > 0 ? (
-          waitlist.map((item) => {
-            return (
-              <React.Fragment key={item.id}>
-                {/* 데스크톱/태블릿용 그리드 카드 (세로형) */}
-                <div className="hidden md:flex relative w-full max-w-[320px] flex-col rounded-[24px] overflow-hidden shadow-2xl shadow-black/20 bg-zinc-900">
-                  {/* 포스터 배경 (Full Size) */}
-                  <div className="absolute inset-0 w-full h-full">
-                    <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="!rounded-none max-w-full object-cover" />
-                  </div>
-
-                  {/* 그라데이션 오버레이 (텍스트 가독성) */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-[#0f172a]/20 pointer-events-none z-10"></div>
-
-                  {/* 컨텐츠 영역 */}
-                  <div className="relative z-20 w-full h-full flex flex-col p-6 justify-between min-h-[460px] gap-4">
-                    {/* 상단 뱃지 */}
-                    <div className="flex justify-between items-start w-full shrink-0">
-                      <span className="px-3 py-1.5 bg-purple-500/30 text-purple-200 border border-purple-400/40 rounded-lg text-xs font-extrabold tracking-widest backdrop-blur-md shadow-lg shadow-purple-500/20">
-                        취소표 대기중
-                      </span>
-                    </div>
-
-                    {/* 하단 텍스트 및 정보 박스 */}
-                    <div className="flex flex-col gap-4 w-full mt-auto">
-                      <div className="flex flex-col drop-shadow-lg">
-                        <Text typography="t3" fontWeight="extrabold" className="text-white w-full truncate mb-1 drop-shadow-xl">
-                          {item.title}
-                        </Text>
-                      </div>
-
-                      {/* Glassmorphism Info Box */}
-                      <div className="w-full bg-white/5 backdrop-blur-xl rounded-2xl p-4 flex flex-col gap-3 border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                        <div className="flex flex-col gap-1.5 text-xs mb-1 px-1">
-                          <span className="text-gray-300/90 font-bold">콘서트 일시</span>
-                          <span className="text-white font-extrabold tracking-wide">
-                            {new Date(item.performanceDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-
-                        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent mb-1" />
-
-                        {/* 다중 좌석 대기열 */}
-                        <div className="flex flex-col gap-2.5">
-                          {item.seats && item.seats.map((seat: any) => {
-                            const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
-
-                            // 혼잡도/대기열 색상
-                            let badgeClass = '';
-                            let barClass = '';
-
-                            if (seat.waitlistNumber <= 0) {
-                              badgeClass = 'bg-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.8)] animate-pulse border-rose-400';
-                              barClass = 'bg-gradient-to-r from-rose-600 to-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]';
-                            } else if (seat.waitlistNumber <= 5) {
-                              badgeClass = 'bg-blue-500/30 text-blue-200 border-blue-400/50 shadow-[0_0_8px_rgba(59,130,246,0.4)]';
-                              barClass = 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_4px_rgba(59,130,246,0.8)]';
-                            } else if (seat.waitlistNumber <= 10) {
-                              badgeClass = 'bg-green-500/30 text-green-200 border-green-400/50 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-                              barClass = 'bg-gradient-to-r from-green-600 to-green-400 shadow-[0_0_4px_rgba(34,197,94,0.8)]';
-                            } else if (seat.waitlistNumber <= 15) {
-                              badgeClass = 'bg-yellow-500/30 text-yellow-200 border-yellow-400/50 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
-                              barClass = 'bg-gradient-to-r from-yellow-600 to-yellow-400 shadow-[0_0_4px_rgba(234,179,8,0.8)]';
-                            } else {
-                              badgeClass = 'bg-red-500/30 text-red-200 border-red-400/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]';
-                              barClass = 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_4px_rgba(239,68,68,0.8)]';
-                            }
-
-                            const isOffered = seat.waitlistNumber <= 0;
-
-                            return (
-                              <div key={seat.id} className={`flex flex-col gap-2.5 bg-black/40 p-3 rounded-xl border ${isOffered ? 'border-rose-500/70 shadow-lg shadow-rose-500/20' : 'border-white/5 hover:border-white/10 transition-colors'}`}>
-                                <div className="flex justify-between items-center text-xs">
-                                  <span className="text-gray-100 font-bold tracking-wide truncate max-w-[130px]">{seat.info}</span>
-                                  <div className="flex flex-col items-end gap-1.5 w-[60px]">
-                                    <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black whitespace-nowrap ${badgeClass}`}>
-                                      {isOffered ? '배정됨!' : `대기 ${seat.waitlistNumber}번`}
-                                    </span>
-                                    {!isOffered && (
-                                      <div className="w-full h-[3px] bg-white/10 rounded-full overflow-hidden">
-                                        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                {isOffered && (
-                                  <button
-                                    onClick={() => setSelectedOfferId(seat.id)}
-                                    className="w-full py-2 mt-1 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-lg text-xs font-bold shadow-lg shadow-rose-500/40 transition-all"
-                                  >
-                                    상세 확인 및 결제
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* 액션 버튼들 */}
-                      <div className="flex gap-3 mt-1 w-full">
-                        <button
-                          onClick={() => handleOpenCancelModal(item)}
-                          className="w-full py-3 bg-white/10 hover:bg-white/20 active:bg-white/30 backdrop-blur-xl text-white text-sm font-extrabold rounded-xl border border-white/20 transition-all shadow-lg hover:shadow-xl"
-                        >
-                          취소하기
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 모바일용 리스트 카드 (가로형) */}
-                <div className="flex md:hidden w-full max-w-[480px]">
-                  <MobileWaitlistCard 
-                    item={item} 
-                    onOpenDetail={handleOpenDetail} 
-                    setSelectedOfferId={setSelectedOfferId} 
-                  />
-                </div>
-              </React.Fragment>
-            );
-          })
+        ) : flatSeats.length > 0 ? (
+          <>
+            <div className="flex flex-col gap-2.5">
+              {flatSeats.map((seat) => renderSeatCard(seat))}
+            </div>
+          </>
         ) : (
-          <div className="col-span-full w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+          <div className="w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -227,29 +153,23 @@ export const WaitlistManagementView = () => {
         onClose={handleCloseCancelModal}
         onCancel={handleCloseCancelModal}
         onConfirm={handleConfirmCancel}
-        title="대기 전체 취소"
-        description="해당 공연의 대기 내역을 모두 취소하시겠습니까?"
-        confirmText="전체 취소"
+        title="대기 취소"
+        description="이 좌석의 대기를 취소하시겠습니까?"
+        confirmText="취소하기"
         cancelText="닫기"
         isConfirmDisabled={false}
       >
-        <div className="flex flex-col gap-2 mt-2 max-h-[300px] overflow-y-auto px-1">
-          {selectedWaitlistForCancel?.seats.map((seat: any) => {
-            return (
-              <div
-                key={seat.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800 text-left"
-              >
-                <span className="shrink-0 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 text-[11px] font-extrabold rounded-md border border-purple-200 dark:border-purple-800/50">
-                  대기 {seat.waitlistNumber}번
-                </span>
-                <span className="text-[14px] font-bold text-gray-800 dark:text-gray-200 truncate">
-                  {seat.info}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        {selectedSeatForCancel && (
+          <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-gray-50 border border-gray-100 text-left">
+            <span className="shrink-0 px-2.5 py-1 bg-purple-100 text-purple-600 text-[11px] font-extrabold rounded-md border border-purple-200">
+              대기 {selectedSeatForCancel.waitlistNumber}번
+            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[14px] font-bold text-gray-800 truncate">{selectedSeatForCancel.info}</span>
+              <span className="text-[11px] text-gray-400 truncate">{selectedSeatForCancel.eventTitle}</span>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* 경고 모달 (재차 확인) */}
@@ -259,7 +179,7 @@ export const WaitlistManagementView = () => {
         onCancel={() => setIsWarningModalOpen(false)}
         onConfirm={handleExecuteCancel}
         title="대기 취소 경고"
-        description={'취소 시 현재 대기 순번이 모두 사라지며 복구할 수 없습니다.\n정말 취소하시겠습니까?'}
+        description={'취소 시 현재 대기 순번이 사라지며 복구할 수 없습니다.\n정말 취소하시겠습니까?'}
         confirmText="취소 진행"
         cancelText="돌아가기"
         isConfirmDisabled={false}
@@ -275,8 +195,8 @@ export const WaitlistManagementView = () => {
       {/* 모바일 전용 상세 오버레이 뷰 */}
       {isMobileDetailOpen && selectedDetailItem && (
         <div className="fixed inset-0 z-[100] bg-zinc-950 overflow-y-auto md:hidden">
-          <WaitlistDetailView 
-            item={selectedDetailItem} 
+          <WaitlistDetailView
+            item={selectedDetailItem}
             onBack={() => setIsMobileDetailOpen(false)}
             onOpenPayment={(id) => {
               setIsMobileDetailOpen(false); // 오버레이 닫고 결제 뷰 띄우기

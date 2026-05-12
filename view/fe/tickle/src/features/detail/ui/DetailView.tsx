@@ -12,7 +12,7 @@ import { Text } from '@/src/shared/components/Text';
 import { Table } from '@/src/shared/components/Table';
 import { Box } from '@/src/shared/components/Box';
 import { Calendar } from '@/src/shared/components/Calendar';
-import { TimelineNav } from '@/src/shared/components/TimelineNav';
+import { SectionNav } from '@/src/shared/components/SectionNav';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
@@ -152,6 +152,17 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     }
   }, [data?.isFavorite, activeEventId, wishlistMap, addWishlist, removeWishlist]);
 
+  // 디테일 뷰 진입 시 스크롤 최상단으로 강제 초기화
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    } else {
+      const mainEl = document.querySelector('main');
+      if (mainEl) mainEl.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
+  }, [activeEventId]);
+
   const handleFavoriteToggle = async () => {
     if (!activeEventId) return;
 
@@ -278,7 +289,51 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     setActiveIndex(index);
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // 모바일 중첩 스크롤러(PullToRefresh 등) 환경에서도 안전하게 스크롤되도록 수동 계산
+      const getScrollParent = (node: HTMLElement | null): HTMLElement => {
+        if (!node) return document.documentElement;
+        if (node.scrollHeight > node.clientHeight) {
+          const overflowY = window.getComputedStyle(node).overflowY;
+          if (overflowY === 'auto' || overflowY === 'scroll') return node;
+        }
+        return getScrollParent(node.parentElement);
+      };
+      
+      const scrollParent = getScrollParent(element);
+      const isWindow = scrollParent === document.documentElement;
+      
+      const elementRect = element.getBoundingClientRect();
+      const parentRect = isWindow ? { top: 0 } : scrollParent.getBoundingClientRect();
+      const scrollTop = isWindow ? window.pageYOffset : scrollParent.scrollTop;
+      
+      const offset = 80; // sticky header offset
+      const targetY = elementRect.top - parentRect.top + scrollTop - offset;
+      
+      if (isWindow) {
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+      } else {
+        scrollParent.scrollTo({ top: targetY, behavior: 'smooth' });
+      }
+    }
+  };
+
+  const scrollToTop = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      const mainEl = document.querySelector('main');
+      if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    } else {
+      const mainEl = document.querySelector('main');
+      if (mainEl) mainEl.scrollTo({ top: mainEl.scrollHeight, behavior: 'smooth' });
+      else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
   };
 
@@ -315,7 +370,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
           <p className="text-gray-500">
             예매 정보가 만료되었거나 비정상적인 접근입니다.
           </p>
-          <button 
+          <button
             onClick={() => { window.location.href = '/'; }}
             className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
           >
@@ -401,7 +456,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     <div className="w-full min-h-full pb-20 lg:pb-32 pt-0 lg:pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       {/* Mobile/Tablet Header (Transparent Floating) */}
       <div className="lg:hidden fixed top-0 left-0 z-[60] p-4 pointer-events-none">
-        <button 
+        <button
           onClick={() => {
             if (isOverlay) {
               useDetailStore.getState().closeDetail();
@@ -457,18 +512,20 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       </section>
 
       {/* Content Section with Sticky Timeline */}
-      <section className="mt-24 pt-16 grid grid-cols-1 lg:grid-cols-[100px_1fr] gap-8 border-t border-black/10 relative items-start">
-        <div className="sticky top-32 self-start hidden lg:block">
-          <TimelineNav
-            items={navItems}
-            activeIndex={activeIndex}
-            onItemClick={(id: string, index: number) => handleScrollTo(id, index)}
-          />
+      <section className="mt-16 flex flex-col gap-8 border-t border-black/10 relative items-start">
+        <div className="sticky top-0 z-40 w-full bg-[#f8f8f8]/95 backdrop-blur-md py-3 lg:py-4 px-4 lg:px-0 shadow-[0_4px_10px_-4px_rgba(0,0,0,0.05)] lg:shadow-none">
+          <div className="w-full max-w-3xl mx-auto">
+            <SectionNav
+              items={navItems}
+              activeIndex={activeIndex}
+              onItemClick={(id: string, index: number) => handleScrollTo(id, index)}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 w-full max-w-3xl mx-auto">
           {/* 1. 공연 정보 */}
-          <div id="info" className="scroll-mt-32 w-full">
+          <div id="info" className="scroll-mt-48 w-full">
             <Box variant="flat" padding="medium" className="w-full border border-black/5">
               <div className="flex flex-col items-start gap-4">
                 <Title title="공연 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
@@ -493,7 +550,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
           <div className="flex flex-col gap-8 w-full">
             {/* 2. 가격 */}
-            <div id="price" className="scroll-mt-32 transition-all duration-500 ease-in-out w-full">
+            <div id="price" className="scroll-mt-48 transition-all duration-500 ease-in-out w-full">
               <Box variant="flat" padding="large" className="w-full border border-black/5 flex flex-col gap-4 shadow-sm bg-white rounded-2xl">
                 <Title title="가격 정보" bottomBorder={false} className="!px-0 !pt-0 !pb-2 mb-0 w-full [&>div]:!px-0 [&_h1]:!text-2xl shrink-0" />
                 <div className="w-full rounded-xl overflow-hidden border border-gray-100">
@@ -534,7 +591,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             </div>
 
             {/* 3. 공연 일정 */}
-            <div id="schedule" className="scroll-mt-32 transition-all duration-500 ease-in-out w-full">
+            <div id="schedule" className="scroll-mt-48 transition-all duration-500 ease-in-out w-full">
               <Box variant="flat" padding="medium" className="w-full border border-black/5">
                 <div className="flex flex-col items-start gap-4 w-full">
                   <Title title="공연 일정" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
@@ -577,7 +634,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
           </div>
 
           {/* 4. 상세 정보 */}
-          <div id="details" className="scroll-mt-32 w-full mt-8">
+          <div id="details" className="scroll-mt-48 w-full mt-8">
             <Box variant="flat" padding="medium" className="w-full border border-black/5 bg-gray-50 flex flex-col items-center justify-center min-h-[500px] overflow-hidden rounded-xl">
               {detailImageSrc && !detailImageFailed ? (
                 <Image
@@ -604,7 +661,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             </Box>
           </div>
 
-    </div>
+        </div>
       </section>
 
       {/* Booking Pipeline Overlays */}
@@ -641,8 +698,32 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     </div>
   );
 
+  const renderScrollButtons = () => (
+    <div className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 flex flex-col gap-3 z-[100]">
+      <button
+        onClick={scrollToTop}
+        className="w-12 h-12 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-white transition-all text-gray-500 hover:text-blue-600 group"
+        aria-label="맨 위로"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-y-0.5 transition-transform"><polyline points="18 15 12 9 6 15"></polyline></svg>
+      </button>
+      <button
+        onClick={scrollToBottom}
+        className="w-12 h-12 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-white transition-all text-gray-500 hover:text-blue-600 group"
+        aria-label="맨 아래로"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+    </div>
+  );
+
   if (isOverlay) {
-    return renderContent();
+    return (
+      <>
+        {renderContent()}
+        {flowState === 'NONE' && renderScrollButtons()}
+      </>
+    );
   }
 
   return (
@@ -673,8 +754,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
       <main
         ref={scrollRef}
-        className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-900"
       >
         <div className="hidden lg:block">
           <Header />
@@ -686,6 +766,9 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
         <Footer />
       </main>
+
+      {/* Floating Scroll Buttons */}
+      {flowState === 'NONE' && renderScrollButtons()}
     </div>
   );
 };

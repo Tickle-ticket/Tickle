@@ -77,7 +77,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                 setSelectedDate(confirmedSchedule.date);
                 setSelectedTime(confirmedSchedule.time);
               }}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700:text-gray-200 transition-colors p-2 rounded-full hover:bg-gray-100:bg-zinc-800"
               aria-label="변경 취소"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -88,12 +88,12 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
           )}
 
           <div className="flex flex-col pr-12">
-            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">관람 일시 선택</h2>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">관람 일시 선택</h2>
           </div>
 
           {/* Date Selection */}
           <div className="flex flex-col gap-2">
-            <h3 className="text-[15px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+            <h3 className="text-[15px] font-bold text-gray-700 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[11px] font-bold">1</span>
               날짜 선택
             </h3>
@@ -113,15 +113,15 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                     setSelectedDate(`${year}.${month}.${day}`);
                     setSelectedTime(null);
                   }}
-                  className="w-full max-w-[340px] shadow-sm border border-gray-100 dark:border-zinc-800"
+                  className="w-full max-w-[340px] shadow-sm border border-gray-100"
                 />
               </div>
             </div>
           </div>
 
           {/* Time Selection */}
-          <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-zinc-800 pt-4 pb-4 z-10">
-            <h3 className="text-[15px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 pb-4 z-10">
+            <h3 className="text-[15px] font-bold text-gray-700 flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[11px] font-bold">2</span>
               회차 선택
             </h3>
@@ -147,7 +147,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                     }}
                     className={`w-[calc(50%-4px)] min-w-[125px] px-3 py-2.5 rounded-xl border-2 font-bold transition-all text-center flex flex-col items-center justify-center gap-0.5 ${selectedTime === timeObj.time
                       ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/20 transform scale-[1.02]'
-                      : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-zinc-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50:bg-zinc-700'
                       }`}
                   >
                     <span className="text-[16px]">{timeObj.time}</span>
@@ -176,7 +176,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-7 bg-gray-50 dark:bg-zinc-900 rounded-xl border border-dashed border-gray-300 dark:border-zinc-700 animate-fade-in">
+              <div className="flex flex-col items-center justify-center py-7 bg-gray-50 rounded-xl border border-dashed border-gray-300 animate-fade-in">
                 <p className="text-gray-500 font-medium text-[14px]">관람 일자를 먼저 선택해주세요.</p>
               </div>
             )}
@@ -189,17 +189,17 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
             {/* Top: Schedule Pill + Seat Count (floating) */}
             <div className="flex flex-col gap-2 pointer-events-auto">
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-2 bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md px-3 py-2 rounded-full border border-gray-200/80 dark:border-zinc-700 shadow-lg min-w-0">
+                <div className="flex-1 flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-2 rounded-full border border-gray-200/80 shadow-lg min-w-0">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 shrink-0">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                   </svg>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                  <span className="text-sm font-bold text-gray-900 truncate">
                     {selectedDate} {selectedTime}
                   </span>
-                  <span className="text-gray-300 dark:text-gray-600">·</span>
+                  <span className="text-gray-300">·</span>
                   <span className="text-sm font-bold text-blue-500 shrink-0">
                     {isModifyModeActive ? selectedSeats.size : cartSeats.size}{!isCancelMode && `/${maxSelectable}`}
                   </span>
@@ -207,7 +207,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                 {(!isCancelMode || isModifyModeActive) && (
                   <button
                     onClick={() => setIsModifyingSchedule(true)}
-                    className="text-xs font-bold px-3 py-2 rounded-full bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md text-gray-600 dark:text-gray-300 border border-gray-200/80 dark:border-zinc-700 shadow-lg whitespace-nowrap shrink-0 hover:bg-gray-50 transition-colors"
+                    className="text-xs font-bold px-3 py-2 rounded-full bg-white/95 backdrop-blur-md text-gray-600 border border-gray-200/80 shadow-lg whitespace-nowrap shrink-0 hover:bg-gray-50 transition-colors"
                   >
                     변경
                   </button>
@@ -226,7 +226,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
             {/* Bottom: Selected Seat Chips (floating above checkout bar) */}
             <div className="pointer-events-auto mb-1">
               {cartSeats.size === 0 ? (
-                <div className="flex items-center justify-center gap-2 py-3 px-4 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/60 dark:border-zinc-700">
+                <div className="flex items-center justify-center gap-2 py-3 px-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200/60">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400 opacity-60">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
@@ -242,9 +242,9 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                     };
                     const dotClass = gradeDotColors[priceGrade] || 'bg-gray-400';
                     return (
-                      <div key={seatId} className="flex items-center gap-1.5 shrink-0 bg-white/95 dark:bg-zinc-800/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-gray-200/60 dark:border-zinc-700">
+                      <div key={seatId} className="flex items-center gap-1.5 shrink-0 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-gray-200/60">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`}></span>
-                        <span className="text-xs font-bold text-gray-800 dark:text-white">{priceGrade}</span>
+                        <span className="text-xs font-bold text-gray-800">{priceGrade}</span>
                         <span className="text-[11px] text-gray-500 whitespace-nowrap">{getDetailedSeatInfo(seatId)}</span>
                         <button
                           onClick={() => {
@@ -260,7 +260,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                               setSelectedSeats(new Set([...selectedSeats].filter(s => s !== seatId)));
                             }
                           }}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors ml-0.5"
+                          className="text-gray-400 hover:text-gray-600:text-gray-200 transition-colors ml-0.5"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -277,17 +277,17 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
 
           {/* ═══ DESKTOP: Original Card Layout ═══ */}
           <div className="hidden lg:flex flex-1 overflow-y-auto p-8 flex-col gap-6 pb-32 animate-fade-in [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <div className="flex justify-between items-center bg-white dark:bg-zinc-800 p-5 rounded-2xl border border-gray-200 dark:border-zinc-700 shadow-sm mb-4 shrink-0">
+            <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mb-4 shrink-0">
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">선택된 일시</span>
-                <span className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
                   {selectedDate} <span className="text-gray-300">|</span> {selectedTime}
                 </span>
               </div>
               {(!isCancelMode || isModifyModeActive) && (
                 <button
                   onClick={() => setIsModifyingSchedule(true)}
-                  className="text-sm font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-gray-600 bg-gray-100 dark:bg-zinc-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-zinc-600"
+                  className="text-sm font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-gray-600 bg-gray-100 hover:bg-gray-200:bg-zinc-600"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 2v6h-6"></path>
@@ -300,17 +300,17 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
               {isCancelMode && !isModifyModeActive && (
                 <button
                   onClick={() => setIsModifyModeActive(true)}
-                  className="text-sm font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 px-4 py-2.5 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-2"
+                  className="text-sm font-bold text-blue-600 bg-blue-50 px-4 py-2.5 rounded-xl hover:bg-blue-100:bg-blue-900/50 transition-colors flex items-center gap-2"
                 >
                   예약 변경 모드로 전환
                 </button>
               )}
             </div>
 
-            <div className="flex justify-between items-center border-b border-gray-100 dark:border-zinc-800 pb-4 shrink-0">
-              <div className="text-[22px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <div className="flex justify-between items-center border-b border-gray-100 pb-4 shrink-0">
+              <div className="text-[22px] font-bold text-gray-900 flex items-center gap-2">
                 {isCancelMode && !isModifyModeActive ? '취소할 좌석' : '선택 좌석'} <span className="text-blue-500 font-extrabold">{isModifyModeActive ? selectedSeats.size : cartSeats.size}</span>
-                {!isCancelMode && <span className="text-gray-300 dark:text-gray-600 font-medium text-lg">/ {maxSelectable}</span>}
+                {!isCancelMode && <span className="text-gray-300 font-medium text-lg">/ {maxSelectable}</span>}
               </div>
               {cartSeats.size > 0 && (
                 <button
@@ -324,7 +324,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                       setSelectedSeats(new Set());
                     }
                   }}
-                  className="text-[16px] font-medium text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+                  className="text-[16px] font-medium text-gray-400 hover:text-gray-600:text-zinc-300 transition-colors"
                 >
                   전체삭제
                 </button>
@@ -348,7 +348,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                   };
                   const dotClass = gradeDotColors[priceGrade] || 'bg-gray-400';
                   return (
-                    <div key={seatId} className="flex justify-between items-center p-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/50 group hover:border-gray-200 dark:hover:border-zinc-700 transition-colors">
+                    <div key={seatId} className="flex justify-between items-center p-4 rounded-xl border border-gray-100 bg-gray-50 group hover:border-gray-200:border-zinc-700 transition-colors">
                       <div className="flex flex-col gap-1">
                         {isModifyModeActive && (
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -359,17 +359,17 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                         )}
                         <div className="flex items-center gap-2">
                           <span className={`w-3 h-3 rounded-full ${dotClass}`}></span>
-                          <span className="font-black text-gray-900 dark:text-white text-base">{priceGrade}석</span>
+                          <span className="font-black text-gray-900 text-base">{priceGrade}석</span>
                           {isModifyModeActive && initialSeats.includes(seatId) && (
-                            <span className="px-1.5 py-0.5 rounded bg-gray-200 dark:bg-zinc-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-bold">
                               기존
                             </span>
                           )}
                         </div>
-                        <span className="text-gray-500 dark:text-gray-400 text-[13px] font-medium ml-5">{getDetailedSeatInfo(seatId)}</span>
+                        <span className="text-gray-500 text-[13px] font-medium ml-5">{getDetailedSeatInfo(seatId)}</span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="font-black text-lg text-gray-900 dark:text-white tracking-tight">
+                        <span className="font-black text-lg text-gray-900 tracking-tight">
                           {isWaitlistMode ? (
                             <span className="text-blue-600">대기 {getSeatInfo(seatId).waitingCount || 0}명</span>
                           ) : (
@@ -390,7 +390,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                               setSelectedSeats(new Set([...selectedSeats].filter(s => s !== seatId)));
                             }
                           }}
-                          className="text-gray-300 hover:text-gray-500 dark:hover:text-gray-400 transition-colors p-1"
+                          className="text-gray-300 hover:text-gray-500:text-gray-400 transition-colors p-1"
                           aria-label="삭제"
                         >
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -410,7 +410,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
 
       {/* Checkout Bar at bottom of right panel */}
       {scheduleId && ((isCancelMode && !isModifyModeActive ? selectedSeatsToCancel.size > 0 : selectedSeats.size > 0) || isModifyModeActive) && !isModifyingSchedule && (
-        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/95 lg:bg-white dark:bg-zinc-900/95 dark:lg:bg-zinc-900 backdrop-blur-md lg:backdrop-blur-none border-t border-gray-200 dark:border-zinc-800 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] flex justify-between items-center z-20 animate-slide-up gap-3 pointer-events-auto">
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 bg-white/95 lg:bg-white:bg-zinc-900 backdrop-blur-md lg:backdrop-blur-none border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] flex justify-between items-center z-20 animate-slide-up gap-3 pointer-events-auto">
           {isCancelMode && !isModifyModeActive ? (
             <>
               <div className="flex flex-col">

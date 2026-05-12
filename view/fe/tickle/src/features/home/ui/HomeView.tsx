@@ -370,7 +370,7 @@ export const HomeView = () => {
       </div>
 
       {/* Right Column: Main Content */}
-      <main className="flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative ${selectedDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={selectedDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
         <div className="hidden lg:block">
           <Header />
@@ -431,6 +431,16 @@ export const HomeView = () => {
                         <InfoCard src="" title="" isLoading={true} showRank={true} rank={idx + 1} />
                       </div>
                     ))
+                  ) : !ranking || ranking.length === 0 ? (
+                    <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 mx-2 shrink-0">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-3">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                      </svg>
+                      <p className="text-gray-500 font-medium text-sm sm:text-base">현재 진행 중인 인기 공연이 없습니다.</p>
+                      <p className="text-gray-400 text-xs sm:text-sm mt-1">곧 새로운 공연이 업데이트될 예정입니다.</p>
+                    </div>
                   ) : (
                     ranking?.map((item, idx) => {
                       const isWishlisted = !!wishlistMap[item.id];
@@ -504,6 +514,17 @@ export const HomeView = () => {
                         <InfoCard src="" title="" isLoading={true} showTime={true} />
                       </div>
                     ))
+                  ) : !upcoming || upcoming.length === 0 ? (
+                    <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 mx-2 shrink-0">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-3">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg>
+                      <p className="text-gray-500 font-medium text-sm sm:text-base">현재 오픈 예정인 공연이 없습니다.</p>
+                      <p className="text-gray-400 text-xs sm:text-sm mt-1">새로운 공연 소식을 기다려주세요!</p>
+                    </div>
                   ) : (
                     upcoming?.map((item, idx) => {
                       const isWishlisted = !!wishlistMap[item.id];
@@ -556,7 +577,7 @@ export const HomeView = () => {
       </main>
       </div>
       </PullToRefresh>
-      <MobileBottomNav />
+      {!selectedDetailId && <MobileBottomNav />}
     </div>
   );
 };

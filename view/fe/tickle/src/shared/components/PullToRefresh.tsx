@@ -44,6 +44,7 @@ export const PullToRefresh = ({ onRefresh, children, disabled = false }: PullToR
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return; // 웹(데스크톱) 마우스 드래그 방지
     if (disabled || isRefreshing) return;
     const scrollTop = scrollRef.current?.scrollTop || 0;
     if (scrollTop <= 0) {

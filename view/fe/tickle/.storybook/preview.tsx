@@ -3,8 +3,6 @@ import React from 'react'
 import '../src/app/globals.css'
 import { QueryProvider } from '../src/shared/providers/QueryProvider'
 
-import { INITIAL_VIEWPORTS } from '@storybook/addon-viewport';
-
 const preview: Preview = {
   parameters: {
     controls: {
@@ -16,7 +14,6 @@ const preview: Preview = {
 
     viewport: {
       viewports: {
-        ...INITIAL_VIEWPORTS,
         iphone14: {
           name: 'iPhone 14',
           styles: { width: '390px', height: '844px' },

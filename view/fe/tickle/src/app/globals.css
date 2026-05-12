@@ -151,7 +151,7 @@ body {
 @media (min-width: 640px) {
   * {
     scrollbar-width: thin; /* Firefox */
-    scrollbar-color: var(--toss-grey-200) transparent;
+    scrollbar-color: var(--toss-grey-700) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -164,11 +164,11 @@ body {
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: var(--toss-grey-200);
+    background-color: var(--toss-grey-700);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--toss-grey-600);
+    background-color: #1f2937; /* gray-800 */
   }
 }

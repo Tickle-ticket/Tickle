@@ -52,6 +52,8 @@ export interface WaitlistSeatData {
   id: string;
   info: string;
   waitlistNumber: number;
+  cancellationOfferId?: number | null;
+  status?: string;
 }
 
 export interface WaitlistBookingData {
@@ -168,6 +170,8 @@ export const useWaitlistBookings = () => {
           id: String(curr.cancellationCandidateId),
           info: seatInfo,
           waitlistNumber: curr.currentRank,
+          cancellationOfferId: curr.cancellationOfferId,
+          status: curr.status,
         });
         
         return acc;

@@ -281,7 +281,7 @@ export const Stage_4001 = ({
   };
 
   return (
-    <div className={`flex flex-col items-center gap-12 p-12 bg-white dark:bg-zinc-950 rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
+    <div className={`flex flex-col items-center gap-12 p-12 bg-white rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
       {/* 1. Stage Area */}
       <div className="flex flex-col items-center gap-3 w-full">
         <Stage width={480} height={72} label="무대" />

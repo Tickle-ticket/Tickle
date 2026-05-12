@@ -13,7 +13,7 @@ export interface BannerData {
   date: string;
 }
 
-import { SHADOW_EVENT, SHADOW_BANNER } from '@/src/shared/utils/shadowMode';
+
 
 export interface PerformanceData {
   id: string;
@@ -66,7 +66,7 @@ export const useHomeBanners = () => {
       ];
       const rankingResponses = await Promise.allSettled(rankingPromises);
 
-      const banners: BannerData[] = [SHADOW_BANNER];
+      const banners: BannerData[] = [];
 
       rankingResponses.forEach((result, index) => {
         if (result.status === 'fulfilled') {
@@ -100,11 +100,10 @@ export const useHomeRanking = (categoryId?: number) => {
     queryFn: async () => {
       try {
         if (categoryId === undefined) {
-          // If viewing the '전체' (All) ranking tab, inject the shadow event first
           const response = await fetchRanking(categoryId);
           const data = response.data;
           const performances = (data.rankings || []).map(mapRankingItemToPerformance);
-          return [SHADOW_EVENT, ...performances];
+          return performances;
         }
         
         const response = await fetchRanking(categoryId);
