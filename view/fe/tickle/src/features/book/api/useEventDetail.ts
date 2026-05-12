@@ -43,7 +43,7 @@ export const useEventDetail = (eventId?: string) => {
       if (!eventId) throw new Error('No event ID');
 
       if (isShadowMode(eventId)) {
-        return getShadowEventDetail();
+        return getShadowEventDetail(eventId);
       }
 
       const response = await fetchEventDetail(eventId);

@@ -3,13 +3,18 @@ import { EventDetailResponse } from '@/src/features/book/api/useEventDetail';
 import { SeatAvailabilityResponse } from '@/src/features/book/api/useSeatData';
 import { PerformanceData, BannerData } from '@/src/features/home/api/useHomeData';
 
-export const SHADOW_EVENT_ID = '404';
+export const SHADOW_EVENT_ID_AI = '404';
+export const SHADOW_EVENT_ID_HUMAN = '405';
 
-export const isShadowMode = (eventId: string | null | undefined) => eventId === SHADOW_EVENT_ID;
+export const isShadowMode = (eventId: string | null | undefined) =>
+  eventId === SHADOW_EVENT_ID_AI || eventId === SHADOW_EVENT_ID_HUMAN;
+
+const getShadowTitle = (eventId: string) =>
+  eventId === SHADOW_EVENT_ID_HUMAN ? 'AI Shadow - Human' : 'AI Shadow - AI';
 
 export const SHADOW_EVENT: PerformanceData = {
-  id: SHADOW_EVENT_ID,
-  title: 'AI Shadow',
+  id: SHADOW_EVENT_ID_AI,
+  title: 'AI Shadow - AI',
   imageUrl: 'https://images.unsplash.com/photo-1540039155732-6761b54cbaca?w=500&h=750&fit=crop',
   venue: '티클 아레나 (Shadow Mode)',
   date: '2026.05.20 ~ 2026.05.21',
@@ -17,17 +22,17 @@ export const SHADOW_EVENT: PerformanceData = {
 };
 
 export const SHADOW_BANNER: BannerData = {
-  id: SHADOW_EVENT_ID,
-  title: 'AI Shadow',
+  id: SHADOW_EVENT_ID_AI,
+  title: 'AI Shadow - AI',
   subtitle: 'Shadow Mode Test',
   imageUrl: 'https://images.unsplash.com/photo-1540039155732-6761b54cbaca?w=500&h=750&fit=crop',
   venue: '티클 아레나 (Shadow Mode)',
   date: '2026.05.20 ~ 2026.05.21',
 };
 
-export const getShadowDetailData = (): DetailData => ({
-  eventId: SHADOW_EVENT_ID,
-  title: 'AI Shadow',
+export const getShadowDetailData = (eventId: string = SHADOW_EVENT_ID_AI): DetailData => ({
+  eventId,
+  title: getShadowTitle(eventId),
   subTitle: 'Shadow Mode Test',
   imageUrl: 'https://images.unsplash.com/photo-1540039155732-6761b54cbaca?w=500&h=750&fit=crop',
   openDate: '2026-05-01T00:00:00Z',
@@ -54,9 +59,9 @@ export const getShadowDetailData = (): DetailData => ({
   tags: ['SHADOW', 'TEST'],
 });
 
-export const getShadowEventDetail = (): EventDetailResponse => ({
-  eventId: SHADOW_EVENT_ID,
-  title: 'AI Shadow',
+export const getShadowEventDetail = (eventId: string = SHADOW_EVENT_ID_AI): EventDetailResponse => ({
+  eventId,
+  title: getShadowTitle(eventId),
   venue: '티클 아레나 (Shadow Mode)',
   date: '2026.05.20 ~ 2026.05.21',
   zonePrices: [
@@ -70,7 +75,7 @@ export const getShadowEventDetail = (): EventDetailResponse => ({
       date: '2026.05.20',
       times: [
         {
-          scheduleId: '404-1',
+          scheduleId: `${eventId}-1`,
           sessionNo: 1,
           time: '18:00',
           startAt: '2026-05-20T18:00:00Z',

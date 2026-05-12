@@ -43,7 +43,7 @@ export const useDetailData = (eventId: string | null | undefined) => {
       }
 
       if (isShadowMode(eventId)) {
-        return getShadowDetailData();
+        return getShadowDetailData(eventId);
       }
 
       const response = await fetchEventDetail(eventId);
