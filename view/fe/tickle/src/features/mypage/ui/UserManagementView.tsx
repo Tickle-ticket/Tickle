@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Avatar } from '@/src/shared/components/Avatar';
 import { Box } from '@/src/shared/components/Box';
 import { Modal } from '@/src/shared/components/Modal';
@@ -101,12 +102,8 @@ export const UserManagementView = () => {
         </div>
       </Box>
 
-      {/* 2. 회원 액션 (비밀번호 변경, 고객 지원 등) */}
+      {/* 2. 회원 액션 (고객 지원 등) */}
       <Box variant="flat" padding="none" className="w-full border border-black/5 overflow-hidden flex flex-col">
-        <button className="flex items-center justify-between w-full p-5 hover:bg-gray-50 transition-colors border-b border-gray-100">
-          <Text typography="t5" fontWeight="bold" color="primary">비밀번호 변경</Text>
-          <Text typography="t6" color="tertiary">›</Text>
-        </button>
         <Link
           href="/support/faq"
           onClick={(e) => {
@@ -118,7 +115,6 @@ export const UserManagementView = () => {
           className="flex w-full items-center border-b border-gray-100 p-5 text-left transition-colors hover:bg-gray-50"
         >
           <Text typography="t5" fontWeight="bold" color="primary">고객 지원 (FAQ)</Text>
-          <Text typography="t6" color="tertiary">›</Text>
         </Link>
         <button
           onClick={() => setIsWithdrawModalOpen(true)}
