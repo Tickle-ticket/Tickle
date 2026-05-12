@@ -1,6 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchMyInfo, updateMyInfo, withdrawMyInfo } from '@/src/shared/api/userApi';
-import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { authApi } from '@/src/shared/api/authApi';
+import { clearTokens, getAccessToken } from '@/src/shared/api/tokenManager';
+import type { UpdateMyInfoRequest } from '@/src/shared/api/types/user.types';
+import { ApiError } from './types';
 
 export interface UserProfileData {
   userId: number;
@@ -16,7 +19,16 @@ export const useUserProfile = () => {
   return useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => {
-      const response = await fetchMyInfo();
+      let response;
+      try {
+        response = await fetchMyInfo();
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          clearTokens();
+          return null;
+        }
+        throw error;
+      }
       const data = response.data;
       return {
         userId: data.userId,
@@ -25,15 +37,13 @@ export const useUserProfile = () => {
         nickname: data.nickname,
         realName: data.name,
         email: data.email,
-        phoneNumber: data.phoneNumber,
+        phoneNumber: data.phoneNumber ?? undefined,
       } as UserProfileData;
     },
     staleTime: 0,
     enabled: !!getAccessToken(),
   });
 };
-
-import { UpdateMyInfoRequest } from '@/src/shared/api/types/user.types';
 
 export const useUpdateUserProfile = () => {
   const queryClient = useQueryClient();
@@ -54,7 +64,9 @@ export const useWithdrawUser = () => {
     mutationFn: async () => {
       await withdrawMyInfo();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await authApi.logout().catch(() => undefined);
+      clearTokens();
       queryClient.clear();
       if (typeof window !== 'undefined') {
         window.location.href = '/login';

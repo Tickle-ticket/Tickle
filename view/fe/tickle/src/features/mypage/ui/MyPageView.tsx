@@ -5,42 +5,41 @@ import { Header } from '@/src/shared/components/Header';
 import { Title } from '@/src/shared/components/Title';
 import SidebarButton from '@/src/shared/components/SidebarButton';
 import { UserManagementView } from './UserManagementView';
+import { ProfileEditView } from './ProfileEditView';
 import { UpcomingWishlistView } from './UpcomingWishlistView';
 import { MyBookingsView } from './MyBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { SearchContent } from '@/src/shared/components/SearchContent';
 
-type TabType = 'USER' | 'UPCOMING' | 'MY_TICKETS' | 'PAST_TICKETS' | 'WAITLIST' | 'PAYMENTS';
+type TabType = 'USER' | 'EDIT_PROFILE' | 'UPCOMING' | 'MY_TICKETS' | 'PAST_TICKETS' | 'WAITLIST' | 'PAYMENTS';
+
+const tabs = [
+  { id: 'USER', label: '회원 관리' },
+  { id: 'EDIT_PROFILE', label: '내 정보 수정' },
+  { id: 'UPCOMING', label: '관심 있는 개봉 예정 공연' },
+  { id: 'MY_TICKETS', label: '내 예매' },
+  { id: 'PAST_TICKETS', label: '과거 예매 조회' },
+  { id: 'WAITLIST', label: '나의 취소표 관리' },
+  { id: 'PAYMENTS', label: '결제 관리' },
+] as const satisfies readonly { id: TabType; label: string }[];
+
+const getInitialTab = (): TabType => {
+  if (typeof window === 'undefined') return 'USER';
+
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  return tabs.some((item) => item.id === tab) ? (tab as TabType) : 'USER';
+};
 
 export const MyPageView = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('USER');
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab);
   const { searchValue, clearSearch } = useSearchStore();
 
   // 마이페이지 진입 시 검색 상태 초기화 — 검색 중에도 마이페이지가 바로 열리도록
   React.useEffect(() => {
     clearSearch();
-  }, []);
-
-  const tabs = [
-    { id: 'USER', label: '회원 관리' },
-    { id: 'UPCOMING', label: '관심 있는 개봉 예정 공연' },
-    { id: 'MY_TICKETS', label: '내 예매' },
-    { id: 'PAST_TICKETS', label: '과거 예매 조회' },
-    { id: 'WAITLIST', label: '나의 취소표 관리' },
-    { id: 'PAYMENTS', label: '결제 관리' },
-  ] as const;
-
-  // URL 파라미터를 통해 초기 탭 설정 (Header의 Dropdown 네비게이션 지원)
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab') as TabType;
-      if (tab && tabs.some((t) => t.id === tab)) {
-        setActiveTab(tab);
-      }
-    }
-  }, [typeof window !== 'undefined' ? window.location.search : '']);
+  }, [clearSearch]);
 
   return (
     <div className="flex w-full h-screen bg-[#f8f8f8] font-sans overflow-hidden relative">
@@ -91,11 +90,12 @@ export const MyPageView = () => {
               </div>
 
               {activeTab === 'USER' && <UserManagementView />}
+              {activeTab === 'EDIT_PROFILE' && <ProfileEditView />}
               {activeTab === 'UPCOMING' && <UpcomingWishlistView />}
               {activeTab === 'MY_TICKETS' && <MyBookingsView />}
               {activeTab === 'WAITLIST' && <WaitlistManagementView />}
               
-              {activeTab !== 'USER' && activeTab !== 'UPCOMING' && activeTab !== 'MY_TICKETS' && activeTab !== 'WAITLIST' && (
+              {activeTab !== 'USER' && activeTab !== 'EDIT_PROFILE' && activeTab !== 'UPCOMING' && activeTab !== 'MY_TICKETS' && activeTab !== 'WAITLIST' && (
                 <div className="flex flex-col items-center justify-center py-32 border border-dashed border-gray-300 rounded-2xl bg-white/50">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-4">
                     <circle cx="12" cy="12" r="10"></circle>

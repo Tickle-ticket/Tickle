@@ -1,10 +1,10 @@
-import { http, HttpResponse, delay } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 
 export const userHandlers = [
   http.get('*/api/v1/users/me', async ({ request }) => {
     await delay(300);
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader) {
       return new HttpResponse(null, { status: 401 });
     }
@@ -20,13 +20,17 @@ export const userHandlers = [
         name: '홍길동',
         nickname: '티클마스터',
         profileImageUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
-        birthDate: '1990-01-01'
-      }
+        birthDate: '1990-01-01',
+      },
     });
   }),
-  http.patch('*/api/v1/users/me', async ({ request }) => {
+
+  http.put('*/api/v1/users/me', async ({ request }) => {
     await delay(300);
-    const body = (await request.json()) as any;
+    const formData = await request.formData();
+    const nickname = formData.get('nickname');
+    const phoneNumber = formData.get('phoneNumber');
+
     return HttpResponse.json({
       status: 200,
       message: 'success',
@@ -34,20 +38,21 @@ export const userHandlers = [
         userId: 1,
         userNo: 'U12345678',
         email: 'user@example.com',
-        phoneNumber: '010-1234-5678',
+        phoneNumber: typeof phoneNumber === 'string' && phoneNumber ? phoneNumber : '010-1234-5678',
         name: '홍길동',
-        nickname: body.nickname || '수정된닉네임',
-        profileImageUrl: body.profileImageUrl || 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
-        birthDate: '1990-01-01'
-      }
+        nickname: typeof nickname === 'string' && nickname ? nickname : '티클마스터',
+        profileImageUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
+        birthDate: '1990-01-01',
+      },
     });
   }),
+
   http.delete('*/api/v1/users/me', async () => {
     await delay(300);
     return HttpResponse.json({
       status: 200,
       message: 'success',
-      data: null
+      data: null,
     });
-  })
+  }),
 ];

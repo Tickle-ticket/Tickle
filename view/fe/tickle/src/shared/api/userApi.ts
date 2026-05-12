@@ -9,7 +9,7 @@ import { MyInfoResponseData, UpdateMyInfoRequest, MyInfoResponseDataSchema } fro
 export const fetchMyInfo = async (): Promise<ApiResponse<MyInfoResponseData>> => {
   return apiClient<ApiResponse<MyInfoResponseData>>(
     buildUserApiUrl('/api/v1/users/me'),
-    { params: {} },
+    { params: {}, auth: 'optional' },
     false,
     createApiResponseSchema(MyInfoResponseDataSchema)
   );
@@ -17,12 +17,14 @@ export const fetchMyInfo = async (): Promise<ApiResponse<MyInfoResponseData>> =>
 
 export const updateMyInfo = async (request: UpdateMyInfoRequest): Promise<ApiResponse<MyInfoResponseData>> => {
   const { nickname, phoneNumber, profileImage } = request;
-  
-  const params: Record<string, string> = {};
-  if (nickname) params.nickname = nickname;
-  if (phoneNumber) params.phoneNumber = phoneNumber;
 
   const formData = new FormData();
+  if (nickname !== undefined) {
+    formData.append('nickname', nickname);
+  }
+  if (phoneNumber !== undefined) {
+    formData.append('phoneNumber', phoneNumber);
+  }
   if (profileImage) {
     formData.append('profileImage', profileImage);
   }
@@ -30,8 +32,7 @@ export const updateMyInfo = async (request: UpdateMyInfoRequest): Promise<ApiRes
   return apiClient<ApiResponse<MyInfoResponseData>>(
     buildUserApiUrl('/api/v1/users/me'), 
     {
-      method: 'PATCH',
-      params,
+      method: 'PUT',
       body: formData,
     },
     false,

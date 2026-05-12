@@ -87,7 +87,7 @@ export function UserAuthFrame({
           </div>
         </div>
 
-        <p className="text-sm font-medium text-slate-400">© {new Date().getFullYear()} TIKKLE. All rights reserved.</p>
+        <p className="text-sm font-medium text-slate-400">© {new Date().getFullYear()} TICKLE. All rights reserved.</p>
       </aside>
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
