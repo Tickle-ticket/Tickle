@@ -25,6 +25,13 @@ public interface BlacklistRepository extends JpaRepository<Blacklist, Long> {
     boolean existsByUserId(Long userId);
 
     /**
+     * 해당 사용자의 모든 블랙리스트 기록을 삭제합니다.
+     *
+     * @param userId 사용자 식별자
+     */
+    void deleteByUserId(Long userId);
+
+    /**
      * 해당 사용자의 블랙리스트 항목을 조회합니다.
      *
      * @param userId 사용자 식별자

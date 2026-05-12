@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +23,15 @@ public interface CancellationCandidateRepository extends JpaRepository<Cancellat
     default List<WaitingCountProjection> countActiveBySessionSeatIds(List<Long> sessionSeatIds) {
         return countBySessionSeatIdsAndStatus(sessionSeatIds, CancellationCandidate.Status.WAITING);
     }
+
+    /**
+     * 사용자가 특정 상태의 취소표 대기 내역을 가지고 있는지 확인합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param statuses 확인할 대기 상태 목록
+     * @return 해당 상태의 대기 내역 존재 여부
+     */
+    boolean existsByUserIdAndStatusIn(Long userId, Collection<CancellationCandidate.Status> statuses);
 
     /**
      * 사용자가 이미 활성 예매 대기 신청한 좌석 식별자를 조회합니다.

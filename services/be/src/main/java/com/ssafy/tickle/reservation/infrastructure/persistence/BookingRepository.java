@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             Long sessionId,
             Booking.Status bookingStatus
     );
+
+    /**
+     * 사용자가 특정 상태의 예매 내역을 가지고 있는지 확인합니다.
+     *
+     * @param userId 사용자 식별자
+     * @param statuses 확인할 예매 상태 목록
+     * @return 해당 상태의 예매 존재 여부
+     */
+    boolean existsByUserIdAndBookingStatusIn(Long userId, Collection<Booking.Status> statuses);
 
     /**
      * 사용자의 전체 예매 목록을 최신순으로 조회합니다.

@@ -37,6 +37,14 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     Page<Event> findByOrganizerId(Long organizerId, Pageable pageable);
 
     /**
+     * 기획사가 등록한 공연이 존재하는지 확인합니다.
+     *
+     * @param organizerId 기획사 식별자
+     * @return 공연 존재 여부
+     */
+    boolean existsByOrganizerId(Long organizerId);
+
+    /**
      * 제목 키워드와 카테고리 조건으로 이벤트 목록을 조회합니다.
      *
      * @param keyword 제목 검색어
