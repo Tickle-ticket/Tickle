@@ -22,7 +22,7 @@ pipeline {
 
         NEXT_PUBLIC_API_URL = 'https://tickle-ticket.co.kr'
         NEXT_PUBLIC_AUTH_API_URL = 'https://tickle-ticket.co.kr'
-        NEXT_PUBLIC_AI_PUBLIC_API_URL = 'http://70.12.246.186:8080'
+        NEXT_PUBLIC_AI_PUBLIC_API_URL = 'https://www.tickle-ticket.co.kr'
         NEXT_PUBLIC_API_MOCKING = 'disabled'
         NEXT_PUBLIC_INTERNAL_SECRET = 'tickle-internal'
         NEXT_PUBLIC_KAKAO_REST_API_KEY = '484f24406bdcf9b3bcd0a34c773cde99'
