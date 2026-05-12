@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * IP별 요청 횟수를 추적하여 과도한 요청을 보내는 사용자를 블랙리스트에 등록하는 인터셉터입니다.
  *
- * <p>3초 슬라이딩 윈도우 내에 동일 IP에서 10회를 초과하는 요청이 발생하면
+ * <p>3초 슬라이딩 윈도우 내에 동일 IP에서 20회를 초과하는 요청이 발생하면
  * userId를 블랙리스트에 등록하고, 해당 요청을 즉시 429 에러로 차단합니다.
  * userId가 있으면 "rate:user:{userId}:{ip}" 키를,
  * 없으면 "rate:ip:{ip}" 키를 사용합니다.</p>
@@ -32,7 +32,7 @@ public class IpRateLimitInterceptor implements HandlerInterceptor {
     private static final String RATE_KEY_PREFIX = "rate:ip:";
     private static final String USER_RATE_KEY_PREFIX = "rate:user:";
     private static final long WINDOW_SECONDS = 3L;
-    private static final long REQUEST_LIMIT = 10L;
+    private static final long REQUEST_LIMIT = 20L;
 
     private final StringRedisTemplate stringRedisTemplate;
     private final BlacklistService blacklistService;
