@@ -55,7 +55,7 @@ public class ReservationService {
     private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * 사용자의 전체 예매 목록을 최신순으로 조회합니다.
+     * 사용자의 결제 진입 이후 예매 목록을 최신순으로 조회합니다.
      *
      * @param userId 사용자 식별자
      * @return 예매 요약 목록
@@ -63,6 +63,7 @@ public class ReservationService {
     public ReservationListResponse getReservationList(Long userId) {
         List<Booking> bookings = bookingRepository.findAllByUserId(userId);
         List<Long> eventIds = bookings.stream()
+                .filter(booking -> booking.getBookingStatus() != Booking.Status.DRAFT)
                 .map(booking -> booking.getSession().getEvent().getId())
                 .distinct()
                 .toList();
@@ -70,6 +71,7 @@ public class ReservationService {
 
         List<ReservationSummaryResponse> items = bookings
                 .stream()
+                .filter(booking -> booking.getBookingStatus() != Booking.Status.DRAFT)
                 .map(booking -> ReservationSummaryResponse.from(
                         booking,
                         thumbnailUrlByEventId.get(booking.getSession().getEvent().getId())
