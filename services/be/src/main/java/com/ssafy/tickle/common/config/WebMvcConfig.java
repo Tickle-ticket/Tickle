@@ -35,6 +35,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final SuspiciousPatternInterceptor suspiciousPatternInterceptor;
     private final AdminAuthInterceptor adminAuthInterceptor;
     private final UserIdArgumentResolver userIdArgumentResolver;
+    private final com.ssafy.tickle.user.presentation.interceptor.UserAccessLogInterceptor userAccessLogInterceptor;
 
     /**
      * 인터셉터를 경로별로 등록합니다.
@@ -43,6 +44,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(userAccessLogInterceptor)
+                .addPathPatterns("/api/**");
         registry.addInterceptor(internalSecretInterceptor)
                 .addPathPatterns(
                         "/internal/**",

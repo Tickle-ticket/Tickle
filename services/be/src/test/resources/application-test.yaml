@@ -35,6 +35,8 @@ server:
 
 internal:
   secret: test-internal-secret
+  auth:
+    url: http://localhost:8081
 
 jwt:
   secret: test-jwt-secret-key-for-unit-test-minimum-32bytes!
@@ -50,6 +52,8 @@ kakaopay:
   fail-url: http://localhost:8080/api/v1/payments/kakaopay/fail
   cancel-url: http://localhost:8080/api/v1/payments/kakaopay/cancel
   success-redirect-url: http://localhost:3000/payment/success
+  failed-redirect-url: http://localhost:3000/payment/fail
+  cancelled-redirect-url: http://localhost:3000/payment/cancel
   method-selection-redirect-url: http://localhost:3000/payment
 
 cloud:
