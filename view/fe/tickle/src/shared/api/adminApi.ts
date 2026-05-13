@@ -3,8 +3,11 @@ import type { ApiResponse } from './types';
 import { getAccessToken } from './tokenManager';
 import type {
   AddBlacklistRequest,
+  BlacklistDashboardResponse,
   BlacklistPageResponse,
   BotDetectionStatsResponse,
+  QueueDashboardResponse,
+  QueueEventRankResponse,
   QueueStatsResponse,
 } from './types/admin.types';
 
@@ -38,6 +41,12 @@ export const getAdminBlacklist = (page = 0, size = 20) => {
   });
 };
 
+export const getAdminBlacklistDashboard = () => {
+  return apiClient<ApiResponse<BlacklistDashboardResponse>>('/api/v1/admin/blacklist/dashboard', {
+    method: 'GET',
+  });
+};
+
 export const addAdminBlacklist = ({ adminUserId, ...body }: AddBlacklistRequest) => {
   const resolvedAdminUserId = adminUserId ?? getAdminUserIdFromToken();
 
@@ -66,6 +75,18 @@ export const getAdminBotStats = () => {
 
 export const getAdminQueueStats = (scheduleId: number) => {
   return apiClient<ApiResponse<QueueStatsResponse>>(`/api/v1/admin/queues/${scheduleId}/stats`, {
+    method: 'GET',
+  });
+};
+
+export const getAdminQueueEventDashboard = (eventId: number) => {
+  return apiClient<ApiResponse<QueueDashboardResponse>>(`/api/v1/admin/queues/events/${eventId}/dashboard`, {
+    method: 'GET',
+  });
+};
+
+export const getAdminTopWaitingEvents = () => {
+  return apiClient<ApiResponse<QueueEventRankResponse[]>>('/api/v1/admin/queues/events/top', {
     method: 'GET',
   });
 };

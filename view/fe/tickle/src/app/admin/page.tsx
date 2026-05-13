@@ -4,9 +4,11 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addAdminBlacklist,
   getAdminBlacklist,
+  getAdminBlacklistDashboard,
   removeAdminBlacklist,
 } from '@/src/shared/api/adminApi';
 import type {
+  BlacklistDashboardResponse,
   BlacklistItem,
   BlacklistPageResponse,
   BlacklistReason,
@@ -45,6 +47,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function AdminBlacklistPage() {
+  const [dashboard, setDashboard] = useState<BlacklistDashboardResponse | null>(null);
   const [pageData, setPageData] = useState<BlacklistPageResponse | null>(null);
   const [page, setPage] = useState(0);
   const [size] = useState(20);
@@ -58,28 +61,54 @@ export default function AdminBlacklistPage() {
   const [detail, setDetail] = useState('');
 
   const items = useMemo(() => pageData?.items ?? [], [pageData]);
-  const totalElements = pageData?.totalElements ?? 0;
   const totalPages = pageData?.totalPages ?? 0;
 
   const summary = useMemo(() => {
-    const manualCount = items.filter((item) => item.reason === 'MANUAL_BLOCK').length;
-    const automatedCount = items.length - manualCount;
+    if (!dashboard) {
+      return [
+        { label: '총 접속자 수', value: '-', caption: '오늘 기준' },
+        { label: '봇 탐지 수', value: '-', caption: '오늘 기준' },
+        { label: '차단 수', value: '-', caption: '정책 차단 완료' },
+        { label: '피크 시간', value: '-', caption: '최다 탐지 구간' },
+      ];
+    }
 
     return [
-      { label: '전체 차단', value: formatNumber(totalElements), caption: '백엔드 블랙리스트 기준' },
-      { label: '현재 페이지', value: `${formatNumber(items.length)}건`, caption: `${page + 1}/${Math.max(totalPages, 1)} 페이지` },
-      { label: '자동 탐지', value: `${formatNumber(automatedCount)}건`, caption: '현재 페이지 기준' },
-      { label: '수동 차단', value: `${formatNumber(manualCount)}건`, caption: '현재 페이지 기준' },
+      {
+        label: '총 접속자 수',
+        value: formatNumber(dashboard.totalConnectionsToday),
+        caption: '오늘 기준',
+      },
+      {
+        label: '봇 탐지 수',
+        value: `${formatNumber(dashboard.botDetectionCount)}건`,
+        caption: '오늘 기준',
+      },
+      {
+        label: '차단 수',
+        value: `${formatNumber(dashboard.blockedCount)}건`,
+        caption: '정책 차단 완료',
+      },
+      {
+        label: '피크 시간',
+        value: dashboard.peakTime || '-',
+        caption: `${formatNumber(dashboard.peakDetectionCount)}건 탐지`,
+      },
     ];
-  }, [items, page, totalElements, totalPages]);
+  }, [dashboard]);
 
   const loadBlacklist = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      const response = await getAdminBlacklist(page, size);
-      setPageData(response.data);
+      const [dashboardResponse, blacklistResponse] = await Promise.all([
+        getAdminBlacklistDashboard(),
+        getAdminBlacklist(page, size),
+      ]);
+
+      setDashboard(dashboardResponse.data);
+      setPageData(blacklistResponse.data);
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -110,7 +139,7 @@ export default function AdminBlacklistPage() {
       }
 
       if (parsedAdminUserId !== undefined && (!Number.isInteger(parsedAdminUserId) || parsedAdminUserId <= 0)) {
-        throw new Error('관리자 ID는 숫자로 입력해 주세요.');
+        throw new Error('관리자 ID를 숫자로 입력해 주세요.');
       }
 
       await addAdminBlacklist({
@@ -151,13 +180,9 @@ export default function AdminBlacklistPage() {
   };
 
   return (
-    <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm font-bold text-primary">Admin API</p>
+    <div className="space-y-6 p-5 sm:p-8">
+      <header className="flex min-h-[76px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <h1 className="text-2xl font-black tracking-normal text-slate-950">블랙리스트 관리</h1>
-        <p className="text-sm font-medium text-content-tertiary">
-          `/api/v1/admin/blacklist` 엔드포인트로 등록, 조회, 삭제를 처리합니다.
-        </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-4">

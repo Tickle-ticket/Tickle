@@ -42,7 +42,7 @@ export const Default: Story = {
     data: queueStatusData,
     performanceTitle: 'Musical Tickle 19:30',
     performanceMeta: '2026.04.23 19:30 / VIP queue',
-    capacityPerMinute: 210,
+    capacityPerMinute: 30,
     targetWaitingUsers: 2400,
   },
 };

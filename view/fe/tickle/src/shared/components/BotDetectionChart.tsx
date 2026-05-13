@@ -24,7 +24,6 @@ export interface BotDetectionChartProps {
   data: BotDetectionPoint[];
   title?: string;
   subtitle?: string;
-  targetBlockRate?: number;
   height?: number;
 }
 
@@ -35,10 +34,6 @@ interface BotDetectionChartPoint extends BotDetectionPoint {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat('ko-KR').format(value);
-}
-
-function formatPercent(value: number) {
-  return `${value.toFixed(1)}%`;
 }
 
 function getChartData(data: BotDetectionPoint[]): BotDetectionChartPoint[] {
@@ -60,14 +55,12 @@ export function BotDetectionChart({
   data,
   title = '오늘 탐지된 봇 추이',
   subtitle = '시간대별 매크로, 대기열 우회, 비정상 요청 탐지 건수',
-  targetBlockRate = 96,
   height = 360,
 }: BotDetectionChartProps) {
   const chartData = getChartData(data);
   const latestPoint = chartData[chartData.length - 1];
   const totalDetections = latestPoint?.cumulativeDetections ?? 0;
   const totalBlockedBots = data.reduce((sum, point) => sum + point.blockedBots, 0);
-  const blockRate = totalDetections > 0 ? (totalBlockedBots / totalDetections) * 100 : 0;
   const peakPoint = chartData.reduce<BotDetectionChartPoint | undefined>(
     (peak, point) => (!peak || point.totalDetections > peak.totalDetections ? point : peak),
     undefined,
@@ -85,7 +78,7 @@ export function BotDetectionChart({
             <p className="mt-1 text-[12px] font-semibold leading-5 text-content-tertiary">{subtitle}</p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[560px] xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[480px]">
             <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
               <p className="text-[11px] font-bold text-content-tertiary">오늘 탐지</p>
               <p className="mt-1 text-[24px] font-black leading-8 text-slate-950">
@@ -104,16 +97,6 @@ export function BotDetectionChart({
                 <span className="ml-1 text-[12px] font-bold text-content-tertiary">건</span>
               </p>
               <p className="mt-1 text-[11px] font-black text-content-tertiary">정책 차단 기준</p>
-            </div>
-
-            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
-              <p className="text-[11px] font-bold text-content-tertiary">차단율</p>
-              <p className="mt-1 text-[24px] font-black leading-8 text-primary">
-                {formatPercent(blockRate)}
-              </p>
-              <p className={`mt-1 text-[11px] font-black ${blockRate >= targetBlockRate ? 'text-success' : 'text-danger'}`}>
-                목표 {formatPercent(targetBlockRate)}
-              </p>
             </div>
 
             <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
