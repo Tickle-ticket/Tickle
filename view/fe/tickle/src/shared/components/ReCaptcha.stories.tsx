@@ -106,7 +106,7 @@ export const DarkTheme: Story = {
 /** 실제 사이트 키 사용 (프로덕션 확인용) */
 export const WithRealSiteKey: Story = {
   args: {
-    siteKey: '0x4AAAAAAADOFALPw0Tas_lb7',
+    siteKey: '0x4AAAAAADOcVYSwitvl9qep',
     theme: 'auto',
     title: '보안 인증',
     description: '티켓 예매를 위해 본인 인증을 완료해 주세요.',

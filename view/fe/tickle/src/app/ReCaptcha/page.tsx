@@ -8,7 +8,7 @@ export default function ReCaptchaPage() {
     <div className="min-h-screen bg-surface-subtle flex items-center justify-center p-4">
       <div className="w-full max-w-[440px]">
         <ReCaptcha
-          siteKey="0x4AAAAAAADOFALPw0Tas_lb7"
+          siteKey="0x4AAAAAADOcVYSwitvl9qep"
           theme="auto"
           title="보안 검증"
           description="안전한 서비스 이용을 위해 인증을 완료해 주세요."
