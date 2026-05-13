@@ -1,6 +1,8 @@
 package com.ssafy.tickle.reservation.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.event.domain.EventImage;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
@@ -23,7 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -45,6 +49,7 @@ public class ReservationService {
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
     private final PaymentRepository paymentRepository;
+    private final EventImageRepository eventImageRepository;
     private final SessionSeatRepository sessionSeatRepository;
     private final CancellationRedistributionService cancellationRedistributionService;
     private final ApplicationEventPublisher eventPublisher;
@@ -56,9 +61,19 @@ public class ReservationService {
      * @return 예매 요약 목록
      */
     public ReservationListResponse getReservationList(Long userId) {
-        List<ReservationSummaryResponse> items = bookingRepository.findAllByUserId(userId)
+        List<Booking> bookings = bookingRepository.findAllByUserId(userId);
+        List<Long> eventIds = bookings.stream()
+                .map(booking -> booking.getSession().getEvent().getId())
+                .distinct()
+                .toList();
+        Map<Long, String> thumbnailUrlByEventId = getThumbnailUrlByEventId(eventIds);
+
+        List<ReservationSummaryResponse> items = bookings
                 .stream()
-                .map(ReservationSummaryResponse::from)
+                .map(booking -> ReservationSummaryResponse.from(
+                        booking,
+                        thumbnailUrlByEventId.get(booking.getSession().getEvent().getId())
+                ))
                 .toList();
 
         return new ReservationListResponse(items);
@@ -197,5 +212,29 @@ public class ReservationService {
         if (!CANCELLABLE_STATUSES.contains(booking.getBookingStatus())) {
             throw new BaseException(ReservationErrorCode.BOOKING_NOT_CANCELLABLE);
         }
+    }
+
+    /**
+     * 이벤트별 썸네일 이미지 URL을 조회합니다.
+     *
+     * @param eventIds 이벤트 식별자 목록
+     * @return 이벤트별 썸네일 URL 매핑
+     */
+    private Map<Long, String> getThumbnailUrlByEventId(List<Long> eventIds) {
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<EventImage> images = eventImageRepository.findByEventIdInAndImageTypeOrderByEventIdAscDisplayOrderAsc(
+                eventIds,
+                EventImage.ImageType.THUMBNAIL
+        );
+        Map<Long, String> thumbnailUrlByEventId = new LinkedHashMap<>();
+
+        for (EventImage image : images) {
+            thumbnailUrlByEventId.putIfAbsent(image.getEvent().getId(), image.getImageUrl());
+        }
+
+        return thumbnailUrlByEventId;
     }
 }

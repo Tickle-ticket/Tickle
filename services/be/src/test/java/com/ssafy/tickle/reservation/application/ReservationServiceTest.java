@@ -2,7 +2,9 @@ package com.ssafy.tickle.reservation.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
 import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
 import com.ssafy.tickle.payment.domain.Payment;
 import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
 import com.ssafy.tickle.reservation.domain.Booking;
@@ -57,6 +59,7 @@ class ReservationServiceTest {
     @Mock private BookingRepository bookingRepository;
     @Mock private BookingTicketRepository bookingTicketRepository;
     @Mock private PaymentRepository paymentRepository;
+    @Mock private EventImageRepository eventImageRepository;
     @Mock private SessionSeatRepository sessionSeatRepository;
     @Mock private CancellationRedistributionService cancellationRedistributionService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -65,6 +68,7 @@ class ReservationServiceTest {
 
     private static final Long USER_ID       = 1L;
     private static final Long BOOKING_ID    = 10L;
+    private static final Long EVENT_ID      = 11L;
     private static final Long PAYMENT_ID    = 20L;
     private static final Long SEAT_ID       = 100L;
 
@@ -81,6 +85,7 @@ class ReservationServiceTest {
         given(venue.getVenueName()).willReturn("올림픽스타디움");
 
         Event event = mock(Event.class);
+        given(event.getId()).willReturn(EVENT_ID);
         given(event.getTitle()).willReturn("아이유 콘서트");
         given(event.getVenue()).willReturn(venue);
 
@@ -129,6 +134,13 @@ class ReservationServiceTest {
         void getReservationList_success() {
             // given
             given(bookingRepository.findAllByUserId(USER_ID)).willReturn(List.of(confirmedBooking));
+            EventImage thumbnail = mock(EventImage.class);
+            given(thumbnail.getEvent()).willReturn(confirmedBooking.getSession().getEvent());
+            given(thumbnail.getImageUrl()).willReturn("https://cdn.test/thumbnail.jpg");
+            given(eventImageRepository.findByEventIdInAndImageTypeOrderByEventIdAscDisplayOrderAsc(
+                    List.of(EVENT_ID),
+                    EventImage.ImageType.THUMBNAIL
+            )).willReturn(List.of(thumbnail));
 
             // when
             ReservationListResponse response = reservationService.getReservationList(USER_ID);
@@ -137,6 +149,7 @@ class ReservationServiceTest {
             assertThat(response.items()).hasSize(1);
             assertThat(response.items().get(0).bookingId()).isEqualTo(BOOKING_ID);
             assertThat(response.items().get(0).bookingStatus()).isEqualTo("CONFIRMED");
+            assertThat(response.items().get(0).thumbnailImageUrl()).isEqualTo("https://cdn.test/thumbnail.jpg");
         }
 
         @Test
