@@ -197,7 +197,9 @@ public class CancellationRedistributionService {
             booking.markPendingPayment();
             ticket.markPendingPayment();
             seat.markPendingPayment();
-            offer.getCancellationCandidate().purchase(Instant.now());
+            Instant completedAt = Instant.now();
+            offer.getCancellationCandidate().purchase(completedAt);
+            offer.complete(completedAt);
 
             paymentTransactionRepository.save(PaymentTransaction.pendingSale(payment, UUID.randomUUID().toString()));
             bookingTicketStatusHistoryRepository.save(
@@ -230,29 +232,12 @@ public class CancellationRedistributionService {
         if (!offer.getCancellationCandidate().getUser().getId().equals(userId)) {
             throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표만 구매할 수 있습니다.");
         }
-        if (offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED) {
-            validateRetryableDraftBooking(offer);
-            return;
-        }
-        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
+        if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED
+                && offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
             throw new BaseException(GlobalErrorCode.CONFLICT, "유효한 취소표 구매 대기 상태가 아닙니다.");
         }
         if (Instant.now().isAfter(offer.getOfferExpiresAt())) {
             throw new BaseException(GlobalErrorCode.CONFLICT, "취소표 구매 가능 시간(1시간)이 초과되었습니다.");
-        }
-    }
-
-    /**
-     * 이미 수락한 취소표 제안이 결제 재시도 가능한 DRAFT 예매 상태인지 검증합니다.
-     *
-     * @param offer 검증할 취소표 제안
-     */
-    private void validateRetryableDraftBooking(CancellationOffer offer) {
-        Booking booking = bookingRepository.findByCancellationOfferId(offer.getId())
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "예매 내역을 찾을 수 없습니다."));
-
-        if (booking.getBookingStatus() != Booking.Status.DRAFT) {
-            throw new BaseException(GlobalErrorCode.CONFLICT, "결제 재시도 가능한 예매 상태가 아닙니다.");
         }
     }
 
@@ -354,7 +339,9 @@ public class CancellationRedistributionService {
             BookingTicket ticket = bookingTicketRepository.findByBookingId(booking.getId()).get(0);
             ticket.markPendingPayment();
             seat.markPendingPayment();
-            offer.getCancellationCandidate().purchase(Instant.now());
+            Instant completedAt = Instant.now();
+            offer.getCancellationCandidate().purchase(completedAt);
+            offer.complete(completedAt);
 
             paymentTransactionRepository.save(PaymentTransaction.pendingSale(payment, UUID.randomUUID().toString()));
             bookingTicketStatusHistoryRepository.save(
@@ -420,7 +407,7 @@ public class CancellationRedistributionService {
     }
 
     /**
-     * 취소표 제안 수락 후 생성된 예매가 취소되면, 해당 제안의 점유를 종료하고 다음 대기자에게 넘깁니다.
+     * 취소표 제안 수락 후 생성된 DRAFT 예매가 취소되면, 제안과 후보 점유를 종료하고 다음 대기자에게 넘깁니다.
      */
     @Transactional
     public void releaseAcceptedOfferAfterReservationCancel(Long offerId, Long userId) {
@@ -436,8 +423,9 @@ public class CancellationRedistributionService {
         }
 
         Instant releasedAt = Instant.now();
-        // 예매 취소로 티켓 점유는 이미 해제됐으므로, ACCEPTED offer를 종료 상태로 바꿔 다음 재배분을 허용합니다.
+        // COMPLETED 전 상태의 DRAFT 취소이므로 후보도 PASSED로 닫아 활성 점유 수량에서 제외합니다.
         offer.pass(releasedAt);
+        offer.getCancellationCandidate().pass(releasedAt);
         processRedistribution(offer.getCancellationCandidate().getSessionSeat());
     }
 
@@ -499,7 +487,7 @@ public class CancellationRedistributionService {
         Optional<CancellationOffer> activeOffer = offerRepository.findLatestBySessionSeatId(seat.getId());
         if (activeOffer.isPresent()) {
             CancellationOffer offer = activeOffer.get();
-            // 결정 대기 중(UNACCEPTED)이거나 이미 결제 진행 중(ACCEPTED)이면 재배분 중단
+            // 결정 대기 중(UNACCEPTED)이거나 DRAFT 결제 재시도 가능 상태(ACCEPTED)이면 재배분 중단
             if ((offer.getOfferStatus() == CancellationOffer.OfferStatus.UNACCEPTED && Instant.now().isBefore(offer.getOfferExpiresAt())) ||
                 offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED) {
                 log.info("이미 유효한 제안이 진행 중(상태: {})이므로 재배분을 중단합니다. seatId={}, offerId={}", 

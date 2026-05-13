@@ -398,6 +398,7 @@ public class KakaoPayPaymentService {
         booking.confirm();
         if (cancellationOffer != null) {
             cancellationOffer.getCancellationCandidate().purchase(payment.getApprovedAt());
+            cancellationOffer.complete(payment.getApprovedAt());
         }
 
         // 상태 이력은 실제 이전 상태를 기준으로 남겨야 하므로 전이 전에 fromStatus를 확보한다.

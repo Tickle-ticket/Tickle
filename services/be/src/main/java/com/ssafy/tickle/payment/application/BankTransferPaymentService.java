@@ -228,7 +228,7 @@ public class BankTransferPaymentService {
         // 무통장 입금 수단이 확정되면 예매는 입금 대기 상태가 된다.
         booking.markPendingPayment();
         bookingRepository.save(booking);
-        markCancellationCandidatePurchasedIfNeeded(cancellationOffer);
+        completeCancellationOfferIfNeeded(cancellationOffer);
 
         // 티켓과 좌석도 결제 준비 상태에 맞춰 함께 전이시킨다.
         tickets.forEach(BookingTicket::markPendingPayment);
@@ -265,15 +265,17 @@ public class BankTransferPaymentService {
     }
 
     /**
-     * 취소표 무통장 입금 대기 진입 시 후보를 구매 완료 점유 상태로 전환합니다.
+     * 취소표 무통장 입금 대기 진입 시 후보와 제안을 함께 결제 이후 상태로 전환합니다.
      *
      * @param cancellationOffer 취소표 제안, 일반 예매이면 null
      */
-    private void markCancellationCandidatePurchasedIfNeeded(CancellationOffer cancellationOffer) {
+    private void completeCancellationOfferIfNeeded(CancellationOffer cancellationOffer) {
         if (cancellationOffer == null) {
             return;
         }
-        cancellationOffer.getCancellationCandidate().purchase(Instant.now());
+        Instant completedAt = Instant.now();
+        cancellationOffer.getCancellationCandidate().purchase(completedAt);
+        cancellationOffer.complete(completedAt);
     }
 
     private void validateBookingAndWaitingLimit(Booking booking, int newTicketCount) {
@@ -344,7 +346,6 @@ public class BankTransferPaymentService {
     ) {
         payment.cancel();
         payment.getBooking().expirePayment();
-        expireCancellationOfferIfNeeded(payment.getBooking());
         tickets.forEach(BookingTicket::expire);
         seats.forEach(SessionSeat::expirePendingPayment);
 
@@ -366,22 +367,6 @@ public class BankTransferPaymentService {
                                 .build())
                         .toList()
         );
-    }
-
-    /**
-     * 취소표 무통장 입금 대기 예매가 만료되면 연결된 제안을 만료 처리합니다.
-     *
-     * <p>제안을 닫아야 이후 REALLOCATING 좌석 재배분이 ACCEPTED offer에 막히지 않습니다.
-     * 예매와 티켓은 삭제하지 않고 PAYMENT_EXPIRED/EXPIRED 상태 이력으로 남깁니다.</p>
-     *
-     * @param booking 만료 처리된 예매
-     */
-    private void expireCancellationOfferIfNeeded(Booking booking) {
-        CancellationOffer offer = findCancellationOffer(booking);
-        if (offer == null || offer.getOfferStatus() != CancellationOffer.OfferStatus.ACCEPTED) {
-            return;
-        }
-        offer.expire(Instant.now());
     }
 
     /**

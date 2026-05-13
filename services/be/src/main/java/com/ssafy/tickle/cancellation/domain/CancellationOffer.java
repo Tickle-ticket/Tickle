@@ -74,6 +74,7 @@ public class CancellationOffer {
     public enum OfferStatus {
         UNACCEPTED,
         ACCEPTED,
+        COMPLETED,
         PASSED,
         EXPIRED
     }
@@ -129,6 +130,16 @@ public class CancellationOffer {
         this.offerStatus = OfferStatus.ACCEPTED;
         this.acceptedAt = acceptedAt;
         this.updatedAt = acceptedAt;
+    }
+
+    /**
+     * 결제 승인 또는 무통장 입금 대기 진입으로 제안 책임을 예매/결제 상태로 넘기고 종료합니다.
+     *
+     * @param completedAt 완료 처리 시각
+     */
+    public void complete(Instant completedAt) {
+        this.offerStatus = OfferStatus.COMPLETED;
+        this.updatedAt = completedAt;
     }
 
     /**
