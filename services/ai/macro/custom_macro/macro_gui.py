@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from collections import deque
+import random
 import threading
 import time
 import tkinter as tk
@@ -33,7 +34,15 @@ DEFAULT_DATA = {
         "use_retina_scale": False,
         "ocr_server_url": "http://127.0.0.1:8010",
         "ocr_security_retry_max": 8,
-        "ocr_security_retry_interval_sec": 0.25
+        "ocr_security_retry_interval_sec": 0.25,
+        "randomize_enabled": False,
+        "repeat_runs": 1,
+        "random_seed": "",
+        "between_runs_sec": 0.0,
+        "click_duration_range_sec": [0.05, 0.05],
+        "between_click_range_sec": [0.05, 0.05],
+        "between_event_range_sec": [0.05, 0.05],
+        "mouse_steps_range": [3, 3],
     },
     "security": {
         "mode": "manual",
@@ -259,6 +268,72 @@ def build_runtime(data) -> RuntimeConfig:
         between_event_sec=float(raw.get("between_event_sec", 0.05)),
         mouse_steps=int(raw.get("mouse_steps", 3)),
         use_retina_scale=bool(raw.get("use_retina_scale", False)),
+    )
+
+
+def _clamp_float(value: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, float(value)))
+
+
+def _clamp_int(value: int, lo: int, hi: int) -> int:
+    return max(lo, min(hi, int(value)))
+
+
+def _get_range(raw: dict, key: str, fallback_min: float, fallback_max: float) -> tuple[float, float]:
+    value = raw.get(key)
+    if isinstance(value, list) and len(value) == 2:
+        try:
+            lo = float(value[0])
+            hi = float(value[1])
+            if lo > hi:
+                lo, hi = hi, lo
+            return lo, hi
+        except Exception:
+            pass
+    return float(fallback_min), float(fallback_max)
+
+
+def _get_int_range(raw: dict, key: str, fallback_min: int, fallback_max: int) -> tuple[int, int]:
+    value = raw.get(key)
+    if isinstance(value, list) and len(value) == 2:
+        try:
+            lo = int(value[0])
+            hi = int(value[1])
+            if lo > hi:
+                lo, hi = hi, lo
+            return lo, hi
+        except Exception:
+            pass
+    return int(fallback_min), int(fallback_max)
+
+
+def sample_runtime(data: dict, rng: random.Random) -> RuntimeConfig:
+    """
+    Build a RuntimeConfig for a single run.
+    If randomization is enabled, sample knobs from their configured ranges.
+    """
+    raw = data.get("runtime", {})
+    base = build_runtime(data)
+
+    if not bool(raw.get("randomize_enabled", False)):
+        return base
+
+    cd_lo, cd_hi = _get_range(raw, "click_duration_range_sec", base.click_duration_sec, base.click_duration_sec)
+    bc_lo, bc_hi = _get_range(raw, "between_click_range_sec", base.between_click_sec, base.between_click_sec)
+    be_lo, be_hi = _get_range(raw, "between_event_range_sec", base.between_event_sec, base.between_event_sec)
+    ms_lo, ms_hi = _get_int_range(raw, "mouse_steps_range", base.mouse_steps, base.mouse_steps)
+
+    click_duration_sec = _clamp_float(rng.uniform(cd_lo, cd_hi), 0.0, 10.0)
+    between_click_sec = _clamp_float(rng.uniform(bc_lo, bc_hi), 0.0, 10.0)
+    between_event_sec = _clamp_float(rng.uniform(be_lo, be_hi), 0.0, 10.0)
+    mouse_steps = _clamp_int(rng.randint(ms_lo, ms_hi), 1, 500)
+
+    return RuntimeConfig(
+        click_duration_sec=click_duration_sec,
+        between_click_sec=between_click_sec,
+        between_event_sec=between_event_sec,
+        mouse_steps=mouse_steps,
+        use_retina_scale=base.use_retina_scale,
     )
 
 
@@ -622,6 +697,46 @@ class RuntimeTab(tk.Frame):
         self.retina_var = tk.BooleanVar(value=bool(runtime.get("use_retina_scale", False)))
         self.ocr_server_url_var = tk.StringVar(value=str(runtime.get("ocr_server_url", "http://127.0.0.1:8010")))
 
+        # Range randomization (data collection / QA)
+        self.randomize_enabled_var = tk.BooleanVar(value=bool(runtime.get("randomize_enabled", False)))
+        self.repeat_runs_var = tk.StringVar(value=str(runtime.get("repeat_runs", 1)))
+        self.random_seed_var = tk.StringVar(value=str(runtime.get("random_seed", "")))
+        self.between_runs_var = tk.StringVar(value=str(runtime.get("between_runs_sec", 0.0)))
+
+        cd_lo, cd_hi = _get_range(
+            runtime,
+            "click_duration_range_sec",
+            float(runtime.get("click_duration_sec", 0.05)),
+            float(runtime.get("click_duration_sec", 0.05)),
+        )
+        bc_lo, bc_hi = _get_range(
+            runtime,
+            "between_click_range_sec",
+            float(runtime.get("between_click_sec", 0.05)),
+            float(runtime.get("between_click_sec", 0.05)),
+        )
+        be_lo, be_hi = _get_range(
+            runtime,
+            "between_event_range_sec",
+            float(runtime.get("between_event_sec", 0.05)),
+            float(runtime.get("between_event_sec", 0.05)),
+        )
+        ms_lo, ms_hi = _get_int_range(
+            runtime,
+            "mouse_steps_range",
+            int(runtime.get("mouse_steps", 3)),
+            int(runtime.get("mouse_steps", 3)),
+        )
+
+        self.cd_min_var = tk.StringVar(value=str(cd_lo))
+        self.cd_max_var = tk.StringVar(value=str(cd_hi))
+        self.bc_min_var = tk.StringVar(value=str(bc_lo))
+        self.bc_max_var = tk.StringVar(value=str(bc_hi))
+        self.be_min_var = tk.StringVar(value=str(be_lo))
+        self.be_max_var = tk.StringVar(value=str(be_hi))
+        self.ms_min_var = tk.StringVar(value=str(ms_lo))
+        self.ms_max_var = tk.StringVar(value=str(ms_hi))
+
         rows = [
             ("마우스 이동 시간, 초", self.click_duration_var),
             ("클릭 간격, 초", self.between_click_var),
@@ -673,18 +788,92 @@ class RuntimeTab(tk.Frame):
             command=self.save_runtime
         ).grid(row=6, column=0, columnspan=2, padx=12, pady=14)
 
+        # Randomization controls (English labels to avoid encoding issues)
+        tk.Label(
+            self,
+            text="Randomization (optional)",
+            bg=bg,
+            fg="#f9fafb",
+            font=("Malgun Gothic", 11, "bold"),
+        ).grid(row=7, column=0, columnspan=2, sticky="w", padx=14, pady=(10, 6))
+
+        tk.Checkbutton(
+            self,
+            text="Enable range randomization",
+            variable=self.randomize_enabled_var,
+            bg=bg,
+            fg=fg,
+            selectcolor=ent,
+            activebackground=bg,
+            activeforeground=fg,
+            font=("Malgun Gothic", 10),
+        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=12, pady=6)
+
+        def entry_row(row, label_text, var, width=18):
+            tk.Label(self, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
+                row=row, column=0, sticky="e", padx=12, pady=6
+            )
+            tk.Entry(
+                self,
+                textvariable=var,
+                bg=ent,
+                fg=fg,
+                insertbackground=fg,
+                relief="flat",
+                width=width,
+                font=("Consolas", 10),
+            ).grid(row=row, column=1, sticky="w", padx=12, pady=6)
+
+        entry_row(9, "Repeat runs (N)", self.repeat_runs_var, width=12)
+        entry_row(10, "Random seed (blank=random)", self.random_seed_var, width=28)
+        entry_row(11, "Between runs (sec)", self.between_runs_var, width=12)
+
+        def minmax_row(row, label_text, vmin, vmax):
+            tk.Label(self, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
+                row=row, column=0, sticky="e", padx=12, pady=6
+            )
+            mm = tk.Frame(self, bg=bg)
+            mm.grid(row=row, column=1, sticky="w", padx=12, pady=6)
+            tk.Entry(mm, textvariable=vmin, bg=ent, fg=fg, insertbackground=fg, relief="flat", width=10, font=("Consolas", 10)).pack(side="left")
+            tk.Label(mm, text=" ~ ", bg=bg, fg=fg, font=("Consolas", 10)).pack(side="left")
+            tk.Entry(mm, textvariable=vmax, bg=ent, fg=fg, insertbackground=fg, relief="flat", width=10, font=("Consolas", 10)).pack(side="left")
+
+        minmax_row(12, "click_duration_sec range", self.cd_min_var, self.cd_max_var)
+        minmax_row(13, "between_click_sec range", self.bc_min_var, self.bc_max_var)
+        minmax_row(14, "between_event_sec range", self.be_min_var, self.be_max_var)
+        minmax_row(15, "mouse_steps range", self.ms_min_var, self.ms_max_var)
+
         normalize_button_colors(self)
 
     def save_runtime(self):
         try:
-            self.data["runtime"] = {
+            runtime = self.data.setdefault("runtime", {})
+
+            cd_lo = float(self.cd_min_var.get())
+            cd_hi = float(self.cd_max_var.get())
+            bc_lo = float(self.bc_min_var.get())
+            bc_hi = float(self.bc_max_var.get())
+            be_lo = float(self.be_min_var.get())
+            be_hi = float(self.be_max_var.get())
+            ms_lo = int(float(self.ms_min_var.get()))
+            ms_hi = int(float(self.ms_max_var.get()))
+
+            runtime.update({
                 "click_duration_sec": float(self.click_duration_var.get()),
                 "between_click_sec": float(self.between_click_var.get()),
                 "between_event_sec": float(self.between_event_var.get()),
                 "mouse_steps": int(self.mouse_steps_var.get()),
                 "use_retina_scale": bool(self.retina_var.get()),
                 "ocr_server_url": self.ocr_server_url_var.get().strip() or "http://127.0.0.1:8010",
-            }
+                "randomize_enabled": bool(self.randomize_enabled_var.get()),
+                "repeat_runs": int(float(self.repeat_runs_var.get() or 1)),
+                "random_seed": (self.random_seed_var.get() or "").strip(),
+                "between_runs_sec": float(self.between_runs_var.get() or 0.0),
+                "click_duration_range_sec": [cd_lo, cd_hi],
+                "between_click_range_sec": [bc_lo, bc_hi],
+                "between_event_range_sec": [be_lo, be_hi],
+                "mouse_steps_range": [ms_lo, ms_hi],
+            })
 
             save_data(self.data)
             self.status_cb("속도 파라미터 저장 완료")
@@ -1391,7 +1580,7 @@ class MacroTab(tk.Frame):
             return
 
         _running = True
-        runtime = build_runtime(self.data)
+        base_runtime_raw = self.data.get("runtime", {})
         ocr_server_url = get_ocr_server_url(self.data)
         security_config = self.data.get("security", {})
 
@@ -1404,14 +1593,53 @@ class MacroTab(tk.Frame):
             global _running
 
             try:
-                for i, event in enumerate(events, start=1):
+                # Runtime randomization setup (optional)
+                seed_text = str(base_runtime_raw.get("random_seed", "") or "").strip()
+                if seed_text:
+                    try:
+                        seed_value = int(seed_text)
+                    except Exception:
+                        seed_value = seed_text
+                else:
+                    seed_value = int(time.time() * 1000)
+
+                rng = random.Random(seed_value)
+
+                randomize_enabled = bool(base_runtime_raw.get("randomize_enabled", False))
+
+                repeat_runs = int(base_runtime_raw.get("repeat_runs", 1) or 1)
+                repeat_runs = max(1, min(repeat_runs, 10000))
+                between_runs_sec = float(base_runtime_raw.get("between_runs_sec", 0.0) or 0.0)
+                between_runs_sec = max(0.0, min(between_runs_sec, 60.0))
+
+                # UX: if randomization is disabled, run exactly once regardless of repeat settings.
+                if not randomize_enabled:
+                    repeat_runs = 1
+                    between_runs_sec = 0.0
+
+                events_plan = []
+                for run_idx in range(repeat_runs):
+                    events_plan.extend(events)
+                    if between_runs_sec > 0 and run_idx != repeat_runs - 1:
+                        events_plan.append({
+                            "type": "wait",
+                            "seconds": between_runs_sec,
+                            "memo": "between_runs",
+                        })
+
+                total_events = max(1, len(events_plan))
+
+                for i, event in enumerate(events_plan, start=1):
                     if not _running:
                         break
+
+                    # Sample runtime per event (if randomize_enabled is False, this is fixed).
+                    runtime = sample_runtime(self.data, rng)
 
                     event_type = event.get("type")
                     memo = event.get("memo", "")
 
-                    self.after(0, self.status_cb, f"[{i}/{len(events)}] {event_type} {memo}")
+                    self.after(0, self.status_cb, f"[{i}/{total_events}] {event_type} {memo}")
 
                     delay = float(event.get("delay", 0) or 0)
                     if delay > 0:
