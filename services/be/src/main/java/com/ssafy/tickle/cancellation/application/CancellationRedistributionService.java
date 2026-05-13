@@ -230,11 +230,29 @@ public class CancellationRedistributionService {
         if (!offer.getCancellationCandidate().getUser().getId().equals(userId)) {
             throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "자신의 취소표만 구매할 수 있습니다.");
         }
+        if (offer.getOfferStatus() == CancellationOffer.OfferStatus.ACCEPTED) {
+            validateRetryableDraftBooking(offer);
+            return;
+        }
         if (offer.getOfferStatus() != CancellationOffer.OfferStatus.UNACCEPTED) {
             throw new BaseException(GlobalErrorCode.CONFLICT, "유효한 취소표 구매 대기 상태가 아닙니다.");
         }
         if (Instant.now().isAfter(offer.getOfferExpiresAt())) {
             throw new BaseException(GlobalErrorCode.CONFLICT, "취소표 구매 가능 시간(1시간)이 초과되었습니다.");
+        }
+    }
+
+    /**
+     * 이미 수락한 취소표 제안이 결제 재시도 가능한 DRAFT 예매 상태인지 검증합니다.
+     *
+     * @param offer 검증할 취소표 제안
+     */
+    private void validateRetryableDraftBooking(CancellationOffer offer) {
+        Booking booking = bookingRepository.findByCancellationOfferId(offer.getId())
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "예매 내역을 찾을 수 없습니다."));
+
+        if (booking.getBookingStatus() != Booking.Status.DRAFT) {
+            throw new BaseException(GlobalErrorCode.CONFLICT, "결제 재시도 가능한 예매 상태가 아닙니다.");
         }
     }
 
