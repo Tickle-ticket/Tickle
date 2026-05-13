@@ -5,6 +5,8 @@ import com.ssafy.tickle.blacklist.presentation.dto.AddBlacklistRequest;
 import com.ssafy.tickle.blacklist.presentation.dto.BlacklistPageResponse;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.blacklist.application.AdminBlacklistDashboardService;
+import com.ssafy.tickle.blacklist.presentation.dto.BlacklistDashboardResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminBlacklistController implements AdminBlacklistApiDoc {
 
     private final BlacklistService blacklistService;
-    private final com.ssafy.tickle.blacklist.application.AdminBlacklistDashboardService adminBlacklistDashboardService;
+    private final AdminBlacklistDashboardService adminBlacklistDashboardService;
 
     /**
      * 블랙리스트 목록을 페이지네이션하여 조회합니다.
@@ -84,7 +86,7 @@ public class AdminBlacklistController implements AdminBlacklistApiDoc {
 
     @Override
     @GetMapping("/dashboard")
-    public ResponseEntity<BaseResponse<com.ssafy.tickle.blacklist.presentation.dto.BlacklistDashboardResponse>> getDashboard() {
+    public ResponseEntity<BaseResponse<BlacklistDashboardResponse>> getDashboard() {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(adminBlacklistDashboardService.getDashboard()));
