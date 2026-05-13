@@ -674,14 +674,14 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                         align: 'left',
                         render: (row: any) => {
                           const gradeColors: Record<string, string> = {
-                            'VIP': 'bg-danger',
-                            'R': 'bg-warning',
-                            'S': 'bg-warning',
-                            'A': 'bg-primary-light',
+                            'VIP': 'var(--seat-vip-top)',
+                            'R': 'var(--seat-r-top)',
+                            'S': 'var(--seat-s-top)',
+                            'A': 'var(--seat-a-top)',
                           };
                           return (
                             <div className="flex items-center gap-3">
-                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.priceGrade] || 'bg-surface-active'}`} />
+                              <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: gradeColors[row.priceGrade] || 'var(--color-surface-active)' }} />
                               <Text typography="t5" fontWeight="bold" color="primary">{row.priceGrade}</Text>
                             </div>
                           );

@@ -164,11 +164,11 @@ export const Calendar = ({
                   }
                 }}
                 className={`
-                  w-9 h-9 rounded-full flex items-center justify-center text-[15px] font-medium transition-all
-                  ${!isEnabled ? 'text-content-muted cursor-not-allowed' : ''}
-                  ${isEnabled && !isSelected ? 'text-content-secondary hover:bg-surface-muted cursor-pointer' : ''}
-                  ${isSelected ? 'bg-primary text-white shadow-sm' : ''}
-                  ${isToday && !isSelected && isEnabled ? 'border border-line' : ''}
+                  w-9 h-9 rounded-full flex items-center justify-center text-[15px] transition-all
+                  ${!isEnabled ? 'text-[#cbd5e1] font-normal cursor-not-allowed' : ''}
+                  ${isEnabled && !isSelected ? 'text-content font-bold hover:bg-surface-muted cursor-pointer' : ''}
+                  ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}
+                  ${isToday && !isSelected && isEnabled ? 'border-2 border-line-subtle' : ''}
                 `}
                 aria-pressed={isSelected}
                 aria-disabled={!isEnabled}

@@ -111,14 +111,14 @@
   --seat-disabled-side: #d1d5db;
 
   /* Seat Grade Variables for UI Elements (Canvas requires hex values) */
-  --seat-vip-top: #c084fc; /* Purple */
-  --seat-vip-side: #a855f7;
-  --seat-r-top: #f472b6; /* Pink */
-  --seat-r-side: #db2777;
-  --seat-s-top: #fb923c; /* Orange */
-  --seat-s-side: #ea580c;
-  --seat-a-top: #2dd4bf; /* Cyan/Teal */
-  --seat-a-side: #0f766e;
+  --seat-vip-top: #ef4444; /* Red */
+  --seat-vip-side: #dc2626;
+  --seat-r-top: #ea580c; /* Orange */
+  --seat-r-side: #c2410c;
+  --seat-s-top: #eab308; /* Yellow */
+  --seat-s-side: #ca8a04;
+  --seat-a-top: #bae6fd; /* Light Blue */
+  --seat-a-side: #7dd3fc;
 
   /* Badge styling tokens */
   --badge-vip-bg: color-mix(in srgb, var(--seat-vip-top) 15%, transparent);

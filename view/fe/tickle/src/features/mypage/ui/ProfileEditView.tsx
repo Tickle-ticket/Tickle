@@ -8,28 +8,6 @@ import { Input } from '@/src/shared/components/Input';
 import { Modal } from '@/src/shared/components/Modal';
 import { useUpdateUserProfile, useUserProfile } from '@/src/shared/api/useUserProfile';
 
-const NICKNAME_PATTERN = /^[A-Za-z가-힣0-9]+$/;
-
-const countCharacters = (value: string) => Array.from(value.trim()).length;
-
-const getNicknameError = (value: string) => {
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
-    return '이름을 입력해 주세요.';
-  }
-
-  if (countCharacters(trimmedValue) > 20) {
-    return '이름은 20자 이하로 입력해 주세요.';
-  }
-
-  if (!NICKNAME_PATTERN.test(trimmedValue)) {
-    return '이름에는 한글, 영문, 숫자만 사용할 수 있습니다.';
-  }
-
-  return '';
-};
-
 const getPhoneError = (value: string) => {
   if (!value.trim()) {
     return '휴대폰 번호를 입력해 주세요.';
@@ -51,20 +29,12 @@ export const ProfileEditView = () => {
   const { data } = useUserProfile();
   const updateProfileMutation = useUpdateUserProfile();
 
-  const [nicknameDraft, setNicknameDraft] = useState<string | null>(null);
   const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
-  const [errors, setErrors] = useState({ nickname: '', phone: '' });
+  const [errors, setErrors] = useState({ phone: '' });
   const [noticeModal, setNoticeModal] = useState({ isOpen: false, title: '', message: '' });
 
-  const nickname = nicknameDraft ?? data?.nickname ?? data?.name ?? '';
   const phone = phoneDraft ?? data?.phoneNumber ?? '';
-  const isDirty = nickname !== (data?.nickname ?? data?.name ?? '') || phone !== (data?.phoneNumber ?? '');
-
-  const handleNicknameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value.replace(/\s+/g, '').slice(0, 20);
-    setNicknameDraft(value);
-    setErrors((prev) => ({ ...prev, nickname: '' }));
-  };
+  const isDirty = phone !== (data?.phoneNumber ?? '');
 
   const handlePhoneChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value.replace(/\D/g, '').slice(0, 11);
@@ -102,17 +72,16 @@ export const ProfileEditView = () => {
     event.preventDefault();
 
     const nextErrors = {
-      nickname: getNicknameError(nickname),
       phone: getPhoneError(phone),
     };
     setErrors(nextErrors);
 
-    if (nextErrors.nickname || nextErrors.phone) {
+    if (nextErrors.phone) {
       return;
     }
 
     updateProfileMutation.mutate(
-      { nickname: nickname.trim(), phoneNumber: phone },
+      { phoneNumber: phone },
       {
         onSuccess: () => {
           setNoticeModal({ isOpen: true, title: '변경 완료', message: '내 정보가 변경되었습니다.' });
@@ -169,7 +138,7 @@ export const ProfileEditView = () => {
             </div>
           </div>
           
-          <h3 className="text-xl font-black text-content tracking-tight">{nickname || '사용자'}</h3>
+          <h3 className="text-xl font-black text-content tracking-tight">{data?.realName || data?.name || '사용자'}</h3>
           <p className="text-[14px] font-medium text-content-muted mt-1">{data?.email || '이메일 정보 없음'}</p>
         </div>
 
@@ -178,27 +147,18 @@ export const ProfileEditView = () => {
           <div className="flex flex-col rounded-2xl border border-line bg-surface shadow-sm overflow-hidden mb-5">
             {/* 이름 입력 */}
             <div className="flex items-center px-4 py-1.5 border-b border-line-subtle focus-within:bg-primary-subtle/20 transition-colors relative">
-              <label htmlFor="nickname" className="w-20 text-[14px] font-bold text-content-secondary shrink-0">
+              <label htmlFor="name" className="w-20 text-[14px] font-bold text-content-secondary shrink-0">
                 이름
               </label>
               <input
-                id="nickname"
-                name="nickname"
+                id="name"
+                name="name"
                 type="text"
-                placeholder="이름을 입력해 주세요."
-                autoComplete="name"
-                maxLength={20}
-                required
-                value={nickname}
-                onChange={handleNicknameChange}
-                onBlur={() => setErrors((prev) => ({ ...prev, nickname: getNicknameError(nickname) }))}
-                className={`flex-1 py-3 bg-transparent outline-none text-[15px] font-semibold tracking-tight ${errors.nickname ? 'text-danger' : 'text-content'} placeholder:text-content-muted placeholder:font-normal`}
+                disabled
+                readOnly
+                value={data?.realName ?? data?.name ?? ''}
+                className="flex-1 py-3 bg-transparent outline-none text-[15px] font-semibold tracking-tight text-content-muted cursor-not-allowed"
               />
-              {errors.nickname && (
-                <div className="absolute top-full left-0 mt-0.5 text-[11px] text-danger font-medium px-4 z-10">
-                  {errors.nickname}
-                </div>
-              )}
             </div>
 
             {/* 휴대폰번호 입력 */}
@@ -242,9 +202,8 @@ export const ProfileEditView = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setNicknameDraft(null);
                   setPhoneDraft(null);
-                  setErrors({ nickname: '', phone: '' });
+                  setErrors({ phone: '' });
                 }}
                 className="w-full py-2.5 rounded-2xl font-bold text-[14px] text-content-tertiary hover:text-content hover:bg-surface-subtle transition-colors"
               >
