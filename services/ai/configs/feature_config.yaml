@@ -37,18 +37,6 @@ groups:
     - pre_click_path_500ms_total_distance_px
     - pre_click_path_500ms_straightness
 
-  keyboard:
-    - time_to_first_keydown_ms
-    - inter_key_interval_ms_mean
-    - inter_key_interval_ms_std
-    - keydown_to_keyup_ms_mean
-    - typing_total_duration_ms
-    - typing_speed_cps
-    - backspace_rate
-    - correction_count
-    - paste_flag
-    - focus_to_submit_ms
-
 names_ko:
   time_to_first_click_ms: 첫 클릭 시간
   time_from_element_visible_to_click_ms: 노출 후 클릭
@@ -85,17 +73,6 @@ names_ko:
   pre_click_path_300ms_straightness: 300ms 경로 직선성
   pre_click_path_500ms_total_distance_px: 500ms 경로 총거리
   pre_click_path_500ms_straightness: 500ms 경로 직선성
-
-  time_to_first_keydown_ms: 첫 키 입력 시간
-  inter_key_interval_ms_mean: 키 간격 평균
-  inter_key_interval_ms_std: 키 간격 표준편차
-  keydown_to_keyup_ms_mean: 키 누름 시간
-  typing_total_duration_ms: 총 입력 시간
-  typing_speed_cps: 초당 입력 수
-  backspace_rate: 백스페이스 비율
-  correction_count: 수정 횟수
-  paste_flag: 붙여넣기 여부
-  focus_to_submit_ms: 포커스 후 확인
 
   durationMs: 페이지 체류 시간
   clickCount: 클릭 수
