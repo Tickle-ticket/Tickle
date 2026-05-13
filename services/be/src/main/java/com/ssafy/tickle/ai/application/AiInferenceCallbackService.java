@@ -1,7 +1,11 @@
 package com.ssafy.tickle.ai.application;
 
 import com.ssafy.tickle.ai.presentation.dto.AiInferenceCallbackRequest;
+import com.ssafy.tickle.blacklist.application.BotDetectionCaptchaService;
 import com.ssafy.tickle.blacklist.application.BlacklistService;
+import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.common.util.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AiInferenceCallbackService {
 
     private final BlacklistService blacklistService;
+    private final BotDetectionCaptchaService botDetectionCaptchaService;
+    private final JwtProvider jwtProvider;
 
     /**
      * AI 추론 결과를 수신합니다.
@@ -35,9 +41,11 @@ public class AiInferenceCallbackService {
             return;
         }
 
+        Long targetUserId = resolveUserId(userId, request);
+
         log.info(
                 "AI 추론 결과 수신: userId={}, result={}, type={}, scheduleId={}, eventId={}, eventDate={}, pMacro={}, createdAt={}",
-                userId,
+                targetUserId,
                 request.result(),
                 request.type(),
                 request.scheduleId(),
@@ -49,6 +57,17 @@ public class AiInferenceCallbackService {
 
         // 블랙리스트 등록 (pMacro를 botScore로 저장)
         Double botScore = request.pMacro() != null ? request.pMacro().doubleValue() : null;
-        blacklistService.addFromAiResult(userId, botScore, request.description());
+        blacklistService.addFromAiResult(targetUserId, botScore, request.description());
+        botDetectionCaptchaService.sendRetryCaptcha(targetUserId);
+    }
+
+    private Long resolveUserId(Long userId, AiInferenceCallbackRequest request) {
+        if (request.accessToken() != null && !request.accessToken().isBlank()) {
+            return jwtProvider.extractUserId(request.accessToken());
+        }
+        if (userId == null) {
+            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "accessToken 또는 userId가 필요합니다.");
+        }
+        return userId;
     }
 }
