@@ -17,6 +17,7 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
   const { data: userProfile } = useUserProfile();
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string}>({
     isOpen: false, title: '', message: ''
   });
@@ -28,6 +29,23 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
     }
   }, [error, onClose]);
 
+  // 결제 오버레이에서 뒤로가기를 눌렀을 때 확인 모달을 띄운다
+  const handlePaymentBack = () => {
+    setShowBackConfirm(true);
+  };
+
+  // 확인 → 마이페이지로 복귀
+  const handleConfirmBack = () => {
+    setShowBackConfirm(false);
+    setShowPaymentFlow(false);
+    onClose();
+  };
+
+  // 취소 → 결제 화면 유지
+  const handleCancelBack = () => {
+    setShowBackConfirm(false);
+  };
+
   return (
     <>
       {showPaymentFlow && data ? (
@@ -36,7 +54,7 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
             eventId="cancel"
             userId={userProfile?.userId}
             userProfile={userProfile}
-            onCancel={onClose}
+            onCancel={handlePaymentBack}
             onConflictError={() => setErrorModalConfig({ isOpen: true, title: '결제 오류', message: '결제 오류가 발생했습니다.' })}
             onError={(title, msg) => setErrorModalConfig({ isOpen: true, title, message: msg })}
             cancellationId={Number(cancellationId)}
@@ -97,6 +115,27 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
       >
         <div className="py-4 text-center text-gray-700 font-medium whitespace-pre-line leading-relaxed">
           {errorModalConfig.message}
+        </div>
+      </Modal>
+
+      {/* 결제 화면에서 뒤로가기 시 확인 모달 */}
+      <Modal
+        isOpen={showBackConfirm}
+        onClose={handleCancelBack}
+        onCancel={handleCancelBack}
+        onConfirm={handleConfirmBack}
+        title="돌아가시겠습니까?"
+        confirmText="돌아가기"
+        cancelText="계속 결제"
+      >
+        <div className="py-3 text-center">
+          <p className="text-gray-700 font-medium leading-relaxed break-keep">
+            지금 돌아가도 취소표 대기가 취소되지는 않습니다.
+          </p>
+          <p className="text-rose-500 font-bold text-sm mt-2 leading-relaxed break-keep">
+            단, 제한 시간 안에 결제를 완료하지 않으면
+            <br />취소표 기회가 만료됩니다.
+          </p>
         </div>
       </Modal>
     </>

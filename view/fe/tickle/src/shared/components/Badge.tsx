@@ -18,22 +18,27 @@ const colorStyles: Record<BadgeColor, Record<BadgeVariant, string>> = {
   blue: {
     fill: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10',
     outline: 'border border-blue-200 text-blue-600 bg-white shadow-sm hover:bg-blue-50',
+    glass: 'bg-blue-500/20 text-blue-100 border border-blue-400/30 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.1)]',
   },
   red: {
     fill: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/10',
     outline: 'border border-red-200 text-red-600 bg-white shadow-sm hover:bg-red-50',
+    glass: 'bg-red-500/20 text-red-100 border border-red-400/30 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.1)]',
   },
   grey: {
     fill: 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10',
     outline: 'border border-gray-200 text-gray-600 bg-white shadow-sm hover:bg-gray-50',
+    glass: 'bg-gray-500/30 text-gray-100 border border-gray-400/30 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.1)]',
   },
   green: {
     fill: 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20',
     outline: 'border border-green-200 text-green-600 bg-white shadow-sm hover:bg-green-50',
+    glass: 'bg-green-500/20 text-green-100 border border-green-400/30 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.1)]',
   },
   purple: {
     fill: 'bg-purple-100 text-purple-600',
     outline: 'border-[0.08em] border-purple-600 text-purple-600 bg-transparent',
+    glass: 'bg-purple-500/20 text-purple-100 border border-purple-400/30 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.1)]',
   },
 };
 

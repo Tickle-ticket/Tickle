@@ -156,15 +156,16 @@ export const MyBookingsView = () => {
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 pb-20 justify-items-center">
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="w-full max-w-[300px] aspect-[1/1.5] sm:aspect-[2/3] bg-gray-100 animate-pulse rounded-2xl" />
-          ))
-        ) : filteredBookings.length > 0 ? (
-          filteredBookings.map((item) => (
-            <React.Fragment key={item.id}>
-              <div className="w-full flex justify-center">
+      <div className="w-full">
+        {/* 데스크탑 뷰 (md 이상): 반응형 그리드 */}
+        <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 pb-20 justify-items-center">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="w-full max-w-[300px] aspect-[2/3] bg-gray-100 animate-pulse rounded-2xl" />
+            ))
+          ) : filteredBookings.length > 0 ? (
+            filteredBookings.map((item) => (
+              <div key={item.id} className="w-full flex justify-center">
                 <BookingCard
                   item={item}
                   onOpenPayment={handleOpenPaymentModal}
@@ -176,24 +177,62 @@ export const MyBookingsView = () => {
                   onOpenBarcode={handleOpenBarcodeModal}
                 />
               </div>
-            </React.Fragment>
-          ))
-        ) : (
-          <div className="col-span-full w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
-              <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
-              <path d="M13 5v2"></path>
-              <path d="M13 17v2"></path>
-              <path d="M13 11v2"></path>
-            </svg>
-            <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
-              예매 내역이 없습니다.
-            </Text>
-            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px] md:max-w-none">
-              새로운 공연을 예매해 보세요!
-            </Text>
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="col-span-full w-full flex flex-col items-center justify-center py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+                <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
+                <path d="M13 5v2"></path>
+                <path d="M13 17v2"></path>
+                <path d="M13 11v2"></path>
+              </svg>
+              <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
+                예매 내역이 없습니다.
+              </Text>
+              <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-none">
+                새로운 공연을 예매해 보세요!
+              </Text>
+            </div>
+          )}
+        </div>
+
+        {/* 모바일 뷰 (md 미만): 리스트 형태 */}
+        <div className="grid md:hidden grid-cols-1 gap-3 pb-20">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, idx) => (
+              <div key={idx} className="w-full h-[140px] bg-gray-100 animate-pulse rounded-2xl" />
+            ))
+          ) : filteredBookings.length > 0 ? (
+            filteredBookings.map((item) => (
+              <MobileBookingCard
+                key={item.id}
+                item={item}
+                onOpenPayment={handleOpenPaymentModal}
+                onOpenCancel={(id) => {
+                  setSelectedBookingForCancel({ id });
+                  setIsCancelModalOpen(true);
+                }}
+                onOpenDetail={handleOpenDetailModal}
+                onOpenBarcode={handleOpenBarcodeModal}
+              />
+            ))
+          ) : (
+            <div className="col-span-full w-full flex flex-col items-center justify-center py-16 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+                <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
+                <path d="M13 5v2"></path>
+                <path d="M13 17v2"></path>
+                <path d="M13 11v2"></path>
+              </svg>
+              <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
+                예매 내역이 없습니다.
+              </Text>
+              <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px]">
+                새로운 공연을 예매해 보세요!
+              </Text>
+            </div>
+          )}
+        </div>
       </div>
 
       <Modal
@@ -281,8 +320,7 @@ export const MyBookingsView = () => {
                 ]}
                 data={[
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 수단</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.paymentMethodType === 'BANK_TRANSFER' ? '무통장 입금' : paymentDetail.paymentMethodType}</Text> },
-                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">입금 은행</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.bankAccount?.split(' ')[0] || '-'}</Text> },
-                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">계좌번호</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.bankAccount?.replace(/^.*? /, '') || paymentDetail.bankAccount || '-'}</Text> },
+                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">계좌번호</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.bankAccount || '-'}</Text> },
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예금주</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.accountHolder || '-'}</Text> },
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 금액</Text>, value: <Text typography="t5" color="blue" fontWeight="extrabold">{paymentDetail.orderAmount?.toLocaleString()}원</Text> }
                 ]}

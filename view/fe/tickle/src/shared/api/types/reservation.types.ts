@@ -16,6 +16,7 @@ export const ReservationItemSchema = Schema.Struct({
   bookingNo: Schema.String,
   bookingStatus: Schema.String,
   eventTitle: Schema.String,
+  thumbnailImageUrl: Schema.optional(Schema.String),
   sessionNo: Schema.Number,
   sessionStartAt: Schema.String,
   venueName: Schema.String,

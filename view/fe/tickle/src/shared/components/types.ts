@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export type BadgeSize = 'xsmall' | 'small' | 'medium' | 'large';
 export type BadgeColor = 'blue' | 'red' | 'grey' | 'green' | 'purple';
-export type BadgeVariant = 'fill' | 'outline';
+export type BadgeVariant = 'fill' | 'outline' | 'glass';
 
 export interface BadgeProps {
   size?: BadgeSize;
