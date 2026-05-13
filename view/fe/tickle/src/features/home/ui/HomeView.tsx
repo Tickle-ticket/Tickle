@@ -115,16 +115,15 @@ const containerVariants: Variants = {
 };
 
 const sectionVariants: Variants = {
-  hidden: { x: -30, opacity: 0 },
+  hidden: { opacity: 0, y: 8 },
   visible: {
-    x: 0,
     opacity: 1,
-    transition: { type: "spring", stiffness: 300, damping: 24 }
+    y: 0,
+    transition: { duration: 0.3, ease: 'easeOut' }
   },
   exit: {
-    x: 30,
     opacity: 0,
-    transition: { duration: 0.2 }
+    transition: { duration: 0.15 }
   }
 };
 
@@ -293,13 +292,14 @@ export const HomeView = () => {
 
           {/* Left Column: 배너 슬라이드 */}
       <aside
-        className={`relative transition-[width,height,min-width,opacity] duration-500 ease-in-out overflow-hidden shrink-0 ${isBannerFolded
+        className={`relative transition-[width,height,min-width,opacity] duration-300 ease-in-out shrink-0 ${isBannerFolded
           ? 'hidden lg:block lg:w-0 lg:min-w-0 opacity-0'
           : selectedDetailId
             ? 'hidden lg:block lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
             : 'w-full h-[28vh] min-h-[220px] md:h-[35vh] lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
           }`}
       >
+        <div className="w-full h-full overflow-hidden">
         <motion.div
           className={`w-full lg:w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
           layoutId={clickedLayoutId || "main-banner"}
@@ -363,15 +363,18 @@ export const HomeView = () => {
             </div>
           </BannerPoster>
         </motion.div>
+        </div>
       </aside>
 
-      {/* Toggle Button */}
-      <div className="hidden lg:block z-50">
-        <PanelToggle
-          isFolded={isBannerFolded}
-          onToggle={() => setIsBannerFolded(!isBannerFolded)}
-        />
-      </div>
+      {/* Toggle Button - flex 형제로 배치하여 aside 너비에 자연스럽게 따라감 */}
+      {!searchValue && !isMypageOpen && (
+        <div className={`hidden lg:flex shrink-0 items-center z-50 ${isBannerFolded ? '' : '-ml-6'}`}>
+          <PanelToggle
+            isFolded={isBannerFolded}
+            onToggle={() => setIsBannerFolded(!isBannerFolded)}
+          />
+        </div>
+      )}
 
       {/* Right Column: Main Content */}
       <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative ${selectedDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={selectedDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -461,51 +464,62 @@ export const HomeView = () => {
                 {/* 카드 */}
                 <div
                   ref={rankingCarousel.scrollRef}
-                  className="flex gap-5 overflow-x-auto pb-4 pt-2 px-2 -mx-2"
+                  className="overflow-x-auto pb-4 pt-2 px-2 -mx-2"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                  {rankingLoading ? (
-                    Array.from({ length: 5 }).map((_, idx) => (
-                      <div key={idx} className="shrink-0">
-                        <InfoCard src="" title="" isLoading={true} showRank={true} rank={idx + 1} />
-                      </div>
-                    ))
-                  ) : !ranking || ranking.length === 0 ? (
-                    <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 mx-2 shrink-0">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-3">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="9" y1="15" x2="15" y2="15"></line>
-                      </svg>
-                      <p className="text-gray-500 font-medium text-sm sm:text-base">현재 진행 중인 인기 공연이 없습니다.</p>
-                      <p className="text-gray-400 text-xs sm:text-sm mt-1">곧 새로운 공연이 업데이트될 예정입니다.</p>
-                    </div>
-                  ) : (
-                    ranking?.map((item, idx) => {
-                      const isWishlisted = !!wishlistMap[item.id];
-                      return (
-                        <div
-                          key={item.id}
-                          className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
-                          onClick={() => handleCardClick(item.id, `poster-ranking-${item.id}`)}
-                        >
-                          <InfoCard
-                            layoutId={`poster-ranking-${item.id}`}
-                            src={item.imageUrl}
-                            title={item.title}
-                            place={item.venue}
-                            day={item.date}
-                            rank={idx + 1}
-                            showRank={true}
-                            isWishlisted={isWishlisted}
-                            onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
-                            badges={item.badges}
-                            priority={idx < 3}
-                          />
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeTab}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="flex gap-5 min-w-max"
+                    >
+                      {rankingLoading ? (
+                        Array.from({ length: 5 }).map((_, idx) => (
+                          <div key={`skeleton-${idx}`} className="shrink-0">
+                            <InfoCard src="" title="" isLoading={true} showRank={true} rank={idx + 1} />
+                          </div>
+                        ))
+                      ) : !ranking || ranking.length === 0 ? (
+                        <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 mx-2 shrink-0">
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-3">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                          </svg>
+                          <p className="text-gray-500 font-medium text-sm sm:text-base">현재 진행 중인 인기 공연이 없습니다.</p>
+                          <p className="text-gray-400 text-xs sm:text-sm mt-1">곧 새로운 공연이 업데이트될 예정입니다.</p>
                         </div>
-                      );
-                    })
-                  )}
+                      ) : (
+                        ranking?.map((item, idx) => {
+                          const isWishlisted = !!wishlistMap[item.id];
+                          return (
+                            <div
+                              key={item.id}
+                              className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
+                              onClick={() => handleCardClick(item.id, `poster-ranking-${item.id}`)}
+                            >
+                              <InfoCard
+                                layoutId={`poster-ranking-${item.id}`}
+                                src={item.imageUrl}
+                                title={item.title}
+                                place={item.venue}
+                                day={item.date}
+                                rank={idx + 1}
+                                showRank={true}
+                                isWishlisted={isWishlisted}
+                                onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
+                                badges={item.badges}
+                                priority={idx < 3}
+                              />
+                            </div>
+                          );
+                        })
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
 
                 {/* 더보기 */}

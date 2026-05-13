@@ -103,8 +103,12 @@ export const MobileBookingCard = ({
       
       {/* 좌측 영역 (티켓 스터브/포스터) */}
       <div className="w-[110px] shrink-0 p-3 pr-4 flex flex-col bg-gray-50/50">
-        <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden shadow-sm border border-black/5 bg-gray-100">
-          <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="object-cover h-full absolute inset-0" />
+        <div 
+          className="relative w-full aspect-[2/3] rounded-lg overflow-hidden shadow-sm border border-black/5 bg-gray-100 cursor-pointer group"
+          onClick={() => onOpenDetail(item.id)}
+        >
+          <InfoPoster src={item.imageUrl || ''} alt={item.title} width="100%" height="100%" className="object-cover h-full absolute inset-0 transition-transform group-hover:scale-[1.02]" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
         </div>
         
         {/* 바코드 미니 UI */}

@@ -47,12 +47,8 @@ export const InfoCard = ({
           </div>
         )}
 
-        {/* 배경 포스터 이미지 (호버 효과 제거) */}
-        <motion.div 
-          className="w-full flex justify-center origin-center"
-          layoutId={layoutId}
-          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-        >
+        {/* 배경 포스터 이미지 */}
+        <div className="w-full flex justify-center origin-center">
           <InfoPoster 
             src={src} 
             alt={alt} 
@@ -60,7 +56,7 @@ export const InfoCard = ({
             isLoading={isLoading}
             priority={priority}
           />
-        </motion.div>
+        </div>
 
         {/* 내부 텍스트 영역: 포스터 위로 올라가도록 절대 위치(absolute) 지정 */}
         <div className="absolute inset-0 flex flex-col justify-end items-start gap-0 md:gap-0.5 lg:gap-1 p-3 md:p-4 lg:p-5 z-10 pointer-events-none">
@@ -71,18 +67,18 @@ export const InfoCard = ({
           {day && <InfoDay day={day} className="text-white/80 drop-shadow-sm" isLoading={isLoading} />}
           
           {!isLoading && displayBadges.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5 pointer-events-auto">
+            <div className="mt-2 flex flex-wrap gap-1 md:gap-1.5 pointer-events-auto">
               {displayBadges.map((badge, idx) => {
                 if (typeof badge === 'string') {
                   return (
-                    <Badge key={idx} color={getBadgeColor(idx) as any} variant="fill" className="text-[10px] md:text-sm px-1.5 py-0.5 md:px-3 md:py-1">
-                      {badge}
+                    <Badge key={idx} color="grey" variant="glass" maxLength={15} className="text-[9px] md:text-[10px] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full font-bold tracking-wide">
+                      {badge.replace(/^#/, '')}
                     </Badge>
                   );
                 }
                 return (
-                  <Badge key={idx} color={badge.color} variant={badge.variant} className="text-[10px] md:text-sm px-1.5 py-0.5 md:px-3 md:py-1">
-                    {badge.text}
+                  <Badge key={idx} color="grey" variant="glass" maxLength={15} className="text-[9px] md:text-[10px] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full font-bold tracking-wide">
+                    {badge.text.replace(/^#/, '')}
                   </Badge>
                 );
               })}

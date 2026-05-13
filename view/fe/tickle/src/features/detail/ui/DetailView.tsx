@@ -89,6 +89,8 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
   const queryClient = useQueryClient();
   const [isInvalidAccess, setIsInvalidAccess] = useState(false);
+  const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
+  const currentStepRef = useRef<string>('detail');
 
   // ── Validate state on direct URL access ────────────────
   useEffect(() => {
@@ -122,6 +124,9 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       setQueueToken(qToken);
       queueTokenRef.current = qToken;
     }
+    // 대기열은 한번 넘어가면 뒤로가기로 돌아갈 수 없으므로 queue 엔트리를 book으로 교체
+    currentStepRef.current = 'book';
+    window.history.replaceState({ tickleStep: 'book' }, '');
     setFlowState((prev) => (prev === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK'));
   }, []);
 
@@ -147,14 +152,26 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     flowScopeRef.current = state === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING';
     setFlowState(state);
 
-    // 뒤로가기 감지를 위해 히스토리 엔트리 추가
-    window.history.pushState({ tickleFlow: true }, '');
+    // 뒤로가기 감지를 위해 히스토리 엔트리 추가 (대기열 단계 플래그)
+    currentStepRef.current = 'queue';
+    window.history.pushState({ tickleStep: 'queue' }, '');
   };
 
   const flowStateRef = useRef(flowState);
   useEffect(() => {
     flowStateRef.current = flowState;
   }, [flowState]);
+
+  // BookView에서 단계 전환 시 히스토리 엔트리 추가하는 콜백
+  const handleBookStepChange = useCallback((step: string) => {
+    currentStepRef.current = step;
+    window.history.pushState({ tickleStep: step }, '');
+  }, []);
+
+  // BookView에서 뒤로가기로 이전 단계로 이동할 때 호출되는 콜백
+  const handleBookStepBack = useCallback((targetStep: string) => {
+    currentStepRef.current = targetStep;
+  }, []);
 
   // 대기열 활성 상태에서 브라우저 뒤로가기/새로고침 시 leaveQueue 호출
   useEffect(() => {
@@ -167,16 +184,35 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       }
     };
 
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
       // 플로우가 활성 상태일 때만 처리
       if (flowStateRef.current === 'NONE') return;
 
-      if (queueTokenRef.current && activeEventId) {
-        leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch(() => { });
-        queueTokenRef.current = null;
-        setQueueToken(null);
+      const targetStep = e.state?.tickleStep || null;
+
+      if (!targetStep) {
+        // targetStep이 없으면 detail로 돌아가는 상황 → 경고 모달 표시
+        // 뒤로가기를 막기 위해 히스토리 상태를 다시 추가
+        window.history.pushState({ tickleStep: currentStepRef.current }, '');
+        setIsBackExitModalOpen(true);
+      } else {
+        // 플로우 내 이전 단계로 이동
+        currentStepRef.current = targetStep;
+
+        // BookView 내부 단계 간 뒤로가기 처리
+        // 각 히스토리 엔트리의 tickleStep 값에 따라 bookingStep을 설정
+        const stepMap: Record<string, string> = {
+          'seat': 'SEAT',
+          'book': 'SEAT',         // book = captcha 통과 후 좌석 선택
+          'ticket_type': 'TICKET_TYPE',
+          'payment': 'PAYMENT',
+          'pay_method': 'PAY_METHOD',
+        };
+        const bookingStep = stepMap[targetStep];
+        if (bookingStep) {
+          useBookStore.getState().setBookingStep(bookingStep as any);
+        }
       }
-      setFlowState('NONE');
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -751,10 +787,36 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                 setQueueToken(null);
               }
             }}
+            onStepChange={handleBookStepChange}
+            onStepBack={handleBookStepBack}
             storyMode={storyMode}
           />
         </div>
       )}
+
+      {/* 뒤로가기 경고 모달 */}
+      <Modal
+        isOpen={isBackExitModalOpen}
+        onClose={() => setIsBackExitModalOpen(false)}
+        onConfirm={() => {
+          setIsBackExitModalOpen(false);
+          // 모달 확인 시 실제로 대기열 이탈 및 플로우 종료
+          if (queueTokenRef.current && activeEventId) {
+            leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch(() => { });
+            queueTokenRef.current = null;
+            setQueueToken(null);
+          }
+          currentStepRef.current = 'detail';
+          setFlowState('NONE');
+          // pushState로 추가된 히스토리 엔트리를 정리 (뒤로가기 실행)
+          // flowState를 NONE으로 설정했으므로 popstate 핸들러가 무시함
+          window.history.back();
+        }}
+        title="예매를 종료하시겠습니까?"
+        description="현재 진행 중인 예매/대기가 취소됩니다. 정말 나가시겠습니까?"
+        confirmText="나가기"
+        showCancelButton={true}
+      />
 
       {/* 에러 모달 */}
       <Modal

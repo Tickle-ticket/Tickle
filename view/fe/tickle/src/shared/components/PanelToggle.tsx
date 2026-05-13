@@ -38,7 +38,7 @@ export const PanelToggle = ({
   return (
     <button
       onClick={onToggle}
-      className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 z-50 items-center justify-center w-8 h-16 bg-white border border-black/10 shadow-lg text-zinc-500 hover:text-black transition-all duration-500 ease-in-out ${variantStyles} ${!className.includes('left-') && !className.includes('right-') ? defaultPosition : ''} ${className}`}
+      className={`flex items-center justify-center w-8 h-16 bg-white border border-black/10 shadow-lg text-zinc-500 hover:text-black transition-all duration-300 ease-in-out ${variantStyles} ${className}`}
       aria-label={isFolded ? "포스터 열기" : "포스터 닫기"}
     >
       <svg

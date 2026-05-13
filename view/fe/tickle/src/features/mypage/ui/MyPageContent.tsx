@@ -10,6 +10,10 @@ import { MyBookingsView } from './MyBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
 import { useMypageStore, type MypageTabType } from '@/src/shared/store/useMypageStore';
 import { useState } from 'react';
+import { useUserProfile } from '@/src/shared/api/useUserProfile';
+import { useRouter } from 'next/navigation';
+import { authApi } from '@/src/shared/api/authApi';
+import { clearTokens } from '@/src/shared/api/tokenManager';
 
 const tabs = [
   { id: 'USER', label: '회원 관리' },
@@ -24,6 +28,58 @@ const tabs = [
 export const MyPageContent = () => {
   const { activeTab, setActiveTab } = useMypageStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(true);
+  const { data, isLoading } = useUserProfile();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+      clearTokens();
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+      alert('로그아웃 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleLogin = () => {
+    const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
+    router.push(`/login?redirect=${currentPath}`);
+  };
+
+  const renderLoginPrompt = () => (
+    <div className="w-full flex flex-col items-center justify-center py-32 px-4 h-full animate-in fade-in duration-500">
+      <div className="w-full max-w-md mx-auto flex flex-col items-center">
+        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <h3 className="text-xl font-black text-gray-800 mb-2">로그인이 필요합니다</h3>
+        <p className="text-gray-500 mb-8 text-center text-sm md:text-base leading-relaxed">
+          마이페이지 기능을 이용하시려면<br className="sm:hidden" /> 로그인을 진행해주세요.
+        </p>
+        <button 
+          onClick={handleLogin}
+          className="px-8 py-3.5 bg-[#2563eb] text-white font-bold rounded-full shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto"
+        >
+          로그인하러 가기
+        </button>
+      </div>
+    </div>
+  );
+
+  if (!isLoading && !data) {
+    return (
+      <div className="w-full max-w-7xl mx-auto flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
+        <div className="mb-4 lg:hidden">
+          <Title title="마이페이지" bottomBorder={false} className="!px-0 !pt-0 [&_h1]:text-2xl" />
+        </div>
+        {renderLoginPrompt()}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
@@ -48,6 +104,15 @@ export const MyPageContent = () => {
               </svg>
             </button>
           ))}
+          
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center p-4 bg-red-50 text-red-600 font-bold rounded-2xl hover:bg-red-100 transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       )}
 

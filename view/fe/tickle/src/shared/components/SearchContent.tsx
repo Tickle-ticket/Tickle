@@ -161,6 +161,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query, hideMobileS
                   day={item.date}
                   showTime={!!item.openDate}
                   targetDate={item.openDate}
+                  disabled={!!item.openDate}
                   isWishlisted={isWishlisted}
                   onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
                   badges={item.badges}
@@ -201,6 +202,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query, hideMobileS
                     day={item.date}
                     showTime={!!item.openDate}
                     targetDate={item.openDate}
+                    disabled={!!item.openDate}
                     isWishlisted={isWishlisted}
                     onWishlistToggle={(e) => handleWishlistToggle(e, item.id)}
                     badges={item.badges}
