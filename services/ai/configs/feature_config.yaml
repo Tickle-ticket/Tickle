@@ -3,11 +3,8 @@ groups:
     - time_to_first_click_ms
     - time_from_element_visible_to_click_ms
     - time_from_element_clickable_to_click_ms
-    - inter_click_interval_ms
     - click_sequence_consistency_score
     - click_position_repeat_rate
-    - click_offset_from_element_center_px
-    - click_offset_variance_px
     - double_click_rate
     - misclick_rate
     - reclick_rate
@@ -30,7 +27,6 @@ groups:
     - mouse_hover_dwell_time_ms
     - mouse_stop_segment_count
     - mousemove_event_rate
-    - inter_element_move_interval_std_ms
     - edge_or_fixed_point_visit_rate
     - pre_click_path_300ms_total_distance_px
     - pre_click_path_300ms_straightness
@@ -41,11 +37,8 @@ names_ko:
   time_to_first_click_ms: 첫 클릭 시간
   time_from_element_visible_to_click_ms: 노출 후 클릭
   time_from_element_clickable_to_click_ms: 활성 후 클릭
-  inter_click_interval_ms: 클릭 간격
   click_sequence_consistency_score: 순서 일관성
   click_position_repeat_rate: 좌표 반복률
-  click_offset_from_element_center_px: 중심 오차
-  click_offset_variance_px: 오차 분산
   double_click_rate: 더블클릭 비율
   misclick_rate: 오클릭 비율
   reclick_rate: 재클릭 비율
@@ -67,7 +60,6 @@ names_ko:
   mouse_hover_dwell_time_ms: 평균 dwell
   mouse_stop_segment_count: 정지 구간 수
   mousemove_event_rate: mousemove 빈도
-  inter_element_move_interval_std_ms: 이동 간격 표준편차
   edge_or_fixed_point_visit_rate: 고정점 방문률
   pre_click_path_300ms_total_distance_px: 300ms 경로 총거리
   pre_click_path_300ms_straightness: 300ms 경로 직선성
