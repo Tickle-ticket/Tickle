@@ -54,7 +54,6 @@ export const TrialMetricsSchema = Schema.Struct({
   pre_click_path_500ms_straightness: Schema.Number,
   inter_element_move_interval_std_ms: Schema.Union(Schema.Number, Schema.Null),
   edge_or_fixed_point_visit_rate: Schema.Union(Schema.Number, Schema.Null),
-
 });
 
 // ─── Base Event Row ─────────────────────────────────────────
@@ -87,6 +86,7 @@ export const ClickEventRowSchema = Schema.extend(BaseEventRowSchema, Schema.Stru
   is_double_click: Schema.Number,
   is_reclick: Schema.Number,
   is_misclick: Schema.Number,
+  is_immediate_post_render: Schema.Number,
 }));
 
 export const ScrollEventRowSchema = Schema.extend(BaseEventRowSchema, Schema.Struct({

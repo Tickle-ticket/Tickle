@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { CalendarProps } from './types';
+import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 
 // 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 헬퍼 함수
 const formatDate = (date: Date | string) => {
@@ -155,30 +156,66 @@ export const Calendar = ({
           const isToday = formatDate(new Date()) === formatted;
 
           return (
-            <div key={day} className="flex justify-center items-center h-10 w-full">
-              <button
-                disabled={!isEnabled}
-                onClick={(e) => {
-                  if (isEnabled && onSelect) {
-                    onSelect(dateObj, e);
-                  }
-                }}
-                className={`
-                  w-9 h-9 rounded-full flex items-center justify-center text-[15px] transition-all
-                  ${!isEnabled ? 'text-[#cbd5e1] font-normal cursor-not-allowed' : ''}
-                  ${isEnabled && !isSelected ? 'text-content font-bold hover:bg-surface-muted cursor-pointer' : ''}
-                  ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}
-                  ${isToday && !isSelected && isEnabled ? 'border-2 border-line-subtle' : ''}
-                `}
-                aria-pressed={isSelected}
-                aria-disabled={!isEnabled}
-              >
-                {day}
-              </button>
-            </div>
+            <CalendarDateButton
+              key={day}
+              day={day}
+              dateObj={dateObj}
+              formatted={formatted}
+              isEnabled={isEnabled}
+              isSelected={isSelected}
+              isToday={isToday}
+              onSelect={onSelect}
+            />
           );
         })}
       </div>
+    </div>
+  );
+};
+
+interface CalendarDateButtonProps {
+  day: number;
+  dateObj: Date;
+  formatted: string;
+  isEnabled: boolean;
+  isSelected: boolean;
+  isToday: boolean;
+  onSelect?: (date: Date, e: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+const CalendarDateButton = ({
+  day,
+  dateObj,
+  formatted,
+  isEnabled,
+  isSelected,
+  isToday,
+  onSelect,
+}: CalendarDateButtonProps) => {
+  const tracker = useTargetTracker({ trackId: `calendar-date-${formatted}`, isClickable: isEnabled });
+
+  return (
+    <div className="flex justify-center items-center h-10 w-full">
+      <button
+        {...tracker}
+        disabled={!isEnabled}
+        onClick={(e) => {
+          if (isEnabled && onSelect) {
+            onSelect(dateObj, e);
+          }
+        }}
+        className={`
+          w-9 h-9 rounded-full flex items-center justify-center text-[15px] transition-all
+          ${!isEnabled ? 'text-[#cbd5e1] font-normal cursor-not-allowed' : ''}
+          ${isEnabled && !isSelected ? 'text-content font-bold hover:bg-surface-muted cursor-pointer' : ''}
+          ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}
+          ${isToday && !isSelected && isEnabled ? 'border-2 border-line-subtle' : ''}
+        `}
+        aria-pressed={isSelected}
+        aria-disabled={!isEnabled}
+      >
+        {day}
+      </button>
     </div>
   );
 };

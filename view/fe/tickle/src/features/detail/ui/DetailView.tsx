@@ -30,6 +30,7 @@ import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
+import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { leaveQueue } from '@/src/shared/api/queueApi';
 import Lottie from 'lottie-react';
@@ -94,6 +95,9 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
   const currentStepRef = useRef<string>('detail');
   const [playLoveAnimation, setPlayLoveAnimation] = useState(false);
+
+  const bookBtnTracker = useTargetTracker({ trackId: 'detail-book-btn', isClickable: !isUpcoming });
+  const waitlistBtnTracker = useTargetTracker({ trackId: 'detail-waitlist-btn', isClickable: !isWaitlistUpcoming });
 
   useEffect(() => {
     const handleLoveAnimation = (e: Event) => {
@@ -489,6 +493,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
         {/* 예매하기 버튼 */}
         <Button
+          {...bookBtnTracker}
           color="dark"
           size="large"
           className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-surface-inverse' : ''}`}
@@ -512,6 +517,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
         {/* 취소표 대기하기 버튼 */}
         <Button
+          {...waitlistBtnTracker}
           color="light"
           size="large"
           className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-surface-subtle opacity-90 pointer-events-none' : ''}`}

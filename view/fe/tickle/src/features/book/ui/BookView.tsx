@@ -325,10 +325,13 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         isOpen: true,
         title: '결제 시간 초과',
         message: '결제 시간이 초과되어 예매가 취소되었습니다.',
-        onConfirm: onClose
+        onConfirm: () => {
+          onLeaveQueue?.();
+          onClose();
+        }
       });
     }
-  }, [timeLeft, bookingStep, isModifyModeActive, scheduleId, eventDetail, userProfile, onClose, preorderBookingId]);
+  }, [timeLeft, bookingStep, isModifyModeActive, scheduleId, eventDetail, userProfile, onClose, preorderBookingId, onLeaveQueue]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -657,7 +660,15 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   } else if (err.status === 404) {
                     setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '해당 회차나 예매 정보를 찾을 수 없습니다. 다시 시도해주세요. (404)' });
                   } else if (err.status === 409) {
-                    setIsConflictModalOpen(true);
+                    setErrorModalConfig({ 
+                      isOpen: true, 
+                      title: '선점 만료', 
+                      message: err.message || '좌석 선점 시간이 만료되었습니다. 좌석을 다시 선택해주세요.',
+                      onConfirm: () => {
+                        setSelectedSeats(new Set());
+                        setBookingStep('SEAT');
+                      }
+                    });
                   } else {
                     setErrorModalConfig({ isOpen: true, title: '결제 오류', message: err.message || '결제 처리 중 오류가 발생했습니다.' });
                   }

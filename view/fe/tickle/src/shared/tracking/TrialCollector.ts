@@ -196,12 +196,36 @@ export class TrialCollector {
       offsetDistance = dist(x, y, cx, cy);
     }
 
-    // Pre-click hover time: time since last mousemove before click
+    // Pre-click hover time: 기본값은 마우스 이동 기반 계산이지만, 요소의 data-hover-start-ts 가 있으면 그것을 우선 사용
     let preClickHoverTime: number | null = null;
-    const moves = this.getMovesArray();
-    if (moves.length > 0) {
-      const lastMove = moves[moves.length - 1];
-      preClickHoverTime = now - (this.startTs + lastMove.relative_ms);
+    if (element && element.dataset.hoverStartTs) {
+      preClickHoverTime = now - parseInt(element.dataset.hoverStartTs);
+    } else {
+      const moves = this.getMovesArray();
+      if (moves.length > 0) {
+        const lastMove = moves[moves.length - 1];
+        preClickHoverTime = now - (this.startTs + lastMove.relative_ms);
+      }
+    }
+
+    // 추가 타겟 트래킹 지표 추출
+    let timeFromVisible: number | null = null;
+    let timeFromClickable: number | null = null;
+    let isImmediatePostRender = 0;
+
+    if (element) {
+      if (element.dataset.visibleTs) {
+        timeFromVisible = now - parseInt(element.dataset.visibleTs);
+      }
+      if (element.dataset.clickableTs) {
+        timeFromClickable = now - parseInt(element.dataset.clickableTs);
+      }
+      if (element.dataset.mountTs) {
+        const mountTs = parseInt(element.dataset.mountTs);
+        if (now - mountTs < 50) {
+          isImmediatePostRender = 1;
+        }
+      }
     }
 
     const row: ClickEventRow = {
@@ -213,8 +237,8 @@ export class TrialCollector {
       track_id: trackId,
       x,
       y,
-      time_from_visible_ms: null, // would need IntersectionObserver per element
-      time_from_clickable_ms: null,
+      time_from_visible_ms: timeFromVisible,
+      time_from_clickable_ms: timeFromClickable,
       inter_click_interval_ms: interClickInterval,
       pre_click_mousemove_count: preClickMoves.length,
       pre_click_hover_time_ms: preClickHoverTime,
@@ -222,7 +246,9 @@ export class TrialCollector {
       offset_distance_px: offsetDistance,
       is_double_click: isDoubleClick,
       is_reclick: isReclick,
-      is_misclick: 0, // default; could be refined with domain logic
+      is_misclick: this.computeIsMisclick(trackId),
+      // We will attach immediate post render flag to a new property or use it to calculate the rate
+      is_immediate_post_render: isImmediatePostRender,
     };
 
     this.eventRows.push(row);
@@ -462,17 +488,16 @@ export class TrialCollector {
       pre_click_mousemove_count: mean(clicks.map(c => c.pre_click_mousemove_count)),
       pre_click_hover_time_ms: mean(clicks.map(c => c.pre_click_hover_time_ms).filter((v): v is number => v !== null)),
       pre_click_scroll_flag: clicks.length > 0 ? clicks.filter(c => c.pre_click_scroll_flag).length / clicks.length : 0,
-      immediate_post_render_click_rate: null,
+      immediate_post_render_click_rate: clicks.length > 0 ? clicks.filter(c => c.is_immediate_post_render === 1).length / clicks.length : null,
 
-      // ── Mouse (17) ────────────────────────────────────────
+      // ── Mouse (19) ────────────────────────────────────────
       ...this.computeMouseMetrics(moves, clicks, durationMs),
-
     };
   }
 
   // ── Click Sequence Consistency ───────────────────────────
   private computeClickSequenceConsistency(clicks: ClickEventRow[]): number | null {
-    if (clicks.length < 2) return null;
+    if (clicks.length < 2) return 0;
     let consistent = 0;
     for (let i = 1; i < clicks.length; i++) {
       // If track_ids follow a non-decreasing pattern
@@ -485,7 +510,7 @@ export class TrialCollector {
 
   // ── Click Position Repeat Rate ──────────────────────────
   private computeClickPositionRepeatRate(clicks: ClickEventRow[]): number | null {
-    if (clicks.length < 2) return null;
+    if (clicks.length < 2) return 0;
     let repeats = 0;
     for (let i = 1; i < clicks.length; i++) {
       for (let j = 0; j < i; j++) {
@@ -610,8 +635,8 @@ export class TrialCollector {
       mouse_path_straightness_score: straightness,
       mouse_path_curvature_mean: mean(curvatures),
       mouse_direction_change_count: dirChanges,
-      mouse_overshoot_flag: 0, // simplified
-      mouse_hover_dwell_time_ms: null, // would need hover in/out tracking
+      mouse_overshoot_flag: this.detectOvershoot(moves, clicks),
+      mouse_hover_dwell_time_ms: mean(clicks.map(c => c.pre_click_hover_time_ms).filter((v): v is number => v !== null)),
       mouse_stop_segment_count: stopCount,
       mousemove_event_rate: durationMs > 0 ? moves.length / (durationMs / 1000) : null,
       pre_click_path_300ms_total_distance_px: preClick300.distance,
@@ -649,5 +674,36 @@ export class TrialCollector {
     };
   }
 
+  // ── Misclick Detection ──────────────────────────────────
+  private computeIsMisclick(trackId: string | null): number {
+    if (trackId === null) return 0;
+    const stagePrefixes: Record<string, string[]> = {
+      detail: ['detail-'],
+      captcha: ['captcha-'],
+      booking: ['calendar-', 'booking-'],
+      ticket_type: ['ticket-'],
+      payment: ['payment-'],
+    };
+    const prefixes = stagePrefixes[this.stage];
+    if (!prefixes) return 0;
+    return prefixes.some(p => trackId.startsWith(p)) ? 0 : 1;
+  }
+
+  // ── Mouse Overshoot Detection ──────────────────────────
+  private detectOvershoot(moves: MousemoveEventRow[], clicks: ClickEventRow[]): number {
+    for (const click of clicks) {
+      const preMoves = moves.filter(m => m.relative_ms >= click.relative_ms - 500 && m.relative_ms < click.relative_ms);
+      if (preMoves.length < 4) continue;
+      const dists = preMoves.map(m => dist(m.x, m.y, click.x, click.y));
+      for (let i = 1; i < dists.length - 1; i++) {
+        if (dists[i] < dists[i - 1] && dists[i + 1] > dists[i]) {
+          for (let j = i + 2; j < dists.length; j++) {
+            if (dists[j] < dists[j - 1]) return 1;
+          }
+        }
+      }
+    }
+    return 0;
+  }
 
 }

@@ -61,8 +61,23 @@ export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent
 
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
-      const trackId = target?.closest('[data-track-id]')?.getAttribute('data-track-id') ?? null;
-      const trackedEl = target?.closest('[data-track-id]') as HTMLElement | null;
+      let trackId = target?.closest('[data-track-id]')?.getAttribute('data-track-id') ?? null;
+      let trackedEl = target?.closest('[data-track-id]') as HTMLElement | null;
+
+      // Fallback: pointer-events-none 오버레이(캡챠 등)를 위한 좌표 기반 탐색
+      if (!trackedEl) {
+        const allTracked = document.querySelectorAll<HTMLElement>('[data-track-id]');
+        for (const el of allTracked) {
+          const rect = el.getBoundingClientRect();
+          if (e.clientX >= rect.left && e.clientX <= rect.right &&
+              e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            trackId = el.getAttribute('data-track-id');
+            trackedEl = el;
+            break;
+          }
+        }
+      }
+
       collector.addClick(e.clientX, e.clientY, trackId, trackedEl);
     };
 

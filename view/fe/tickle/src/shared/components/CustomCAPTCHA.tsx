@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Lottie from 'lottie-react';
 import checkedAnimation from '@/src/shared/lottle/Checked.json';
+import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 
 export interface CustomCAPTCHAProps {
   onSuccess: (token: string) => void;
@@ -335,7 +336,7 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
       )}
 
       <div className={`w-full flex flex-col items-center transition-opacity duration-300 ${isSuccess ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <div className="origin-top scale-[0.72] sm:scale-[0.85] md:scale-100 h-[403px] sm:h-[476px] md:h-[560px]" style={{ width: CANVAS_W }}>
+        <div className="origin-top scale-[0.72] sm:scale-[0.85] md:scale-100 h-[403px] sm:h-[476px] md:h-[560px] relative" style={{ width: CANVAS_W }}>
           <canvas
             ref={canvasRef}
             onMouseDown={handlePointerDown}
@@ -344,6 +345,32 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
             onMouseLeave={handlePointerLeave}
             className="touch-none select-none cursor-pointer"
           />
+          {/* Tracker Hitboxes (Invisible) */}
+          <div className="absolute inset-0 pointer-events-none">
+            {keypad.map((num, idx) => {
+              const row = Math.floor(idx / 3);
+              const col = idx % 3;
+              const bx = PAD_X + col * (BTN_SIZE + GAP);
+              const by = GRID_Y + row * (BTN_SIZE + GAP);
+              return (
+                <TrackedKeybox
+                  key={num}
+                  trackId={`captcha-keypad-${num}`}
+                  x={bx}
+                  y={by}
+                  w={BTN_SIZE}
+                  h={BTN_SIZE}
+                />
+              );
+            })}
+            <TrackedKeybox
+              trackId="captcha-keypad-delete"
+              x={PAD_X}
+              y={GRID_Y + 3 * (BTN_SIZE + GAP)}
+              w={CANVAS_W - PAD_X * 2}
+              h={48}
+            />
+          </div>
         </div>
       </div>
 
@@ -359,5 +386,24 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
         </div>
       )}
     </div>
+  );
+};
+
+// --- 추적용 투명 히트박스 컴포넌트 ---
+const TrackedKeybox = ({ trackId, x, y, w, h }: { trackId: string, x: number, y: number, w: number, h: number }) => {
+  const tracker = useTargetTracker({ trackId, isClickable: true });
+  return (
+    <div
+      {...tracker}
+      ref={tracker.ref as any}
+      className="absolute pointer-events-none"
+      style={{
+        left: x,
+        top: y,
+        width: w,
+        height: h,
+        opacity: 0,
+      }}
+    />
   );
 };
