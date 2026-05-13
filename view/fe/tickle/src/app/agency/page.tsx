@@ -516,7 +516,7 @@ function AgencyPerformancePreviewModal({
   return (
     <div className="fixed inset-0 z-[80] bg-[#f8f8f8] text-slate-950">
       <div className="flex h-full w-full overflow-hidden">
-        <aside className="relative hidden h-full w-[38%] min-w-[360px] bg-slate-200 lg:block">
+        <aside className="relative hidden h-full w-[38%] min-w-[360px] bg-surface-active lg:block">
           {posterImage ? (
             <Image
               src={posterImage.previewUrl}
@@ -526,17 +526,17 @@ function AgencyPerformancePreviewModal({
               className="object-cover"
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm font-bold text-slate-500">
+            <div className="flex h-full items-center justify-center text-sm font-bold text-content-tertiary">
               포스터 이미지 없음
             </div>
           )}
         </aside>
 
         <main className="h-full min-w-0 flex-1 overflow-y-auto">
-          <div className="sticky top-0 z-20 flex min-h-[72px] items-center justify-between border-b border-slate-200 bg-[#f8f8f8]/95 px-5 py-3 backdrop-blur md:px-10">
+          <div className="sticky top-0 z-20 flex min-h-[72px] items-center justify-between border-b border-line bg-[#f8f8f8]/95 px-5 py-3 backdrop-blur md:px-10">
             <div>
-              <p className="text-xs font-black tracking-[0.16em] text-blue-600">PREVIEW</p>
-              <p className="mt-1 text-sm font-bold text-slate-500">등록 후 상세 화면 미리보기</p>
+              <p className="text-xs font-black tracking-[0.16em] text-primary">PREVIEW</p>
+              <p className="mt-1 text-sm font-bold text-content-tertiary">등록 후 상세 화면 미리보기</p>
             </div>
             <Button color="dark" variant="weak" size="medium" onClick={onClose}>
               닫기
@@ -544,7 +544,7 @@ function AgencyPerformancePreviewModal({
           </div>
 
           <div className="mx-auto max-w-3xl px-5 pb-16 pt-6 md:px-0">
-            <div className="relative mb-6 aspect-[3/4] overflow-hidden rounded-3xl bg-slate-200 lg:hidden">
+            <div className="relative mb-6 aspect-[3/4] overflow-hidden rounded-3xl bg-surface-active lg:hidden">
               {posterImage ? (
                 <Image
                   src={posterImage.previewUrl}
@@ -573,7 +573,7 @@ function AgencyPerformancePreviewModal({
               <h1 className="mt-4 whitespace-pre-line text-4xl font-black leading-tight tracking-normal text-slate-950 md:text-6xl">
                 {title || '공연명 미입력'}
               </h1>
-              <div className="mt-5 space-y-2 text-base font-semibold text-slate-700 md:text-lg">
+              <div className="mt-5 space-y-2 text-base font-semibold text-content-secondary md:text-lg">
                 <p>{venueName || '공연장 미선택'}</p>
                 <p>{periodLabel}</p>
               </div>
@@ -588,17 +588,17 @@ function AgencyPerformancePreviewModal({
               </div>
             </section>
 
-            <section className="mt-14 space-y-8 border-t border-slate-200 pt-8">
+            <section className="mt-14 space-y-8 border-t border-line pt-8">
               <Box variant="flat" className="border border-black/5">
                 <h2 className="text-xl font-black text-slate-950">공연 정보</h2>
                 <div className="mt-5 space-y-5">
                   <div>
-                    <p className="text-sm font-bold text-blue-600">장소</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-600">{venueName}</p>
+                    <p className="text-sm font-bold text-primary">장소</p>
+                    <p className="mt-1 text-sm font-semibold text-content-secondary">{venueName}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-blue-600">공지사항</p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-600">
+                    <p className="text-sm font-bold text-primary">공지사항</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-6 text-content-secondary">
                       {notice.trim() || '등록된 공지사항이 없습니다.'}
                     </p>
                   </div>
@@ -607,11 +607,11 @@ function AgencyPerformancePreviewModal({
 
               <Box variant="flat" className="border border-black/5">
                 <h2 className="text-xl font-black text-slate-950">가격 정보</h2>
-                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
+                <div className="mt-5 overflow-hidden rounded-2xl border border-line-subtle">
                   {priceItems.map((item) => (
                     <div
                       key={item.key}
-                      className="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0"
+                      className="flex items-center justify-between gap-4 border-b border-line-subtle px-4 py-3 last:border-b-0"
                     >
                       <Badge color={item.badgeColor} size="small">
                         {item.label}
@@ -624,13 +624,13 @@ function AgencyPerformancePreviewModal({
                 </div>
 
                 {activeDiscounts.length > 0 ? (
-                  <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3">
-                    <p className="text-sm font-black text-slate-700">할인 정보</p>
+                  <div className="mt-5 rounded-2xl bg-surface-subtle px-4 py-3">
+                    <p className="text-sm font-black text-content-secondary">할인 정보</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {activeDiscounts.map((discount) => (
                         <span
                           key={`${discount.name}-${discount.rate}`}
-                          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                          className="rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-content-secondary ring-1 ring-line"
                         >
                           {discount.name} {discount.rate}%
                         </span>
@@ -644,29 +644,29 @@ function AgencyPerformancePreviewModal({
                 <h2 className="text-xl font-black text-slate-950">공연 일정</h2>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {scheduleItems.map((schedule) => (
-                    <div key={schedule.id} className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
-                      <p className="text-sm font-black text-slate-900">
+                    <div key={schedule.id} className="rounded-2xl border border-line-subtle bg-surface px-4 py-3">
+                      <p className="text-sm font-black text-content">
                         {formatScheduleDateTimePreviewLabel(schedule.scheduleAt)}
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                      <p className="mt-1 text-xs font-semibold text-content-tertiary">
                         예매 {formatScheduleDateTimePreviewLabel(schedule.ticketOpenAt)} 오픈
                       </p>
                     </div>
                   ))}
                 </div>
                 {hiddenScheduleCount > 0 ? (
-                  <p className="mt-4 text-sm font-semibold text-slate-500">
+                  <p className="mt-4 text-sm font-semibold text-content-tertiary">
                     외 {hiddenScheduleCount}개 회차가 더 있습니다.
                   </p>
                 ) : null}
               </Box>
 
-              <Box variant="flat" className="border border-black/5 bg-slate-50">
+              <Box variant="flat" className="border border-black/5 bg-surface-subtle">
                 <h2 className="text-xl font-black text-slate-950">상세 정보</h2>
                 {introImages.length > 0 ? (
                   <div className="mt-5 space-y-4">
                     {introImages.map((image, index) => (
-                      <div key={image.id} className="relative overflow-hidden rounded-2xl bg-white">
+                      <div key={image.id} className="relative overflow-hidden rounded-2xl bg-surface">
                         <Image
                           src={image.previewUrl}
                           alt={`공연 소개 이미지 ${index + 1}`}
@@ -679,7 +679,7 @@ function AgencyPerformancePreviewModal({
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-5 flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-sm font-bold text-slate-400">
+                  <div className="mt-5 flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-line bg-surface text-sm font-bold text-content-muted">
                     상세 이미지 없음
                   </div>
                 )}
@@ -709,7 +709,7 @@ function DateTimeTriggerField({
 
   return (
     <div className="relative flex w-full flex-col gap-1">
-      <label htmlFor={inputId} className="mb-1 text-[13px] font-medium text-gray-500">
+      <label htmlFor={inputId} className="mb-1 text-[13px] font-medium text-content-tertiary">
         {label}
       </label>
       <div className="relative">
@@ -720,14 +720,14 @@ function DateTimeTriggerField({
           onBlur={onBlur}
           placeholder="YYYY-MM-DD HH:mm"
           className={`
-            w-full border-b-[2px] bg-transparent py-1 pr-11 text-[20px] text-gray-900 outline-none
-            transition-colors tracking-[0.08em] placeholder:text-gray-300 border-gray-300 sm:text-[22px]
-            hover:border-slate-400 focus:border-blue-500
+            w-full border-b-[2px] bg-transparent py-1 pr-11 text-[20px] text-content outline-none
+            transition-colors tracking-[0.08em] placeholder:text-content-muted border-line-strong sm:text-[22px]
+            hover:border-line-strong focus:border-primary
           `}
         />
         <button
           type="button"
-          className="absolute bottom-1 right-0 flex h-9 w-9 items-center justify-center rounded-full text-gray-400 transition hover:bg-slate-100 hover:text-slate-600"
+          className="absolute bottom-1 right-0 flex h-9 w-9 items-center justify-center rounded-full text-content-muted transition hover:bg-surface-muted hover:text-content-secondary"
           aria-label={`${label} 달력 열기`}
           onClick={onOpen}
         >
@@ -755,11 +755,11 @@ function TicketScheduleRuleField({
   onDaysChange: (days: number) => void;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+    <div className="rounded-3xl border border-line bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-base font-black text-slate-950">{label}</p>
-          <p className="mt-1 text-sm font-medium leading-6 text-slate-500">{description}</p>
+          <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">{description}</p>
         </div>
         <Badge color="blue" variant="outline">
           공연일 {rule.days}일 전
@@ -768,14 +768,14 @@ function TicketScheduleRuleField({
 
       <div className="mt-4">
         <label className="flex flex-col gap-2">
-          <span className="text-xs font-bold tracking-[0.08em] text-slate-400">공연일 기준 일수</span>
+          <span className="text-xs font-bold tracking-[0.08em] text-content-muted">공연일 기준 일수</span>
           <input
             type="number"
             min={0}
             step={1}
             value={rule.days}
             onChange={(event) => onDaysChange(parseOffsetDayValue(event.target.value))}
-            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            className="rounded-2xl border border-line bg-surface-subtle px-4 py-3 text-sm font-semibold text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
           />
         </label>
       </div>
@@ -810,12 +810,12 @@ function DiscountPresetSelectField({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="mb-1 text-[13px] font-medium text-gray-500">할인 유형</span>
+      <span className="mb-1 text-[13px] font-medium text-content-tertiary">할인 유형</span>
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
-          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-gray-900 outline-none transition-colors sm:text-[22px] ${
-            isOpen ? 'border-blue-500' : 'border-gray-300'
+          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-content outline-none transition-colors sm:text-[22px] ${
+            isOpen ? 'border-primary' : 'border-line-strong'
           }`}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
@@ -824,7 +824,7 @@ function DiscountPresetSelectField({
           <span className="truncate text-left">{selectedOption.label}</span>
           <svg
             className={`ml-3 h-5 w-5 shrink-0 transition-transform ${
-              isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'
+              isOpen ? 'rotate-180 text-primary' : 'text-content-muted'
             }`}
             viewBox="0 0 20 20"
             fill="currentColor"
@@ -840,7 +840,7 @@ function DiscountPresetSelectField({
 
         {isOpen ? (
           <div
-            className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
+            className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
             role="listbox"
           >
             <div className="max-h-72 overflow-y-auto p-2">
@@ -853,8 +853,8 @@ function DiscountPresetSelectField({
                     type="button"
                     className={`w-full rounded-xl px-4 py-2.5 text-left text-sm font-black transition-colors ${
                       isSelected
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-slate-700 hover:bg-slate-50'
+                        ? 'bg-primary-subtle text-primary-hover'
+                        : 'text-content-secondary hover:bg-surface-subtle'
                     }`}
                     role="option"
                     aria-selected={isSelected}
@@ -993,10 +993,10 @@ function DateRangeModal({
     >
       <div className="w-full text-left">
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-3xl border border-line bg-surface-subtle p-5">
             <div className="flex items-center justify-between gap-3">
               <Badge color="blue" variant="outline">좌측</Badge>
-              <span className="text-sm font-bold text-slate-500">{startLabel}</span>
+              <span className="text-sm font-bold text-content-tertiary">{startLabel}</span>
             </div>
             <p className="mt-3 text-lg font-black text-slate-950">{formatDateTimeLabel(draftStartAt)}</p>
 
@@ -1005,12 +1005,12 @@ function DateRangeModal({
                 enabledDates={startEnabledDates}
                 selectedDate={draftStartAt}
                 onSelect={handleStartDateSelect}
-                className="!max-w-none border border-slate-200 shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
+                className="!max-w-none border border-line shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
               />
             </div>
 
             <label className="mt-4 flex flex-col gap-2">
-              <span className="text-sm font-bold text-slate-500">시작 날짜</span>
+              <span className="text-sm font-bold text-content-tertiary">시작 날짜</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -1018,26 +1018,26 @@ function DateRangeModal({
                 value={startDateText}
                 onChange={handleStartDateTextChange}
                 onBlur={() => setStartDateText(formatDateKey(draftStartAt))}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold tracking-[0.18em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-semibold tracking-[0.18em] text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
               />
             </label>
 
             <label className="mt-4 flex flex-col gap-2">
-              <span className="text-sm font-bold text-slate-500">시작 시간</span>
+              <span className="text-sm font-bold text-content-tertiary">시작 시간</span>
               <input
                 type="time"
                 step={600}
                 value={formatTimeValue(draftStartAt)}
                 onChange={handleStartTimeChange}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
               />
             </label>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-3xl border border-line bg-surface-subtle p-5">
             <div className="flex items-center justify-between gap-3">
               <Badge color="grey" variant="outline">우측</Badge>
-              <span className="text-sm font-bold text-slate-500">{endLabel}</span>
+              <span className="text-sm font-bold text-content-tertiary">{endLabel}</span>
             </div>
             <p className="mt-3 text-lg font-black text-slate-950">{formatDateTimeLabel(draftEndAt)}</p>
 
@@ -1046,12 +1046,12 @@ function DateRangeModal({
                 enabledDates={endEnabledDates}
                 selectedDate={draftEndAt}
                 onSelect={handleEndDateSelect}
-                className="!max-w-none border border-slate-200 shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
+                className="!max-w-none border border-line shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
               />
             </div>
 
             <label className="mt-4 flex flex-col gap-2">
-              <span className="text-sm font-bold text-slate-500">종료 날짜</span>
+              <span className="text-sm font-bold text-content-tertiary">종료 날짜</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -1059,18 +1059,18 @@ function DateRangeModal({
                 value={endDateText}
                 onChange={handleEndDateTextChange}
                 onBlur={() => setEndDateText(formatDateKey(draftEndAt))}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold tracking-[0.18em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-semibold tracking-[0.18em] text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
               />
             </label>
 
             <label className="mt-4 flex flex-col gap-2">
-              <span className="text-sm font-bold text-slate-500">종료 시간</span>
+              <span className="text-sm font-bold text-content-tertiary">종료 시간</span>
               <input
                 type="time"
                 step={600}
                 value={formatTimeValue(draftEndAt)}
                 onChange={handleEndTimeChange}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
               />
             </label>
           </div>
@@ -2188,9 +2188,9 @@ export default function AgencyRegistrationPage() {
   };
 
   const hashtagSection = (
-    <div className="flex min-h-[268px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+    <div className="flex min-h-[268px] flex-col rounded-3xl border border-line bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-slate-500">해시태그</span>
+        <span className="text-sm font-bold text-content-tertiary">해시태그</span>
         <Badge color="blue" variant="outline">
           {performanceHashtags.length}/{maxPerformanceHashtagCount}
         </Badge>
@@ -2198,9 +2198,9 @@ export default function AgencyRegistrationPage() {
 
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="text-xs font-bold tracking-[0.08em] text-slate-400">키워드 입력</span>
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
-            <span className="text-sm font-black text-blue-600">#</span>
+          <span className="text-xs font-bold tracking-[0.08em] text-content-muted">키워드 입력</span>
+          <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface-subtle px-4 py-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary-light">
+            <span className="text-sm font-black text-primary">#</span>
             <input
               type="text"
               value={hashtagInputValue}
@@ -2213,7 +2213,7 @@ export default function AgencyRegistrationPage() {
               }}
               placeholder="초연, OST, 한정공연"
               disabled={performanceHashtags.length >= maxPerformanceHashtagCount}
-              className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+              className="w-full bg-transparent text-sm font-semibold text-content outline-none placeholder:text-content-muted disabled:cursor-not-allowed"
             />
           </div>
         </label>
@@ -2235,20 +2235,20 @@ export default function AgencyRegistrationPage() {
               key={hashtag}
               type="button"
               onClick={() => handleHashtagRemove(hashtag)}
-              className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-black text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
+              className="inline-flex items-center gap-2 rounded-full border border-primary-light bg-primary-subtle px-3 py-2 text-sm font-black text-primary-hover transition hover:border-primary-light hover:bg-primary-light"
             >
               <span>{hashtag}</span>
-              <span className="text-xs text-blue-400">삭제</span>
+              <span className="text-xs text-primary">삭제</span>
             </button>
           ))}
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-400">
+        <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-4 text-sm font-medium text-content-muted">
           아직 등록된 해시태그가 없습니다.
         </div>
       )}
 
-      <p className="mt-3 text-xs font-medium text-slate-400">
+      <p className="mt-3 text-xs font-medium text-content-muted">
         공백은 자동으로 제거되고, 같은 해시태그는 한 번만 등록됩니다.
       </p>
     </div>
@@ -2258,7 +2258,7 @@ export default function AgencyRegistrationPage() {
     <div ref={registrationPageTopRef} className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <header className="flex flex-col gap-4">
         <div>
-          <p className="text-sm font-bold text-blue-600">공연 등록</p>
+          <p className="text-sm font-bold text-primary">공연 등록</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">공연 등록 대시보드</h1>
         </div>
       </header>
@@ -2277,23 +2277,23 @@ export default function AgencyRegistrationPage() {
               onClick={() => moveToRegistrationStep(index)}
               className={`rounded-3xl border px-5 py-4 text-left transition ${
                 isActive
-                  ? 'border-blue-500 bg-blue-50 shadow-[0_14px_34px_rgba(49,130,246,0.14)]'
-                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-primary bg-primary-subtle shadow-[0_14px_34px_rgba(49,130,246,0.14)]'
+                  : 'border-line bg-surface hover:border-line-strong hover:bg-surface-subtle'
               }`}
               aria-current={isActive ? 'step' : undefined}
             >
               <div className="flex items-center justify-between gap-3">
-                <span className={`text-xs font-black ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+                <span className={`text-xs font-black ${isActive ? 'text-primary' : 'text-content-muted'}`}>
                   STEP {index + 1}
                 </span>
                 <span
-                  className={`h-2.5 w-2.5 rounded-full ${isActive ? 'bg-blue-500' : 'bg-slate-200'}`}
+                  className={`h-2.5 w-2.5 rounded-full ${isActive ? 'bg-primary' : 'bg-surface-active'}`}
                   aria-hidden="true"
                 />
               </div>
               <p className="mt-3 text-base font-black text-slate-950">{step.title}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{step.sections}</p>
-              <p className="mt-2 text-xs font-semibold leading-5 text-slate-400">{step.detail}</p>
+              <p className="mt-1 text-sm font-semibold text-content-tertiary">{step.sections}</p>
+              <p className="mt-2 text-xs font-semibold leading-5 text-content-muted">{step.detail}</p>
             </button>
           );
         })}
@@ -2311,14 +2311,14 @@ export default function AgencyRegistrationPage() {
           >
             <div>
               <h2 className="text-[18px] font-black text-slate-950">노출 콘텐츠</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
+              <p className="mt-1 text-sm font-medium text-content-tertiary">
                 공연 포스터, 공연 소개 이미지, 공지사항을 등록해서 상세 노출 콘텐츠를 먼저 구성합니다.
               </p>
             </div>
 
             <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-bold text-slate-500">공연 포스터</span>
+                <span className="text-sm font-bold text-content-tertiary">공연 포스터</span>
                 <input
                   ref={posterImageInputRef}
                   type="file"
@@ -2342,13 +2342,13 @@ export default function AgencyRegistrationPage() {
                   onDrop={handlePosterImageDrop}
                   className={`rounded-3xl border border-dashed p-4 transition ${
                     isPosterImageDragActive
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white'
+                      ? 'border-primary bg-primary-subtle'
+                      : 'border-line-strong bg-surface-subtle hover:border-line-strong hover:bg-surface'
                   }`}
                 >
                   {posterImage ? (
                     <div className="space-y-4">
-                      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-slate-100">
+                      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-surface-muted">
                         <Image
                           src={posterImage.previewUrl}
                           alt="공연 포스터 미리보기"
@@ -2359,8 +2359,8 @@ export default function AgencyRegistrationPage() {
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-slate-700">{posterImage.file.name}</p>
-                          <p className="mt-1 text-xs font-medium text-slate-400">
+                          <p className="truncate text-sm font-bold text-content-secondary">{posterImage.file.name}</p>
+                          <p className="mt-1 text-xs font-medium text-content-muted">
                             {formatFileSize(posterImage.file.size)}
                           </p>
                         </div>
@@ -2370,7 +2370,7 @@ export default function AgencyRegistrationPage() {
                             event.stopPropagation();
                             handlePosterImageRemove();
                           }}
-                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                          className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-content-tertiary transition hover:border-line-strong hover:bg-surface-subtle hover:text-content-secondary"
                         >
                           삭제
                         </button>
@@ -2380,7 +2380,7 @@ export default function AgencyRegistrationPage() {
                     <div className="flex min-h-[420px] flex-col justify-between gap-4">
                       <div>
                         <p className="text-base font-black text-slate-950">포스터 이미지 업로드</p>
-                        <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                        <p className="mt-2 text-sm font-medium leading-6 text-content-tertiary">
                           포스터 이미지를 드래그 앤 드랍하거나 클릭해서 파일 탐색기에서 선택합니다.
                           세로형 비율 이미지를 권장합니다.
                         </p>
@@ -2391,12 +2391,12 @@ export default function AgencyRegistrationPage() {
                     </div>
                   )}
                 </div>
-                <span className="text-xs font-medium text-slate-400">{posterImageLabel}</span>
+                <span className="text-xs font-medium text-content-muted">{posterImageLabel}</span>
               </div>
 
               <div className="space-y-5">
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm font-bold text-slate-500">공연 소개</span>
+                  <span className="text-sm font-bold text-content-tertiary">공연 소개</span>
                   <input
                     ref={introImageInputRef}
                     type="file"
@@ -2421,15 +2421,15 @@ export default function AgencyRegistrationPage() {
                     onDrop={handleIntroImageDrop}
                     className={`min-h-[220px] rounded-3xl border border-dashed p-4 transition sm:p-5 ${
                       isIntroImageDragActive
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-white'
+                        ? 'border-primary bg-primary-subtle'
+                        : 'border-line-strong bg-surface-subtle hover:border-line-strong hover:bg-surface'
                     }`}
                   >
                     <div className="flex h-full flex-col justify-between gap-6">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <p className="text-base font-black text-slate-950">소개 이미지 업로드</p>
-                          <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                          <p className="mt-2 text-sm font-medium leading-6 text-content-tertiary">
                             공연 소개 이미지를 여러 장 등록할 수 있습니다. 상세 페이지에 들어갈 소개용 이미지를 올립니다.
                           </p>
                         </div>
@@ -2439,9 +2439,9 @@ export default function AgencyRegistrationPage() {
                       </div>
 
                       <div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-400">
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-content-muted">
                           <span>{introImageCountLabel}</span>
-                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <span className="h-1 w-1 rounded-full bg-surface-active" />
                           <span>공연 소개 이미지는 여러 장 등록할 수 있습니다.</span>
                         </div>
                       </div>
@@ -2453,9 +2453,9 @@ export default function AgencyRegistrationPage() {
                       {introImages.map((image, index) => (
                         <div
                           key={image.id}
-                          className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+                          className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
                         >
-                          <div className="relative aspect-[4/3] bg-slate-100">
+                          <div className="relative aspect-[4/3] bg-surface-muted">
                             <Image
                               src={image.previewUrl}
                               alt={`공연 소개 이미지 ${index + 1}`}
@@ -2466,8 +2466,8 @@ export default function AgencyRegistrationPage() {
                           </div>
                           <div className="flex items-center justify-between gap-3 px-4 py-3">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-slate-700">{image.file.name}</p>
-                              <p className="mt-1 text-xs font-medium text-slate-400">{formatFileSize(image.file.size)}</p>
+                              <p className="truncate text-sm font-bold text-content-secondary">{image.file.name}</p>
+                              <p className="mt-1 text-xs font-medium text-content-muted">{formatFileSize(image.file.size)}</p>
                             </div>
                             <button
                               type="button"
@@ -2475,7 +2475,7 @@ export default function AgencyRegistrationPage() {
                                 event.stopPropagation();
                                 handleIntroImageRemove(image.id);
                               }}
-                              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                              className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-content-tertiary transition hover:border-line-strong hover:bg-surface-subtle hover:text-content-secondary"
                             >
                               삭제
                             </button>
@@ -2487,12 +2487,12 @@ export default function AgencyRegistrationPage() {
                 </div>
 
                 <label className="flex flex-col gap-2">
-                  <span className="text-sm font-bold text-slate-500">공지사항</span>
+                  <span className="text-sm font-bold text-content-tertiary">공지사항</span>
                   <textarea
                     value={noticeText}
                     onChange={(event) => setNoticeText(event.target.value)}
                     placeholder="예매 전 유의사항, 운영 공지, 입장 관련 안내를 입력합니다."
-                    className="min-h-[180px] rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium leading-6 text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    className="min-h-[180px] rounded-3xl border border-line bg-surface-subtle px-4 py-4 text-sm font-medium leading-6 text-content-secondary outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
                   />
                 </label>
 
@@ -2517,7 +2517,7 @@ export default function AgencyRegistrationPage() {
             >
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">
+                <p className="mt-1 text-sm font-medium text-content-tertiary">
                   공연명, 공연장, 카테고리와 운영 기간을 입력합니다.
                 </p>
               </div>
@@ -2536,12 +2536,12 @@ export default function AgencyRegistrationPage() {
               />
 
               <div className="flex flex-col gap-1">
-                <span className="mb-1 text-[13px] font-medium text-gray-500">공연장</span>
+                <span className="mb-1 text-[13px] font-medium text-content-tertiary">공연장</span>
                 <div className="relative" ref={venueDropdownRef}>
                   <button
                     type="button"
-                    className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-gray-900 outline-none transition-colors sm:text-[22px] ${
-                      isVenueOpen ? 'border-blue-500' : 'border-gray-300'
+                    className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-content outline-none transition-colors sm:text-[22px] ${
+                      isVenueOpen ? 'border-primary' : 'border-line-strong'
                     }`}
                     disabled={isVenueListLoading || venueOptions.length === 0}
                     aria-expanded={isVenueOpen}
@@ -2551,7 +2551,7 @@ export default function AgencyRegistrationPage() {
                     <span className="truncate text-left">{selectedVenueInfo.label}</span>
                     <svg
                       className={`ml-3 h-5 w-5 shrink-0 transition-transform ${
-                        isVenueOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'
+                        isVenueOpen ? 'rotate-180 text-primary' : 'text-content-muted'
                       }`}
                       viewBox="0 0 20 20"
                       fill="currentColor"
@@ -2567,7 +2567,7 @@ export default function AgencyRegistrationPage() {
 
                   {isVenueOpen ? (
                     <div
-                      className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
+                      className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
                       role="listbox"
                     >
                         <div className="max-h-72 overflow-y-auto p-2">
@@ -2580,8 +2580,8 @@ export default function AgencyRegistrationPage() {
                               type="button"
                               className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${
                                 isSelected
-                                  ? 'bg-blue-50 text-blue-700'
-                                  : 'text-slate-700 hover:bg-slate-50'
+                                  ? 'bg-primary-subtle text-primary-hover'
+                                  : 'text-content-secondary hover:bg-surface-subtle'
                               }`}
                               role="option"
                               aria-selected={isSelected}
@@ -2596,7 +2596,7 @@ export default function AgencyRegistrationPage() {
                             >
                               <p className="text-sm font-black">{venue.label}</p>
                               {venue.region || venue.capacity ? (
-                                <p className="mt-1 text-xs font-medium text-slate-500">
+                                <p className="mt-1 text-xs font-medium text-content-tertiary">
                                   {[venue.region, venue.capacity].filter(Boolean).join(' / ')}
                                 </p>
                               ) : null}
@@ -2607,7 +2607,7 @@ export default function AgencyRegistrationPage() {
                     </div>
                   ) : null}
                 </div>
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-xs font-medium text-content-muted">
                   등록된 공연장만 선택할 수 있습니다.
                 </span>
               </div>
@@ -2622,11 +2622,11 @@ export default function AgencyRegistrationPage() {
                     onOpen={() => setIsPerformanceDateModalOpen(true)}
                   />
 
-                  <div className="flex min-h-[268px] flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+                  <div className="flex min-h-[268px] flex-col rounded-3xl border border-line bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-slate-500">카테고리</p>
-                        <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                        <p className="text-sm font-bold text-content-tertiary">카테고리</p>
+                        <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
                           공연 등록에 사용할 카테고리를 먼저 선택합니다.
                         </p>
                       </div>
@@ -2645,7 +2645,7 @@ export default function AgencyRegistrationPage() {
                       className="mt-2 flex-1"
                     />
                     {categoryListErrorMessage ? (
-                      <p className="mt-3 text-sm font-medium text-red-500">{categoryListErrorMessage}</p>
+                      <p className="mt-3 text-sm font-medium text-danger">{categoryListErrorMessage}</p>
                     ) : null}
                   </div>
                 </div>
@@ -2671,7 +2671,7 @@ export default function AgencyRegistrationPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-[18px] font-black text-slate-950">티켓 일정 기준</p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                  <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
                     등록된 각 회차 날짜와 공연 오픈/종료 시각을 기준으로 예매 오픈일과 종료일을 자동 계산합니다.
                   </p>
                 </div>
@@ -2697,13 +2697,13 @@ export default function AgencyRegistrationPage() {
                   />
                 </div>
 
-                <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+                <div className="mt-5 rounded-3xl border border-line bg-surface p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold text-slate-500">
+                      <p className="text-sm font-bold text-content-tertiary">
                         {selectedScheduleDateKeys.length > 0 ? '선택한 회차 미리보기' : '등록 회차 미리보기'}
                       </p>
-                      <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                      <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
                         회차를 추가하면 아래에서 실제 예매 오픈일과 종료일이 어떻게 계산되는지 바로 확인할 수 있습니다.
                       </p>
                     </div>
@@ -2717,31 +2717,31 @@ export default function AgencyRegistrationPage() {
                       {ticketSchedulePreviewItems.map((preview) => (
                         <div
                           key={preview.id}
-                          className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4"
+                          className="rounded-3xl border border-line bg-surface-subtle px-4 py-4"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                               <p className="text-sm font-black text-slate-950">
                                 공연 {formatScheduleDateTimePreviewLabel(preview.scheduleAt)}
                               </p>
-                              <p className="mt-1 text-xs font-medium text-slate-400">
+                              <p className="mt-1 text-xs font-medium text-content-muted">
                                 회차 시간 {preview.timeValue}
                               </p>
-                              <p className="mt-1 text-xs font-medium text-slate-400">
+                              <p className="mt-1 text-xs font-medium text-content-muted">
                                 공연 종료 {formatDateTimeLabel(preview.sessionEndAt)}
                               </p>
                             </div>
                           </div>
 
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
-                              <p className="text-xs font-bold tracking-[0.08em] text-slate-400">티켓 오픈</p>
+                            <div className="rounded-2xl bg-surface px-4 py-3 ring-1 ring-black/5">
+                              <p className="text-xs font-bold tracking-[0.08em] text-content-muted">티켓 오픈</p>
                               <p className="mt-2 text-sm font-black text-slate-950">
                                 {formatDateTimeLabel(preview.ticketOpenAt)}
                               </p>
                             </div>
-                            <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5">
-                              <p className="text-xs font-bold tracking-[0.08em] text-slate-400">티켓 종료</p>
+                            <div className="rounded-2xl bg-surface px-4 py-3 ring-1 ring-black/5">
+                              <p className="text-xs font-bold tracking-[0.08em] text-content-muted">티켓 종료</p>
                               <p className="mt-2 text-sm font-black text-slate-950">
                                 {formatDateTimeLabel(preview.ticketCloseAt)}
                               </p>
@@ -2751,25 +2751,25 @@ export default function AgencyRegistrationPage() {
                       ))}
 
                       {hiddenTicketSchedulePreviewCount > 0 ? (
-                        <p className="text-sm font-medium text-slate-400">
+                        <p className="text-sm font-medium text-content-muted">
                           나머지 {hiddenTicketSchedulePreviewCount}개 회차도 같은 기준으로 자동 계산됩니다.
                         </p>
                       ) : null}
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-medium leading-6 text-slate-400">
+                    <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-5 text-sm font-medium leading-6 text-content-muted">
                       아직 등록된 회차가 없습니다. 공연 일정 등록에서 회차를 추가하면 회차별 티켓 오픈일과 종료일이 자동 계산됩니다.
                     </div>
                   )}
 
                   {hasInvalidTicketWindow ? (
-                    <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-600">
+                    <div className="mt-4 rounded-2xl border border-danger-light bg-danger-subtle px-4 py-3 text-sm font-medium leading-6 text-danger">
                       현재 기준에서는 일부 회차의 티켓 오픈일이 종료일보다 늦습니다. 오픈/종료 기준을 다시 조정해 주세요.
                     </div>
                   ) : null}
 
                   {hasTicketWindowAfterScheduleStart ? (
-                    <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-700">
+                    <div className="mt-4 rounded-2xl border border-warning-light bg-warning-subtle px-4 py-3 text-sm font-medium leading-6 text-warning-hover">
                       일부 회차는 현재 설정대로면 티켓 오픈 또는 종료가 회차 시작 이후입니다. 기준을 다시 확인해 주세요.
                     </div>
                   ) : null}
@@ -2785,7 +2785,7 @@ export default function AgencyRegistrationPage() {
           >
             <div>
               <h2 className="text-[18px] font-black text-slate-950">판매 정책</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
+              <p className="mt-1 text-sm font-medium text-content-tertiary">
                 VIP / R / S / A 좌석별 금액을 직접 입력합니다.
               </p>
             </div>
@@ -2794,7 +2794,7 @@ export default function AgencyRegistrationPage() {
               <div className="flex h-full flex-col gap-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold text-slate-500">좌석 금액 설정</p>
+                    <p className="text-sm font-bold text-content-tertiary">좌석 금액 설정</p>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
@@ -2813,22 +2813,22 @@ export default function AgencyRegistrationPage() {
                   </div>
                 </div>
 
-                <div className="mt-auto rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-bold tracking-[0.08em] text-slate-400">가격 가이드</p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
+                <div className="mt-auto rounded-2xl border border-line bg-surface-subtle px-4 py-3">
+                  <p className="text-xs font-bold tracking-[0.08em] text-content-muted">가격 가이드</p>
+                  <p className="mt-1 text-sm font-medium leading-6 text-content-secondary">
                     상위 등급과 하위 등급 간 간격이 너무 크면 운영 검수에서 조정 요청이 들어올 수 있습니다.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-bold text-slate-500">좌석 금액 요약</p>
+              <div className="rounded-3xl border border-line bg-surface-subtle p-4">
+                <p className="text-sm font-bold text-content-tertiary">좌석 금액 요약</p>
 
                 <div className="mt-3 space-y-2.5">
                   {seatPriceSummary.map((field) => (
                     <div
                       key={field.key}
-                      className="rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5"
+                      className="rounded-2xl bg-surface px-4 py-3 ring-1 ring-black/5"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <Badge color={field.badgeColor} size="small">
@@ -2838,7 +2838,7 @@ export default function AgencyRegistrationPage() {
                           ₩{field.formattedValue}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs font-medium leading-5 text-slate-500">
+                      <p className="mt-2 text-xs font-medium leading-5 text-content-tertiary">
                         {field.description}
                       </p>
                     </div>
@@ -2858,7 +2858,7 @@ export default function AgencyRegistrationPage() {
                 <h2 className="text-[18px] font-black text-slate-950">
                   {'할인 정보'}
                 </h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">
+                <p className="mt-1 text-sm font-medium text-content-tertiary">
                   {
                     '할인 유형과 할인율을 한 번만 입력하면 모든 좌석 등급에 같게 적용됩니다.'
                   }
@@ -2879,11 +2879,11 @@ export default function AgencyRegistrationPage() {
                 {seatDiscounts.map((discount, index) => (
                   <div
                     key={discount.id}
-                    className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+                    className="rounded-3xl border border-line bg-surface-subtle p-4"
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex-1 space-y-4">
-                        <p className="text-sm font-bold text-slate-500">
+                        <p className="text-sm font-bold text-content-tertiary">
                           {`할인 ${index + 1}`}
                         </p>
 
@@ -2933,7 +2933,7 @@ export default function AgencyRegistrationPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm font-medium leading-6 text-slate-500">
+              <div className="rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-5 text-sm font-medium leading-6 text-content-tertiary">
                 {
                   '추가할 할인 정보가 없으면 빈 상태로 두셔도 됩니다. 할인을 운영할 경우 위 버튼으로 행을 추가해 주세요.'
                 }
@@ -2949,11 +2949,11 @@ export default function AgencyRegistrationPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">좌석 등급/비활성 설정</h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">
+                <p className="mt-1 text-sm font-medium text-content-tertiary">
                   좌석도에서 어떤 좌석을 VIP, R, S, A로 운영할지와 판매 제외 좌석을 직접 지정합니다.
                 </p>
                 {seatTemplateErrorMessage ? (
-                  <p className="mt-2 text-xs font-semibold text-red-600">
+                  <p className="mt-2 text-xs font-semibold text-danger">
                     {seatTemplateErrorMessage}
                   </p>
                 ) : null}
@@ -2980,59 +2980,59 @@ export default function AgencyRegistrationPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-              <div className="rounded-3xl border border-red-100 bg-red-50/70 p-5">
+              <div className="rounded-3xl border border-danger-light bg-danger-subtle/70 p-5">
                 <div className="flex items-center">
                   <Badge color="red" size="small">VIP</Badge>
                 </div>
                 <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
                   {seatPolicySummary.vip}
-                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                  <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-slate-500">프리미엄 운영 좌석</p>
+                <p className="mt-2 text-sm font-medium text-content-tertiary">프리미엄 운영 좌석</p>
               </div>
 
-              <div className="rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+              <div className="rounded-3xl border border-primary-light bg-primary-subtle/70 p-5">
                 <div className="flex items-center">
                   <Badge color="blue" size="small">R석</Badge>
                 </div>
                 <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
                   {seatPolicySummary.r}
-                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                  <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-slate-500">무대 중심 시야 좌석</p>
+                <p className="mt-2 text-sm font-medium text-content-tertiary">무대 중심 시야 좌석</p>
               </div>
 
-              <div className="rounded-3xl border border-green-100 bg-green-50/70 p-5">
+              <div className="rounded-3xl border border-success-light bg-success-subtle/70 p-5">
                 <div className="flex items-center">
                   <Badge color="green" size="small">S석</Badge>
                 </div>
                 <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
                   {seatPolicySummary.s}
-                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                  <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-slate-500">일반 판매 핵심 좌석</p>
+                <p className="mt-2 text-sm font-medium text-content-tertiary">일반 판매 핵심 좌석</p>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <div className="rounded-3xl border border-line bg-surface-subtle p-5">
                 <div className="flex items-center">
                   <Badge color="grey" size="small">A석</Badge>
                 </div>
                 <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
                   {seatPolicySummary.a}
-                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                  <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-slate-500">입문형 가격대 좌석</p>
+                <p className="mt-2 text-sm font-medium text-content-tertiary">입문형 가격대 좌석</p>
               </div>
 
-              <div className="rounded-3xl border border-slate-300 bg-white p-5">
+              <div className="rounded-3xl border border-line-strong bg-surface p-5">
                 <div className="flex items-center">
                   <Badge color="grey" variant="outline" size="small">비활성</Badge>
                 </div>
                 <p className="mt-4 whitespace-nowrap text-[28px] font-black tracking-tight text-slate-950">
                   {seatPolicySummary.disabled}
-                  <span className="ml-1 text-lg font-bold text-slate-500">석</span>
+                  <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-slate-500">예매에서 제외되는 좌석</p>
+                <p className="mt-2 text-sm font-medium text-content-tertiary">예매에서 제외되는 좌석</p>
               </div>
             </div>
           </Box>
@@ -3048,7 +3048,7 @@ export default function AgencyRegistrationPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">공연 일정 등록</h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">
+                <p className="mt-1 text-sm font-medium text-content-tertiary">
                   공연 오픈일과 종료일을 기준으로 날짜가 자동 생성됩니다. 날짜를 고른 뒤 회차 시간을 빠르게 추가하세요.
                 </p>
               </div>
@@ -3059,24 +3059,24 @@ export default function AgencyRegistrationPage() {
 
             <div className="space-y-4">
               <div className="grid gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-3xl border border-line bg-surface-subtle p-4">
                   <div>
-                    <p className="text-sm font-bold text-slate-500">운영 날짜</p>
-                    <p className="mt-2 text-sm font-medium text-slate-600">
+                    <p className="text-sm font-bold text-content-tertiary">운영 날짜</p>
+                    <p className="mt-2 text-sm font-medium text-content-secondary">
                       {formatDateKey(performanceOpenAt)} ~ {formatDateKey(performanceCloseAt)}
                     </p>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-slate-600">
+                  <p className="mt-2 text-sm font-medium text-content-secondary">
                     날짜 카드를 눌러 여러 날짜를 선택한 뒤 같은 회차를 한 번에 추가할 수 있습니다.
                   </p>
-                  <p className="mt-1 text-xs font-medium text-slate-400">
+                  <p className="mt-1 text-xs font-medium text-content-muted">
                     총 {performanceScheduleDateKeys.length}일 범위에서 회차를 등록합니다.
                   </p>
 
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                  <div className="mt-4 rounded-2xl border border-line bg-surface p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-black text-slate-500">요일 선택</p>
-                      <span className="text-xs font-semibold text-slate-400">선택/해제</span>
+                      <p className="text-xs font-black text-content-tertiary">요일 선택</p>
+                      <span className="text-xs font-semibold text-content-muted">선택/해제</span>
                     </div>
                     <div className="mt-3 grid grid-cols-7 gap-1.5">
                       {scheduleWeekdayOptions.map((option) => {
@@ -3099,10 +3099,10 @@ export default function AgencyRegistrationPage() {
                             aria-pressed={isEverySelected}
                             className={`rounded-xl px-2 py-2 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-40 ${
                               isEverySelected
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-primary text-white'
                                 : isPartiallySelected
-                                  ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
-                                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                                  ? 'bg-primary-subtle text-primary-hover ring-1 ring-primary-light'
+                                  : 'bg-surface-subtle text-content-secondary hover:bg-surface-muted'
                             }`}
                             title={`${option.label}요일 ${selectedCount}/${weekdayDateKeys.length}일 선택`}
                           >
@@ -3131,15 +3131,15 @@ export default function AgencyRegistrationPage() {
                           onClick={() => handleScheduleDateToggle(dateKey)}
                           className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                             isSelected
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                              ? 'border-primary bg-primary-subtle'
+                              : 'border-line bg-surface hover:border-line-strong hover:bg-surface-subtle'
                           }`}
                         >
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-2">
                               <span
                                 className={`h-2.5 w-2.5 rounded-full ${
-                                  isSelected ? 'bg-blue-500' : 'bg-slate-200'
+                                  isSelected ? 'bg-primary' : 'bg-surface-active'
                                 }`}
                               />
                               <p className="text-sm font-black text-slate-950">
@@ -3147,22 +3147,22 @@ export default function AgencyRegistrationPage() {
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">
+                              <span className="rounded-full bg-surface-muted px-2 py-1 text-xs font-bold text-content-tertiary">
                                 {scheduleCount}회
                               </span>
                             </div>
                           </div>
-                          <p className="mt-2 text-xs font-medium text-slate-400">{dateKey}</p>
+                          <p className="mt-2 text-xs font-medium text-content-muted">{dateKey}</p>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                <div className="rounded-3xl border border-line bg-surface-subtle p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold text-slate-500">선택 날짜</p>
+                      <p className="text-sm font-bold text-content-tertiary">선택 날짜</p>
                       <p className="mt-2 text-2xl font-black text-slate-950">
                         {selectedScheduleDateCount > 1
                           ? `${selectedScheduleDateCount}일 선택`
@@ -3173,13 +3173,13 @@ export default function AgencyRegistrationPage() {
                       type="button"
                       onClick={handleAllPerformanceSchedulesClear}
                       disabled={registeredPerformanceCount === 0}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-bold text-content-tertiary transition hover:border-line-strong hover:bg-surface-subtle hover:text-content-secondary disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       전체 초기화
                     </button>
                   </div>
 
-                  <p className="mt-4 text-sm font-medium leading-6 text-slate-600">
+                  <p className="mt-4 text-sm font-medium leading-6 text-content-secondary">
                     {selectedScheduleDateCount > 0
                       ? `입력한 시간은 현재 선택한 ${selectedScheduleDateCount}일에 한 번에 추가됩니다.`
                       : '운영 날짜에서 날짜를 선택하면 입력한 시간을 여러 날짜에 한 번에 추가할 수 있습니다.'}
@@ -3190,29 +3190,29 @@ export default function AgencyRegistrationPage() {
                       {selectedScheduleDateLabels.map((label) => (
                         <span
                           key={label}
-                          className="inline-flex h-8 items-center justify-center rounded-full bg-white px-3 text-center text-xs font-bold text-slate-500 ring-1 ring-black/5"
+                          className="inline-flex h-8 items-center justify-center rounded-full bg-surface px-3 text-center text-xs font-bold text-content-tertiary ring-1 ring-black/5"
                         >
                           {label}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-400">
+                    <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface px-4 py-3 text-sm font-medium text-content-muted">
                       아직 선택된 날짜가 없습니다.
                     </div>
                   )}
 
-                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4">
+                  <div className="mt-5 rounded-3xl border border-line bg-surface p-4">
                     <div>
                       <div>
-                        <p className="text-sm font-black text-slate-700">30분 단위 선택</p>
-                        <p className="mt-1 text-xs font-medium text-slate-400">
+                        <p className="text-sm font-black text-content-secondary">30분 단위 선택</p>
+                        <p className="mt-1 text-xs font-medium text-content-muted">
                           시간을 누르면 선택된 날짜에 바로 회차가 추가됩니다.
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+                    <div className="mt-4 grid grid-cols-2 rounded-2xl bg-surface-muted p-1">
                       {(['am', 'pm'] as const).map((period) => {
                         const isActive = scheduleTimePeriod === period;
 
@@ -3223,8 +3223,8 @@ export default function AgencyRegistrationPage() {
                             onClick={() => setScheduleTimePeriod(period)}
                             className={`rounded-xl px-3 py-2 text-sm font-black transition ${
                               isActive
-                                ? 'bg-white text-slate-950 shadow-sm'
-                                : 'text-slate-500 hover:bg-white/60 hover:text-slate-700'
+                                ? 'bg-surface text-slate-950 shadow-sm'
+                                : 'text-content-tertiary hover:bg-surface/60 hover:text-content-secondary'
                             }`}
                           >
                             {period === 'am' ? '오전' : '오후'}
@@ -3250,8 +3250,8 @@ export default function AgencyRegistrationPage() {
                             aria-pressed={isRegisteredOnSelectedDate}
                             className={`rounded-2xl border px-3 py-2 text-sm font-black transition ${
                               isRegisteredOnSelectedDate
-                                ? 'border-2 border-blue-600 bg-white text-slate-700'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                                ? 'border-2 border-primary bg-surface text-content-secondary'
+                                : 'border-line bg-surface text-content-secondary hover:border-line-strong hover:bg-surface-subtle'
                             }`}
                           >
                             {timeValue}
@@ -3261,15 +3261,15 @@ export default function AgencyRegistrationPage() {
                     </div>
 
                     {selectedScheduleDateCount === 0 ? (
-                      <p className="mt-3 text-xs font-semibold text-amber-600">
+                      <p className="mt-3 text-xs font-semibold text-warning">
                         운영 날짜를 먼저 선택하면 시간 버튼으로 회차를 바로 추가할 수 있습니다.
                       </p>
                     ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-end">
+                  <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-line bg-surface p-4 sm:flex-row sm:items-end">
                     <label className="flex min-w-0 flex-1 flex-col gap-2">
-                      <span className="text-sm font-bold text-slate-500">직접 입력</span>
+                      <span className="text-sm font-bold text-content-tertiary">직접 입력</span>
                       <input
                         type="time"
                         step={60}
@@ -3282,7 +3282,7 @@ export default function AgencyRegistrationPage() {
                             setScheduleTimePeriod(getScheduleTimePeriod(nextValue));
                           }
                         }}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
                       />
                     </label>
                     <Button
@@ -3297,11 +3297,11 @@ export default function AgencyRegistrationPage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="rounded-3xl border border-line bg-surface p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-slate-500">등록된 공연 시간</p>
-                    <p className="mt-1 text-sm font-medium text-slate-400">
+                    <p className="text-sm font-bold text-content-tertiary">등록된 공연 시간</p>
+                    <p className="mt-1 text-sm font-medium text-content-muted">
                       같은 날짜에 등록된 회차를 바로 확인하고 삭제할 수 있습니다.
                     </p>
                   </div>
@@ -3309,7 +3309,7 @@ export default function AgencyRegistrationPage() {
                     <button
                       type="button"
                       onClick={handleSelectedScheduleClear}
-                      className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                      className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-content-tertiary transition hover:border-line-strong hover:bg-surface-subtle hover:text-content-secondary"
                     >
                       선택 날짜 초기화
                     </button>
@@ -3321,7 +3321,7 @@ export default function AgencyRegistrationPage() {
                     {selectedScheduleTimes.map((timeValue) => (
                       <div
                         key={timeValue}
-                        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                        className="flex items-center gap-3 rounded-2xl border border-line bg-surface-subtle px-4 py-3"
                       >
                         <span className="text-base font-black text-slate-950">{timeValue}</span>
                         <button
@@ -3331,7 +3331,7 @@ export default function AgencyRegistrationPage() {
                               handleScheduleTimeRemove(selectedScheduleDateKey, timeValue);
                             }
                           }}
-                          className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-500 ring-1 ring-black/5 transition hover:bg-slate-100 hover:text-slate-700"
+                          className="rounded-full bg-surface px-2.5 py-1 text-xs font-bold text-content-tertiary ring-1 ring-black/5 transition hover:bg-surface-muted hover:text-content-secondary"
                         >
                           삭제
                         </button>
@@ -3339,7 +3339,7 @@ export default function AgencyRegistrationPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm font-medium text-slate-500">
+                  <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-6 text-sm font-medium text-content-tertiary">
                     아직 등록된 회차가 없습니다. 시간을 입력해서 추가하세요.
                   </div>
                 )}
@@ -3364,19 +3364,19 @@ export default function AgencyRegistrationPage() {
                     type="button"
                     onClick={() => moveToRegistrationStep(index)}
                     className={`flex w-full gap-3 rounded-2xl px-4 py-3 text-left transition ${
-                      isActive ? 'bg-blue-50' : 'bg-slate-50 hover:bg-slate-100'
+                      isActive ? 'bg-primary-subtle' : 'bg-surface-subtle hover:bg-surface-muted'
                     }`}
                   >
                     <span
                       className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${
-                        isActive ? 'bg-blue-100 text-blue-700' : 'bg-white text-slate-400'
+                        isActive ? 'bg-primary-light text-primary-hover' : 'bg-surface text-content-muted'
                       }`}
                     >
                       {index + 1}
                     </span>
                     <span>
-                      <span className="block text-sm font-black text-slate-800">{item.title}</span>
-                      <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+                      <span className="block text-sm font-black text-content">{item.title}</span>
+                      <span className="mt-1 block text-xs font-semibold leading-5 text-content-tertiary">
                         {item.sections}
                       </span>
                     </span>
@@ -3389,7 +3389,7 @@ export default function AgencyRegistrationPage() {
           <Box variant="outline" className="space-y-4">
             <div>
               <h2 className="text-[18px] font-black text-slate-950">다음 액션</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
+              <p className="mt-1 text-sm font-medium text-content-tertiary">
                 현재 단계는 {activeRegistrationStep + 1}단계입니다.
               </p>
             </div>
@@ -3436,13 +3436,13 @@ export default function AgencyRegistrationPage() {
             )}
 
             {registrationErrorMessage ? (
-              <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium leading-6 text-red-600">
+              <div className="rounded-2xl border border-danger-light bg-danger-subtle px-4 py-3 text-sm font-medium leading-6 text-danger">
                 {registrationErrorMessage}
               </div>
             ) : null}
 
             {registrationSuccessMessage ? (
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium leading-6 text-emerald-700">
+              <div className="rounded-2xl border border-success-light bg-success-subtle px-4 py-3 text-sm font-medium leading-6 text-success-hover">
                 {registrationSuccessMessage}
               </div>
             ) : null}

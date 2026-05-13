@@ -220,22 +220,22 @@ function AgencyDropdownField({
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <span className="mb-1 text-[13px] font-medium text-gray-500">기획사명</span>
+      <span className="mb-1 text-[13px] font-medium text-content-tertiary">기획사명</span>
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
-          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-2 text-[16px] text-gray-900 outline-none transition-colors disabled:cursor-not-allowed disabled:text-gray-400 ${isOpen ? 'border-blue-500' : error ? 'border-red-500' : 'border-gray-300'
+          className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-2 text-[16px] text-content outline-none transition-colors disabled:cursor-not-allowed disabled:text-content-muted ${isOpen ? 'border-primary' : error ? 'border-danger' : 'border-line-strong'
             }`}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
           disabled={isDisabled}
           onClick={() => setIsOpen((current) => !current)}
         >
-          <span className={`truncate text-left ${selectedAgency ? '' : 'text-gray-300'}`}>
+          <span className={`truncate text-left ${selectedAgency ? '' : 'text-content-muted'}`}>
             {selectedAgency?.name ?? placeholderText}
           </span>
           <svg
-            className={`ml-3 h-5 w-5 shrink-0 transition-transform ${isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'}`}
+            className={`ml-3 h-5 w-5 shrink-0 transition-transform ${isOpen ? 'rotate-180 text-primary' : 'text-content-muted'}`}
             viewBox="0 0 20 20"
             fill="currentColor"
             aria-hidden="true"
@@ -250,7 +250,7 @@ function AgencyDropdownField({
 
         {isOpen ? (
           <div
-            className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
+            className="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.12)]"
             role="listbox"
           >
             <div className="max-h-72 overflow-y-auto p-2">
@@ -261,7 +261,7 @@ function AgencyDropdownField({
                   <button
                     key={agency.id}
                     type="button"
-                    className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
+                    className={`w-full rounded-xl px-4 py-2.5 text-left transition-colors ${isSelected ? 'bg-primary-subtle text-primary-hover' : 'text-content-secondary hover:bg-surface-subtle'
                       }`}
                     role="option"
                     aria-selected={isSelected}
@@ -278,8 +278,8 @@ function AgencyDropdownField({
           </div>
         ) : null}
       </div>
-      {error ? <span className="mt-1 text-[12px] text-red-500">{error}</span> : null}
-      <span className="text-xs font-medium text-slate-400">등록된 기획사만 선택할 수 있습니다.</span>
+      {error ? <span className="mt-1 text-[12px] text-danger">{error}</span> : null}
+      <span className="text-xs font-medium text-content-muted">등록된 기획사만 선택할 수 있습니다.</span>
     </div>
   );
 }
@@ -554,14 +554,14 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
             return (
               <div key={stepLabel} className="space-y-2">
-                <div className={`h-1.5 rounded-full ${isCompleted || isActive ? 'bg-blue-600' : 'bg-slate-200'}`} />
-                <p className={`text-xs font-bold ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>{stepLabel}</p>
+                <div className={`h-1.5 rounded-full ${isCompleted || isActive ? 'bg-primary' : 'bg-surface-active'}`} />
+                <p className={`text-xs font-bold ${isActive ? 'text-content' : 'text-content-muted'}`}>{stepLabel}</p>
               </div>
             );
           })}
         </div>
 
-        <p className="mb-6 text-sm leading-6 text-slate-500">{selectedTypeCopy.cardDescription}</p>
+        <p className="mb-6 text-sm leading-6 text-content-tertiary">{selectedTypeCopy.cardDescription}</p>
 
         <form className="space-y-6" onSubmit={handleSubmit} noValidate>
           <input type="hidden" name="accountType" value={initialAccountType} />
@@ -736,58 +736,58 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
 
             {currentStep === 4 ? (
               <div className="space-y-5 animate-in fade-in duration-300">
-                <Box variant="gray" className="rounded-[24px] bg-slate-50">
-                  <p className="text-sm font-black text-slate-900">입력 정보 확인</p>
+                <Box variant="gray" className="rounded-[24px] bg-surface-subtle">
+                  <p className="text-sm font-black text-content">입력 정보 확인</p>
                   <dl className="mt-4 grid gap-3 text-sm">
                     <div className="flex items-center justify-between gap-4">
-                      <dt className="font-medium text-slate-500">계정 유형</dt>
-                      <dd className="font-bold text-slate-900">{selectedTypeCopy.label}</dd>
+                      <dt className="font-medium text-content-tertiary">계정 유형</dt>
+                      <dd className="font-bold text-content">{selectedTypeCopy.label}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-4">
-                      <dt className="font-medium text-slate-500">이메일</dt>
-                      <dd className="font-bold text-slate-900">{formData.email}</dd>
+                      <dt className="font-medium text-content-tertiary">이메일</dt>
+                      <dd className="font-bold text-content">{formData.email}</dd>
                     </div>
                     <div className="flex items-center justify-between gap-4">
-                      <dt className="font-medium text-slate-500">{isAgencySignup ? '담당자명' : '이름'}</dt>
-                      <dd className="font-bold text-slate-900">{formData.name}</dd>
+                      <dt className="font-medium text-content-tertiary">{isAgencySignup ? '담당자명' : '이름'}</dt>
+                      <dd className="font-bold text-content">{formData.name}</dd>
                     </div>
                     {!isAgencySignup ? (
                       <>
                         <div className="flex items-center justify-between gap-4">
-                          <dt className="font-medium text-slate-500">닉네임</dt>
-                          <dd className="font-bold text-slate-900">{formData.nickname}</dd>
+                          <dt className="font-medium text-content-tertiary">닉네임</dt>
+                          <dd className="font-bold text-content">{formData.nickname}</dd>
                         </div>
                         <div className="flex items-center justify-between gap-4">
-                          <dt className="font-medium text-slate-500">생년월일</dt>
-                          <dd className="font-bold text-slate-900">{formData.birthDate}</dd>
+                          <dt className="font-medium text-content-tertiary">생년월일</dt>
+                          <dd className="font-bold text-content">{formData.birthDate}</dd>
                         </div>
                       </>
                     ) : null}
                     {isAgencySignup ? (
                       <div className="flex items-center justify-between gap-4">
-                        <dt className="font-medium text-slate-500">기획사명</dt>
-                        <dd className="font-bold text-slate-900">{selectedAgency?.name ?? '-'}</dd>
+                        <dt className="font-medium text-content-tertiary">기획사명</dt>
+                        <dd className="font-bold text-content">{selectedAgency?.name ?? '-'}</dd>
                       </div>
                     ) : null}
                     <div className="flex items-center justify-between gap-4">
-                      <dt className="font-medium text-slate-500">휴대폰번호</dt>
-                      <dd className="font-bold text-slate-900">{formData.phone}</dd>
+                      <dt className="font-medium text-content-tertiary">휴대폰번호</dt>
+                      <dd className="font-bold text-content">{formData.phone}</dd>
                     </div>
                   </dl>
                 </Box>
 
-                <Box variant="gray" className="rounded-[24px] bg-slate-50">
-                  <p className="text-sm font-black text-slate-900">약관 동의</p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-slate-500">
+                <Box variant="gray" className="rounded-[24px] bg-surface-subtle">
+                  <p className="text-sm font-black text-content">약관 동의</p>
+                  <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
                     회원가입을 완료하려면 필수 약관에 동의해 주세요.
                   </p>
 
                   <div className="mt-4 flex flex-col gap-3">
-                    <div className="flex items-center justify-between rounded-[18px] border border-white bg-white px-4 py-3">
-                      <label className="inline-flex flex-1 cursor-pointer items-center gap-3 pr-2 text-sm font-medium text-slate-600">
+                    <div className="flex items-center justify-between rounded-[18px] border border-white bg-surface px-4 py-3">
+                      <label className="inline-flex flex-1 cursor-pointer items-center gap-3 pr-2 text-sm font-medium text-content-secondary">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          className="h-4 w-4 shrink-0 rounded border-line-strong text-primary focus:ring-primary"
                           checked={isTermsAgreed}
                           onChange={(event) => setIsTermsAgreed(event.target.checked)}
                         />
@@ -796,17 +796,17 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                       <button
                         type="button"
                         onClick={() => setOpenModalType('terms1')}
-                        className="ml-2 shrink-0 text-xs font-bold text-blue-500 underline transition-colors hover:text-blue-700"
+                        className="ml-2 shrink-0 text-xs font-bold text-primary underline transition-colors hover:text-primary-hover"
                       >
                         약관 보기
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-[18px] border border-white bg-white px-4 py-3">
-                      <label className="inline-flex flex-1 cursor-pointer items-center gap-3 pr-2 text-sm font-medium text-slate-600">
+                    <div className="flex items-center justify-between rounded-[18px] border border-white bg-surface px-4 py-3">
+                      <label className="inline-flex flex-1 cursor-pointer items-center gap-3 pr-2 text-sm font-medium text-content-secondary">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          className="h-4 w-4 shrink-0 rounded border-line-strong text-primary focus:ring-primary"
                           checked={receiveAnnouncements}
                           onChange={(event) => setReceiveAnnouncements(event.target.checked)}
                         />
@@ -815,7 +815,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                       <button
                         type="button"
                         onClick={() => setOpenModalType('terms2')}
-                        className="ml-2 shrink-0 text-xs font-bold text-blue-500 underline transition-colors hover:text-blue-700"
+                        className="ml-2 shrink-0 text-xs font-bold text-primary underline transition-colors hover:text-primary-hover"
                       >
                         약관 보기
                       </button>
@@ -826,7 +826,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
             ) : null}
           </div>
 
-          {errors.submit ? <p className="text-sm font-medium text-red-500">{errors.submit}</p> : null}
+          {errors.submit ? <p className="text-sm font-medium text-danger">{errors.submit}</p> : null}
 
           <div className="flex gap-3 pt-1 pb-4">
             {currentStep > 1 ? (
@@ -838,7 +838,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
                   display="block" 
                   size="xlarge" 
                   onClick={handlePrev}
-                  className="!border !border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-50"
+                  className="!border !border-line !bg-surface !text-content-secondary hover:!bg-surface-subtle"
                 >
                   이전
                 </Button>

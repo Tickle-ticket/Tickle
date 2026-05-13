@@ -15,7 +15,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-slate-100 p-6">
+      <div className="min-h-screen bg-surface-muted p-6">
         <Story />
       </div>
     ),
@@ -37,7 +37,7 @@ function SeatPolicyModalStory({
     <div className="flex min-h-[720px] items-center justify-center">
       <button
         type="button"
-        className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)]"
+        className="rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)]"
         onClick={() => setIsOpen(true)}
       >
         좌석 등급 설정 열기

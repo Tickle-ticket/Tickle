@@ -132,7 +132,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query, hideMobileS
           className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
         />
         {!isSearchLoading && (
-          <p className="text-gray-500 mt-2">총 {searchResults?.length || 0}개의 공연이 검색되었습니다.</p>
+          <p className="text-content-tertiary mt-2">총 {searchResults?.length || 0}개의 공연이 검색되었습니다.</p>
         )}
       </div>
 
@@ -170,7 +170,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query, hideMobileS
             );
           })
         ) : query !== ' ' ? (
-          <div className="w-full py-20 text-center text-gray-500">
+          <div className="w-full py-20 text-center text-content-tertiary">
             검색 결과가 없습니다. 다른 검색어를 입력해보세요.
           </div>
         ) : null}
@@ -212,13 +212,13 @@ export const SearchContent: React.FC<SearchContentProps> = ({ query, hideMobileS
             );
           })
         ) : query !== ' ' ? (
-          <div className="w-full col-span-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+          <div className="w-full col-span-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
             <Title className="mb-2 !p-0 !bg-transparent [&_h1]:!text-center [&>div]:!justify-center [&>div]:!text-center" title="검색 결과가 없습니다." bottomBorder={false} />
-            <p className="text-gray-500 mt-2">다른 검색어를 입력해보세요.</p>
+            <p className="text-content-tertiary mt-2">다른 검색어를 입력해보세요.</p>
           </div>
         ) : null}
       </div>

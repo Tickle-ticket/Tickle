@@ -45,10 +45,10 @@ export default function NoticePage() {
             className="!px-0 !pb-4 mb-8 w-full [&>div]:!px-0 [&_h1]:!text-3xl"
           />
           
-          <Box variant="flat" padding="none" className="bg-white border border-gray-100 rounded-xl w-full shadow-sm overflow-hidden">
+          <Box variant="flat" padding="none" className="bg-surface border border-line-subtle rounded-xl w-full shadow-sm overflow-hidden">
             <div className="flex flex-col w-full">
               {/* Table Header */}
-              <div className="hidden md:flex border-b border-gray-200 bg-gray-50 text-gray-500 text-sm font-bold p-4">
+              <div className="hidden md:flex border-b border-line bg-surface-subtle text-content-tertiary text-sm font-bold p-4">
                 <div className="w-16 text-center">번호</div>
                 <div className="flex-1 text-center">제목</div>
                 <div className="w-32 text-center">등록일</div>
@@ -56,32 +56,32 @@ export default function NoticePage() {
 
               {/* Table Rows */}
               {noticeData.map((notice) => (
-                <details key={notice.id} className="group flex flex-col border-b border-gray-100 last:border-none">
-                  <summary className="flex flex-col md:flex-row items-start md:items-center p-4 hover:bg-blue-50/50 transition-colors cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                    <div className="hidden md:block w-16 text-center text-gray-400 text-sm font-medium">
+                <details key={notice.id} className="group flex flex-col border-b border-line-subtle last:border-none">
+                  <summary className="flex flex-col md:flex-row items-start md:items-center p-4 hover:bg-primary-subtle/50 transition-colors cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                    <div className="hidden md:block w-16 text-center text-content-muted text-sm font-medium">
                       {notice.id}
                     </div>
                     <div className="flex-1 w-full md:w-auto md:px-4 flex items-center gap-2 mb-2 md:mb-0">
-                      <span className="font-medium text-gray-800 group-hover:text-blue-600 truncate">
+                      <span className="font-medium text-content group-hover:text-primary truncate">
                         {notice.title}
                       </span>
                       {notice.isNew && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 shrink-0">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger-light text-danger shrink-0">
                           N
                         </span>
                       )}
                     </div>
                     <div className="w-full flex items-center justify-between md:w-32 md:justify-center">
-                      <div className="text-gray-400 text-sm">{notice.date}</div>
+                      <div className="text-content-muted text-sm">{notice.date}</div>
                       {/* 모바일 화살표 아이콘 */}
-                      <div className="md:hidden text-gray-400 transition-transform group-open:rotate-180">
+                      <div className="md:hidden text-content-muted transition-transform group-open:rotate-180">
                         <svg fill="none" height="20" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="20"><path d="M6 9l6 6 6-6"></path></svg>
                       </div>
                     </div>
                   </summary>
                   
                   {/* 상세 내용 영역 */}
-                  <div className="p-6 md:p-8 bg-gray-50/50 border-t border-gray-100 text-gray-700 text-[15px] leading-relaxed whitespace-pre-wrap">
+                  <div className="p-6 md:p-8 bg-surface-subtle/50 border-t border-line-subtle text-content-secondary text-[15px] leading-relaxed whitespace-pre-wrap">
                     {notice.content}
                   </div>
                 </details>
@@ -89,14 +89,14 @@ export default function NoticePage() {
             </div>
             
             {/* Pagination Placeholder */}
-            <div className="flex justify-center items-center p-6 gap-2 border-t border-gray-100">
-              <button className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 cursor-not-allowed">
+            <div className="flex justify-center items-center p-6 gap-2 border-t border-line-subtle">
+              <button className="w-8 h-8 flex items-center justify-center rounded-md border border-line text-content-muted cursor-not-allowed">
                 &lt;
               </button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-md bg-blue-600 text-white font-bold">
+              <button className="w-8 h-8 flex items-center justify-center rounded-md bg-primary text-white font-bold">
                 1
               </button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 cursor-not-allowed">
+              <button className="w-8 h-8 flex items-center justify-center rounded-md border border-line text-content-muted cursor-not-allowed">
                 &gt;
               </button>
             </div>

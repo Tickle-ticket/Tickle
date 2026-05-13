@@ -26,7 +26,7 @@ type Story = StoryObj<typeof meta>;
 // 4개의 컴포넌트를 조립해서 보여주는 스토리
 export const FullGroup: Story = {
   render: (args) => (
-    <div className="flex flex-col items-start gap-1 p-8 bg-zinc-900 rounded-lg">
+    <div className="flex flex-col items-start gap-1 p-8 bg-surface-inverse rounded-lg">
       <BannerSubtitle subtitle="단독판매" color={args.color} />
       <BannerTitle {...args} />
       <BannerPlace place="블루스퀘어 신한카드홀" color={args.color} />
@@ -41,7 +41,7 @@ export const FullGroup: Story = {
 
 export const TitleOnly: Story = {
   render: (args) => (
-    <div className="flex flex-col items-start gap-1 p-8 bg-zinc-900 rounded-lg">
+    <div className="flex flex-col items-start gap-1 p-8 bg-surface-inverse rounded-lg">
       <BannerTitle {...args} />
     </div>
   ),
@@ -53,7 +53,7 @@ export const TitleOnly: Story = {
 
 export const LoadingState: Story = {
   render: () => (
-    <div className="flex flex-col items-start gap-1 p-8 bg-zinc-900 rounded-lg">
+    <div className="flex flex-col items-start gap-1 p-8 bg-surface-inverse rounded-lg">
       <BannerSubtitle subtitle="단독판매" isLoading />
       <BannerTitle title="오페라의 유령" isLoading />
       <BannerPlace place="블루스퀘어 신한카드홀" isLoading />

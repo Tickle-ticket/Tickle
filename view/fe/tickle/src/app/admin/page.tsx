@@ -153,30 +153,30 @@ export default function AdminBlacklistPage() {
   return (
     <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <header className="flex flex-col gap-2">
-        <p className="text-sm font-bold text-blue-600">Admin API</p>
+        <p className="text-sm font-bold text-primary">Admin API</p>
         <h1 className="text-2xl font-black tracking-normal text-slate-950">블랙리스트 관리</h1>
-        <p className="text-sm font-medium text-slate-500">
+        <p className="text-sm font-medium text-content-tertiary">
           `/api/v1/admin/blacklist` 엔드포인트로 등록, 조회, 삭제를 처리합니다.
         </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-4">
         {summary.map((item) => (
-          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-slate-500">{item.label}</p>
+          <article key={item.label} className="rounded-lg border border-line bg-surface p-5 shadow-sm">
+            <p className="text-sm font-bold text-content-tertiary">{item.label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
-            <p className="mt-2 text-xs font-bold text-slate-500">{item.caption}</p>
+            <p className="mt-2 text-xs font-bold text-content-tertiary">{item.caption}</p>
           </article>
         ))}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-lg border border-line bg-surface p-5 shadow-sm">
         <h2 className="text-lg font-black text-slate-950">수동 차단 등록</h2>
         <form className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr_auto]" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-slate-500">사용자 ID</span>
+            <span className="text-xs font-bold text-content-tertiary">사용자 ID</span>
             <input
-              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-11 rounded-lg border border-line-strong px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
               inputMode="numeric"
               onChange={(event) => setTargetUserId(event.target.value)}
               placeholder="예: 1001"
@@ -185,9 +185,9 @@ export default function AdminBlacklistPage() {
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-slate-500">사유</span>
+            <span className="text-xs font-bold text-content-tertiary">사유</span>
             <select
-              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-11 rounded-lg border border-line-strong px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
               onChange={(event) => setReason(event.target.value as BlacklistReason)}
               value={reason}
             >
@@ -200,9 +200,9 @@ export default function AdminBlacklistPage() {
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-slate-500">관리자 ID</span>
+            <span className="text-xs font-bold text-content-tertiary">관리자 ID</span>
             <input
-              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-11 rounded-lg border border-line-strong px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
               inputMode="numeric"
               onChange={(event) => setAdminUserId(event.target.value)}
               placeholder="토큰에서 자동 추출"
@@ -211,9 +211,9 @@ export default function AdminBlacklistPage() {
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-slate-500">상세 사유</span>
+            <span className="text-xs font-bold text-content-tertiary">상세 사유</span>
             <input
-              className="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-11 rounded-lg border border-line-strong px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
               onChange={(event) => setDetail(event.target.value)}
               placeholder="운영 메모"
               value={detail}
@@ -221,7 +221,7 @@ export default function AdminBlacklistPage() {
           </label>
 
           <button
-            className="h-11 self-end rounded-lg bg-slate-950 px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="h-11 self-end rounded-lg bg-slate-950 px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-surface-active"
             disabled={isSubmitting}
             type="submit"
           >
@@ -230,21 +230,21 @@ export default function AdminBlacklistPage() {
         </form>
 
         {errorMessage ? (
-          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{errorMessage}</p>
+          <p className="mt-4 rounded-lg bg-danger-subtle px-4 py-3 text-sm font-bold text-danger">{errorMessage}</p>
         ) : null}
         {successMessage ? (
-          <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{successMessage}</p>
+          <p className="mt-4 rounded-lg bg-success-subtle px-4 py-3 text-sm font-bold text-success-hover">{successMessage}</p>
         ) : null}
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <header className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
+        <header className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-black text-slate-950">차단 목록</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">페이지 크기 {size}건</p>
+            <p className="mt-1 text-sm font-medium text-content-tertiary">페이지 크기 {size}건</p>
           </div>
           <button
-            className="h-10 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+            className="h-10 rounded-lg border border-line-strong px-4 text-sm font-black text-content-secondary hover:bg-surface-subtle"
             onClick={() => void loadBlacklist()}
             type="button"
           >
@@ -254,7 +254,7 @@ export default function AdminBlacklistPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+            <thead className="bg-surface-subtle text-content-tertiary">
               <tr>
                 <th className="px-5 py-3 font-black">ID</th>
                 <th className="px-5 py-3 font-black">사용자</th>
@@ -265,24 +265,24 @@ export default function AdminBlacklistPage() {
                 <th className="px-5 py-3 font-black">작업</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line-subtle">
               {items.map((item) => (
                 <tr key={item.blacklistId} className="align-top">
-                  <td className="px-5 py-4 font-black text-slate-900">{item.blacklistId}</td>
-                  <td className="px-5 py-4 font-bold text-slate-700">{item.userId}</td>
+                  <td className="px-5 py-4 font-black text-content">{item.blacklistId}</td>
+                  <td className="px-5 py-4 font-bold text-content-secondary">{item.userId}</td>
                   <td className="px-5 py-4">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-700">
+                    <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-black text-content-secondary">
                       {reasonLabels[item.reason] ?? item.reason}
                     </span>
                   </td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{item.blockedBy ?? '-'}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{formatDateTime(item.createdAt)}</td>
-                  <td className="max-w-[320px] px-5 py-4 font-medium leading-6 text-slate-600">
+                  <td className="px-5 py-4 font-semibold text-content-tertiary">{item.blockedBy ?? '-'}</td>
+                  <td className="px-5 py-4 font-semibold text-content-tertiary">{formatDateTime(item.createdAt)}</td>
+                  <td className="max-w-[320px] px-5 py-4 font-medium leading-6 text-content-secondary">
                     {item.detail || '-'}
                   </td>
                   <td className="px-5 py-4">
                     <button
-                      className="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-600 hover:bg-red-100"
+                      className="rounded-lg bg-danger-subtle px-3 py-2 text-xs font-black text-danger hover:bg-danger-light"
                       onClick={() => void handleRemove(item)}
                       type="button"
                     >
@@ -293,14 +293,14 @@ export default function AdminBlacklistPage() {
               ))}
               {!isLoading && items.length === 0 ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-sm font-bold text-slate-500" colSpan={7}>
+                  <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={7}>
                     등록된 블랙리스트 항목이 없습니다.
                   </td>
                 </tr>
               ) : null}
               {isLoading ? (
                 <tr>
-                  <td className="px-5 py-10 text-center text-sm font-bold text-slate-500" colSpan={7}>
+                  <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={7}>
                     불러오는 중입니다.
                   </td>
                 </tr>
@@ -309,20 +309,20 @@ export default function AdminBlacklistPage() {
           </table>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <footer className="flex items-center justify-between border-t border-line px-5 py-4">
           <button
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
+            className="rounded-lg border border-line-strong px-4 py-2 text-sm font-black text-content-secondary disabled:cursor-not-allowed disabled:text-content-muted"
             disabled={page <= 0}
             onClick={() => setPage((current) => Math.max(0, current - 1))}
             type="button"
           >
             이전
           </button>
-          <span className="text-sm font-bold text-slate-500">
+          <span className="text-sm font-bold text-content-tertiary">
             {page + 1} / {Math.max(totalPages, 1)}
           </span>
           <button
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
+            className="rounded-lg border border-line-strong px-4 py-2 text-sm font-black text-content-secondary disabled:cursor-not-allowed disabled:text-content-muted"
             disabled={!pageData?.hasNext}
             onClick={() => setPage((current) => current + 1)}
             type="button"

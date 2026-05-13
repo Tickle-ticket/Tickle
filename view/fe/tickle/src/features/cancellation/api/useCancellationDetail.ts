@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCancellationDetail } from '@/src/shared/api/cancellationApi';
 import type { CancellationOfferDetail } from '@/src/shared/api/types/cancellation.types';
 
-export const useCancellationDetail = (cancellationId: number | string | null) => {
+export const useCancellationDetail = (cancellationId: number | string | null, options?: { throwOnError?: boolean }) => {
   return useQuery<CancellationOfferDetail, Error>({
     queryKey: ['cancellationDetail', cancellationId],
     queryFn: async () => {
@@ -19,5 +19,7 @@ export const useCancellationDetail = (cancellationId: number | string | null) =>
     enabled: !!cancellationId,
     retry: false, // 403, 404 등에서 무한 재시도 방지
     staleTime: 0, // 항상 최신 정보(타이머 등)를 위해 캐시 무효화
+    throwOnError: options?.throwOnError ?? undefined,
+    meta: { silent: true }, // 결제 완료 후 유효하지 않은 상태에서 에러가 발생해도 글로벌 에러 로그 방지
   });
 };

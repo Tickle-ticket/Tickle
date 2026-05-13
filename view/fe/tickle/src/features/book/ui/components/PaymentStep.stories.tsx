@@ -26,9 +26,9 @@ const meta: Meta<typeof PaymentStep> = {
       }, []);
 
       return (
-        <div className="relative w-full h-screen bg-gray-100 overflow-hidden">
+        <div className="relative w-full h-screen bg-surface-muted overflow-hidden">
           {/* Header Mock for context since PaymentStep expects to be below header */}
-          <div className="h-[73px] bg-white border-b border-gray-200 flex items-center px-6 font-bold">
+          <div className="h-[73px] bg-surface border-b border-line flex items-center px-6 font-bold">
             Header Mock
           </div>
           <Story />

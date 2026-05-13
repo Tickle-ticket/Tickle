@@ -227,7 +227,7 @@ function LoadMetricGaugeCard({
 
   return (
     <article
-      className="min-w-[230px] flex-1 rounded-sm border border-slate-200 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
+      className="min-w-[230px] flex-1 rounded-sm border border-line px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
       style={{ backgroundColor: panelBackgroundColor, height }}
     >
       <header className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export function LoadMetricGaugePanel({
   height = 196,
 }: LoadMetricGaugePanelProps) {
   return (
-    <section className="w-full overflow-x-auto rounded-md border border-slate-200 p-1 shadow-[0_18px_46px_rgba(15,23,42,0.08)]" style={{ backgroundColor }}>
+    <section className="w-full overflow-x-auto rounded-md border border-line p-1 shadow-[0_18px_46px_rgba(15,23,42,0.08)]" style={{ backgroundColor }}>
       <div className="flex min-w-max gap-1">
         {metrics.map((metric) => (
           <LoadMetricGaugeCard

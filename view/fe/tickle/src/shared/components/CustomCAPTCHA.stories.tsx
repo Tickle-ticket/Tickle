@@ -21,7 +21,7 @@ export const Default: Story = {
     onSuccess: (token) => console.log('Captcha Verified!', token),
   },
   render: (args) => (
-    <div className="w-full h-[600px] bg-gray-50 flex items-center justify-center p-8 rounded-2xl">
+    <div className="w-full h-[600px] bg-surface-subtle flex items-center justify-center p-8 rounded-2xl">
       <CustomCAPTCHA {...args} />
     </div>
   ),
@@ -36,7 +36,7 @@ export const Mobile: Story = {
     layout: 'fullscreen',
   },
   render: (args) => (
-    <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="w-full min-h-screen bg-surface-subtle flex items-center justify-center p-4">
       <CustomCAPTCHA {...args} />
     </div>
   ),
@@ -51,7 +51,7 @@ export const Tablet: Story = {
     layout: 'fullscreen',
   },
   render: (args) => (
-    <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <div className="w-full min-h-screen bg-surface-subtle flex items-center justify-center p-6">
       <CustomCAPTCHA {...args} />
     </div>
   ),

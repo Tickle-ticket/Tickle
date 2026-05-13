@@ -50,10 +50,10 @@ export function AdminSidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 hidden h-screen w-[280px] shrink-0 flex-col justify-between overflow-y-auto border-r border-slate-200 bg-white/90 px-5 py-6 shadow-[20px_0_60px_rgba(15,23,42,0.06)] backdrop-blur-xl lg:flex ${className}`}
+      className={`fixed inset-y-0 left-0 z-30 hidden h-screen w-[280px] shrink-0 flex-col justify-between overflow-y-auto border-r border-line bg-surface/90 px-5 py-6 shadow-[20px_0_60px_rgba(15,23,42,0.06)] backdrop-blur-xl lg:flex ${className}`}
     >
       <div>
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-line bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <Image
               src="/tickle.svg"
@@ -69,9 +69,9 @@ export function AdminSidebar({
           </div>
 
           <div className="mt-6">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Console</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-content-muted">Console</p>
             <h1 className="mt-1 text-3xl font-black tracking-normal text-slate-950">{title}</h1>
-            <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+            <p className="mt-2 text-sm font-medium leading-6 text-content-tertiary">
               관리자 권한이 필요한 운영 API를 기준으로 구성된 페이지입니다.
             </p>
           </div>
@@ -87,7 +87,7 @@ export function AdminSidebar({
                 className={`block w-full rounded-lg px-4 py-3 text-left text-sm font-bold transition ${
                   isActive
                     ? 'bg-slate-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.16)]'
-                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-950'
+                    : 'bg-surface text-content-secondary ring-1 ring-line hover:bg-surface-subtle hover:text-slate-950'
                 }`}
                 href={item.href}
               >

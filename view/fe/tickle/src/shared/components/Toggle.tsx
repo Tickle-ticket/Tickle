@@ -18,7 +18,7 @@ export const Toggle = ({
   if (isLoading) {
     return (
       <div 
-        className={`bg-gray-200 rounded-full animate-pulse ${sizeClasses[size].track} ${className}`}
+        className={`bg-surface-active rounded-full animate-pulse ${sizeClasses[size].track} ${className}`}
         aria-hidden="true"
       />
     );
@@ -36,7 +36,7 @@ export const Toggle = ({
       className={`
         relative flex items-center shrink-0 rounded-full cursor-pointer
         transition-colors duration-200 ease-in-out outline-none
-        focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2
+        focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
         ${track}
         ${checked ? 'bg-[#3182f6]' : 'bg-[#e5e8eb]'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}
@@ -45,7 +45,7 @@ export const Toggle = ({
     >
       <div
         className={`
-          absolute left-[2px] bg-white rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.2)]
+          absolute left-[2px] bg-surface rounded-full shadow-[0_2px_5px_rgba(0,0,0,0.2)]
           transition-transform duration-300 ease-[cubic-bezier(0.175,0.885,0.32,1.275)]
           ${knob}
           ${checked ? translate : 'translate-x-0'}

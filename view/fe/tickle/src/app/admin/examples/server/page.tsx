@@ -132,10 +132,10 @@ const serverEvents = [
 ];
 
 const statusStyle: Record<string, string> = {
-  정상: 'bg-emerald-50 text-emerald-600',
-  정상화: 'bg-blue-50 text-blue-600',
-  주의: 'bg-orange-50 text-orange-600',
-  위험: 'bg-red-50 text-red-600',
+  정상: 'bg-success-subtle text-success',
+  정상화: 'bg-primary-subtle text-primary',
+  주의: 'bg-warning-subtle text-warning',
+  위험: 'bg-danger-subtle text-danger',
 };
 
 function formatNumber(value: number) {
@@ -168,7 +168,7 @@ export default function MockServerMonitoringPage() {
     <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <header className="flex flex-col gap-4">
         <div>
-          <p className="text-sm font-bold text-slate-500">Example Mock</p>
+          <p className="text-sm font-bold text-content-tertiary">Example Mock</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
             서버 모니터링 대시보드
           </h1>
@@ -185,10 +185,10 @@ export default function MockServerMonitoringPage() {
         </div>
 
         <div className="h-full">
-          <aside className="flex h-full flex-col rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <aside className="flex h-full flex-col rounded-[28px] border border-white/70 bg-surface/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <label className="flex flex-col gap-2">
-              <span className="text-[12px] font-black text-slate-500">서비스 선택</span>
-              <select className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white">
+              <span className="text-[12px] font-black text-content-tertiary">서비스 선택</span>
+              <select className="h-12 rounded-2xl border border-line bg-surface-subtle px-4 text-sm font-bold text-content outline-none transition focus:border-line-strong focus:bg-surface">
                 <option>전체 서비스</option>
                 <option>tickle-api</option>
                 <option>ticket-api</option>
@@ -198,10 +198,10 @@ export default function MockServerMonitoringPage() {
 
             <div className="mt-5 flex flex-1 flex-col gap-3">
               {operationalHighlights.map((item) => (
-                <div key={item.label} className="flex flex-1 flex-col justify-center rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                <div key={item.label} className="flex flex-1 flex-col justify-center rounded-[22px] border border-line bg-surface-subtle px-4 py-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-content-muted">{item.label}</p>
                   <p className="mt-2 text-[24px] font-black tracking-tight text-slate-950">{item.value}</p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">{item.caption}</p>
+                  <p className="mt-1 text-xs font-medium text-content-tertiary">{item.caption}</p>
                 </div>
               ))}
             </div>
@@ -209,12 +209,12 @@ export default function MockServerMonitoringPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-surface/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
         <header className="px-1">
           <h2 className="text-[16px] font-black leading-6 tracking-tight text-slate-950">
             서버 핵심 지표
           </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mt-1 text-sm font-medium text-content-tertiary">
             한계치에 가까워지는 항목을 빠르게 읽을 수 있도록 게이지 카드로 정리했습니다.
           </p>
         </header>
@@ -223,8 +223,8 @@ export default function MockServerMonitoringPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-        <header className="border-b border-slate-200/80 px-5 py-4">
+      <section className="overflow-hidden rounded-[28px] border border-white/70 bg-surface/80 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <header className="border-b border-line/80 px-5 py-4">
           <h2 className="text-[16px] font-black leading-6 tracking-tight text-slate-950">
             서버 이벤트 로그
           </h2>
@@ -232,7 +232,7 @@ export default function MockServerMonitoringPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1180px] table-auto text-left text-sm">
-            <thead className="bg-slate-50/90 text-slate-500">
+            <thead className="bg-surface-subtle/90 text-content-tertiary">
               <tr>
                 <th className="px-5 py-3 font-black whitespace-nowrap">메트릭</th>
                 <th className="px-5 py-3 font-black whitespace-nowrap">서비스</th>
@@ -242,23 +242,23 @@ export default function MockServerMonitoringPage() {
                 <th className="px-5 py-3 font-black">내용</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line-subtle">
               {serverEvents.map((event) => (
                 <tr key={`${event.metric}-${event.date}`} className="align-top">
-                  <td className="px-5 py-4 font-black text-slate-900 whitespace-nowrap">{event.metric}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500 whitespace-nowrap">{event.service}</td>
-                  <td className="px-5 py-4 font-black text-slate-900 whitespace-nowrap">{event.value}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500 whitespace-nowrap">{event.date}</td>
+                  <td className="px-5 py-4 font-black text-content whitespace-nowrap">{event.metric}</td>
+                  <td className="px-5 py-4 font-semibold text-content-tertiary whitespace-nowrap">{event.service}</td>
+                  <td className="px-5 py-4 font-black text-content whitespace-nowrap">{event.value}</td>
+                  <td className="px-5 py-4 font-semibold text-content-tertiary whitespace-nowrap">{event.date}</td>
                   <td className="px-5 py-4 whitespace-nowrap">
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-black ${
-                        statusStyle[event.status] ?? 'bg-slate-100 text-slate-600'
+                        statusStyle[event.status] ?? 'bg-surface-muted text-content-secondary'
                       }`}
                     >
                       {event.status}
                     </span>
                   </td>
-                  <td className="min-w-[420px] px-5 py-4 font-semibold leading-6 text-slate-600">
+                  <td className="min-w-[420px] px-5 py-4 font-semibold leading-6 text-content-secondary">
                     {event.message}
                   </td>
                 </tr>

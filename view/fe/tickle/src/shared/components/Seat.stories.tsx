@@ -67,7 +67,7 @@ export const Colors: Story = {
     return (
       <div className="flex flex-col gap-6">
         <div>
-          <h4 className="text-sm font-semibold mb-3 text-gray-500">Group 1: Pink, Yellow, Mint</h4>
+          <h4 className="text-sm font-semibold mb-3 text-content-tertiary">Group 1: Pink, Yellow, Mint</h4>
           <div className="flex gap-4">
             {colors1.map((c) => (
               <InteractiveSeat key={c} color={c} status="selectable" />
@@ -75,7 +75,7 @@ export const Colors: Story = {
           </div>
         </div>
         <div>
-          <h4 className="text-sm font-semibold mb-3 text-gray-500">Group 2: Red, Green, Blue</h4>
+          <h4 className="text-sm font-semibold mb-3 text-content-tertiary">Group 2: Red, Green, Blue</h4>
           <div className="flex gap-4">
             {colors2.map((c) => (
               <InteractiveSeat key={c} color={c} status="selectable" />

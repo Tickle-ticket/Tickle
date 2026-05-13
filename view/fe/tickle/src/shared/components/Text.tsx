@@ -13,13 +13,13 @@ const TYPOGRAPHY_MAP = {
 };
 
 const COLOR_MAP = {
-  primary: 'text-gray-900',     // 주요 제목 및 강조 글씨 (가장 진함)
-  secondary: 'text-gray-600',   // 본문이나 보조 설명 영역
-  tertiary: 'text-gray-400',    // 부가 설명, 중요도 낮은 텍스트 (가장 연함)
-  blue: 'text-blue-500',        // 파란색 강조 (토스 블루)
-  red: 'text-red-500',          // 에러/경고
+  primary: 'text-content',     // 주요 제목 및 강조 글씨 (가장 진함)
+  secondary: 'text-content-secondary',   // 본문이나 보조 설명 영역
+  tertiary: 'text-content-muted',    // 부가 설명, 중요도 낮은 텍스트 (가장 연함)
+  blue: 'text-primary',        // 파란색 강조 (토스 블루)
+  red: 'text-danger',          // 에러/경고
   white: 'text-white',          // 어두운 UI 배경용
-  gray: 'text-gray-500',        // 중간 톤 회색
+  gray: 'text-content-tertiary',        // 중간 톤 회색
 };
 
 const WEIGHT_MAP = {
@@ -62,7 +62,7 @@ export const Text = ({
   if (isLoading) {
     return (
       <Component 
-        className={`inline-block bg-gray-200 animate-pulse rounded-[4px] ${className}`} 
+        className={`inline-block bg-surface-active animate-pulse rounded-[4px] ${className}`} 
         // 텍스트 컴포넌트 특성상, 글자가 없으면 높이가 사라지므로 높이를 1em(현재 폰트 크기 기준)으로 고정하고 기본 너비를 줍니다.
         // Tailwind의 w-full 등이 들어왔을 때는 덮어씌워질 수 있도록 처리
         style={{ minWidth: '4em', height: '1.2em', verticalAlign: 'text-bottom', ...props.style }}

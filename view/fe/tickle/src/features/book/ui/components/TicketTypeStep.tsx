@@ -147,34 +147,34 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   const isAllSeatsAssigned = Object.keys(priceGradeSeats).every(g => getPriceGradeTotal(g) === priceGradeSeats[g].length);
 
   return (
-    <div className="absolute inset-0 bg-gray-50 flex flex-col z-30 animate-fade-in">
+    <div className="absolute inset-0 bg-surface-subtle flex flex-col z-30 animate-fade-in">
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center gap-3 shrink-0">
+      <div className="p-4 sm:p-6 border-b border-line flex items-center gap-3 shrink-0">
         <button
           onClick={onCancel}
           disabled={isSubmitting}
-          className="p-1.5 sm:p-2 hover:bg-gray-100:bg-zinc-800 rounded-full transition-colors"
+          className="p-1.5 sm:p-2 hover:bg-surface-muted:bg-surface-inverse rounded-full transition-colors"
           aria-label="뒤로"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <h2 className="text-lg sm:text-xl font-extrabold text-gray-900">인원 선택</h2>
+        <h2 className="text-lg sm:text-xl font-extrabold text-content">인원 선택</h2>
       </div>
 
       {/* Grade list with Accordions */}
       <div className="flex-1 overflow-y-auto px-3 py-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <p className="text-sm text-gray-500 mb-5 px-3">좌석 등급별로 관람 인원 유형을 선택해주세요.</p>
+        <p className="text-sm text-content-tertiary mb-5 px-3">좌석 등급별로 관람 인원 유형을 선택해주세요.</p>
         <div className="flex flex-col gap-3">
           {Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
             const maxCount = seats.length;
             const currentTotal = getPriceGradeTotal(priceGrade);
-            const dotClass = priceGradeDotColors[priceGrade] || 'bg-gray-400';
+            const dotClass = priceGradeDotColors[priceGrade] || 'bg-surface-active';
             const isFull = currentTotal >= maxCount;
 
             return (
-              <div key={priceGrade} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div key={priceGrade} className="bg-surface rounded-2xl border border-line overflow-hidden">
                 <Accordion
                   isOpen={openPriceGrade === priceGrade}
                   onToggle={(isOpen) => setOpenPriceGrade(isOpen ? priceGrade : null)}
@@ -182,13 +182,13 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                     <div className="flex items-center justify-between w-full pr-2">
                       <div className="flex items-center gap-3">
                         <span className={`w-3.5 h-3.5 rounded-full ${dotClass}`} />
-                        <span className="font-bold text-gray-900 text-[15px]">{priceGrade}석</span>
-                        <span className="text-xs text-gray-400 font-medium">{seats.map(s => s.seatLabel).join(', ')}</span>
+                        <span className="font-bold text-content text-[15px]">{priceGrade}석</span>
+                        <span className="text-xs text-content-muted font-medium">{seats.map(s => s.seatLabel).join(', ')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-sm font-extrabold px-2.5 py-1 rounded-full ${isFull
-                          ? 'bg-blue-100 text-blue-600'
-                          : 'bg-orange-100 text-orange-600'
+                          ? 'bg-primary-light text-primary'
+                          : 'bg-warning-light text-warning'
                           }`}>
                           {currentTotal} / {maxCount}
                         </span>
@@ -216,42 +216,42 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                           <div
                             key={type.discountName}
                             className={`flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all ${count > 0
-                              ? 'border-blue-200 bg-blue-50/50'
-                              : 'border-gray-200 bg-white'
+                              ? 'border-primary-light bg-primary-subtle/50'
+                              : 'border-line bg-surface'
                               }`}
                           >
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
-                                <span className={`font-bold text-[14px] ${count > 0 ? 'text-blue-700' : 'text-gray-700'}`}>
+                                <span className={`font-bold text-[14px] ${count > 0 ? 'text-primary-hover' : 'text-content-secondary'}`}>
                                   {type.discountName}
                                 </span>
                                 {type.discountRate > 0 && (
-                                  <span className="text-[11px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">
+                                  <span className="text-[11px] font-bold text-danger bg-danger-subtle px-1.5 py-0.5 rounded">
                                     {type.discountRate}%↓
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-gray-500">{typePrice.toLocaleString()}원</span>
+                              <span className="text-xs text-content-tertiary">{typePrice.toLocaleString()}원</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => handleCount(priceGrade, type.discountName, -1)}
                                 disabled={!canRemove}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold transition-all ${canRemove
-                                  ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 active:scale-90'
-                                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                  ? 'bg-surface-active text-content-secondary hover:bg-surface-active active:scale-90'
+                                  : 'bg-surface-muted text-content-muted cursor-not-allowed'
                                   }`}
                               >
                                 −
                               </button>
-                              <span className={`w-6 text-center font-extrabold text-[16px] ${count > 0 ? 'text-blue-600' : 'text-gray-400'
+                              <span className={`w-6 text-center font-extrabold text-[16px] ${count > 0 ? 'text-primary' : 'text-content-muted'
                                 }`}>{count}</span>
                               <button
                                 onClick={() => handleCount(priceGrade, type.discountName, 1)}
                                 disabled={!canAdd}
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold transition-all ${canAdd
-                                  ? 'bg-blue-500 text-white hover:bg-blue-600 active:scale-90'
-                                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                  ? 'bg-primary text-white hover:bg-primary active:scale-90'
+                                  : 'bg-surface-muted text-content-muted cursor-not-allowed'
                                   }`}
                               >
                                 +
@@ -270,18 +270,18 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       </div>
 
       {/* Bottom checkout bar */}
-      <div className="p-3 sm:p-6 border-t border-gray-200 bg-white flex justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-3">
+      <div className="p-3 sm:p-6 border-t border-line bg-surface flex justify-between items-center shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gap-3">
         <div className="flex flex-col gap-0.5 sm:gap-1 min-w-0">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            <span className="text-xs sm:text-sm text-gray-400 font-medium">좌석 금액</span>
-            <span className="text-xs sm:text-sm text-gray-400 line-through">{originalPrice.toLocaleString()}원</span>
+            <span className="text-xs sm:text-sm text-content-muted font-medium">좌석 금액</span>
+            <span className="text-xs sm:text-sm text-content-muted line-through">{originalPrice.toLocaleString()}원</span>
             {discountAmount > 0 && (
-              <span className="text-[10px] sm:text-xs font-bold text-red-500 bg-red-50 px-1 sm:px-1.5 py-0.5 rounded">-{discountAmount.toLocaleString()}원</span>
+              <span className="text-[10px] sm:text-xs font-bold text-danger bg-danger-subtle px-1 sm:px-1.5 py-0.5 rounded">-{discountAmount.toLocaleString()}원</span>
             )}
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xs sm:text-sm text-gray-500 font-medium">총 결제 금액</span>
-            <span className="text-xl sm:text-2xl font-extrabold text-blue-600 ml-1">
+            <span className="text-xs sm:text-sm text-content-tertiary font-medium">총 결제 금액</span>
+            <span className="text-xl sm:text-2xl font-extrabold text-primary ml-1">
               {totalPrice.toLocaleString()}원
             </span>
           </div>
@@ -290,8 +290,8 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
           disabled={!isAllSeatsAssigned || isSubmitting}
           onClick={handleSubmit}
           className={`px-6 sm:px-10 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-lg transition-all shadow-md shrink-0 ${!isAllSeatsAssigned || isSubmitting
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-            : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-blue-600/20'
+            ? 'bg-surface-active text-content-tertiary cursor-not-allowed shadow-none'
+            : 'bg-primary text-white hover:bg-primary-hover active:scale-95 shadow-blue-600/20'
             }`}
         >
           {isSubmitting ? '진행 중...' : '다음 단계'}

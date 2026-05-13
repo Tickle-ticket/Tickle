@@ -250,21 +250,21 @@ export const AgencySeatPolicyModal = ({
       className="!max-w-[1180px] !overflow-hidden !rounded-[32px] !p-0"
     >
       <div className="mt-4 w-full text-left">
-        <div className="grid max-h-[72vh] overflow-hidden border-t border-slate-200 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="relative h-[420px] bg-slate-100 lg:h-[640px]">
+        <div className="grid max-h-[72vh] overflow-hidden border-t border-line lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="relative h-[420px] bg-surface-muted lg:h-[640px]">
             <InteractiveMapViewer showZoomControls={true}>
               <Stage_4001
                 seatsData={seatMapData}
                 onSeatPointerDown={handleSeatPointerDown}
                 onSeatPointerEnter={handleSeatPointerEnter}
                 onSeatPointerUp={handleSeatPointerUp}
-                className="!rounded-none !bg-white !shadow-none"
+                className="!rounded-none !bg-surface !shadow-none"
               />
             </InteractiveMapViewer>
             <div ref={guidePopoverRef} className="absolute left-4 top-4 z-20">
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-4 py-3 text-sm font-bold text-gray-800 shadow-lg backdrop-blur-sm transition hover:scale-105"
+                className="flex items-center gap-2 rounded-full border border-line bg-surface/90 px-4 py-3 text-sm font-bold text-content shadow-lg backdrop-blur-sm transition hover:scale-105"
                 aria-expanded={isGuideOpen}
                 aria-haspopup="dialog"
                 onClick={() => setIsGuideOpen((current) => !current)}
@@ -279,18 +279,18 @@ export const AgencySeatPolicyModal = ({
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className={`text-gray-500 transition-transform ${isGuideOpen ? 'rotate-180' : ''}`}
+                  className={`text-content-tertiary transition-transform ${isGuideOpen ? 'rotate-180' : ''}`}
                 >
                   <path d="m6 9 6 6 6-6" />
                 </svg>
               </button>
 
               {isGuideOpen ? (
-                <div className="mt-3 w-[320px] rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-[0_18px_46px_rgba(15,23,42,0.12)] backdrop-blur-sm">
+                <div className="mt-3 w-[320px] rounded-3xl border border-line bg-surface/95 p-4 shadow-[0_18px_46px_rgba(15,23,42,0.12)] backdrop-blur-sm">
                   <div className="space-y-2">
                     {seatEditingGuide.map((item, index) => (
-                      <div key={item} className="flex gap-3 text-sm text-slate-600">
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[11px] font-black text-blue-700">
+                      <div key={item} className="flex gap-3 text-sm text-content-secondary">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-light text-[11px] font-black text-primary-hover">
                           {index + 1}
                         </span>
                         <p className="font-medium leading-5">{item}</p>
@@ -302,28 +302,28 @@ export const AgencySeatPolicyModal = ({
             </div>
           </div>
 
-          <div className="flex max-h-[360px] flex-col gap-5 overflow-y-auto border-t border-slate-200 bg-white p-6 lg:max-h-[640px] lg:border-l lg:border-t-0">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-black text-slate-900">현재 편집 도구</p>
+          <div className="flex max-h-[360px] flex-col gap-5 overflow-y-auto border-t border-line bg-surface p-6 lg:max-h-[640px] lg:border-l lg:border-t-0">
+            <div className="rounded-3xl border border-line bg-surface-subtle p-4">
+              <p className="text-sm font-black text-content">현재 편집 도구</p>
               <div className="mt-3 flex items-center gap-2">
                 <Badge color={activeTool.badgeColor}>{activeTool.label}</Badge>
                 {lastEditedSeatId ? (
-                  <span className="text-sm font-semibold text-slate-500">마지막 수정: {lastEditedSeatId}</span>
+                  <span className="text-sm font-semibold text-content-tertiary">마지막 수정: {lastEditedSeatId}</span>
                 ) : (
-                  <span className="text-sm font-semibold text-slate-500">아직 수정한 좌석이 없습니다.</span>
+                  <span className="text-sm font-semibold text-content-tertiary">아직 수정한 좌석이 없습니다.</span>
                 )}
               </div>
-              <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+              <p className="mt-2 text-sm font-medium leading-6 text-content-secondary">
                 {activeTool.description}
               </p>
             </div>
 
             <div>
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-black text-slate-900">좌석 도구</p>
+                <p className="text-sm font-black text-content">좌석 도구</p>
                 <button
                   type="button"
-                  className="text-sm font-bold text-blue-600 transition hover:text-blue-700"
+                  className="text-sm font-bold text-primary transition hover:text-primary-hover"
                   onClick={handleReset}
                 >
                   기본 배치 복원
@@ -334,8 +334,8 @@ export const AgencySeatPolicyModal = ({
                   const isSelected = tool.key === selectedTool;
                   const selectedClass =
                     tool.key === 'disabled'
-                      ? 'border-slate-400 bg-slate-200 shadow-[0_12px_24px_rgba(148,163,184,0.18)]'
-                      : 'border-blue-500 bg-blue-50 shadow-[0_12px_24px_rgba(59,130,246,0.12)]';
+                      ? 'border-line-strong bg-surface-active shadow-[0_12px_24px_rgba(148,163,184,0.18)]'
+                      : 'border-primary bg-primary-subtle shadow-[0_12px_24px_rgba(59,130,246,0.12)]';
 
                   return (
                     <button
@@ -344,17 +344,17 @@ export const AgencySeatPolicyModal = ({
                       className={`rounded-2xl border px-4 py-3 text-left transition ${
                         isSelected
                           ? selectedClass
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          : 'border-line bg-surface hover:border-line-strong hover:bg-surface-subtle'
                       }`}
                       onClick={() => setSelectedTool(tool.key)}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-black text-slate-900">{tool.label}</span>
+                        <span className="text-sm font-black text-content">{tool.label}</span>
                         <Badge color={tool.badgeColor} variant={isSelected ? 'fill' : 'outline'} size="small">
                           적용
                         </Badge>
                       </div>
-                      <p className="mt-2 text-xs font-medium leading-5 text-slate-500">
+                      <p className="mt-2 text-xs font-medium leading-5 text-content-tertiary">
                         {tool.description}
                       </p>
                     </button>
@@ -364,33 +364,33 @@ export const AgencySeatPolicyModal = ({
             </div>
 
             <div>
-              <p className="text-sm font-black text-slate-900">배치 요약</p>
+              <p className="text-sm font-black text-content">배치 요약</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-line bg-surface-subtle px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <Badge color="red" size="small">VIP</Badge>
                     <span className="text-sm font-black text-slate-950">{seatPolicySummary.vip}석</span>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-line bg-surface-subtle px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <Badge color="blue" size="small">R석</Badge>
                     <span className="text-sm font-black text-slate-950">{seatPolicySummary.r}석</span>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-line bg-surface-subtle px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <Badge color="green" size="small">S석</Badge>
                     <span className="text-sm font-black text-slate-950">{seatPolicySummary.s}석</span>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-line bg-surface-subtle px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <Badge color="grey" size="small">A석</Badge>
                     <span className="text-sm font-black text-slate-950">{seatPolicySummary.a}석</span>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-line bg-surface-subtle px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <Badge color="grey" variant="outline" size="small">비활성</Badge>
                     <span className="text-sm font-black text-slate-950">{seatPolicySummary.disabled}석</span>

@@ -34,7 +34,7 @@ export function Table<T = any>({
   // 스켈레톤 로딩 바 설정
   const renderSkeletons = () => {
     return Array.from({ length: 3 }).map((_, rowIndex) => (
-      <tr key={`skeleton-${rowIndex}`} className="bg-white">
+      <tr key={`skeleton-${rowIndex}`} className="bg-surface">
         {columns.map((col, colIndex) => {
           const finalAlign = col.align || textAlign;
           let marginClass = '';
@@ -48,7 +48,7 @@ export function Table<T = any>({
               style={{ width: col.width }}
             >
               <div
-                className={`h-[18px] bg-gray-100 animate-pulse rounded-sm ${colIndex === 0 ? 'w-2/3' : 'w-1/2'} ${marginClass}`}
+                className={`h-[18px] bg-surface-muted animate-pulse rounded-sm ${colIndex === 0 ? 'w-2/3' : 'w-1/2'} ${marginClass}`}
               />
             </td>
           );
@@ -60,7 +60,7 @@ export function Table<T = any>({
   return (
     <div className={`w-full overflow-x-auto ${className}`}>
       <table className="w-full text-left" style={{ tableLayout, borderSpacing: 0 }}>
-        <thead className="border-b-[1px] border-gray-200">
+        <thead className="border-b-[1px] border-line">
           <tr>
             {columns.map((col) => (
               <th
@@ -75,7 +75,7 @@ export function Table<T = any>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-line-subtle">
           {isLoading ? (
             renderSkeletons()
           ) : data.length === 0 ? (
@@ -86,7 +86,7 @@ export function Table<T = any>({
             </tr>
           ) : (
             data.map((row, rowIndex) => (
-              <tr key={rowIndex} className="bg-white hover:bg-gray-50 transition-colors duration-200">
+              <tr key={rowIndex} className="bg-surface hover:bg-surface-subtle transition-colors duration-200">
                 {columns.map((col) => {
                   const cellValue = row[col.key as keyof T];
                   return (

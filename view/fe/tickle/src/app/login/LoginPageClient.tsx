@@ -163,12 +163,12 @@ export function LoginPageClient() {
         </div>
 
         <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <label className="inline-flex cursor-pointer items-center gap-3 font-medium text-slate-600">
+          <label className="inline-flex cursor-pointer items-center gap-3 font-medium text-content-secondary">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(event) => setRememberMe(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-line-strong text-primary focus:ring-primary"
             />
             <span className="select-none">로그인 상태 유지</span>
           </label>
@@ -184,17 +184,17 @@ export function LoginPageClient() {
               <div className="grid gap-4">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                    <div className="w-full border-t border-slate-200" />
+                    <div className="w-full border-t border-line" />
                   </div>
                   <div className="relative flex justify-center text-sm font-medium leading-6">
-                    <span className="bg-white px-4 text-slate-500">또는</span>
+                    <span className="bg-surface px-4 text-content-tertiary">또는</span>
                   </div>
                 </div>
 
                 <KakaoLoginButton onClick={handleKakaoLogin} />
               </div>
             ) : (
-              <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm font-medium leading-6 text-slate-500">
+              <div className="rounded-[20px] border border-line bg-surface-subtle px-5 py-4 text-sm font-medium leading-6 text-content-tertiary">
                 기획사 계정은 이메일 로그인만 지원합니다. 카카오 로그인은 일반 회원 탭에서만 사용할 수 있습니다.
               </div>
             )}

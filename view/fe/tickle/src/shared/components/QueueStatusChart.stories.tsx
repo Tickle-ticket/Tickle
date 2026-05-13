@@ -27,7 +27,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-slate-100 p-6">
+      <div className="min-h-screen bg-surface-muted p-6">
         <Story />
       </div>
     ),

@@ -16,19 +16,19 @@ export const Title = ({
 
   if (isLoading) {
     return (
-      <header className={`w-full bg-white flex flex-col ${className}`}>
+      <header className={`w-full bg-surface flex flex-col ${className}`}>
         {(leftIcon || rightElement) && (
           <div className="flex items-center justify-between h-[48px] px-2">
             <div className="flex items-center justify-start">
-              {leftIcon && <div className="w-10 h-10 ml-2 rounded-full bg-gray-200 animate-pulse" />}
+              {leftIcon && <div className="w-10 h-10 ml-2 rounded-full bg-surface-active animate-pulse" />}
             </div>
             <div className="flex items-center justify-end px-2">
-              {rightElement && <div className="w-10 h-10 mr-2 rounded-full bg-gray-200 animate-pulse" />}
+              {rightElement && <div className="w-10 h-10 mr-2 rounded-full bg-surface-active animate-pulse" />}
             </div>
           </div>
         )}
         <div className="px-5 pt-4 pb-2">
-           <div className="h-8 w-[60%] rounded-md bg-gray-200 animate-pulse" />
+           <div className="h-8 w-[60%] rounded-md bg-surface-active animate-pulse" />
         </div>
       </header>
     );
@@ -37,14 +37,14 @@ export const Title = ({
   const renderLeftIcon = () => {
     if (leftIcon === 'back') {
       return (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-800">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-content">
           <polyline points="15 18 9 12 15 6" />
         </svg>
       );
     }
     if (leftIcon === 'close') {
       return (
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-800">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-content">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
@@ -63,7 +63,7 @@ export const Title = ({
               <button
                 type="button"
                 onClick={onLeftClick}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none active:bg-gray-200"
+                className="p-2 rounded-full hover:bg-surface-muted transition-colors focus:outline-none active:bg-surface-active"
                 aria-label="이전(또는 닫기)"
               >
                 {renderLeftIcon()}

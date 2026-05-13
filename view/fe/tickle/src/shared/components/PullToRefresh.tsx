@@ -122,7 +122,7 @@ export const PullToRefresh = ({ onRefresh, children, disabled = false }: PullToR
     <div className="relative w-full h-full overflow-hidden flex flex-col bg-transparent">
       {/* Dynamic Island Style Pill */}
       <motion.div 
-        className="absolute left-1/2 flex items-center justify-center bg-slate-900/90 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] overflow-hidden z-[60]"
+        className="absolute left-1/2 flex items-center justify-center bg-content/90 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] overflow-hidden z-[60]"
         style={{
           y: pillY,
           x: '-50%',
@@ -141,7 +141,7 @@ export const PullToRefresh = ({ onRefresh, children, disabled = false }: PullToR
               style={{ rotate: isRefreshing ? 0 : iconRotate }}
               animate={isRefreshing ? { rotateY: 360 } : {}}
               transition={{ repeat: isRefreshing ? Infinity : 0, duration: 1.2, ease: "linear" }}
-              className={`flex-shrink-0 ${isReady || isRefreshing ? 'text-blue-400' : 'text-gray-300'}`}
+              className={`flex-shrink-0 ${isReady || isRefreshing ? 'text-primary' : 'text-content-muted'}`}
             >
               <TicketIcon className="w-5 h-5" />
             </motion.div>

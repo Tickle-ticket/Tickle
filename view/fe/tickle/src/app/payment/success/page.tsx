@@ -117,14 +117,14 @@ function PaymentSuccessContent() {
         <Header />
       </div>
       <div className="flex-1 flex items-center justify-center py-12 px-4">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full space-y-6">
+        <div className="bg-surface p-8 rounded-3xl shadow-xl max-w-lg w-full space-y-6">
           
           <div className="flex flex-col items-center text-center space-y-4">
             {loading ? (
-              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             ) : bookingDetail ? (
               <div className="w-full text-left">
-                <h1 className="text-2xl font-extrabold text-gray-900 text-center mb-6">
+                <h1 className="text-2xl font-extrabold text-content text-center mb-6">
                   예매가 완료되었습니다!
                 </h1>
                 <BookingDetailCard bookingDetail={bookingDetail} paymentDetail={paymentData || undefined} />
@@ -137,7 +137,7 @@ function PaymentSuccessContent() {
               onClick={() => {
                 router.push('/?view=mypage&tab=MY_TICKETS');
               }}
-              className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+              className="flex-1 py-4 bg-surface-muted text-content-secondary font-bold rounded-xl hover:bg-surface-active transition-colors"
             >
               내 예매
             </button>
@@ -146,7 +146,7 @@ function PaymentSuccessContent() {
                 closeMypage();
                 router.push('/');
               }}
-              className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-colors"
+              className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:bg-primary-hover transition-colors"
             >
               홈으로
             </button>
@@ -175,7 +175,7 @@ function PaymentSuccessContent() {
 
 export default function PaymentSuccessPage() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
       <PaymentSuccessContent />
     </React.Suspense>
   );

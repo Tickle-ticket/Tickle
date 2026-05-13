@@ -137,9 +137,9 @@ function SummaryCard({
 }) {
   return (
     <Box variant="outline" className="h-full">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className="text-sm font-bold text-content-tertiary">{label}</p>
       <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
-      <p className="mt-2 text-xs font-bold text-slate-500">{caption}</p>
+      <p className="mt-2 text-xs font-bold text-content-tertiary">{caption}</p>
     </Box>
   );
 }
@@ -255,8 +255,8 @@ export default function AgencyPerformancesPage() {
       header: '공연',
       render: (row) => (
         <div>
-          <p className="font-black text-slate-900">{row.title}</p>
-          <p className="mt-1 text-sm font-medium text-slate-500">{row.venue}</p>
+          <p className="font-black text-content">{row.title}</p>
+          <p className="mt-1 text-sm font-medium text-content-tertiary">{row.venue}</p>
         </div>
       ),
     },
@@ -290,7 +290,7 @@ export default function AgencyPerformancesPage() {
       width: 112,
       render: (row) => {
         if (row.status === 'ended') {
-          return <span className="text-sm font-medium text-slate-400">-</span>;
+          return <span className="text-sm font-medium text-content-muted">-</span>;
         }
 
         return (
@@ -313,7 +313,7 @@ export default function AgencyPerformancesPage() {
     <div className="space-y-6 p-5 sm:p-8">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">공연 목록</p>
+          <p className="text-sm font-bold text-primary">공연 목록</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">등록한 공연 목록</h1>
         </div>
 
@@ -352,7 +352,7 @@ export default function AgencyPerformancesPage() {
         </div>
 
         {error instanceof Error ? (
-          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <div className="rounded-2xl border border-danger-light bg-danger-subtle px-4 py-3 text-sm font-medium text-danger">
             공연 목록을 불러오지 못했습니다. {error.message}
           </div>
         ) : null}
@@ -361,8 +361,8 @@ export default function AgencyPerformancesPage() {
           <div
             className={
               feedback.tone === 'success'
-                ? 'rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-medium text-green-700'
-                : 'rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600'
+                ? 'rounded-2xl border border-success-light bg-success-subtle px-4 py-3 text-sm font-medium text-success-hover'
+                : 'rounded-2xl border border-danger-light bg-danger-subtle px-4 py-3 text-sm font-medium text-danger'
             }
           >
             {feedback.message}
@@ -370,7 +370,7 @@ export default function AgencyPerformancesPage() {
         ) : null}
 
         {performanceList?.hasNext ? (
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+          <div className="rounded-2xl border border-warning-light bg-warning-subtle px-4 py-3 text-sm font-medium text-warning-hover">
             최근 {performanceRows.length}건만 표시 중입니다. 추가 페이지 데이터는 아직 연결하지 않았습니다.
           </div>
         ) : null}

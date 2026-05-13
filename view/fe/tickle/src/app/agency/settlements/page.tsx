@@ -88,9 +88,9 @@ function SummaryCard({
 }) {
   return (
     <Box variant="outline" className="h-full">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className="text-sm font-bold text-content-tertiary">{label}</p>
       <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
-      <p className="mt-2 text-xs font-bold text-slate-500">{caption}</p>
+      <p className="mt-2 text-xs font-bold text-content-tertiary">{caption}</p>
     </Box>
   );
 }
@@ -117,8 +117,8 @@ export default function AgencySettlementsPage() {
       header: '공연',
       render: (row) => (
         <div>
-          <p className="font-black text-slate-900">{row.performance}</p>
-          <p className="mt-1 text-sm font-medium text-slate-500">{row.settlementPeriod}</p>
+          <p className="font-black text-content">{row.performance}</p>
+          <p className="mt-1 text-sm font-medium text-content-tertiary">{row.settlementPeriod}</p>
         </div>
       ),
     },
@@ -146,7 +146,7 @@ export default function AgencySettlementsPage() {
     <div className="space-y-6 p-5 sm:p-8">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">공연 정산</p>
+          <p className="text-sm font-bold text-primary">공연 정산</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
             공연 정산 조회
           </h1>
@@ -197,27 +197,27 @@ export default function AgencySettlementsPage() {
         <Box variant="outline" className="space-y-4">
           <div>
             <h2 className="text-[18px] font-black text-slate-950">지급 일정 메모</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">
+            <p className="mt-1 text-sm font-medium text-content-tertiary">
               정산 페이지 하단에는 운영팀과 자주 맞추는 체크포인트를 카드형으로 붙였습니다.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl bg-slate-50 px-4 py-4">
-              <p className="text-sm font-black text-slate-900">05.07 지급</p>
-              <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+            <div className="rounded-2xl bg-surface-subtle px-4 py-4">
+              <p className="text-sm font-black text-content">05.07 지급</p>
+              <p className="mt-2 text-sm font-medium leading-6 text-content-secondary">
                 4월 마감 공연 중 검수 완료 건 우선 송금
               </p>
             </div>
-            <div className="rounded-2xl bg-slate-50 px-4 py-4">
-              <p className="text-sm font-black text-slate-900">05.10 지급</p>
-              <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+            <div className="rounded-2xl bg-surface-subtle px-4 py-4">
+              <p className="text-sm font-black text-content">05.10 지급</p>
+              <p className="mt-2 text-sm font-medium leading-6 text-content-secondary">
                 콘서트 카테고리 수수료 재검토 반영 예정
               </p>
             </div>
-            <div className="rounded-2xl bg-slate-50 px-4 py-4">
-              <p className="text-sm font-black text-slate-900">계좌 검증</p>
-              <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+            <div className="rounded-2xl bg-surface-subtle px-4 py-4">
+              <p className="text-sm font-black text-content">계좌 검증</p>
+              <p className="mt-2 text-sm font-medium leading-6 text-content-secondary">
                 지급 대기 건은 계좌 인증 완료 후 자동 전환
               </p>
             </div>
@@ -227,17 +227,17 @@ export default function AgencySettlementsPage() {
         <Box variant="gray" className="space-y-4">
           <div>
             <h2 className="text-[18px] font-black text-slate-950">등록 계좌</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">
+            <p className="mt-1 text-sm font-medium text-content-tertiary">
               운영팀 문의 전 자주 확인하는 정산 계좌 정보를 요약했습니다.
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-black/5">
-            <p className="text-sm font-bold text-slate-500">예금주</p>
+          <div className="rounded-2xl bg-surface/80 px-4 py-4 ring-1 ring-black/5">
+            <p className="text-sm font-bold text-content-tertiary">예금주</p>
             <p className="mt-1 text-lg font-black text-slate-950">주식회사 티클엔터테인먼트</p>
           </div>
-          <div className="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-black/5">
-            <p className="text-sm font-bold text-slate-500">정산 계좌</p>
+          <div className="rounded-2xl bg-surface/80 px-4 py-4 ring-1 ring-black/5">
+            <p className="text-sm font-bold text-content-tertiary">정산 계좌</p>
             <p className="mt-1 text-lg font-black text-slate-950">신한은행 110-483-920184</p>
           </div>
 

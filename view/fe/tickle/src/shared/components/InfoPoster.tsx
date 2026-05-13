@@ -33,7 +33,7 @@ export const InfoPoster = ({
   if (isLoading) {
     return (
       <div 
-        className={`relative overflow-hidden rounded-2xl shadow-md bg-gray-200 animate-pulse ${defaultDimensions} ${className}`}
+        className={`relative overflow-hidden rounded-2xl shadow-md bg-surface-active animate-pulse ${defaultDimensions} ${className}`}
         style={inlineStyle}
       />
     );

@@ -29,6 +29,27 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
     }
   }, [error, onClose]);
 
+  // 결제 오버레이가 열렸을 때 브라우저 뒤로가기 버튼을 가로채서 확인 모달을 표시
+  useEffect(() => {
+    if (!showPaymentFlow) return;
+
+    // 더미 히스토리 항목을 push해서 뒤로가기 시 popstate 이벤트가 발생하게 함
+    window.history.pushState({ cancelPaymentGuard: true }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      // 뒤로가기 눌림 → 모달을 띄우고, 다시 히스토리를 push해서 추가 뒤로가기도 방어
+      e.preventDefault();
+      window.history.pushState({ cancelPaymentGuard: true }, '');
+      setShowBackConfirm(true);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [showPaymentFlow]);
+
   // 결제 오버레이에서 뒤로가기를 눌렀을 때 확인 모달을 띄운다
   const handlePaymentBack = () => {
     setShowBackConfirm(true);
@@ -38,6 +59,8 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
   const handleConfirmBack = () => {
     setShowBackConfirm(false);
     setShowPaymentFlow(false);
+    // popstate 가드용 더미 히스토리 정리 (뒤로가기 한 칸)
+    window.history.back();
     onClose();
   };
 
@@ -49,7 +72,7 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
   return (
     <>
       {showPaymentFlow && data ? (
-        <div className="fixed inset-0 z-[100] bg-white overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-surface overflow-y-auto">
           <PaymentStep
             eventId="cancel"
             userId={userProfile?.userId}
@@ -78,21 +101,21 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
             <div className="w-full mt-2">
               <table className="w-full text-sm">
                 <tbody>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-2.5 pr-3 text-gray-400 font-medium whitespace-nowrap text-left">좌석</td>
-                    <td className="py-2.5 text-gray-900 font-bold text-right">{data.section} {data.row}열 {data.number}번</td>
+                  <tr className="border-b border-line-subtle">
+                    <td className="py-2.5 pr-3 text-content-muted font-medium whitespace-nowrap text-left">좌석</td>
+                    <td className="py-2.5 text-content font-bold text-right">{data.section} {data.row}열 {data.number}번</td>
                   </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-2.5 pr-3 text-gray-400 font-medium whitespace-nowrap text-left">결제 금액</td>
-                    <td className="py-2.5 text-blue-600 font-extrabold text-right text-base">{data.totalPaymentAmount?.toLocaleString()}원</td>
+                  <tr className="border-b border-line-subtle">
+                    <td className="py-2.5 pr-3 text-content-muted font-medium whitespace-nowrap text-left">결제 금액</td>
+                    <td className="py-2.5 text-primary font-extrabold text-right text-base">{data.totalPaymentAmount?.toLocaleString()}원</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 pr-3 text-gray-400 font-medium whitespace-nowrap text-left">만료 일시</td>
-                    <td className="py-2.5 text-rose-500 font-semibold text-right text-xs">{new Date(data.offerExpiresAt).toLocaleString()}</td>
+                    <td className="py-2.5 pr-3 text-content-muted font-medium whitespace-nowrap text-left">만료 일시</td>
+                    <td className="py-2.5 text-highlight font-semibold text-right text-xs">{new Date(data.offerExpiresAt).toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
-              <p className="text-center text-gray-500 text-xs mt-3">결제를 진행하시겠습니까?</p>
+              <p className="text-center text-content-tertiary text-xs mt-3">결제를 진행하시겠습니까?</p>
             </div>
           )}
         </Modal>
@@ -100,7 +123,7 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
 
       {isLoading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="text-white bg-gray-900 px-6 py-4 rounded-xl border border-gray-700 shadow-2xl">
+          <div className="text-white bg-content px-6 py-4 rounded-xl border border-line-strong shadow-2xl">
             <p className="animate-pulse font-medium">취소표 정보를 불러오는 중...</p>
           </div>
         </div>
@@ -113,7 +136,7 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
         confirmText="확인"
         onConfirm={() => setErrorModalConfig(prev => ({ ...prev, isOpen: false }))}
       >
-        <div className="py-4 text-center text-gray-700 font-medium whitespace-pre-line leading-relaxed">
+        <div className="py-4 text-center text-content-secondary font-medium whitespace-pre-line leading-relaxed">
           {errorModalConfig.message}
         </div>
       </Modal>
@@ -129,10 +152,10 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
         cancelText="계속 결제"
       >
         <div className="py-3 text-center">
-          <p className="text-gray-700 font-medium leading-relaxed break-keep">
+          <p className="text-content-secondary font-medium leading-relaxed break-keep">
             지금 돌아가도 취소표 대기가 취소되지는 않습니다.
           </p>
-          <p className="text-rose-500 font-bold text-sm mt-2 leading-relaxed break-keep">
+          <p className="text-highlight font-bold text-sm mt-2 leading-relaxed break-keep">
             단, 제한 시간 안에 결제를 완료하지 않으면
             <br />취소표 기회가 만료됩니다.
           </p>

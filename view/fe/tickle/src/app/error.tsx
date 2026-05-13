@@ -25,7 +25,7 @@ export default function GlobalError({
   else if (errorMessage.includes('soldout') || errorMessage.includes('매진')) errorType = 'soldout';
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-surface">
       <ErrorView 
         type={errorType}
         // 500번대(JS 런타임 에러 등 알 수 없는 오류)는 기본 예쁜 문구를 사용하고, 그 외의 에러(401, 404 등)는 메시지 노출

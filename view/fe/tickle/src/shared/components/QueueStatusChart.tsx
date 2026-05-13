@@ -58,62 +58,62 @@ export function QueueStatusChart({
   const throughputGap = latestAdmittedUsers - latestIncomingUsers;
 
   return (
-    <section className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
-      <header className="border-b border-slate-200 p-5">
+    <section className="w-full overflow-hidden rounded-lg border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
+      <header className="border-b border-line p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
-            <p className="text-[12px] font-bold text-blue-600">Queue status</p>
+            <p className="text-[12px] font-bold text-primary">Queue status</p>
             <h2 className="mt-1 truncate text-[20px] font-black leading-7 tracking-normal text-slate-950">
               {performanceTitle}
             </h2>
             {performanceMeta ? (
-              <p className="mt-1 text-[12px] font-semibold leading-5 text-slate-500">{performanceMeta}</p>
+              <p className="mt-1 text-[12px] font-semibold leading-5 text-content-tertiary">{performanceMeta}</p>
             ) : null}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[560px] xl:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">현재 대기</p>
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">현재 대기</p>
               <p className="mt-1 text-[24px] font-black leading-8 text-slate-950">
                 {formatNumber(currentWaitingUsers)}
-                <span className="ml-1 text-[12px] font-bold text-slate-500">명</span>
+                <span className="ml-1 text-[12px] font-bold text-content-tertiary">명</span>
               </p>
-              <p className={`mt-1 text-[11px] font-black ${waitingDiff >= 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+              <p className={`mt-1 text-[11px] font-black ${waitingDiff >= 0 ? 'text-danger' : 'text-success'}`}>
                 {waitingDiff >= 0 ? '+' : ''}
                 {formatNumber(waitingDiff)}명
               </p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">피크 대기</p>
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">피크 대기</p>
               <p className="mt-1 text-[24px] font-black leading-8 text-slate-950">
                 {formatNumber(peakWaitingUsers)}
-                <span className="ml-1 text-[12px] font-bold text-slate-500">명</span>
+                <span className="ml-1 text-[12px] font-bold text-content-tertiary">명</span>
               </p>
-              <p className="mt-1 text-[11px] font-black text-slate-500">
+              <p className="mt-1 text-[11px] font-black text-content-tertiary">
                 목표 {formatNumber(targetWaitingUsers ?? peakWaitingUsers)}명
               </p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">분당 입장</p>
-              <p className="mt-1 text-[24px] font-black leading-8 text-emerald-600">
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">분당 입장</p>
+              <p className="mt-1 text-[24px] font-black leading-8 text-success">
                 {formatNumber(latestAdmittedUsers)}
-                <span className="ml-1 text-[12px] font-bold text-slate-500">명</span>
+                <span className="ml-1 text-[12px] font-bold text-content-tertiary">명</span>
               </p>
-              <p className={`mt-1 text-[11px] font-black ${throughputGap >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`mt-1 text-[11px] font-black ${throughputGap >= 0 ? 'text-success' : 'text-danger'}`}>
                 유입 대비 {throughputGap >= 0 ? '+' : ''}
                 {formatNumber(throughputGap)}명
               </p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">예상 대기</p>
-              <p className="mt-1 text-[24px] font-black leading-8 text-orange-500">
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">예상 대기</p>
+              <p className="mt-1 text-[24px] font-black leading-8 text-warning">
                 {formatNumber(latestEstimatedWaitMinutes)}
-                <span className="ml-1 text-[12px] font-bold text-slate-500">분</span>
+                <span className="ml-1 text-[12px] font-bold text-content-tertiary">분</span>
               </p>
-              <p className="mt-1 text-[11px] font-black text-slate-500">
+              <p className="mt-1 text-[11px] font-black text-content-tertiary">
                 처리량 {formatNumber(capacityPerMinute ?? latestAdmittedUsers)}명/분
               </p>
             </div>
@@ -122,7 +122,7 @@ export function QueueStatusChart({
       </header>
 
       <div className="p-5">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" style={{ height }}>
+        <div className="rounded-lg border border-line bg-surface-subtle p-4" style={{ height }}>
           <ResponsiveContainer>
             <ComposedChart data={data} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
               <defs>

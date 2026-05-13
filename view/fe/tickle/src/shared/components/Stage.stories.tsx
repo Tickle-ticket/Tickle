@@ -66,7 +66,7 @@ export const FullWidth: Story = {
     height: 56,
   },
   render: (args) => (
-    <div className="p-4 border border-dashed border-gray-300 rounded-lg overflow-x-auto">
+    <div className="p-4 border border-dashed border-line-strong rounded-lg overflow-x-auto">
       <Stage {...args} />
     </div>
   )

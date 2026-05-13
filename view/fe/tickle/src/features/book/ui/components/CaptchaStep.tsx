@@ -24,9 +24,9 @@ export const CaptchaStep: React.FC<CaptchaStepProps> = ({
   handleCloseErrorModal,
 }) => {
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 p-6 relative overflow-hidden">
+    <div className="flex h-screen w-full flex-col items-center justify-center bg-surface-subtle p-6 relative overflow-hidden">
       {/* Background decorative elements */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="z-10 animate-fade-in">
         <CustomCAPTCHA

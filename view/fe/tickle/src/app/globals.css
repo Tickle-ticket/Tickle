@@ -22,6 +22,65 @@
   --toss-grey-600: #4b5563;
   --toss-grey-700: #374151;
 
+  /* ============================
+     Semantic Color Palette (Phase 1)
+     ============================ */
+  /* Brand */
+  --color-primary: #2563eb; /* blue-600 */
+  --color-primary-hover: #1d4ed8; /* blue-700 */
+  --color-primary-light: #dbeafe; /* blue-100 */
+  --color-primary-subtle: #eff6ff; /* blue-50 */
+  
+  /* Status: Danger */
+  --color-danger: #ef4444; /* red-500 */
+  --color-danger-hover: #dc2626; /* red-600 */
+  --color-danger-light: #fee2e2; /* red-100 */
+  --color-danger-subtle: #fef2f2; /* red-50 */
+  
+  /* Status: Success */
+  --color-success: #22c55e; /* green-500 */
+  --color-success-hover: #16a34a; /* green-600 */
+  --color-success-light: #dcfce3; /* green-100 */
+  --color-success-subtle: #f0fdf4; /* green-50 */
+  
+  /* Status: Warning */
+  --color-warning: #eab308; /* yellow-500 */
+  --color-warning-hover: #ca8a04; /* yellow-600 */
+  --color-warning-light: #fef9c3; /* yellow-100 */
+  --color-warning-subtle: #fefce8; /* yellow-50 */
+
+  /* Status: Accent (Purple) */
+  --color-accent: #9333ea; /* purple-600 */
+  --color-accent-hover: #7e22ce; /* purple-700 */
+  --color-accent-light: #f3e8ff; /* purple-100 */
+  --color-accent-subtle: #faf5ff; /* purple-50 */
+
+  /* Status: Highlight (Rose) */
+  --color-highlight: #e11d48; /* rose-600 */
+  --color-highlight-hover: #be123c; /* rose-700 */
+  --color-highlight-light: #ffe4e6; /* rose-100 */
+  --color-highlight-subtle: #fff1f2; /* rose-50 */
+
+  /* Neutral Surfaces (Backgrounds) */
+  --color-surface: #ffffff; /* white */
+  --color-surface-subtle: #f9fafb; /* gray-50 */
+  --color-surface-muted: #f3f4f6; /* gray-100 */
+  --color-surface-active: #e5e7eb; /* gray-200 */
+  --color-surface-inverse: #1f2937; /* gray-800 */
+  
+  /* Lines (Borders) */
+  --color-line: #e5e7eb; /* gray-200 */
+  --color-line-subtle: #f3f4f6; /* gray-100 */
+  --color-line-strong: #d1d5db; /* gray-300 */
+  
+  /* Content (Text & Icons) */
+  --color-content: #111827; /* gray-900 */
+  --color-content-secondary: #4b5563; /* gray-600 */
+  --color-content-tertiary: #6b7280; /* gray-500 */
+  --color-content-muted: #9ca3af; /* gray-400 */
+  --color-content-inverse: #ffffff; /* white */
+  --color-content-inverse-muted: #e5e7eb; /* gray-200 */
+
   /* Component UI Tokens */
   --toss-ui-tab-text: #111827;
   --toss-ui-tab-inactive: #9ca3af;
@@ -85,6 +144,54 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Semantic Colors */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-subtle: var(--color-primary-subtle);
+
+  --color-danger: var(--color-danger);
+  --color-danger-hover: var(--color-danger-hover);
+  --color-danger-light: var(--color-danger-light);
+  --color-danger-subtle: var(--color-danger-subtle);
+
+  --color-success: var(--color-success);
+  --color-success-hover: var(--color-success-hover);
+  --color-success-light: var(--color-success-light);
+  --color-success-subtle: var(--color-success-subtle);
+
+  --color-warning: var(--color-warning);
+  --color-warning-hover: var(--color-warning-hover);
+  --color-warning-light: var(--color-warning-light);
+  --color-warning-subtle: var(--color-warning-subtle);
+
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-light: var(--color-accent-light);
+  --color-accent-subtle: var(--color-accent-subtle);
+
+  --color-highlight: var(--color-highlight);
+  --color-highlight-hover: var(--color-highlight-hover);
+  --color-highlight-light: var(--color-highlight-light);
+  --color-highlight-subtle: var(--color-highlight-subtle);
+
+  --color-surface: var(--color-surface);
+  --color-surface-subtle: var(--color-surface-subtle);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-surface-active: var(--color-surface-active);
+  --color-surface-inverse: var(--color-surface-inverse);
+
+  --color-line: var(--color-line);
+  --color-line-subtle: var(--color-line-subtle);
+  --color-line-strong: var(--color-line-strong);
+
+  --color-content: var(--color-content);
+  --color-content-secondary: var(--color-content-secondary);
+  --color-content-tertiary: var(--color-content-tertiary);
+  --color-content-muted: var(--color-content-muted);
+  --color-content-inverse: var(--color-content-inverse);
+  --color-content-inverse-muted: var(--color-content-inverse-muted);
 }
 
 body {

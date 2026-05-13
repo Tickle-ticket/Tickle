@@ -154,7 +154,7 @@ export const InfoTime = ({ targetDate, className = '', isLoading = false }: Info
   return (
     <>
       <style>{flipStyles}</style>
-      <div className={`inline-flex items-center bg-gray-900 pt-1.5 pb-4 px-1.5 md:pt-2 md:pb-[20px] md:px-2 rounded-lg shadow-[0_8px_16px_rgba(0,0,0,0.8)] border border-gray-700/50 ${className}`}>
+      <div className={`inline-flex items-center bg-content pt-1.5 pb-4 px-1.5 md:pt-2 md:pb-[20px] md:px-2 rounded-lg shadow-[0_8px_16px_rgba(0,0,0,0.8)] border border-line-strong/50 ${className}`}>
         <div className="flex items-center">
           {hasColon ? (
             parts.map((part, index) => (

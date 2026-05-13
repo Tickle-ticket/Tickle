@@ -45,7 +45,7 @@ export const SegmentedControl = ({
             key={`skeleton-${idx}`}
             className={`relative flex items-center justify-center w-full h-full rounded-[8px] bg-transparent ${itemSizeClasses[size]}`}
           >
-            <div className="w-10 h-4 bg-gray-300 rounded-[4px] animate-pulse" />
+            <div className="w-10 h-4 bg-surface-active rounded-[4px] animate-pulse" />
           </div>
         ))}
       </div>
@@ -70,7 +70,7 @@ export const SegmentedControl = ({
               relative flex items-center justify-center w-full h-full rounded-[8px] font-semibold transition-all duration-200 ease-in-out outline-none select-none whitespace-nowrap
               ${itemSizeClasses[size]}
               ${isSelected 
-                  ? 'bg-white text-[#3182f6] shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] z-10' 
+                  ? 'bg-surface text-[#3182f6] shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] z-10' 
                   : 'bg-transparent text-[#8b95a1] hover:text-[#505967] hover:bg-[#e4e8eb] z-0'}
             `}
           >
