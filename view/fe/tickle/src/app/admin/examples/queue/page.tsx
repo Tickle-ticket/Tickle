@@ -69,7 +69,7 @@ export default function MockQueueMonitoringPage() {
         data={queueStatusData}
         performanceTitle="뮤지컬 Tickle 19:30"
         performanceMeta="2026.04.23 19:30 / VIP 선예매 대기열"
-        capacityPerMinute={210}
+        capacityPerMinute={30}
         targetWaitingUsers={2400}
       />
 

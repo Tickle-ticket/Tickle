@@ -56,3 +56,54 @@ export interface QueueStatsResponse {
   averageWaitSeconds: number;
   slotLimit: number;
 }
+
+export interface BlacklistDashboardChartData {
+  hour: string;
+  sectionBlocked: number;
+  cumulativeDetected: number;
+  bypassCount: number;
+  macroCount: number;
+  abnormalCount: number;
+}
+
+export interface BlacklistDashboardResponse {
+  totalConnectionsToday: number;
+  botDetectionCount: number;
+  blockRate: number;
+  blockedCount: number;
+  peakTime: string;
+  peakDetectionCount: number;
+  chartData: BlacklistDashboardChartData[];
+}
+
+export interface QueueDashboardChartData {
+  time: string;
+  waitCount: number;
+  inflowCount: number;
+  admittedCount: number;
+  expectedWaitMinutes: number;
+}
+
+export interface QueueDashboardResponse {
+  eventId: number;
+  eventName: string;
+  totalInflowLastHour: number;
+  currentWaiting: number;
+  waitingDifference: number;
+  peakWaiting: number;
+  peakTarget: number;
+  admissionsPerMinute: number;
+  admissionsDifference: number;
+  expectedWaitMinutes: number;
+  throughputPerMinute: number;
+  chartData: QueueDashboardChartData[];
+}
+
+export interface QueueEventRankResponse {
+  rank: number;
+  eventId: number;
+  eventName: string;
+  date: string;
+  waitCount: number;
+  expectedWaitMinutes: number;
+}

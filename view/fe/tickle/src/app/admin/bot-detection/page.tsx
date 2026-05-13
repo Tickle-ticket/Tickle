@@ -1,8 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getAdminBotStats } from '@/src/shared/api/adminApi';
-import type { BotDetectionStatsResponse } from '@/src/shared/api/types/admin.types';
+import {
+  getAdminBlacklistDashboard,
+  getAdminBotStats,
+} from '@/src/shared/api/adminApi';
+import type {
+  BlacklistDashboardResponse,
+  BotDetectionStatsResponse,
+} from '@/src/shared/api/types/admin.types';
+import { BotDetectionChart } from '@/src/shared/components/BotDetectionChart';
+import type { BotDetectionPoint } from '@/src/shared/components/BotDetectionChart';
 
 const reasonLabels: Record<string, string> = {
   BOT_DETECTED: '봇 자동 탐지',
@@ -31,7 +39,18 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : '봇 탐지 통계를 불러오지 못했습니다.';
 }
 
+function toBotDetectionPoints(data?: BlacklistDashboardResponse): BotDetectionPoint[] {
+  return (data?.chartData ?? []).map((point) => ({
+    time: point.hour,
+    macroAttempts: point.macroCount,
+    queueBypassAttempts: point.bypassCount,
+    abnormalRequests: point.abnormalCount,
+    blockedBots: point.sectionBlocked,
+  }));
+}
+
 export default function BotDetectionPage() {
+  const [dashboard, setDashboard] = useState<BlacklistDashboardResponse | null>(null);
   const [stats, setStats] = useState<BotDetectionStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -42,8 +61,13 @@ export default function BotDetectionPage() {
     setErrorMessage(null);
 
     try {
-      const response = await getAdminBotStats();
-      setStats(response.data);
+      const [dashboardResponse, statsResponse] = await Promise.all([
+        getAdminBlacklistDashboard(),
+        getAdminBotStats(),
+      ]);
+
+      setDashboard(dashboardResponse.data);
+      setStats(statsResponse.data);
       setLastUpdatedAt(new Date().toLocaleString('ko-KR'));
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
@@ -60,36 +84,43 @@ export default function BotDetectionPage() {
     return () => window.clearTimeout(timeoutId);
   }, [loadStats]);
 
-  const cards = useMemo(() => {
-    if (!stats) {
+  const chartData = useMemo(() => toBotDetectionPoints(dashboard ?? undefined), [dashboard]);
+
+  const summaryItems = useMemo(() => {
+    if (!dashboard) {
       return [
-        { label: '전체 차단', value: '-', caption: 'blacklists 전체' },
-        { label: '최근 1시간', value: '-', caption: '신규 탐지' },
-        { label: '차단 IP', value: '-', caption: '고유 IP 수' },
-        { label: '최근 항목', value: '-', caption: '최근 10건' },
+        { label: '총 접속자 수', value: '-', caption: '오늘 00:00부터 현재까지' },
+        { label: '봇 탐지 수', value: '-', caption: '매크로/우회/비정상 요청' },
+        { label: '차단 수', value: '-', caption: '정책 차단 완료' },
       ];
     }
 
     return [
-      { label: '전체 차단', value: `${formatNumber(stats.totalBlacklisted)}건`, caption: 'blacklists 전체' },
-      { label: '최근 1시간', value: `${formatNumber(stats.recentOneHourCount)}건`, caption: '신규 탐지' },
-      { label: '차단 IP', value: `${formatNumber(stats.blockedIpCount)}개`, caption: '고유 IP 수' },
-      { label: '최근 항목', value: `${formatNumber(stats.recentItems.length)}건`, caption: '최근 등록 목록' },
+      {
+        label: '총 접속자 수',
+        value: formatNumber(dashboard.totalConnectionsToday),
+        caption: '오늘 00:00부터 현재까지',
+      },
+      {
+        label: '봇 탐지 수',
+        value: formatNumber(dashboard.botDetectionCount),
+        caption: `피크 ${dashboard.peakTime || '-'} / ${formatNumber(dashboard.peakDetectionCount)}건`,
+      },
+      {
+        label: '차단 수',
+        value: `${formatNumber(dashboard.blockedCount)}건`,
+        caption: '정책 차단 완료',
+      },
     ];
-  }, [stats]);
-
-  const maxReasonCount = Math.max(1, ...(stats?.byReason.map((item) => item.count) ?? [0]));
-  const maxScoreCount = Math.max(1, ...(stats?.scoreDistribution.map((item) => item.count) ?? [0]));
+  }, [dashboard]);
 
   return (
-    <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6 p-5 sm:p-8">
+      <header className="flex min-h-[76px] flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-danger">Admin API</p>
-          <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">봇 탐지 현황</h1>
-          <p className="mt-2 text-sm font-medium text-content-tertiary">
-            `/api/v1/admin/bot/stats` 응답 기준으로 차단 통계를 표시합니다.
-          </p>
+          <h1 className="text-2xl font-black tracking-normal text-slate-950">
+            오늘 탐지된 봇/매크로 대시보드
+          </h1>
         </div>
 
         <button
@@ -106,9 +137,9 @@ export default function BotDetectionPage() {
         <p className="rounded-lg bg-danger-subtle px-4 py-3 text-sm font-bold text-danger">{errorMessage}</p>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-4">
-        {cards.map((item) => (
-          <article key={item.label} className="rounded-lg border border-line bg-surface p-5 shadow-sm">
+      <section className="grid gap-4 md:grid-cols-3">
+        {summaryItems.map((item) => (
+          <article key={item.label} className="rounded-lg border border-line bg-surface p-5">
             <p className="text-sm font-bold text-content-tertiary">{item.label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
             <p className="mt-2 text-xs font-bold text-content-tertiary">{item.caption}</p>
@@ -116,125 +147,98 @@ export default function BotDetectionPage() {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <article className="rounded-lg border border-line bg-surface p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
+      <BotDetectionChart
+        data={chartData}
+        title="탐지된 봇 그래프"
+        subtitle={lastUpdatedAt ? `오늘 시간대별 탐지 유형과 누적 탐지 건수 / 마지막 갱신: ${lastUpdatedAt}` : '오늘 시간대별 탐지 유형과 누적 탐지 건수'}
+      />
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
+          <header className="border-b border-line px-5 py-4">
+            <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
+              최근 차단 내역
+            </h2>
+          </header>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="bg-surface-subtle text-content-tertiary">
+                <tr>
+                  <th className="px-5 py-3 font-black">블랙리스트 ID</th>
+                  <th className="px-5 py-3 font-black">사용자 ID</th>
+                  <th className="px-5 py-3 font-black">사유</th>
+                  <th className="px-5 py-3 font-black">등록 관리자</th>
+                  <th className="px-5 py-3 font-black">등록일</th>
+                  <th className="px-5 py-3 font-black">상세</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line-subtle">
+                {(stats?.recentItems ?? []).map((item) => (
+                  <tr key={item.blacklistId} className="align-top">
+                    <td className="px-5 py-4 font-black text-content">{item.blacklistId}</td>
+                    <td className="px-5 py-4 font-bold text-content-secondary">{item.userId}</td>
+                    <td className="px-5 py-4">
+                      <span className="rounded-full bg-danger-subtle px-2.5 py-1 text-xs font-black text-danger">
+                        {reasonLabels[item.reason] ?? item.reason}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-content-tertiary">{item.blockedBy ?? '-'}</td>
+                    <td className="px-5 py-4 font-semibold text-content-tertiary">{formatDateTime(item.createdAt)}</td>
+                    <td className="max-w-[360px] px-5 py-4 font-medium leading-6 text-content-secondary">
+                      {item.detail || '-'}
+                    </td>
+                  </tr>
+                ))}
+
+                {!isLoading && (stats?.recentItems.length ?? 0) === 0 ? (
+                  <tr>
+                    <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={6}>
+                      최근 차단 내역이 없습니다.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside className="rounded-lg border border-line bg-surface p-5 shadow-sm">
+          <p className="text-sm font-bold text-danger">Distribution</p>
+          <h2 className="mt-1 text-lg font-black text-slate-950">탐지 사유와 AI 점수</h2>
+
+          <div className="mt-5 space-y-5">
             <div>
-              <h2 className="text-lg font-black text-slate-950">탐지 사유별 분포</h2>
-              <p className="mt-1 text-sm font-medium text-content-tertiary">
-                {lastUpdatedAt ? `마지막 갱신: ${lastUpdatedAt}` : '아직 갱신 전입니다.'}
-              </p>
+              <h3 className="text-sm font-black text-content">사유별 통계</h3>
+              <div className="mt-3 space-y-3">
+                {(stats?.byReason ?? []).map((item) => (
+                  <div key={item.reason} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-bold text-content-tertiary">{reasonLabels[item.reason] ?? item.reason}</span>
+                    <span className="font-black text-content">{formatNumber(item.count)}건</span>
+                  </div>
+                ))}
+                {!isLoading && (stats?.byReason.length ?? 0) === 0 ? (
+                  <p className="text-sm font-bold text-content-tertiary">통계가 없습니다.</p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="border-t border-line pt-5">
+              <h3 className="text-sm font-black text-content">AI 점수 구간</h3>
+              <div className="mt-3 space-y-3">
+                {(stats?.scoreDistribution ?? []).map((item) => (
+                  <div key={item.scoreRange} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-bold text-content-tertiary">{item.scoreRange}</span>
+                    <span className="font-black text-content">{formatNumber(item.count)}건</span>
+                  </div>
+                ))}
+                {!isLoading && (stats?.scoreDistribution.length ?? 0) === 0 ? (
+                  <p className="text-sm font-bold text-content-tertiary">통계가 없습니다.</p>
+                ) : null}
+              </div>
             </div>
           </div>
-
-          <div className="mt-5 space-y-4">
-            {(stats?.byReason ?? []).map((item) => {
-              const width = (item.count / maxReasonCount) * 100;
-
-              return (
-                <div key={item.reason}>
-                  <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-                    <span className="font-bold text-content-secondary">{reasonLabels[item.reason] ?? item.reason}</span>
-                    <span className="font-black text-slate-950">{formatNumber(item.count)}건</span>
-                  </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-surface-muted">
-                    <div className="h-full rounded-full bg-danger" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-
-            {!isLoading && (stats?.byReason.length ?? 0) === 0 ? (
-              <p className="rounded-lg bg-surface-subtle px-4 py-8 text-center text-sm font-bold text-content-tertiary">
-                사유별 통계가 없습니다.
-              </p>
-            ) : null}
-          </div>
-        </article>
-
-        <article className="rounded-lg border border-line bg-surface p-5 shadow-sm">
-          <h2 className="text-lg font-black text-slate-950">AI 점수 구간</h2>
-          <p className="mt-1 text-sm font-medium text-content-tertiary">scoreDistribution 응답을 그대로 표시합니다.</p>
-
-          <div className="mt-5 space-y-4">
-            {(stats?.scoreDistribution ?? []).map((item) => {
-              const width = (item.count / maxScoreCount) * 100;
-
-              return (
-                <div key={item.scoreRange}>
-                  <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-                    <span className="font-bold text-content-secondary">{item.scoreRange}</span>
-                    <span className="font-black text-slate-950">{formatNumber(item.count)}건</span>
-                  </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-surface-muted">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-
-            {!isLoading && (stats?.scoreDistribution.length ?? 0) === 0 ? (
-              <p className="rounded-lg bg-surface-subtle px-4 py-8 text-center text-sm font-bold text-content-tertiary">
-                점수 구간 통계가 없습니다.
-              </p>
-            ) : null}
-          </div>
-        </article>
-      </section>
-
-      <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
-        <header className="border-b border-line px-5 py-4">
-          <h2 className="text-lg font-black text-slate-950">최근 차단 항목</h2>
-        </header>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <thead className="bg-surface-subtle text-content-tertiary">
-              <tr>
-                <th className="px-5 py-3 font-black">블랙리스트 ID</th>
-                <th className="px-5 py-3 font-black">사용자 ID</th>
-                <th className="px-5 py-3 font-black">사유</th>
-                <th className="px-5 py-3 font-black">등록 관리자</th>
-                <th className="px-5 py-3 font-black">등록일</th>
-                <th className="px-5 py-3 font-black">상세</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-subtle">
-              {(stats?.recentItems ?? []).map((item) => (
-                <tr key={item.blacklistId} className="align-top">
-                  <td className="px-5 py-4 font-black text-content">{item.blacklistId}</td>
-                  <td className="px-5 py-4 font-bold text-content-secondary">{item.userId}</td>
-                  <td className="px-5 py-4">
-                    <span className="rounded-full bg-danger-subtle px-2.5 py-1 text-xs font-black text-danger">
-                      {reasonLabels[item.reason] ?? item.reason}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 font-semibold text-content-tertiary">{item.blockedBy ?? '-'}</td>
-                  <td className="px-5 py-4 font-semibold text-content-tertiary">{formatDateTime(item.createdAt)}</td>
-                  <td className="max-w-[360px] px-5 py-4 font-medium leading-6 text-content-secondary">
-                    {item.detail || '-'}
-                  </td>
-                </tr>
-              ))}
-
-              {!isLoading && (stats?.recentItems.length ?? 0) === 0 ? (
-                <tr>
-                  <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={6}>
-                    최근 차단 항목이 없습니다.
-                  </td>
-                </tr>
-              ) : null}
-
-              {isLoading ? (
-                <tr>
-                  <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={6}>
-                    불러오는 중입니다.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        </aside>
       </section>
     </div>
   );

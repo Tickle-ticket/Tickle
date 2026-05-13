@@ -22,12 +22,11 @@ const detectedBotCount = botDetectionData.reduce(
   0,
 );
 const blockedBotCount = botDetectionData.reduce((sum, point) => sum + point.blockedBots, 0);
-const blockRate = detectedBotCount > 0 ? (blockedBotCount / detectedBotCount) * 100 : 0;
 
 const summaryItems = [
   { label: '총 접속자 수', value: totalVisitors.toLocaleString('ko-KR'), caption: '오늘 00:00부터 현재까지' },
   { label: '봇 탐지 수', value: detectedBotCount.toLocaleString('ko-KR'), caption: '매크로/우회/비정상 요청' },
-  { label: '차단율', value: `${blockRate.toFixed(1)}%`, caption: `${blockedBotCount.toLocaleString('ko-KR')}건 차단` },
+  { label: '차단 수', value: `${blockedBotCount.toLocaleString('ko-KR')}건`, caption: '정책 차단 완료' },
 ];
 
 const detectionReports = [
@@ -96,7 +95,6 @@ export default function MockBotDetectionPage() {
         data={botDetectionData}
         title="탐지된 봇 그래프"
         subtitle="오늘 시간대별 봇/매크로 탐지 유형과 누적 탐지 건수"
-        targetBlockRate={96}
       />
 
       <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.08)]">

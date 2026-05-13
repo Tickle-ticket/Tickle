@@ -53,6 +53,5 @@ export const AggressiveTraffic: Story = {
     })),
     title: 'Peak-time bot attack trend',
     subtitle: 'Detection volume and blocked bots during the on-sale window',
-    targetBlockRate: 98,
   },
 };
