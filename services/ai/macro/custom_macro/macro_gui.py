@@ -48,8 +48,10 @@ DEFAULT_DATA = {
         "mode": "manual",
         "order_box": "",
         "keypad_box": "",
-        "ocr_scale": 1
+        "ocr_scale": 1,
     },
+    "seat_sets": {},
+    "seat_set_pool": [],
     "macros": [
         {
             "name": "전체 플로우",
@@ -171,6 +173,8 @@ def ensure_data_shape(data):
 
     data.setdefault("runtime", {})
     data.setdefault("security", {})
+    data.setdefault("seat_sets", {})
+    data.setdefault("seat_set_pool", [])
     data.setdefault("macros", [])
 
     runtime = data["runtime"]
@@ -182,6 +186,14 @@ def ensure_data_shape(data):
     runtime.setdefault("ocr_server_url", "http://127.0.0.1:8010")
     runtime.setdefault("ocr_security_retry_max", 8)
     runtime.setdefault("ocr_security_retry_interval_sec", 0.25)
+    runtime.setdefault("randomize_enabled", False)
+    runtime.setdefault("repeat_runs", 1)
+    runtime.setdefault("random_seed", "")
+    runtime.setdefault("between_runs_sec", 0.0)
+    runtime.setdefault("click_duration_range_sec", [runtime.get("click_duration_sec", 0.05), runtime.get("click_duration_sec", 0.05)])
+    runtime.setdefault("between_click_range_sec", [runtime.get("between_click_sec", 0.05), runtime.get("between_click_sec", 0.05)])
+    runtime.setdefault("between_event_range_sec", [runtime.get("between_event_sec", 0.05), runtime.get("between_event_sec", 0.05)])
+    runtime.setdefault("mouse_steps_range", [runtime.get("mouse_steps", 3), runtime.get("mouse_steps", 3)])
 
     security = data["security"]
     security.setdefault("mode", "manual")
@@ -335,6 +347,28 @@ def sample_runtime(data: dict, rng: random.Random) -> RuntimeConfig:
         mouse_steps=mouse_steps,
         use_retina_scale=base.use_retina_scale,
     )
+
+
+def autosize_toplevel_to_content(top: tk.Toplevel, min_w: int = 420, min_h: int = 520):
+    """
+    Size and center a Toplevel so its content is visible without manual resizing.
+    """
+    try:
+        top.update_idletasks()
+        req_w = max(min_w, int(top.winfo_reqwidth()) + 24)
+        req_h = max(min_h, int(top.winfo_reqheight()) + 24)
+
+        screen_w = int(top.winfo_screenwidth())
+        screen_h = int(top.winfo_screenheight())
+
+        req_w = min(req_w, max(360, screen_w - 40))
+        req_h = min(req_h, max(320, screen_h - 80))
+
+        x = max(0, (screen_w - req_w) // 2)
+        y = max(0, (screen_h - req_h) // 2)
+        top.geometry(f"{req_w}x{req_h}+{x}+{y}")
+    except Exception:
+        pass
 
 
 def get_ocr_server_url(data) -> str:
@@ -503,6 +537,7 @@ def make_box_from_xy(lt_x, lt_y, rb_x, rb_y):
 class EventDialog(tk.Toplevel):
     def __init__(self, parent, event=None):
         super().__init__(parent)
+        self._parent = parent
         self.title("이벤트 편집")
         self.resizable(False, False)
         self.configure(bg="#1e1e2e")
@@ -558,11 +593,14 @@ class EventDialog(tk.Toplevel):
         self.button_var = tk.StringVar(value=self._event.get("button", "left"))
         self.memo_var = tk.StringVar(value=self._event.get("memo", ""))
 
+        initial_set = (self._event.get("set_name") or self._event.get("memo") or "").strip()
+        self.seat_set_var = tk.StringVar(value=initial_set or "random")
+
         label("이벤트 타입", 0)
         type_box = ttk.Combobox(
             self,
             textvariable=self.type_var,
-            values=["click", "wait", "wait_change", "wait_security", "ocr_security", "cv_security", "screenshot", "pause"],
+            values=["click", "wait", "wait_change", "wait_security", "ocr_security", "cv_security", "seat_set", "screenshot", "pause"],
             width=18,
             state="readonly"
         )
@@ -605,6 +643,36 @@ class EventDialog(tk.Toplevel):
         label("메모", 6)
         entry(self.memo_var, 6, width=28)
 
+        label("Seat set", 7)
+        try:
+            seat_sets = getattr(self._parent, "data", {}).get("seat_sets", {}) or {}
+            seat_values = ["random"] + sorted(seat_sets.keys())
+        except Exception:
+            seat_values = ["random"]
+
+        seat_box = ttk.Combobox(
+            self,
+            textvariable=self.seat_set_var,
+            values=seat_values,
+            width=26,
+            state="readonly",
+        )
+        seat_box.grid(row=7, column=1, sticky="w", **pad)
+
+        def _apply_seat_choice(*_):
+            choice = (self.seat_set_var.get() or "").strip()
+            if choice:
+                self.memo_var.set(choice)
+
+        seat_box.bind("<<ComboboxSelected>>", _apply_seat_choice)
+
+        def _toggle_seat_controls(*_):
+            enabled = (self.type_var.get() == "seat_set")
+            seat_box.configure(state=("readonly" if enabled else "disabled"))
+
+        self.type_var.trace_add("write", _toggle_seat_controls)
+        _toggle_seat_controls()
+
         tk.Button(
             self,
             text="저장",
@@ -612,7 +680,7 @@ class EventDialog(tk.Toplevel):
             pady=7,
             font=("Malgun Gothic", 10, "bold"),
             command=self._save
-        ).grid(row=7, column=0, columnspan=2, pady=12)
+        ).grid(row=8, column=0, columnspan=2, pady=12)
 
         normalize_button_colors(self)
 
@@ -657,6 +725,15 @@ class EventDialog(tk.Toplevel):
             elif event_type == "cv_security":
                 event.update({
                     "delay": float(self.delay_var.get())
+                })
+
+            elif event_type == "seat_set":
+                selected = (self.seat_set_var.get() or "").strip()
+                if not selected:
+                    selected = (self.memo_var.get() or "").strip()
+                event.update({
+                    "delay": float(self.delay_var.get()),
+                    "set_name": selected,
                 })
 
             elif event_type == "screenshot":
@@ -1337,6 +1414,34 @@ class MacroTab(tk.Frame):
                 command=command
             ).pack(side="left", padx=4)
 
+        # Put SeatSet buttons on a new row so they remain visible without resizing.
+        seat_frame = tk.Frame(edit_frame, bg=bg)
+        seat_frame.pack(side="top", fill="x", pady=(6, 0))
+
+        tk.Button(
+            seat_frame,
+            text="SeatSet Save",
+            padx=10,
+            pady=6,
+            command=self._seatset_save_from_range,
+        ).pack(side="left", padx=4)
+
+        tk.Button(
+            seat_frame,
+            text="SeatSet Replace",
+            padx=10,
+            pady=6,
+            command=self._seatset_replace_range,
+        ).pack(side="left", padx=4)
+
+        tk.Button(
+            seat_frame,
+            text="SeatSet Pool",
+            padx=10,
+            pady=6,
+            command=self._seatset_pool_dialog,
+        ).pack(side="left", padx=4)
+
         run_frame = tk.Frame(self, bg=bg)
         run_frame.grid(row=4, column=0, columnspan=4, sticky="w", padx=12, pady=12)
 
@@ -1555,6 +1660,188 @@ class MacroTab(tk.Frame):
         save_data(self.data)
         self._refresh_events()
         self.tree.selection_set(str(event_idx + 1))
+
+    def _seatset_save_from_range(self):
+        idx = self._current_index()
+        if idx < 0:
+            return
+
+        name = tkinter.simpledialog.askstring("SeatSet Save", "Seat set name:", parent=self)
+        if not name:
+            return
+        name = name.strip()
+
+        start_s = tkinter.simpledialog.askstring("SeatSet Save", "Start event index (1-based):", parent=self)
+        end_s = tkinter.simpledialog.askstring("SeatSet Save", "End event index (1-based, inclusive):", parent=self)
+        if not start_s or not end_s:
+            return
+
+        try:
+            start_i = int(float(start_s))
+            end_i = int(float(end_s))
+        except Exception:
+            messagebox.showwarning("Invalid", "Indices must be numbers.", parent=self)
+            return
+
+        if start_i > end_i:
+            start_i, end_i = end_i, start_i
+
+        events = self.data["macros"][idx].get("events", [])
+        start_i = max(1, start_i)
+        end_i = min(len(events), end_i)
+        if start_i > end_i:
+            messagebox.showwarning("Invalid", "Range is empty.", parent=self)
+            return
+
+        clicks = []
+        for ev in events[start_i - 1:end_i]:
+            if ev.get("type") != "click":
+                continue
+            clicks.append({
+                "x": int(float(ev.get("x", 0))),
+                "y": int(float(ev.get("y", 0))),
+                "button": ev.get("button", "left"),
+                "memo": ev.get("memo", ""),
+            })
+
+        if not clicks:
+            messagebox.showwarning("Empty", "No click events found in range.", parent=self)
+            return
+
+        seat_sets = self.data.setdefault("seat_sets", {})
+        seat_sets[name] = clicks
+        save_data(self.data)
+        self.status_cb(f"SeatSet saved: {name} ({len(clicks)} clicks)")
+
+    def _seatset_replace_range(self):
+        idx = self._current_index()
+        if idx < 0:
+            return
+
+        seat_sets = self.data.setdefault("seat_sets", {})
+        if not seat_sets:
+            messagebox.showwarning("No seat sets", "Save a seat set first.", parent=self)
+            return
+
+        name = tkinter.simpledialog.askstring("SeatSet Replace", "Set name (blank=random):", parent=self)
+        if name is None:
+            return
+        name = name.strip()
+
+        start_s = tkinter.simpledialog.askstring("SeatSet Replace", "Start event index (1-based):", parent=self)
+        end_s = tkinter.simpledialog.askstring("SeatSet Replace", "End event index (1-based, inclusive):", parent=self)
+        if not start_s or not end_s:
+            return
+
+        try:
+            start_i = int(float(start_s))
+            end_i = int(float(end_s))
+        except Exception:
+            messagebox.showwarning("Invalid", "Indices must be numbers.", parent=self)
+            return
+
+        if start_i > end_i:
+            start_i, end_i = end_i, start_i
+
+        events = self.data["macros"][idx].setdefault("events", [])
+        start_i = max(1, start_i)
+        end_i = min(len(events), end_i)
+        if start_i > end_i:
+            messagebox.showwarning("Invalid", "Range is empty.", parent=self)
+            return
+
+        replacement = {
+            "type": "seat_set",
+            "delay": 0.0,
+            "set_name": name,
+            "memo": name or "random",
+        }
+
+        events[start_i - 1:end_i] = [replacement]
+        save_data(self.data)
+        self._refresh_events()
+        self.status_cb("SeatSet event inserted.")
+
+    def _seatset_pool_dialog(self):
+        seat_sets = self.data.setdefault("seat_sets", {})
+        if not seat_sets:
+            messagebox.showwarning("No seat sets", "Save a seat set first.", parent=self)
+            return
+
+        pool = set(self.data.get("seat_set_pool", []) or [])
+
+        top = tk.Toplevel(self)
+        top.title("SeatSet Pool")
+        top.minsize(420, 520)
+        top.configure(bg="#1e1e2e")
+
+        tk.Label(
+            top,
+            text="Choose seat sets for RANDOM selection",
+            bg="#1e1e2e",
+            fg="#f9fafb",
+            font=("Malgun Gothic", 11, "bold"),
+        ).pack(anchor="w", padx=12, pady=(12, 8))
+
+        container = tk.Frame(top, bg="#1e1e2e")
+        container.pack(fill="both", expand=True, padx=12, pady=8)
+
+        canvas = tk.Canvas(container, bg="#1e1e2e", highlightthickness=0)
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg="#1e1e2e")
+
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        vars_by_name = {}
+        for name in sorted(seat_sets.keys()):
+            v = tk.BooleanVar(value=(name in pool))
+            vars_by_name[name] = v
+            row = tk.Frame(scroll_frame, bg="#1e1e2e")
+            row.pack(fill="x", pady=2)
+            tk.Checkbutton(
+                row,
+                text=name,
+                variable=v,
+                bg="#1e1e2e",
+                fg="#cdd6f4",
+                selectcolor="#313244",
+                activebackground="#1e1e2e",
+                activeforeground="#cdd6f4",
+                font=("Malgun Gothic", 10),
+            ).pack(side="left", anchor="w")
+
+        btns = tk.Frame(top, bg="#1e1e2e")
+        btns.pack(fill="x", padx=12, pady=(4, 12))
+
+        def select_all():
+            for v in vars_by_name.values():
+                v.set(True)
+
+        def clear_all():
+            for v in vars_by_name.values():
+                v.set(False)
+
+        def save_and_close():
+            selected = [name for name, v in vars_by_name.items() if bool(v.get())]
+            self.data["seat_set_pool"] = selected
+            save_data(self.data)
+            self.status_cb(f"SeatSet pool saved ({len(selected)} sets)")
+            top.destroy()
+
+        tk.Button(btns, text="Select all", padx=10, pady=6, command=select_all).pack(side="left", padx=(0, 6))
+        tk.Button(btns, text="Clear", padx=10, pady=6, command=clear_all).pack(side="left", padx=(0, 6))
+        tk.Button(btns, text="Save", padx=14, pady=6, command=save_and_close).pack(side="right")
+
+        autosize_toplevel_to_content(top, min_w=420, min_h=520)
 
     def _run_selected(self):
         idx = self._current_index()
@@ -1791,6 +2078,35 @@ class MacroTab(tk.Frame):
                                 label=f"cv_security_{digit}",
                             )
 
+                    elif event_type == "seat_set":
+                        seat_sets = self.data.setdefault("seat_sets", {})
+                        if not seat_sets:
+                            raise RuntimeError("seat_set: no seat sets configured")
+
+                        set_name = (event.get("set_name") or event.get("memo") or "").strip()
+                        if not set_name or set_name.lower() in ("random", "rand"):
+                            pool = self.data.get("seat_set_pool", []) or []
+                            pool = [n for n in pool if n in seat_sets]
+                            candidates = pool if pool else sorted(seat_sets.keys())
+                            set_name = rng.choice(list(candidates))
+
+                        if set_name not in seat_sets:
+                            raise RuntimeError(f"seat_set: unknown set '{set_name}'")
+
+                        clicks = seat_sets[set_name]
+                        self.after(0, self.status_cb, f"[{i}/{total_events}] seat_set -> {set_name} ({len(clicks)} clicks)")
+
+                        for j, click in enumerate(clicks, start=1):
+                            if not _running:
+                                break
+                            click_xy(
+                                x=float(click["x"]),
+                                y=float(click["y"]),
+                                runtime=runtime,
+                                button=str(click.get("button", "left") or "left"),
+                                label=f"seat_set_{set_name}_{j}",
+                            )
+
                     elif event_type == "screenshot":
                         capture_screen(SCREENSHOT_PATH)
 
@@ -1821,15 +2137,47 @@ class MacroApp(tk.Tk):
         super().__init__()
 
         self.title("Custom Macro Runner")
-        self.geometry("1040x760")
-        self.minsize(960, 660)
+        # Start with a reasonably large window so all controls are visible,
+        # then autosize once layout is computed.
+        self.geometry("1240x860")
+        self.minsize(1040, 760)
         self.configure(bg="#1e1e2e")
 
         self.data = load_data()
 
         self._build()
+        self._autosize_to_content()
         self._start_hotkey_listener()
         self.protocol("WM_DELETE_WINDOW", self._quit)
+
+    def _autosize_to_content(self):
+        """
+        Ensure the initial window is large enough to show all widgets without the user
+        needing to resize manually.
+        """
+        try:
+            self.update_idletasks()
+            req_w = int(self.winfo_reqwidth())
+            req_h = int(self.winfo_reqheight())
+
+            cur_w = int(self.winfo_width())
+            cur_h = int(self.winfo_height())
+
+            # Add a bit of padding so Treeview + buttons don't get clipped.
+            target_w = max(cur_w, req_w + 40)
+            target_h = max(cur_h, req_h + 40)
+
+            screen_w = int(self.winfo_screenwidth())
+            screen_h = int(self.winfo_screenheight())
+
+            target_w = min(target_w, max(800, screen_w - 40))
+            target_h = min(target_h, max(600, screen_h - 80))
+
+            x = max(0, (screen_w - target_w) // 2)
+            y = max(0, (screen_h - target_h) // 2)
+            self.geometry(f"{target_w}x{target_h}+{x}+{y}")
+        except Exception:
+            pass
 
     def _build(self):
         bg = "#1e1e2e"
