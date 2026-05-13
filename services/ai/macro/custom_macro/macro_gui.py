@@ -12,6 +12,7 @@ import tkinter.simpledialog
 
 import pyautogui
 from pynput import keyboard as kb
+from pynput import mouse as pmouse
 
 from mouse_driver import (
     RuntimeConfig,
@@ -43,6 +44,7 @@ DEFAULT_DATA = {
         "between_click_range_sec": [0.05, 0.05],
         "between_event_range_sec": [0.05, 0.05],
         "mouse_steps_range": [3, 3],
+        "window_topmost": False,
     },
     "security": {
         "mode": "manual",
@@ -194,6 +196,7 @@ def ensure_data_shape(data):
     runtime.setdefault("between_click_range_sec", [runtime.get("between_click_sec", 0.05), runtime.get("between_click_sec", 0.05)])
     runtime.setdefault("between_event_range_sec", [runtime.get("between_event_sec", 0.05), runtime.get("between_event_sec", 0.05)])
     runtime.setdefault("mouse_steps_range", [runtime.get("mouse_steps", 3), runtime.get("mouse_steps", 3)])
+    runtime.setdefault("window_topmost", False)
 
     security = data["security"]
     security.setdefault("mode", "manual")
@@ -542,6 +545,7 @@ class EventDialog(tk.Toplevel):
         self.resizable(False, False)
         self.configure(bg="#1e1e2e")
         self.result = None
+        self._mouse_listener = None
         self._event = event or {
             "type": "click",
             "x": 0,
@@ -553,6 +557,7 @@ class EventDialog(tk.Toplevel):
         }
 
         self._build()
+        self._start_wheel_pick()
         self.grab_set()
 
     def _build(self):
@@ -683,6 +688,41 @@ class EventDialog(tk.Toplevel):
         ).grid(row=8, column=0, columnspan=2, pady=12)
 
         normalize_button_colors(self)
+
+    def _start_wheel_pick(self):
+        """
+        Wheel-click (middle mouse) fills X/Y with current cursor position
+        while this dialog is open.
+        """
+        try:
+            def on_click(x, y, button, pressed):
+                if not pressed:
+                    return
+                if button != pmouse.Button.middle:
+                    return
+
+                try:
+                    px, py = pyautogui.position()
+                except Exception:
+                    px, py = int(x), int(y)
+
+                self.after(0, self.x_var.set, str(int(px)))
+                self.after(0, self.y_var.set, str(int(py)))
+
+            self._mouse_listener = pmouse.Listener(on_click=on_click)
+            self._mouse_listener.daemon = True
+            self._mouse_listener.start()
+        except Exception:
+            self._mouse_listener = None
+
+    def destroy(self):
+        try:
+            if self._mouse_listener is not None:
+                self._mouse_listener.stop()
+        except Exception:
+            pass
+        self._mouse_listener = None
+        super().destroy()
 
     def _save(self):
         event_type = self.type_var.get()
@@ -957,6 +997,189 @@ class RuntimeTab(tk.Frame):
 
         except ValueError:
             messagebox.showwarning("입력 오류", "속도 파라미터 값을 확인하세요.")
+
+
+class SeatSetGenTab(tk.Frame):
+    """
+    Coordinate capture / SeatSet generation helper.
+
+    - Middle mouse click (wheel click) captures current cursor position when capture is ON.
+    - Save captured points as a single SeatSet, or generate adjacent-pair SeatSets.
+    """
+
+    def __init__(self, parent, data, status_cb):
+        super().__init__(parent, bg="#1e1e2e")
+        self.data = data
+        self.status_cb = status_cb
+
+        self._listener = None
+        self._capturing = False
+        self._points: list[tuple[int, int]] = []
+
+        self._build()
+
+    def _build(self):
+        bg = "#1e1e2e"
+        fg = "#cdd6f4"
+        ent = "#313244"
+
+        tk.Label(
+            self,
+            text="SeatSet Generator",
+            bg=bg,
+            fg="#f9fafb",
+            font=("Malgun Gothic", 14, "bold"),
+        ).pack(anchor="w", padx=14, pady=(16, 10))
+
+        tk.Label(
+            self,
+            text="Wheel-click (middle mouse) to capture coordinates while capture is ON.",
+            bg=bg,
+            fg=fg,
+            font=("Malgun Gothic", 10),
+        ).pack(anchor="w", padx=14, pady=(0, 10))
+
+        controls = tk.Frame(self, bg=bg)
+        controls.pack(fill="x", padx=14, pady=6)
+
+        self.capture_btn = tk.Button(controls, text="Start capture", padx=14, pady=8, command=self.toggle_capture)
+        self.capture_btn.pack(side="left")
+
+        tk.Button(controls, text="Undo", padx=12, pady=8, command=self.undo_point).pack(side="left", padx=(8, 0))
+        tk.Button(controls, text="Clear", padx=12, pady=8, command=self.clear_points).pack(side="left", padx=(8, 0))
+
+        form = tk.Frame(self, bg=bg)
+        form.pack(fill="x", padx=14, pady=(12, 6))
+
+        tk.Label(form, text="SeatSet name", bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(row=0, column=0, sticky="e", padx=8, pady=6)
+        self.name_var = tk.StringVar(value="")
+        tk.Entry(form, textvariable=self.name_var, bg=ent, fg=fg, insertbackground=fg, relief="flat", width=24, font=("Consolas", 10)).grid(row=0, column=1, sticky="w", padx=8, pady=6)
+
+        tk.Label(form, text="Button", bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(row=0, column=2, sticky="e", padx=8, pady=6)
+        self.button_var = tk.StringVar(value="left")
+        ttk.Combobox(form, textvariable=self.button_var, values=["left", "right", "double"], width=10, state="readonly").grid(row=0, column=3, sticky="w", padx=8, pady=6)
+
+        tk.Button(form, text="Save SeatSet", padx=14, pady=8, command=self.save_as_single_set).grid(row=0, column=4, sticky="w", padx=8, pady=6)
+
+        tk.Label(form, text="Pair prefix", bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(row=1, column=0, sticky="e", padx=8, pady=6)
+        self.pair_prefix_var = tk.StringVar(value="pair")
+        tk.Entry(form, textvariable=self.pair_prefix_var, bg=ent, fg=fg, insertbackground=fg, relief="flat", width=24, font=("Consolas", 10)).grid(row=1, column=1, sticky="w", padx=8, pady=6)
+
+        tk.Button(form, text="Generate adjacent pairs", padx=14, pady=8, command=self.generate_adjacent_pairs).grid(row=1, column=4, sticky="w", padx=8, pady=6)
+
+        list_frame = tk.Frame(self, bg=bg)
+        list_frame.pack(fill="both", expand=True, padx=14, pady=(8, 14))
+
+        self.listbox = tk.Listbox(list_frame, bg="#11111b", fg=fg, font=("Consolas", 10), height=14)
+        self.listbox.pack(side="left", fill="both", expand=True)
+
+        sb = tk.Scrollbar(list_frame, orient="vertical", command=self.listbox.yview)
+        sb.pack(side="right", fill="y")
+        self.listbox.configure(yscrollcommand=sb.set)
+
+        normalize_button_colors(self)
+
+    def _on_click(self, x, y, button, pressed):
+        if not self._capturing or not pressed:
+            return
+        if button != pmouse.Button.middle:
+            return
+
+        try:
+            px, py = pyautogui.position()
+        except Exception:
+            px, py = int(x), int(y)
+
+        self._points.append((int(px), int(py)))
+        self.after(0, self._refresh_points)
+
+    def _refresh_points(self):
+        self.listbox.delete(0, tk.END)
+        for idx, (x, y) in enumerate(self._points, start=1):
+            self.listbox.insert(tk.END, f"{idx:03d}  x={x}  y={y}")
+        self.status_cb(f"Captured points: {len(self._points)}")
+
+    def toggle_capture(self):
+        if self._capturing:
+            self.stop_capture()
+        else:
+            self.start_capture()
+
+    def start_capture(self):
+        if self._capturing:
+            return
+        self._capturing = True
+        self.capture_btn.config(text="Stop capture")
+        self.status_cb("Capture ON (wheel-click to add points)")
+
+        try:
+            self._listener = pmouse.Listener(on_click=self._on_click)
+            self._listener.daemon = True
+            self._listener.start()
+        except Exception as e:
+            self._capturing = False
+            self.capture_btn.config(text="Start capture")
+            messagebox.showwarning("Mouse listener error", str(e), parent=self)
+
+    def stop_capture(self):
+        self._capturing = False
+        try:
+            self.capture_btn.config(text="Start capture")
+        except Exception:
+            pass
+        try:
+            if self._listener is not None:
+                self._listener.stop()
+        except Exception:
+            pass
+        self._listener = None
+        self.status_cb("Capture OFF")
+
+    def undo_point(self):
+        if self._points:
+            self._points.pop()
+            self._refresh_points()
+
+    def clear_points(self):
+        self._points = []
+        self._refresh_points()
+
+    def _make_clicks(self, points: list[tuple[int, int]]):
+        button = str(self.button_var.get() or "left")
+        return [{"x": int(x), "y": int(y), "button": button, "memo": ""} for x, y in points]
+
+    def save_as_single_set(self):
+        if not self._points:
+            messagebox.showwarning("Empty", "Capture at least 1 point.", parent=self)
+            return
+        name = (self.name_var.get() or "").strip()
+        if not name:
+            messagebox.showwarning("Name required", "Enter SeatSet name.", parent=self)
+            return
+
+        seat_sets = self.data.setdefault("seat_sets", {})
+        seat_sets[name] = self._make_clicks(self._points)
+        save_data(self.data)
+        self.status_cb(f"SeatSet saved: {name} ({len(self._points)} clicks)")
+
+    def generate_adjacent_pairs(self):
+        if len(self._points) < 2:
+            messagebox.showwarning("Need points", "Capture at least 2 points.", parent=self)
+            return
+
+        prefix = (self.pair_prefix_var.get() or "pair").strip()
+        seat_sets = self.data.setdefault("seat_sets", {})
+
+        created = 0
+        for i in range(len(self._points) - 1):
+            p1 = self._points[i]
+            p2 = self._points[i + 1]
+            name = f"{prefix}_{i+1:03d}"
+            seat_sets[name] = self._make_clicks([p1, p2])
+            created += 1
+
+        save_data(self.data)
+        self.status_cb(f"Created {created} adjacent-pair SeatSets with prefix '{prefix}'")
 
 
 class SecurityTab(tk.Frame):
@@ -2211,12 +2434,35 @@ class MacroApp(tk.Tk):
             font=("Consolas", 11, "bold")
         ).pack(side="left", pady=5)
 
+        # Window pin (always-on-top) toggle for easier coordinate capture.
+        runtime = self.data.setdefault("runtime", {})
+        self.topmost_var = tk.BooleanVar(value=bool(runtime.get("window_topmost", False)))
+
+        tk.Checkbutton(
+            coord_frame,
+            text="Always on top",
+            variable=self.topmost_var,
+            bg="#11111b",
+            fg="#cdd6f4",
+            selectcolor="#313244",
+            activebackground="#11111b",
+            activeforeground="#cdd6f4",
+            font=("Malgun Gothic", 9),
+            command=self._toggle_topmost,
+        ).pack(side="right", padx=10, pady=5)
+
+        self._apply_topmost(bool(self.topmost_var.get()))
+
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=14, pady=8)
 
         self.macro_tab = MacroTab(self.notebook, self.data, self.set_status)
         self.security_tab = SecurityTab(self.notebook, self.data, self.set_status)
         self.runtime_tab = RuntimeTab(self.notebook, self.data, self.set_status)
+        self.seatgen_tab = SeatSetGenTab(self.notebook, self.data, self.set_status)
+
+        # Add SeatSet generator tab. Note: order may differ from other tabs due to legacy encoding in labels.
+        self.notebook.add(self.seatgen_tab, text="SeatSet Generator")
 
         self.notebook.add(self.macro_tab, text="시퀀스 매크로")
         self.notebook.add(self.security_tab, text="보안 인증 설정")
@@ -2236,6 +2482,21 @@ class MacroApp(tk.Tk):
 
         self._update_coord()
         normalize_button_colors(self)
+
+    def _apply_topmost(self, enabled: bool):
+        try:
+            self.attributes("-topmost", bool(enabled))
+        except Exception:
+            pass
+
+    def _toggle_topmost(self):
+        enabled = bool(self.topmost_var.get())
+        self._apply_topmost(enabled)
+        try:
+            self.data.setdefault("runtime", {})["window_topmost"] = enabled
+            save_data(self.data)
+        except Exception:
+            pass
 
     def _update_coord(self):
         try:
@@ -2274,6 +2535,11 @@ class MacroApp(tk.Tk):
     def _quit(self):
         try:
             self.listener.stop()
+        except Exception:
+            pass
+
+        try:
+            self.seatgen_tab.stop_capture()
         except Exception:
             pass
 
