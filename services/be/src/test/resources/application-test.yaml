@@ -70,3 +70,7 @@ coolsms:
   api-key: test-key
   api-secret: test-secret
   sender-number: 01000000000
+
+cloudflare:
+  turnstile:
+    secret-key: test-turnstile-secret-key
