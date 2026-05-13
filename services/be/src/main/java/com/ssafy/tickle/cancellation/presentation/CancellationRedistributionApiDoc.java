@@ -38,6 +38,17 @@ public interface CancellationRedistributionApiDoc {
             @RequestBody(description = "구매 요청 정보") CancellationPurchaseRequest request
     );
 
+    @Operation(summary = "취소표 제안 거절", description = "받은 취소표 제안을 거절하고 다음 대기자에게 기회를 넘깁니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "제안 거절 성공"),
+            @ApiResponse(responseCode = "403", description = "자신의 취소표 제안이 아님"),
+            @ApiResponse(responseCode = "404", description = "제안을 찾을 수 없음")
+    })
+    ResponseEntity<BaseResponse<Void>> passCancellationOffer(
+            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
+            @Parameter(description = "취소표 제안 ID") Long cancellationId
+    );
+
     @Operation(summary = "취소표 알림 발송 (내부 시스템 전용)", description = "내부 스케줄러가 호출하여 1순위 후보자에게 문자 알림을 발송하고 1시간 카운트다운을 시작합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "문자 발송 요청 성공")

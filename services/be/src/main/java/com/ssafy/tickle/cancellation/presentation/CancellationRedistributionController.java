@@ -40,6 +40,16 @@ public class CancellationRedistributionController implements CancellationRedistr
     }
 
     @Override
+    @PostMapping("/{cancellationId}/pass")
+    public ResponseEntity<BaseResponse<Void>> passCancellationOffer(
+            @UserId Long userId,
+            @PathVariable Long cancellationId
+    ) {
+        cancellationRedistributionService.passOffer(cancellationId, userId);
+        return ResponseEntity.ok().body(BaseResponse.success(SuccessCode.OK, null));
+    }
+
+    @Override
     @PostMapping("/{cancellationId}/notify")
     public ResponseEntity<BaseResponse<Void>> notifyCandidate(
             @RequestHeader(value = "X-Internal-Secret", required = false) String internalSecret,
