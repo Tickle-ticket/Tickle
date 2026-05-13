@@ -3,6 +3,11 @@ package com.ssafy.tickle.queue.presentation;
 import com.ssafy.tickle.queue.application.service.QueueStatusService;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatsResponse;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.queue.application.service.AdminQueueDashboardService;
+import com.ssafy.tickle.queue.presentation.dto.QueueDashboardResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueEventRankResponse;
+
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminQueueController implements AdminQueueApiDoc {
 
     private final QueueStatusService queueStatusService;
+    private final AdminQueueDashboardService adminQueueDashboardService;
 
     /**
      * 특정 회차의 대기열 현황 통계를 조회합니다.
@@ -34,5 +40,23 @@ public class AdminQueueController implements AdminQueueApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(queueStatusService.getQueueStats(scheduleId)));
+    }
+
+    @Override
+    @GetMapping("/events/{eventId}/dashboard")
+    public ResponseEntity<BaseResponse<QueueDashboardResponse>> getEventDashboard(
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(adminQueueDashboardService.getEventDashboard(eventId)));
+    }
+
+    @Override
+    @GetMapping("/events/top")
+    public ResponseEntity<BaseResponse<List<QueueEventRankResponse>>> getTopWaitingEvents() {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(adminQueueDashboardService.getTopWaitingEvents()));
     }
 }

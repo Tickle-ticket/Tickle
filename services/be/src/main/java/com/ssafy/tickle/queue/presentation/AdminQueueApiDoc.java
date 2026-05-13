@@ -1,7 +1,11 @@
 package com.ssafy.tickle.queue.presentation;
 
-import com.ssafy.tickle.queue.presentation.dto.QueueStatsResponse;
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueDashboardResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueEventRankResponse;
+import com.ssafy.tickle.queue.presentation.dto.QueueStatsResponse;
+
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -38,4 +42,21 @@ public interface AdminQueueApiDoc {
             @Parameter(description = "조회할 공연 회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId
     );
+
+    @Operation(
+            summary = "공연 대기열 대시보드 조회",
+            description = "특정 공연 전체의 1시간 동안의 대기열 시계열 차트 데이터 및 요약 통계를 반환합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "대시보드 조회 성공")
+    ResponseEntity<BaseResponse<QueueDashboardResponse>> getEventDashboard(
+            @Parameter(description = "조회할 공연 식별자", required = true, example = "1")
+            @PathVariable Long eventId
+    );
+
+    @Operation(
+            summary = "실시간 대기열 많은 공연 목록 조회",
+            description = "현재 대기열이 존재하는 모든 공연을 대기자 수 내림차순으로 정렬하여 반환합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "공연 목록 조회 성공")
+    ResponseEntity<BaseResponse<List<QueueEventRankResponse>>> getTopWaitingEvents();
 }
