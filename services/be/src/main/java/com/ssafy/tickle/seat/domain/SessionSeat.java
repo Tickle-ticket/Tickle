@@ -218,6 +218,15 @@ public class SessionSeat {
     }
 
     /**
+     * 테스트용 목 예매 API에서 현재 상태와 무관하게 좌석을 예매 확정 상태로 전환합니다.
+     */
+    public void confirmBookingForMock() {
+        this.saleStatus = SaleStatus.CONFIRMED;
+        this.heldByUserId = null;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
      * 재배정 중인 좌석을 일반 판매 상태로 완전히 해제합니다.
      * 
      * <p>REALLOCATING 상태인 경우에만 AVAILABLE로 전환 가능합니다.</p>
