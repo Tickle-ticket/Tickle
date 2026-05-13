@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import deque
 import threading
 import time
 import tkinter as tk
@@ -18,7 +19,7 @@ from mouse_driver import (
     wait_until_screen_changed,
     SCREENSHOT_PATH,
 )
-from ocr_security_client import request_security_challenge
+from ocr_security_client import request_security_challenge, request_cv_security_challenge
 
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "macro_data.json")
@@ -82,6 +83,75 @@ def stop_all():
     _running = False
 
 
+class FrameBuffer:
+    """
+    Capture screenshots continuously into an in-memory ring buffer.
+    Used to avoid "too early capture" failures by consuming frames that arrive
+    *after* the security UI is expected to appear, without recapturing per retry.
+    """
+
+    def __init__(self, fps: float = 10.0, max_sec: float = 3.0):
+        self.fps = max(1.0, float(fps))
+        self.maxlen = max(3, int(self.fps * max(0.5, float(max_sec))))
+        self._frames = deque(maxlen=self.maxlen)  # (ts, PIL.Image)
+        self._lock = threading.Lock()
+        self._cv = threading.Condition(self._lock)
+        self._running = False
+        self._thread = None
+
+    def start(self):
+        if self._running:
+            return
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        with self._cv:
+            self._running = False
+            self._cv.notify_all()
+
+    def _loop(self):
+        interval = 1.0 / self.fps
+        while True:
+            with self._cv:
+                if not self._running:
+                    return
+
+            t0 = time.perf_counter()
+            try:
+                img = pyautogui.screenshot()
+                ts = time.time()
+                with self._cv:
+                    self._frames.append((ts, img))
+                    self._cv.notify_all()
+            except Exception:
+                pass
+
+            elapsed = time.perf_counter() - t0
+            time.sleep(max(0.001, interval - elapsed))
+
+    def wait_next(self, after_ts: float, timeout_sec: float):
+        """
+        Return the first frame with ts > after_ts. Wait up to timeout_sec.
+        Returns None on timeout/stop.
+        """
+        deadline = time.time() + max(0.0, float(timeout_sec))
+        with self._cv:
+            while True:
+                for ts, img in list(self._frames):
+                    if ts > after_ts:
+                        return ts, img
+
+                if not self._running:
+                    return None
+
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    return None
+                self._cv.wait(timeout=remaining)
+
+
 def deep_default_data():
     return json.loads(json.dumps(DEFAULT_DATA, ensure_ascii=False))
 
@@ -109,6 +179,10 @@ def ensure_data_shape(data):
     security.setdefault("order_box", "")
     security.setdefault("keypad_box", "")
     security.setdefault("ocr_scale", 1)
+    security.setdefault("keypad_grid_rows", 4)
+    security.setdefault("keypad_grid_cols", 3)
+    security.setdefault("keypad_grid_pad_ratio", 0.10)
+    security.setdefault("keypad_cells", [])
 
     if not data["macros"]:
         data["macros"] = deep_default_data()["macros"]
@@ -213,6 +287,99 @@ def box_to_text(box):
         return ",".join(str(int(float(v))) for v in box)
 
     return ""
+
+
+def parse_box_int(box):
+    if not box:
+        return None
+
+    if isinstance(box, str):
+        raw = box.strip()
+        if not raw:
+            return None
+        parts = [p.strip() for p in raw.split(",")]
+        if len(parts) != 4:
+            return None
+        try:
+            left, top, right, bottom = [int(float(p)) for p in parts]
+        except Exception:
+            return None
+    elif isinstance(box, (list, tuple)) and len(box) == 4:
+        try:
+            left, top, right, bottom = [int(float(v)) for v in box]
+        except Exception:
+            return None
+    else:
+        return None
+
+    if right <= left or bottom <= top:
+        return None
+
+    return [left, top, right, bottom]
+
+
+def union_boxes(a, b):
+    ba = parse_box_int(a)
+    bb = parse_box_int(b)
+    if ba is None and bb is None:
+        return None
+    if ba is None:
+        return bb
+    if bb is None:
+        return ba
+
+    return [
+        min(ba[0], bb[0]),
+        min(ba[1], bb[1]),
+        max(ba[2], bb[2]),
+        max(ba[3], bb[3]),
+    ]
+
+
+def split_box_into_grid(box, rows: int, cols: int, pad_ratio: float = 0.10):
+    """
+    Split a single box ([l,t,r,b] or "l,t,r,b") into rows*cols sub-boxes.
+    """
+    b = parse_box_int(box)
+    if b is None:
+        return []
+
+    rows = max(2, int(rows))
+    cols = max(2, int(cols))
+    pad_ratio = max(0.0, min(float(pad_ratio), 0.30))
+
+    left, top, right, bottom = b
+    w = right - left
+    h = bottom - top
+    if w <= 0 or h <= 0:
+        return []
+
+    inner_left = int(left + w * 0.04)
+    inner_right = int(right - w * 0.04)
+    inner_top = int(top + h * 0.04)
+    inner_bottom = int(bottom - h * 0.04)
+
+    inner_w = inner_right - inner_left
+    inner_h = inner_bottom - inner_top
+    if inner_w <= 0 or inner_h <= 0:
+        return []
+
+    cell_w = inner_w / float(cols)
+    cell_h = inner_h / float(rows)
+
+    cells = []
+    for r in range(rows):
+        for c in range(cols):
+            x1 = int(inner_left + c * cell_w)
+            x2 = int(inner_left + (c + 1) * cell_w)
+            y1 = int(inner_top + r * cell_h)
+            y2 = int(inner_top + (r + 1) * cell_h)
+
+            pad_x = int((x2 - x1) * pad_ratio)
+            pad_y = int((y2 - y1) * pad_ratio)
+            cells.append([x1 + pad_x, y1 + pad_y, x2 - pad_x, y2 - pad_y])
+
+    return cells
 
 
 def split_box(box):
@@ -320,7 +487,7 @@ class EventDialog(tk.Toplevel):
         type_box = ttk.Combobox(
             self,
             textvariable=self.type_var,
-            values=["click", "wait", "wait_change", "ocr_security", "screenshot", "pause"],
+            values=["click", "wait", "wait_change", "wait_security", "ocr_security", "cv_security", "screenshot", "pause"],
             width=18,
             state="readonly"
         )
@@ -401,7 +568,18 @@ class EventDialog(tk.Toplevel):
                     "seconds": float(self.seconds_var.get())
                 })
 
+            elif event_type == "wait_security":
+                event.update({
+                    "seconds": float(self.seconds_var.get()),
+                    "delay": float(self.delay_var.get()),
+                })
+
             elif event_type == "ocr_security":
+                event.update({
+                    "delay": float(self.delay_var.get())
+                })
+
+            elif event_type == "cv_security":
                 event.update({
                     "delay": float(self.delay_var.get())
                 })
@@ -545,6 +723,9 @@ class SecurityTab(tk.Frame):
         self.keypad_rb_y_var = tk.StringVar(value=keypad_rb_y)
 
         self.ocr_scale_var = tk.StringVar(value=str(security.get("ocr_scale", 1)))
+        self.keypad_rows_var = tk.StringVar(value=str(security.get("keypad_grid_rows", 4)))
+        self.keypad_cols_var = tk.StringVar(value=str(security.get("keypad_grid_cols", 3)))
+        self.keypad_pad_var = tk.StringVar(value=str(security.get("keypad_grid_pad_ratio", 0.10)))
 
         tk.Label(
             self,
@@ -648,6 +829,61 @@ class SecurityTab(tk.Frame):
             font=("Malgun Gothic", 9)
         ).grid(row=8, column=2, columnspan=3, sticky="w", padx=8, pady=8)
 
+        tk.Label(
+            self,
+            text="Keypad grid",
+            bg=bg,
+            fg=fg,
+            font=("Malgun Gothic", 10)
+        ).grid(row=9, column=0, sticky="e", padx=12, pady=6)
+
+        grid_frame = tk.Frame(self, bg=bg)
+        grid_frame.grid(row=9, column=1, columnspan=4, sticky="w", padx=12, pady=6)
+
+        tk.Label(grid_frame, text="rows", bg=bg, fg=fg, font=("Consolas", 9)).pack(side="left")
+        tk.Entry(
+            grid_frame,
+            textvariable=self.keypad_rows_var,
+            bg=ent,
+            fg=fg,
+            insertbackground=fg,
+            relief="flat",
+            width=4,
+            font=("Consolas", 10)
+        ).pack(side="left", padx=(6, 12))
+
+        tk.Label(grid_frame, text="cols", bg=bg, fg=fg, font=("Consolas", 9)).pack(side="left")
+        tk.Entry(
+            grid_frame,
+            textvariable=self.keypad_cols_var,
+            bg=ent,
+            fg=fg,
+            insertbackground=fg,
+            relief="flat",
+            width=4,
+            font=("Consolas", 10)
+        ).pack(side="left", padx=(6, 12))
+
+        tk.Label(grid_frame, text="pad", bg=bg, fg=fg, font=("Consolas", 9)).pack(side="left")
+        tk.Entry(
+            grid_frame,
+            textvariable=self.keypad_pad_var,
+            bg=ent,
+            fg=fg,
+            insertbackground=fg,
+            relief="flat",
+            width=6,
+            font=("Consolas", 10)
+        ).pack(side="left", padx=(6, 12))
+
+        tk.Button(
+            grid_frame,
+            text="Generate cells",
+            padx=10,
+            pady=4,
+            command=self.generate_keypad_cells,
+        ).pack(side="left")
+
         tk.Button(
             self,
             text="보안 인증 설정 저장",
@@ -655,7 +891,7 @@ class SecurityTab(tk.Frame):
             pady=9,
             font=("Malgun Gothic", 10, "bold"),
             command=self.save_security
-        ).grid(row=9, column=0, columnspan=5, sticky="w", padx=14, pady=(14, 8))
+        ).grid(row=10, column=0, columnspan=5, sticky="w", padx=14, pady=(14, 8))
 
         help_text = (
             "입력 예시\n"
@@ -672,7 +908,7 @@ class SecurityTab(tk.Frame):
             fg="#d1d5db",
             justify="left",
             font=("Malgun Gothic", 9)
-        ).grid(row=10, column=0, columnspan=5, sticky="w", padx=14, pady=(12, 8))
+        ).grid(row=11, column=0, columnspan=5, sticky="w", padx=14, pady=(12, 8))
 
         normalize_button_colors(self)
 
@@ -750,12 +986,23 @@ class SecurityTab(tk.Frame):
                 )
 
             ocr_scale = max(1, int(float(self.ocr_scale_var.get())))
+            keypad_rows = max(2, int(float(self.keypad_rows_var.get())))
+            keypad_cols = max(2, int(float(self.keypad_cols_var.get())))
+            keypad_pad = float(self.keypad_pad_var.get())
+            keypad_pad = max(0.0, min(keypad_pad, 0.30))
+
+            prev_security = self.data.get("security", {}) if isinstance(self.data.get("security", {}), dict) else {}
+            keypad_cells = prev_security.get("keypad_cells", [])
 
             self.data["security"] = {
                 "mode": mode,
                 "order_box": order_box,
                 "keypad_box": keypad_box,
                 "ocr_scale": ocr_scale,
+                "keypad_grid_rows": keypad_rows,
+                "keypad_grid_cols": keypad_cols,
+                "keypad_grid_pad_ratio": keypad_pad,
+                "keypad_cells": keypad_cells,
             }
 
             save_data(self.data)
@@ -763,6 +1010,39 @@ class SecurityTab(tk.Frame):
 
         except Exception as error:
             messagebox.showwarning("입력 오류", str(error))
+
+    def generate_keypad_cells(self):
+        try:
+            security = self.data.setdefault("security", {})
+
+            keypad_box = security.get("keypad_box", "")
+            if not keypad_box:
+                keypad_box = make_box_from_xy(
+                    self.keypad_lt_x_var.get(),
+                    self.keypad_lt_y_var.get(),
+                    self.keypad_rb_x_var.get(),
+                    self.keypad_rb_y_var.get(),
+                )
+
+            rows = max(2, int(float(self.keypad_rows_var.get())))
+            cols = max(2, int(float(self.keypad_cols_var.get())))
+            pad = float(self.keypad_pad_var.get())
+            pad = max(0.0, min(pad, 0.30))
+
+            cells = split_box_into_grid(keypad_box, rows=rows, cols=cols, pad_ratio=pad)
+            if not cells:
+                raise ValueError("keypad_box가 비어있거나 잘못되었습니다.")
+
+            security["keypad_cells"] = cells
+            security["keypad_grid_rows"] = rows
+            security["keypad_grid_cols"] = cols
+            security["keypad_grid_pad_ratio"] = pad
+            save_data(self.data)
+
+            self.status_cb(f"keypad_cells 생성 완료 ({len(cells)} cells)")
+            messagebox.showinfo("완료", f"keypad_cells 생성 완료: {len(cells)}개", parent=self)
+        except Exception as error:
+            messagebox.showwarning("생성 오류", str(error), parent=self)
 
 
 class MacroTab(tk.Frame):
@@ -1161,34 +1441,77 @@ class MacroTab(tk.Frame):
                             change_ratio_threshold=0.015,
                         )
 
+                    elif event_type == "wait_security":
+                        timeout_sec = float(event.get("seconds", 30.0))
+                        roi_box = union_boxes(
+                            security_config.get("order_box"),
+                            security_config.get("keypad_box"),
+                        )
+
+                        # If boxes are not configured, fall back to full-screen change detection.
+                        wait_until_screen_changed(
+                            timeout_sec=timeout_sec,
+                            interval_sec=0.10,
+                            change_ratio_threshold=0.012,
+                            roi_box=roi_box,
+                        )
+
                     elif event_type == "ocr_security":
                         retry_max, retry_interval = get_ocr_security_retry_config(self.data)
                         last_error = None
                         result = None
 
-                        for attempt in range(1, retry_max + 1):
-                            if not _running:
-                                break
+                        # Start capturing a short post-event window of frames. If the first frame is
+                        # "too early" (security UI not yet visible), consume the next buffered frame
+                        # immediately instead of doing a slow re-capture loop.
+                        buffer_fps = 12.0
+                        buffer_sec = max(2.0, float(retry_max) * float(retry_interval) + 0.75)
+                        min_delay_sec = min(0.60, max(0.10, float(retry_interval)))
+                        deadline = time.time() + max(2.0, float(retry_max) * float(retry_interval) + 3.0)
 
-                            capture_screen(SCREENSHOT_PATH)
+                        fb = FrameBuffer(fps=buffer_fps, max_sec=buffer_sec)
+                        fb.start()
 
-                            try:
-                                result = request_security_challenge(
-                                    image_path=SCREENSHOT_PATH,
-                                    server_url=ocr_server_url,
-                                    security_config=security_config,
-                                    timeout_sec=90,
-                                )
-                                last_error = None
-                                break
-                            except Exception as error:
-                                last_error = error
-                                print(f"[ocr_security] attempt {attempt}/{retry_max} failed: {error}")
-                                # UI animation / rendering timing can cause OCR to fail if captured too early.
-                                time.sleep(retry_interval)
+                        try:
+                            start_ts = time.time()
+                            last_used_ts = start_ts + min_delay_sec
 
-                        if result is None:
-                            raise RuntimeError(f"ocr_security failed after {retry_max} retries: {last_error}")
+                            for attempt in range(1, retry_max + 1):
+                                if not _running:
+                                    break
+
+                                remaining = max(0.1, deadline - time.time())
+                                frame = fb.wait_next(after_ts=last_used_ts, timeout_sec=remaining)
+                                if frame is None:
+                                    last_error = TimeoutError("ocr_security: no buffered frames available")
+                                    break
+
+                                frame_ts, frame_img = frame
+                                last_used_ts = frame_ts
+
+                                try:
+                                    frame_img.save(SCREENSHOT_PATH)
+                                except Exception:
+                                    capture_screen(SCREENSHOT_PATH)
+
+                                try:
+                                    result = request_security_challenge(
+                                        image_path=SCREENSHOT_PATH,
+                                        server_url=ocr_server_url,
+                                        security_config=security_config,
+                                        timeout_sec=90,
+                                    )
+                                    last_error = None
+                                    break
+                                except Exception as error:
+                                    last_error = error
+                                    print(f"[ocr_security] attempt {attempt}/{retry_max} failed: {error}")
+                                    # No sleep here: we rely on subsequent buffered frames arriving shortly.
+
+                            if result is None:
+                                raise RuntimeError(f"ocr_security failed after {retry_max} attempts: {last_error}")
+                        finally:
+                            fb.stop()
 
                         sequence = result["sequence"]
                         buttons = result["buttons"]
@@ -1210,6 +1533,34 @@ class MacroTab(tk.Frame):
                                 runtime=runtime,
                                 button="left",
                                 label=f"security_{digit}",
+                            )
+
+                    elif event_type == "cv_security":
+                        # CV solver is fully separate from OCR. If it fails, we raise and stop.
+                        capture_screen(SCREENSHOT_PATH)
+                        result = request_cv_security_challenge(
+                            image_path=SCREENSHOT_PATH,
+                            server_url=ocr_server_url,
+                            security_config=security_config,
+                            timeout_sec=15,
+                        )
+
+                        sequence = result["sequence"]
+                        buttons = result["buttons"]
+
+                        print("[cv_security] sequence:", sequence)
+                        print("[cv_security] buttons:", buttons)
+
+                        for digit in sequence:
+                            if not _running:
+                                break
+                            x, y = buttons[digit]
+                            click_xy(
+                                x=float(x),
+                                y=float(y),
+                                runtime=runtime,
+                                button="left",
+                                label=f"cv_security_{digit}",
                             )
 
                     elif event_type == "screenshot":
