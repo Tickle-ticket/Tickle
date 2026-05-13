@@ -243,7 +243,7 @@ export const Header = ({ className = '' }: HeaderProps) => {
                       }
                     }}
                   >
-                    나의 취소표 관리
+                    취소표 대기 현황
                   </button>
                   <button 
                     className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-content-secondary hover:bg-surface-muted/50 hover:text-primary rounded-xl transition-colors text-left w-full"

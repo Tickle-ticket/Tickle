@@ -63,7 +63,8 @@ export const BookingCard = ({
 }: BookingCardProps) => {
   const [isFlipped, setIsFlipped] = React.useState(false);
   const isPerformanceToday = isToday(item.performanceDate);
-  const { data: detail } = useBookingDetail(item.id);
+  const isCancelled = item.status === 'CANCELLED';
+  const { data: detail } = useBookingDetail(isCancelled ? null : item.id);
 
   return (
     <div 

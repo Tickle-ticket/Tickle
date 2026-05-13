@@ -24,12 +24,12 @@ export const MyBookingsView = () => {
   const filterOptions = [
     { label: '전체', value: 'ALL' },
     { label: '예매 완료', value: 'CONFIRMED' },
-    { label: '결제 대기', value: 'PENDING_PAYMENT' }
+    { label: '결제 대기', value: 'PENDING_PAYMENT' },
+    { label: '결제 취소', value: 'CANCELLED' }
   ];
 
   const filteredBookings = bookings?.filter((item) => {
-    if (item.status === 'CANCELLED') return false;
-    if (filterStatus === 'ALL') return true;
+    if (filterStatus === 'ALL') return item.status !== 'CANCELLED';
     return item.status === filterStatus;
   }) || [];
 
@@ -39,7 +39,10 @@ export const MyBookingsView = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
 
-  const { data: bookingDetail, isLoading: isDetailLoading, error: detailError } = useBookingDetail(selectedDetailId);
+  const selectedBooking = bookings?.find(b => String(b.id) === String(selectedDetailId));
+  const isSelectedCancelled = selectedBooking?.status === 'CANCELLED';
+
+  const { data: bookingDetail, isLoading: isDetailLoading, error: detailError } = useBookingDetail(isSelectedCancelled ? null : selectedDetailId);
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
@@ -260,7 +263,35 @@ export const MyBookingsView = () => {
         className="!max-w-[400px] sm:!max-w-[450px]"
       >
         <div className="flex flex-col gap-4 mt-2 w-full max-h-[60vh] overflow-y-auto">
-          {isDetailLoading || !bookingDetail ? (
+          {isSelectedCancelled && selectedBooking ? (
+            <div className="flex flex-col gap-4 w-full">
+              <Box variant="outline" className="p-0 sm:p-0 mb-2 overflow-hidden bg-surface">
+                <div className="bg-surface-subtle/80 border-b border-line px-5 py-4 flex items-center justify-between">
+                  <Text typography="t5" fontWeight="bold" className="text-center text-content break-keep">{selectedBooking.title}</Text>
+                </div>
+                <div className="p-1">
+                  <Table
+                    columns={[
+                      { key: 'label', header: '', align: 'left', width: '70px', render: (row) => row.label },
+                      { key: 'value', header: '', align: 'right', render: (row) => row.value }
+                    ]}
+                    data={[
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예매 번호</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{selectedBooking.bookingNo}</Text> },
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예매 일시</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{selectedBooking.bookingDate ? new Date(selectedBooking.bookingDate).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}</Text> },
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">공연장</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{selectedBooking.venue}</Text> },
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">티켓 매수</Text>, value: <Text typography="t5" color="blue" fontWeight="extrabold">{selectedBooking.ticketCount}매</Text> }
+                    ]}
+                    className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-surface-subtle/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-line-subtle"
+                  />
+                </div>
+              </Box>
+              <div className="py-4 flex justify-center">
+                <Badge color="red" variant="fill" size="large" maxLength={20} className="px-4 py-2 font-bold shadow-sm">
+                  이미 취소된 예매입니다
+                </Badge>
+              </div>
+            </div>
+          ) : isDetailLoading || !bookingDetail ? (
             <div className="py-10 flex justify-center text-content-tertiary">불러오는 중...</div>
           ) : (
             <BookingDetailCard bookingDetail={bookingDetail} />
@@ -314,29 +345,29 @@ export const MyBookingsView = () => {
                 </div>
                 <div className="p-1">
                   <Table
-                columns={[
-                  { key: 'label', header: '', align: 'left', width: '70px', render: (row) => row.label },
-                  { key: 'value', header: '', align: 'right', render: (row) => row.value }
-                ]}
-                data={[
-                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 수단</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.paymentMethodType === 'BANK_TRANSFER' ? '무통장 입금' : paymentDetail.paymentMethodType}</Text> },
-                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">계좌번호</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.bankAccount || '-'}</Text> },
-                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예금주</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.accountHolder || '-'}</Text> },
-                  { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 금액</Text>, value: <Text typography="t5" color="blue" fontWeight="extrabold">{paymentDetail.orderAmount?.toLocaleString()}원</Text> }
-                ]}
-                  className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-surface-subtle/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-line-subtle"
-                />
-                <div className="bg-danger-subtle/80 p-4 flex flex-col items-center justify-center gap-1.5 border-t border-danger-light mt-2">
-                  <Text typography="t7" color="red" fontWeight="medium">입금 기한</Text>
-                  <Text typography="t6" color="red" fontWeight="extrabold">
-                    {paymentDetail.depositDeadline ? new Date(paymentDetail.depositDeadline).toLocaleString('ko-KR', {
-                      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                    }) : '-'}
-                  </Text>
-                </div>
+                    columns={[
+                      { key: 'label', header: '', align: 'left', width: '70px', render: (row) => row.label },
+                      { key: 'value', header: '', align: 'right', render: (row) => row.value }
+                    ]}
+                    data={[
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 수단</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.paymentMethodType === 'BANK_TRANSFER' ? '무통장 입금' : paymentDetail.paymentMethodType}</Text> },
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">계좌번호</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.bankAccount || '-'}</Text> },
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예금주</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.accountHolder || '-'}</Text> },
+                      { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 금액</Text>, value: <Text typography="t5" color="blue" fontWeight="extrabold">{paymentDetail.orderAmount?.toLocaleString()}원</Text> }
+                    ]}
+                    className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-surface-subtle/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-line-subtle"
+                  />
+                  <div className="bg-danger-subtle/80 p-4 flex flex-col items-center justify-center gap-1.5 border-t border-danger-light mt-2">
+                    <Text typography="t7" color="red" fontWeight="medium">입금 기한</Text>
+                    <Text typography="t6" color="red" fontWeight="extrabold">
+                      {paymentDetail.depositDeadline ? new Date(paymentDetail.depositDeadline).toLocaleString('ko-KR', {
+                        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                      }) : '-'}
+                    </Text>
+                  </div>
                 </div>
               </Box>
-              
+
               {paymentDetail.seats && paymentDetail.seats.length > 0 && (
                 <div className="mt-6">
                   <Text typography="t6" fontWeight="bold" className="block mb-3 text-left text-content">상세 좌석 ({paymentDetail.seats.length}매)</Text>
@@ -363,12 +394,14 @@ export const MyBookingsView = () => {
       {/* 모바일 전용 상세 오버레이 뷰 */}
       {isMobileDetailOpen && selectedDetailId && (
         <div className="fixed inset-0 z-[100] bg-surface-subtle overflow-y-auto md:hidden">
-          <BookingDetailView 
-            bookingId={selectedDetailId} 
-            onBack={() => setIsMobileDetailOpen(false)} 
+          <BookingDetailView
+            bookingId={selectedDetailId}
+            bookingData={selectedBooking}
+            onBack={() => setIsMobileDetailOpen(false)}
           />
         </div>
       )}
     </div>
   );
 };
+
