@@ -39,7 +39,7 @@ public class AiInferenceCallbackController implements AiInferenceCallbackApiDoc 
     public ResponseEntity<BaseResponse<Void>> receiveInferenceResult(
             @RequestHeader("X-Internal-Secret") String internalSecret,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @Valid @RequestBody AiInferenceCallbackRequest request
     ) {
         aiInferenceCallbackService.receive(userId, request);

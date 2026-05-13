@@ -90,6 +90,19 @@ public class BlacklistService {
     }
 
     /**
+     * 사용자 ID 기준으로 블랙리스트 항목을 삭제합니다.
+     *
+     * <p>이미 해제된 사용자면 멱등성을 위해 조용히 종료합니다.</p>
+     *
+     * @param userId 사용자 식별자
+     */
+    @Transactional
+    public void removeBlacklistByUserId(Long userId) {
+        blacklistRepository.findByUserId(userId)
+                .ifPresent(blacklistRepository::delete);
+    }
+
+    /**
      * 내부 서비스(AI/FE)에서 블랙리스트를 단건 등록합니다.
      *
      * <p>이미 블랙리스트에 등록된 사용자라면 중복 등록하지 않고 조용히 건너뜁니다 (멱등성 보장).</p>
