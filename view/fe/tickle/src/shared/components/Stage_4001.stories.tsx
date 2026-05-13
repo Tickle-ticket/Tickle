@@ -63,7 +63,7 @@ const InteractiveStage_4001 = () => {
   };
 
   return (
-    <div className="w-full h-screen bg-gray-100 overflow-auto flex items-start justify-center p-8">
+    <div className="w-full h-screen bg-surface-muted overflow-auto flex items-start justify-center p-8">
       <Stage_4001 
         seatsData={seatsData} 
         onSeatClick={handleSeatClick} 

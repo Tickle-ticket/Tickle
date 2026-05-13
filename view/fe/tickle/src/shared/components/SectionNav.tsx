@@ -40,9 +40,9 @@ export const SectionNav = ({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center gap-4 py-3 px-4 bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-sm overflow-x-auto scrollbar-hide ${className}`}>
+      <div className={`flex items-center gap-4 py-3 px-4 bg-surface/80 backdrop-blur-md border border-line rounded-2xl shadow-sm overflow-x-auto scrollbar-hide ${className}`}>
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-gray-200 rounded-xl animate-pulse w-24 h-11 shrink-0" />
+          <div key={i} className="bg-surface-active rounded-xl animate-pulse w-24 h-11 shrink-0" />
         ))}
       </div>
     );
@@ -51,7 +51,7 @@ export const SectionNav = ({
   return (
     <div 
       ref={containerRef}
-      className={`flex items-center gap-1 sm:gap-2 p-1.5 sm:p-2 bg-slate-100/80 backdrop-blur-lg rounded-2xl overflow-x-hidden ${className}`}
+      className={`flex items-center gap-1 sm:gap-2 p-1.5 sm:p-2 bg-surface-muted/80 backdrop-blur-lg rounded-2xl overflow-x-hidden ${className}`}
     >
       {items.map((item, index) => {
         const isActive = index === activeIndex;
@@ -63,7 +63,7 @@ export const SectionNav = ({
               relative flex flex-1 items-center justify-center py-2.5 sm:py-3 rounded-xl text-sm sm:text-[15px] font-extrabold transition-all duration-300
               ${isActive 
                 ? 'text-white bg-[#3182f6] shadow-sm' 
-                : 'text-gray-500 hover:text-gray-900 hover:bg-black/5'
+                : 'text-content-tertiary hover:text-content hover:bg-black/5'
               }
             `}
           >

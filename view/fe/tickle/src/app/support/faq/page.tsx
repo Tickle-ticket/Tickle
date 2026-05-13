@@ -50,25 +50,25 @@ export default function FaqPage() {
             bottomBorder={true}
             className="!px-0 !pb-4 mb-4 w-full [&>div]:!px-0 [&_h1]:!text-3xl"
           />
-          <p className="text-gray-500 w-full mb-8 text-[15px]">
+          <p className="text-content-tertiary w-full mb-8 text-[15px]">
             자주 묻는 질문들을 모아두었습니다. 원하시는 답변을 찾지 못하셨다면 고객센터로 문의해 주세요.
           </p>
 
           <div className="w-full flex flex-col gap-4">
             {faqData.map((faq, index) => (
-              <Box key={index} variant="flat" padding="medium" className="bg-white border border-gray-100 rounded-xl w-full shadow-sm hover:shadow-md transition-shadow">
+              <Box key={index} variant="flat" padding="medium" className="bg-surface border border-line-subtle rounded-xl w-full shadow-sm hover:shadow-md transition-shadow">
                 <details className="group">
-                  <summary className="flex items-center justify-between font-bold cursor-pointer list-none text-gray-800 hover:text-blue-600 transition-colors">
+                  <summary className="flex items-center justify-between font-bold cursor-pointer list-none text-content hover:text-primary transition-colors">
                     <span className="text-[16px] flex items-center gap-2">
-                      <span className="text-blue-500">Q.</span>
+                      <span className="text-primary">Q.</span>
                       {faq.question}
                     </span>
-                    <span className="transition group-open:rotate-180 text-gray-400">
+                    <span className="transition group-open:rotate-180 text-content-muted">
                       <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
                     </span>
                   </summary>
-                  <p className="text-gray-600 mt-4 pt-4 border-t border-gray-50 group-open:animate-fadeIn leading-relaxed flex gap-2 text-[15px]">
-                    <span className="font-bold text-blue-500/50">A.</span>
+                  <p className="text-content-secondary mt-4 pt-4 border-t border-line-subtle group-open:animate-fadeIn leading-relaxed flex gap-2 text-[15px]">
+                    <span className="font-bold text-primary/50">A.</span>
                     {faq.answer}
                   </p>
                 </details>

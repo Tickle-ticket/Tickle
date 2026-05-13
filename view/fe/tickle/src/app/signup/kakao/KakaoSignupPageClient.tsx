@@ -275,10 +275,10 @@ export function KakaoSignupPageClient() {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
-          <p className="text-sm font-medium text-slate-500">카카오 가입 정보를 준비하고 있습니다...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-line border-t-blue-500" />
+          <p className="text-sm font-medium text-content-tertiary">카카오 가입 정보를 준비하고 있습니다...</p>
         </div>
       </div>
     );
@@ -293,7 +293,7 @@ export function KakaoSignupPageClient() {
       title="추가 정보를 입력해 주세요."
     >
       <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-        <p className="text-sm font-medium leading-6 text-slate-500">
+        <p className="text-sm font-medium leading-6 text-content-tertiary">
           카카오 계정 연결은 완료되었습니다. 예매에 필요한 이름, 생년월일, 휴대폰 인증만 마무리해 주세요.
         </p>
 
@@ -379,10 +379,10 @@ export function KakaoSignupPageClient() {
             </div>
           ) : null}
 
-          {isPhoneVerified ? <p className="text-sm font-medium text-emerald-600">휴대폰 인증이 완료되었습니다.</p> : null}
+          {isPhoneVerified ? <p className="text-sm font-medium text-success">휴대폰 인증이 완료되었습니다.</p> : null}
         </div>
 
-        {errors.submit ? <p className="text-sm font-medium text-red-500">{errors.submit}</p> : null}
+        {errors.submit ? <p className="text-sm font-medium text-danger">{errors.submit}</p> : null}
 
         <Button
           type="submit"

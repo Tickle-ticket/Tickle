@@ -31,7 +31,7 @@ export const Avatar = ({
   if (isLoading) {
     return (
       <div
-        className={`bg-gray-200 animate-pulse rounded-full flex-shrink-0 ${className}`}
+        className={`bg-surface-active animate-pulse rounded-full flex-shrink-0 ${className}`}
         style={{ width: numericSize, height: numericSize }}
         aria-hidden="true"
       />

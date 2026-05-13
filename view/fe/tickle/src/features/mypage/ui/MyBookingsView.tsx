@@ -146,7 +146,7 @@ export const MyBookingsView = () => {
     <div className="w-full animate-fade-in">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-blue-600">{filteredBookings.length}</span>건의 예매 내역이 있습니다.
+          총 <span className="font-bold text-primary">{filteredBookings.length}</span>건의 예매 내역이 있습니다.
         </Text>
         <SegmentedControl
           options={filterOptions}
@@ -161,7 +161,7 @@ export const MyBookingsView = () => {
         <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 pb-20 justify-items-center">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, idx) => (
-              <div key={idx} className="w-full max-w-[300px] aspect-[2/3] bg-gray-100 animate-pulse rounded-2xl" />
+              <div key={idx} className="w-full max-w-[300px] aspect-[2/3] bg-surface-muted animate-pulse rounded-2xl" />
             ))
           ) : filteredBookings.length > 0 ? (
             filteredBookings.map((item) => (
@@ -179,8 +179,8 @@ export const MyBookingsView = () => {
               </div>
             ))
           ) : (
-            <div className="col-span-full w-full flex flex-col items-center justify-center py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+            <div className="col-span-full w-full flex flex-col items-center justify-center py-24 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
                 <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
                 <path d="M13 5v2"></path>
                 <path d="M13 17v2"></path>
@@ -200,7 +200,7 @@ export const MyBookingsView = () => {
         <div className="grid md:hidden grid-cols-1 gap-3 pb-20">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, idx) => (
-              <div key={idx} className="w-full h-[140px] bg-gray-100 animate-pulse rounded-2xl" />
+              <div key={idx} className="w-full h-[140px] bg-surface-muted animate-pulse rounded-2xl" />
             ))
           ) : filteredBookings.length > 0 ? (
             filteredBookings.map((item) => (
@@ -217,8 +217,8 @@ export const MyBookingsView = () => {
               />
             ))
           ) : (
-            <div className="col-span-full w-full flex flex-col items-center justify-center py-16 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+            <div className="col-span-full w-full flex flex-col items-center justify-center py-16 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
                 <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
                 <path d="M13 5v2"></path>
                 <path d="M13 17v2"></path>
@@ -261,7 +261,7 @@ export const MyBookingsView = () => {
       >
         <div className="flex flex-col gap-4 mt-2 w-full max-h-[60vh] overflow-y-auto">
           {isDetailLoading || !bookingDetail ? (
-            <div className="py-10 flex justify-center text-gray-500">불러오는 중...</div>
+            <div className="py-10 flex justify-center text-content-tertiary">불러오는 중...</div>
           ) : (
             <BookingDetailCard bookingDetail={bookingDetail} />
           )}
@@ -278,7 +278,7 @@ export const MyBookingsView = () => {
       >
         <div className="flex flex-col items-center justify-center py-6 w-full">
           <div className="h-20 w-full opacity-80" style={{ backgroundImage: 'repeating-linear-gradient(to right, #1e293b, #1e293b 3px, transparent 3px, transparent 6px, #1e293b 6px, #1e293b 8px, transparent 8px, transparent 12px, #1e293b 12px, #1e293b 16px, transparent 16px, transparent 20px)' }}></div>
-          <div className="text-lg tracking-[0.4em] text-gray-800 mt-4 font-mono font-bold">{selectedBarcodeText}</div>
+          <div className="text-lg tracking-[0.4em] text-content mt-4 font-mono font-bold">{selectedBarcodeText}</div>
         </div>
       </Modal>
 
@@ -303,14 +303,14 @@ export const MyBookingsView = () => {
         <div className="p-1 sm:p-2 w-full">
           {isPaymentLoading || (selectedPaymentId === null && isDetailLoading) ? (
             <div className="py-12 flex flex-col items-center justify-center">
-              <div className="w-8 h-8 border-4 border-yellow-200 border-t-yellow-500 rounded-full animate-spin mb-4"></div>
-              <p className="text-gray-500 font-medium animate-pulse">결제 정보를 불러오는 중...</p>
+              <div className="w-8 h-8 border-4 border-warning-light border-t-yellow-500 rounded-full animate-spin mb-4"></div>
+              <p className="text-content-tertiary font-medium animate-pulse">결제 정보를 불러오는 중...</p>
             </div>
           ) : paymentDetail ? (
             <div className="flex flex-col gap-4 w-full">
-              <Box variant="outline" className="p-0 sm:p-0 mb-2 overflow-hidden bg-white w-full">
-                <div className="bg-gray-50/80 border-b border-gray-200 px-5 py-4 flex items-center justify-center">
-                  <Text typography="t5" fontWeight="bold" className="text-center text-gray-800 break-keep">무통장 입금 정보</Text>
+              <Box variant="outline" className="p-0 sm:p-0 mb-2 overflow-hidden bg-surface w-full">
+                <div className="bg-surface-subtle/80 border-b border-line px-5 py-4 flex items-center justify-center">
+                  <Text typography="t5" fontWeight="bold" className="text-center text-content break-keep">무통장 입금 정보</Text>
                 </div>
                 <div className="p-1">
                   <Table
@@ -324,9 +324,9 @@ export const MyBookingsView = () => {
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">예금주</Text>, value: <Text typography="t6" color="primary" fontWeight="bold">{paymentDetail.accountHolder || '-'}</Text> },
                   { label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">결제 금액</Text>, value: <Text typography="t5" color="blue" fontWeight="extrabold">{paymentDetail.orderAmount?.toLocaleString()}원</Text> }
                 ]}
-                  className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-gray-50/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-gray-100"
+                  className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-surface-subtle/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-line-subtle"
                 />
-                <div className="bg-red-50/80 p-4 flex flex-col items-center justify-center gap-1.5 border-t border-red-100 mt-2">
+                <div className="bg-danger-subtle/80 p-4 flex flex-col items-center justify-center gap-1.5 border-t border-danger-light mt-2">
                   <Text typography="t7" color="red" fontWeight="medium">입금 기한</Text>
                   <Text typography="t6" color="red" fontWeight="extrabold">
                     {paymentDetail.depositDeadline ? new Date(paymentDetail.depositDeadline).toLocaleString('ko-KR', {
@@ -339,10 +339,10 @@ export const MyBookingsView = () => {
               
               {paymentDetail.seats && paymentDetail.seats.length > 0 && (
                 <div className="mt-6">
-                  <Text typography="t6" fontWeight="bold" className="block mb-3 text-left text-gray-900">상세 좌석 ({paymentDetail.seats.length}매)</Text>
+                  <Text typography="t6" fontWeight="bold" className="block mb-3 text-left text-content">상세 좌석 ({paymentDetail.seats.length}매)</Text>
                   <div className="flex flex-row flex-wrap justify-start gap-2">
                     {paymentDetail.seats.map((seat) => (
-                      <Badge key={seat.sessionSeatId} color="blue" variant="outline" size="medium" className="font-extrabold px-4 py-2 bg-white shadow-sm">
+                      <Badge key={seat.sessionSeatId} color="blue" variant="outline" size="medium" className="font-extrabold px-4 py-2 bg-surface shadow-sm">
                         {seat.rowLabel ? `${seat.rowLabel}열 ` : ''}{seat.seatNumber ? `${seat.seatNumber}번` : seat.seatLabel}
                       </Badge>
                     ))}
@@ -352,9 +352,9 @@ export const MyBookingsView = () => {
             </div>
           ) : (
             <div className="py-12 text-center">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto text-red-400 mb-3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              <p className="text-red-500 font-bold">결제 정보를 불러오지 못했습니다.</p>
-              <p className="text-gray-500 text-sm mt-1">잠시 후 다시 시도해주세요.</p>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mx-auto text-danger mb-3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+              <p className="text-danger font-bold">결제 정보를 불러오지 못했습니다.</p>
+              <p className="text-content-tertiary text-sm mt-1">잠시 후 다시 시도해주세요.</p>
             </div>
           )}
         </div>
@@ -362,7 +362,7 @@ export const MyBookingsView = () => {
 
       {/* 모바일 전용 상세 오버레이 뷰 */}
       {isMobileDetailOpen && selectedDetailId && (
-        <div className="fixed inset-0 z-[100] bg-gray-50 overflow-y-auto md:hidden">
+        <div className="fixed inset-0 z-[100] bg-surface-subtle overflow-y-auto md:hidden">
           <BookingDetailView 
             bookingId={selectedDetailId} 
             onBack={() => setIsMobileDetailOpen(false)} 

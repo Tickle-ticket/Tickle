@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useHomeBanners, useHomeRanking, useHomeUpcoming, useHomeCategories } from '@/src/features/home/api/useHomeData';
 import { http } from '@/src/shared/api/http';
 import { getFavoriteEvents, createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
@@ -32,6 +32,8 @@ import { Modal } from '@/src/shared/components/Modal';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { DetailView } from '@/src/features/detail/ui/DetailView';
+import Lottie from 'lottie-react';
+import loveAnimation from '@/src/shared/lottle/Love.json';
 
 
 
@@ -80,8 +82,8 @@ const CarouselNav = ({ canLeft, canRight, onPrev, onNext }: {
       onClick={onPrev}
       disabled={!canLeft}
       className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-150 ${canLeft
-        ? 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 active:scale-90'
-        : 'border-gray-200 text-gray-250 cursor-default'
+        ? 'border-line-strong text-content-secondary hover:bg-surface-muted hover:border-line-strong active:scale-90'
+        : 'border-line text-gray-250 cursor-default'
         }`}
       aria-label="이전"
     >
@@ -93,8 +95,8 @@ const CarouselNav = ({ canLeft, canRight, onPrev, onNext }: {
       onClick={onNext}
       disabled={!canRight}
       className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-150 ${canRight
-        ? 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 active:scale-90'
-        : 'border-gray-200 text-gray-250 cursor-default'
+        ? 'border-line-strong text-content-secondary hover:bg-surface-muted hover:border-line-strong active:scale-90'
+        : 'border-line text-gray-250 cursor-default'
         }`}
       aria-label="다음"
     >
@@ -134,7 +136,7 @@ const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
 
   if (hasError) {
     return (
-      <div className="w-full h-full bg-white" />
+      <div className="w-full h-full bg-surface" />
     );
   }
 
@@ -142,7 +144,7 @@ const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
     <img
       src={src}
       alt={alt}
-      className="w-full h-full object-cover bg-white"
+      className="w-full h-full object-cover bg-surface"
       onError={() => setHasError(true)}
     />
   );
@@ -150,6 +152,8 @@ const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
 
 export const HomeView = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlDetailId = searchParams?.get('id');
   const { data: banners, isLoading: bannersLoading } = useHomeBanners();
   const { data: upcoming, isLoading: upcomingLoading } = useHomeUpcoming();
   const { searchValue, setSearchValue } = useSearchStore();
@@ -163,6 +167,7 @@ export const HomeView = () => {
   const queryClient = useQueryClient();
 
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
+  const [playLoveAnimation, setPlayLoveAnimation] = useState(false);
 
   const { data: categoryList, isLoading: categoriesLoading } = useHomeCategories();
   const tabItems = ['전체', ...(categoryList?.map(c => c.categoryName) || [])];
@@ -174,10 +179,23 @@ export const HomeView = () => {
   const upcomingCarousel = useCarouselScroll();
 
   const { selectedDetailId, isDetailBannerOpen, openDetail, closeDetail, clickedLayoutId } = useDetailStore();
-  const { data: detailData, isLoading: detailLoading } = useDetailData(selectedDetailId || undefined);
+  const activeDetailId = selectedDetailId || urlDetailId;
+  const { data: detailData, isLoading: detailLoading } = useDetailData(activeDetailId || undefined);
   const accessRoles = getAccessTokenRoles();
   const canEnterAgency = accessRoles.includes('ORGANIZER');
   const canEnterAdmin = accessRoles.includes('ADMIN');
+
+  useEffect(() => {
+    const handleLoveAnimation = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.eventId === activeDetailId?.toString()) {
+        setPlayLoveAnimation(false);
+        setTimeout(() => setPlayLoveAnimation(true), 10);
+      }
+    };
+    window.addEventListener('play-love-animation', handleLoveAnimation);
+    return () => window.removeEventListener('play-love-animation', handleLoveAnimation);
+  }, [activeDetailId]);
 
 
   useEffect(() => {
@@ -197,7 +215,7 @@ export const HomeView = () => {
     } else {
       setIsBannerFolded(false);
     }
-  }, [searchValue, isMypageOpen, selectedDetailId]);
+  }, [searchValue, isMypageOpen, activeDetailId]);
 
   // 로그인된 사용자만 찜 목록을 조회 (비로그인 시 불필요한 401 에러 및 강제 리디렉트 방지)
   useEffect(() => {
@@ -214,8 +232,8 @@ export const HomeView = () => {
   }, []);
 
   const totalBanners = banners?.length || 0;
-  const activeBanner = selectedDetailId && isDetailBannerOpen
-    ? { id: selectedDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '', subtitle: '' }
+  const activeBanner = activeDetailId
+    ? { id: activeDetailId, imageUrl: detailData?.imageUrl || '', title: detailData?.title || '', venue: detailData?.venue || '', date: detailData?.startDate || '', subtitle: '' }
     : banners?.[currentBanner];
 
   const goNext = () => setCurrentBanner((prev) => (prev + 1) % (totalBanners || 1));
@@ -294,18 +312,18 @@ export const HomeView = () => {
       <aside
         className={`relative transition-[width,height,min-width,opacity] duration-300 ease-in-out shrink-0 ${isBannerFolded
           ? 'hidden lg:block lg:w-0 lg:min-w-0 opacity-0'
-          : selectedDetailId
+          : activeDetailId
             ? 'hidden lg:block lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
             : 'w-full h-[28vh] min-h-[220px] md:h-[35vh] lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
           }`}
       >
         <div className="w-full h-full overflow-hidden">
         <motion.div
-          className={`w-full lg:w-[40vw] h-full relative origin-center ${!selectedDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
+          className={`w-full lg:w-[40vw] h-full relative origin-center ${!activeDetailId && activeBanner?.id ? 'cursor-pointer' : ''}`}
           layoutId={clickedLayoutId || "main-banner"}
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           onClick={() => {
-            if (!selectedDetailId && activeBanner?.id) {
+            if (!activeDetailId && activeBanner?.id) {
               handleCardClick(activeBanner.id, "main-banner");
             }
           }}
@@ -316,12 +334,23 @@ export const HomeView = () => {
             isLoading={bannersLoading || (!!selectedDetailId && detailLoading)}
             width="100%"
             height="100%"
-            showGradient={!selectedDetailId} // 디테일 배너는 그라디언트 없이 원본 표시
+            showGradient={!activeDetailId} // 디테일 배너는 그라디언트 없이 원본 표시
             className="rounded-none md:rounded-none max-w-full"
           >
+            {/* 하트 애니메이션 (상단 오버레이 레이어) */}
+            {playLoveAnimation && activeDetailId && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                <Lottie
+                  animationData={loveAnimation}
+                  loop={false}
+                  onComplete={() => setPlayLoveAnimation(false)}
+                  className="w-[80%] max-w-[400px] h-auto"
+                />
+              </div>
+            )}
             <div className="flex flex-col justify-between h-full p-4">
               {/* 우측 상단: 썸네일 리스트만 렌더링 */}
-              {totalBanners > 1 && !selectedDetailId && (
+              {totalBanners > 1 && !activeDetailId && (
                 <div className="flex justify-end w-full">
                   <div className="hidden lg:flex items-center gap-2">
                     {banners?.map((b, idx) => (
@@ -348,10 +377,10 @@ export const HomeView = () => {
               )}
 
               {/* 하단: 타이틀 등 정보 표시 */}
-              {!selectedDetailId && (
+              {!activeDetailId && (
                 <div className="mt-auto w-full max-w-4xl flex flex-col items-start gap-1 pb-2">
                   {'subtitle' in (activeBanner || {}) && (activeBanner as any).subtitle && (
-                    <span className="inline-flex items-center rounded bg-blue-600/90 px-2 py-0.5 text-[11px] md:text-xs font-bold tracking-wider text-white mb-1 shadow-sm">
+                    <span className="inline-flex items-center rounded bg-primary/90 px-2 py-0.5 text-[11px] md:text-xs font-bold tracking-wider text-white mb-1 shadow-sm">
                       {(activeBanner as any).subtitle}
                     </span>
                   )}
@@ -366,9 +395,13 @@ export const HomeView = () => {
         </div>
       </aside>
 
-      {/* Toggle Button - flex 형제로 배치하여 aside 너비에 자연스럽게 따라감 */}
+      {/* Toggle Button - absolute positioning을 사용하여 flex 레이아웃의 빈 공간(gap) 발생 방지 */}
       {!searchValue && !isMypageOpen && (
-        <div className={`hidden lg:flex shrink-0 items-center z-50 ${isBannerFolded ? '' : '-ml-6'}`}>
+        <div 
+          className={`absolute top-1/2 -translate-y-1/2 z-50 hidden lg:flex transition-all duration-300 ease-in-out ${
+            isBannerFolded ? 'left-0 translate-x-2' : 'left-[40%] -translate-x-1/2'
+          }`}
+        >
           <PanelToggle
             isFolded={isBannerFolded}
             onToggle={() => setIsBannerFolded(!isBannerFolded)}
@@ -377,7 +410,7 @@ export const HomeView = () => {
       )}
 
       {/* Right Column: Main Content */}
-      <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative ${selectedDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={selectedDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative ${activeDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={activeDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
         <div className="hidden lg:block">
           <Header />
@@ -393,7 +426,7 @@ export const HomeView = () => {
             <motion.div key="mypage" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0">
               <MyPageContent />
             </motion.div>
-          ) : selectedDetailId ? (
+          ) : activeDetailId ? (
             <motion.div key="detail" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0">
               <DetailView isOverlay={true} />
             </motion.div>
@@ -401,11 +434,11 @@ export const HomeView = () => {
             <motion.div key="home" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0 flex flex-col">
               {(canEnterAgency || canEnterAdmin) ? (
                 <section className="mt-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                  <div className="rounded-2xl border border-line bg-surface px-5 py-4 shadow-sm">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-black text-slate-950">관리 페이지 바로가기</p>
-                        <p className="mt-1 text-sm font-medium text-slate-500">
+                        <p className="mt-1 text-sm font-medium text-content-tertiary">
                           현재 계정 권한으로 접근 가능한 페이지입니다.
                         </p>
                       </div>
@@ -414,7 +447,7 @@ export const HomeView = () => {
                           <button
                             type="button"
                             onClick={() => router.push('/agency')}
-                            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white transition hover:bg-slate-800"
+                            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white transition hover:bg-surface-inverse"
                           >
                             Agency 페이지
                           </button>
@@ -423,7 +456,7 @@ export const HomeView = () => {
                           <button
                             type="button"
                             onClick={() => router.push('/admin')}
-                            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
+                            className="rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-white transition hover:bg-primary-hover"
                           >
                             Admin 페이지
                           </button>
@@ -483,14 +516,14 @@ export const HomeView = () => {
                           </div>
                         ))
                       ) : !ranking || ranking.length === 0 ? (
-                        <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 mx-2 shrink-0">
-                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-3">
+                        <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-surface-subtle/50 rounded-2xl border border-dashed border-line mx-2 shrink-0">
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-3">
                             <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                             <line x1="9" y1="15" x2="15" y2="15"></line>
                           </svg>
-                          <p className="text-gray-500 font-medium text-sm sm:text-base">현재 진행 중인 인기 공연이 없습니다.</p>
-                          <p className="text-gray-400 text-xs sm:text-sm mt-1">곧 새로운 공연이 업데이트될 예정입니다.</p>
+                          <p className="text-content-tertiary font-medium text-sm sm:text-base">현재 진행 중인 인기 공연이 없습니다.</p>
+                          <p className="text-content-muted text-xs sm:text-sm mt-1">곧 새로운 공연이 업데이트될 예정입니다.</p>
                         </div>
                       ) : (
                         ranking?.map((item, idx) => {
@@ -524,18 +557,18 @@ export const HomeView = () => {
 
                 {/* 더보기 */}
                 <div className="w-full flex items-center gap-4 mt-6">
-                  <span className="flex-1 h-px bg-gray-200" />
+                  <span className="flex-1 h-px bg-surface-active" />
                   <button
                     onClick={() => setSearchValue(tabItems[activeTab])}
                     className="group cursor-pointer"
                   >
-                    <Box variant="outline" padding="none" className="py-2 px-5 hover:bg-gray-50 transition-colors flex items-center justify-center">
-                      <span className="text-sm text-gray-500 group-hover:text-gray-800 transition-colors whitespace-nowrap font-medium">
+                    <Box variant="outline" padding="none" className="py-2 px-5 hover:bg-surface-subtle transition-colors flex items-center justify-center">
+                      <span className="text-sm text-content-tertiary group-hover:text-content transition-colors whitespace-nowrap font-medium">
                         더보기
                       </span>
                     </Box>
                   </button>
-                  <span className="flex-1 h-px bg-gray-200" />
+                  <span className="flex-1 h-px bg-surface-active" />
                 </div>
               </section>
 
@@ -568,15 +601,15 @@ export const HomeView = () => {
                       </div>
                     ))
                   ) : !upcoming || upcoming.length === 0 ? (
-                    <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 mx-2 shrink-0">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-3">
+                    <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-surface-subtle/50 rounded-2xl border border-dashed border-line mx-2 shrink-0">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-3">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                       </svg>
-                      <p className="text-gray-500 font-medium text-sm sm:text-base">현재 오픈 예정인 공연이 없습니다.</p>
-                      <p className="text-gray-400 text-xs sm:text-sm mt-1">새로운 공연 소식을 기다려주세요!</p>
+                      <p className="text-content-tertiary font-medium text-sm sm:text-base">현재 오픈 예정인 공연이 없습니다.</p>
+                      <p className="text-content-muted text-xs sm:text-sm mt-1">새로운 공연 소식을 기다려주세요!</p>
                     </div>
                   ) : (
                     upcoming?.map((item, idx) => {
@@ -630,7 +663,7 @@ export const HomeView = () => {
       </main>
       </div>
       </PullToRefresh>
-      {!selectedDetailId && <MobileBottomNav />}
+      {!activeDetailId && <MobileBottomNav />}
     </div>
   );
 };

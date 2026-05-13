@@ -37,7 +37,7 @@ export function PerformanceScheduleAddedModal({
       className="!max-w-[420px] !rounded-[28px] !px-6 !py-6"
     >
       <div className="mt-2 w-full text-left">
-        <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,rgba(239,246,255,0.92)_0%,rgba(255,255,255,0.98)_100%)] p-4 ring-1 ring-blue-100/80">
+        <div className="rounded-[24px] border border-primary-light bg-[linear-gradient(180deg,rgba(239,246,255,0.92)_0%,rgba(255,255,255,0.98)_100%)] p-4 ring-1 ring-primary-light/80">
           <div className="flex flex-wrap gap-2">
             <Badge color="blue" size="small">
               {addedTime}
@@ -52,7 +52,7 @@ export function PerformanceScheduleAddedModal({
               ? `${addedDateCount}개 날짜에 같은 회차를 한 번에 추가했어요.`
               : '선택한 날짜에 회차를 추가했어요.'}
           </p>
-          <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+          <p className="mt-2 text-sm font-medium leading-6 text-content-tertiary">
             {dateSummary || '등록된 공연 시간에서 바로 확인할 수 있습니다.'}
           </p>
         </div>

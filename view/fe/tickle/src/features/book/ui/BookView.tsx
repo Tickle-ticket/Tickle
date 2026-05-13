@@ -207,7 +207,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           console.error("Failed to load stage", venueId, err);
           return {
             default: () => (
-              <div className="flex items-center justify-center h-full min-h-[600px] text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex items-center justify-center h-full min-h-[600px] text-content-tertiary bg-surface-subtle rounded-xl border border-line">
                 <p className="font-medium text-lg">이 공연장의 도면은 아직 지원되지 않습니다. ({venueId})</p>
               </div>
             )
@@ -358,15 +358,15 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   if (isInvalidAccess) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-surface-subtle gap-4">
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-gray-900">잘못된 접근입니다</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold text-content">잘못된 접근입니다</h1>
+          <p className="text-content-tertiary">
             예매 정보가 만료되었거나 비정상적인 접근입니다.
           </p>
           <button 
             onClick={() => { window.location.href = '/'; }}
-            className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800:bg-gray-100 transition-colors"
+            className="px-6 py-2.5 bg-content text-white rounded-xl font-bold hover:bg-surface-inverse:bg-surface-muted transition-colors"
           >
             홈으로 가기
           </button>
@@ -378,16 +378,16 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   if (isEventLoading || !eventDetail) {
     if (isEventError) {
       return (
-        <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-          <p className="text-red-500 font-medium">예매 정보를 불러오는데 실패했습니다.</p>
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">닫기</button>
+        <div className="flex h-screen w-full flex-col items-center justify-center bg-surface-subtle gap-4">
+          <p className="text-danger font-medium">예매 정보를 불러오는데 실패했습니다.</p>
+          <button onClick={onClose} className="px-4 py-2 bg-surface-active rounded hover:bg-surface-active transition">닫기</button>
         </div>
       );
     }
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 gap-4">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 font-medium">예매 정보를 불러오는 중입니다...</p>
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-surface-subtle gap-4">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-content-tertiary font-medium">예매 정보를 불러오는 중입니다...</p>
       </div>
     );
   }
@@ -525,13 +525,13 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   }
 
   return (
-    <div className="flex h-screen w-full flex-col bg-white overflow-hidden animate-fade-in">
+    <div className="flex h-screen w-full flex-col bg-surface overflow-hidden animate-fade-in">
       {/* Header */}
-      <header className="w-full shrink-0 bg-white px-4 py-3 sm:p-6 shadow-sm flex items-center justify-between border-b border-gray-200 z-10">
+      <header className="w-full shrink-0 bg-surface px-4 py-3 sm:p-6 shadow-sm flex items-center justify-between border-b border-line z-10">
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={handleCloseClick}
-            className="p-1.5 sm:p-2 hover:bg-gray-100:bg-zinc-800 rounded-full transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-surface-muted:bg-surface-inverse rounded-full transition-colors"
             aria-label="닫기"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -541,9 +541,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           </button>
           <h1 className="text-base sm:text-xl font-bold truncate">{bookingStep === 'PAY_METHOD' ? '결제 수단 선택' : bookingStep === 'PAYMENT' ? '결제 하기' : '좌석 선택'}</h1>
         </div>
-        <div className="text-xs sm:text-sm font-medium text-gray-500 flex items-center gap-1.5 sm:gap-2 bg-gray-50 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full border border-gray-200">
-          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse"></span>
-          <span className="hidden sm:inline">예매 가능 시간</span> <span className="text-red-500 font-extrabold sm:ml-1">{formatTime(timeLeft)}</span>
+        <div className="text-xs sm:text-sm font-medium text-content-tertiary flex items-center gap-1.5 sm:gap-2 bg-surface-subtle px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full border border-line">
+          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-danger animate-pulse"></span>
+          <span className="hidden sm:inline">예매 가능 시간</span> <span className="text-danger font-extrabold sm:ml-1">{formatTime(timeLeft)}</span>
         </div>
       </header>
 
@@ -572,11 +572,11 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         {/* Mobile: when schedule confirmed → transparent overlay floating on map */}
         {/* Desktop: always side-by-side panel */}
         <div className={`${(!confirmedSchedule || isModifyingSchedule)
-          ? 'relative w-full h-full lg:absolute lg:right-0 lg:top-0 lg:w-[40%] lg:h-full bg-gray-50 overflow-y-auto'
-          : `absolute inset-0 lg:right-0 lg:top-0 lg:left-auto lg:w-[40%] lg:bg-gray-50:bg-zinc-950 lg:overflow-y-auto lg:pointer-events-auto ${
+          ? 'relative w-full h-full lg:absolute lg:right-0 lg:top-0 lg:w-[40%] lg:h-full bg-surface-subtle overflow-y-auto'
+          : `absolute inset-0 lg:right-0 lg:top-0 lg:left-auto lg:w-[40%] lg:bg-surface-subtle:bg-zinc-950 lg:overflow-y-auto lg:pointer-events-auto ${
               bookingStep === 'SEAT'
                 ? 'pointer-events-none'
-                : 'pointer-events-auto bg-gray-50 overflow-y-auto z-30'
+                : 'pointer-events-auto bg-surface-subtle overflow-y-auto z-30'
             }`
         } flex flex-col`}>
           {bookingStep === 'SEAT' && (

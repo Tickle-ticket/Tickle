@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useWaitlistBookings, useCancelWaitlist } from '@/src/features/mypage/api/useMyPageData';
+import React, { useState, useEffect } from 'react';
+import { useWaitlistBookings, useCancelWaitlist, usePassCancellationOffer } from '@/src/features/mypage/api/useMyPageData';
+import { useQueryClient } from '@tanstack/react-query';
 import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Modal } from '@/src/shared/components/Modal';
@@ -12,11 +13,11 @@ import { WaitlistSeatCard } from '@/src/shared/components/WaitlistSeatCard';
 import { WaitlistDetailView } from './WaitlistDetailView';
 
 export const WaitlistManagementView = () => {
+  const queryClient = useQueryClient();
   const { data: waitlist, isLoading } = useWaitlistBookings();
 
   // Cancel Flow State (개별 좌석 단위)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [selectedSeatForCancel, setSelectedSeatForCancel] = useState<any | null>(null);
 
   // Mobile Detail Flow State
@@ -48,21 +49,41 @@ export const WaitlistManagementView = () => {
   };
 
   const cancelWaitlistMutation = useCancelWaitlist();
+  const passOfferMutation = usePassCancellationOffer();
 
-  const handleConfirmCancel = () => {
-    setIsWarningModalOpen(true);
+  // Pass Offer Flow State (배정 완료 좌석 취소)
+  const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+  const [selectedPassOfferId, setSelectedPassOfferId] = useState<string | null>(null);
+  const [selectedPassSeat, setSelectedPassSeat] = useState<any | null>(null);
+
+  const handleOpenPassModal = (cancellationId: string) => {
+    const seat = flatSeats.find(s => String(s.cancellationOfferId) === cancellationId);
+    setSelectedPassOfferId(cancellationId);
+    setSelectedPassSeat(seat || null);
+    setIsPassModalOpen(true);
+  };
+
+  const handleExecutePass = async () => {
+    if (!selectedPassOfferId) return;
+    try {
+      await passOfferMutation.mutateAsync(selectedPassOfferId);
+      setIsPassModalOpen(false);
+      setSelectedPassOfferId(null);
+      setSelectedPassSeat(null);
+    } catch (err) {
+      console.error(err);
+      alert('취소 처리 중 오류가 발생했습니다.');
+    }
   };
 
   const handleExecuteCancel = async () => {
     if (!selectedSeatForCancel) return;
     try {
       await cancelWaitlistMutation.mutateAsync(selectedSeatForCancel.id);
-      setIsWarningModalOpen(false);
       handleCloseCancelModal();
     } catch (err) {
       console.error(err);
       alert('취소 처리 중 오류가 발생했습니다.');
-      setIsWarningModalOpen(false);
     }
   };
 
@@ -99,6 +120,7 @@ export const WaitlistManagementView = () => {
         seat={seat}
         onSelectOffer={setSelectedOfferId}
         onCancel={handleOpenCancelModal}
+        onPassOffer={handleOpenPassModal}
       />
     );
   };
@@ -108,7 +130,7 @@ export const WaitlistManagementView = () => {
     <div className="flex items-center gap-2.5 mb-3">
       <span className="text-lg">{emoji}</span>
       <span className={`text-sm font-extrabold ${color}`}>{title}</span>
-      <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{count}</span>
+      <span className="text-xs font-bold text-content-muted bg-surface-muted px-2 py-0.5 rounded-full">{count}</span>
     </div>
   );
 
@@ -116,14 +138,14 @@ export const WaitlistManagementView = () => {
     <div className="w-full animate-fade-in relative">
       <div className="mb-6 flex items-center justify-between">
         <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-blue-600">{flatSeats.length}</span>건의 좌석 대기 중
+          총 <span className="font-bold text-primary">{flatSeats.length}</span>건의 좌석 대기 중
         </Text>
       </div>
 
       <div className="flex flex-col gap-6 pb-20">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="w-full h-20 bg-gray-100 animate-pulse rounded-2xl" />
+            <div key={idx} className="w-full h-20 bg-surface-muted animate-pulse rounded-2xl" />
           ))
         ) : flatSeats.length > 0 ? (
           <>
@@ -132,8 +154,8 @@ export const WaitlistManagementView = () => {
             </div>
           </>
         ) : (
-          <div className="w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+          <div className="w-full flex flex-col items-center justify-center py-16 md:py-24 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -152,7 +174,7 @@ export const WaitlistManagementView = () => {
         isOpen={isCancelModalOpen}
         onClose={handleCloseCancelModal}
         onCancel={handleCloseCancelModal}
-        onConfirm={handleConfirmCancel}
+        onConfirm={handleExecuteCancel}
         title="대기 취소"
         description="이 좌석의 대기를 취소하시겠습니까?"
         confirmText="취소하기"
@@ -160,35 +182,51 @@ export const WaitlistManagementView = () => {
         isConfirmDisabled={false}
       >
         {selectedSeatForCancel && (
-          <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-gray-50 border border-gray-100 text-left">
-            <span className="shrink-0 px-2.5 py-1 bg-purple-100 text-purple-600 text-[11px] font-extrabold rounded-md border border-purple-200">
-              대기 {selectedSeatForCancel.waitlistNumber}번
+          <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-surface-subtle border border-line-subtle text-left">
+            <span className={`shrink-0 px-2.5 py-1 text-[11px] font-extrabold rounded-md border ${selectedSeatForCancel.waitlistNumber <= 0 ? 'bg-highlight-light text-highlight border-danger-light' : 'bg-accent-light text-accent border-accent-light'}`}>
+              {selectedSeatForCancel.waitlistNumber <= 0 ? '배정 완료' : `대기 ${selectedSeatForCancel.waitlistNumber}번`}
             </span>
             <div className="flex flex-col min-w-0">
-              <span className="text-[14px] font-bold text-gray-800 truncate">{selectedSeatForCancel.info}</span>
-              <span className="text-[11px] text-gray-400 truncate">{selectedSeatForCancel.eventTitle}</span>
+              <span className="text-[14px] font-bold text-content truncate">{selectedSeatForCancel.info}</span>
+              <span className="text-[11px] text-content-muted truncate">{selectedSeatForCancel.eventTitle}</span>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* 경고 모달 (재차 확인) */}
+      {/* 배정 완료 좌석 취소(패스) 확인 모달 */}
       <Modal
-        isOpen={isWarningModalOpen}
-        onClose={() => setIsWarningModalOpen(false)}
-        onCancel={() => setIsWarningModalOpen(false)}
-        onConfirm={handleExecuteCancel}
-        title="대기 취소 경고"
-        description={'취소 시 현재 대기 순번이 사라지며 복구할 수 없습니다.\n정말 취소하시겠습니까?'}
-        confirmText="취소 진행"
-        cancelText="돌아가기"
+        isOpen={isPassModalOpen}
+        onClose={() => { setIsPassModalOpen(false); setSelectedPassOfferId(null); setSelectedPassSeat(null); }}
+        onCancel={() => { setIsPassModalOpen(false); setSelectedPassOfferId(null); setSelectedPassSeat(null); }}
+        onConfirm={handleExecutePass}
+        title="배정 취소"
+        description="배정된 좌석을 포기하시겠습니까? 취소 시 다음 대기자에게 기회가 넘어갑니다."
+        confirmText="취소하기"
+        cancelText="닫기"
         isConfirmDisabled={false}
-      />
+      >
+        {selectedPassSeat && (
+          <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-surface-subtle border border-line-subtle text-left">
+            <span className="shrink-0 px-2.5 py-1 text-[11px] font-extrabold rounded-md border bg-highlight-light text-highlight border-danger-light">
+              배정 완료
+            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[14px] font-bold text-content truncate">{selectedPassSeat.info}</span>
+              <span className="text-[11px] text-content-muted truncate">{selectedPassSeat.eventTitle}</span>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {selectedOfferId && (
         <CancellationDetailView
           cancellationId={selectedOfferId}
-          onClose={() => setSelectedOfferId(null)}
+          onClose={() => {
+            setSelectedOfferId(null);
+            // 결제 완료 후 돌아왔을 때 최신 대기 목록을 다시 불러오도록 쿼리 무효화
+            queryClient.invalidateQueries({ queryKey: ['waitlistBookings'] });
+          }}
         />
       )}
 

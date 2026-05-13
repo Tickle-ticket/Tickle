@@ -56,16 +56,16 @@ export const Calendar = ({
   // 로딩 상태 (스켈레톤 UI)
   if (isLoading) {
     return (
-      <div className={`w-full max-w-[340px] bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
+      <div className={`w-full max-w-[340px] bg-surface rounded-[16px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
         {/* 헤더 스켈레톤 */}
         <div className="flex justify-center items-center mb-6">
-          <div className="w-24 h-6 bg-gray-200 rounded-md animate-pulse" />
+          <div className="w-24 h-6 bg-surface-active rounded-md animate-pulse" />
         </div>
         {/* 요일 스켈레톤 */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex justify-center">
-              <div className="w-5 h-5 bg-gray-100 rounded animate-pulse" />
+              <div className="w-5 h-5 bg-surface-muted rounded animate-pulse" />
             </div>
           ))}
         </div>
@@ -73,7 +73,7 @@ export const Calendar = ({
         <div className="grid grid-cols-7 gap-y-2 gap-x-1">
           {Array.from({ length: 35 }).map((_, i) => (
             <div key={i} className="flex justify-center items-center h-10 w-full">
-              <div className="w-8 h-8 bg-gray-100 rounded-full animate-pulse" />
+              <div className="w-8 h-8 bg-surface-muted rounded-full animate-pulse" />
             </div>
           ))}
         </div>
@@ -106,24 +106,24 @@ export const Calendar = ({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <div className={`w-full max-w-[340px] bg-white rounded-[16px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
+    <div className={`w-full max-w-[340px] bg-surface rounded-[16px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
       {/* 헤더: < 연월 > */}
       <div className="flex justify-between items-center mb-6 px-1">
         <button 
           onClick={handlePrevMonth}
-          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 rounded-full transition-colors"
+          className="w-8 h-8 flex items-center justify-center text-content-muted hover:bg-surface-muted hover:text-content-secondary rounded-full transition-colors"
           aria-label="이전 달"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="text-[17px] font-bold text-gray-800 tracking-tight">
+        <div className="text-[17px] font-bold text-content tracking-tight">
           {year}년 {month + 1}월
         </div>
         <button 
           onClick={handleNextMonth}
-          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 rounded-full transition-colors"
+          className="w-8 h-8 flex items-center justify-center text-content-muted hover:bg-surface-muted hover:text-content-secondary rounded-full transition-colors"
           aria-label="다음 달"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,7 +135,7 @@ export const Calendar = ({
       {/* 요일 헤더 */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {WEEKDAYS.map((day) => (
-          <div key={day} className="flex justify-center text-xs font-semibold text-gray-400">
+          <div key={day} className="flex justify-center text-xs font-semibold text-content-muted">
             {day}
           </div>
         ))}
@@ -165,10 +165,10 @@ export const Calendar = ({
                 }}
                 className={`
                   w-9 h-9 rounded-full flex items-center justify-center text-[15px] font-medium transition-all
-                  ${!isEnabled ? 'text-gray-300 cursor-not-allowed' : ''}
-                  ${isEnabled && !isSelected ? 'text-gray-700 hover:bg-gray-100 cursor-pointer' : ''}
-                  ${isSelected ? 'bg-blue-500 text-white shadow-sm' : ''}
-                  ${isToday && !isSelected && isEnabled ? 'border border-gray-200' : ''}
+                  ${!isEnabled ? 'text-content-muted cursor-not-allowed' : ''}
+                  ${isEnabled && !isSelected ? 'text-content-secondary hover:bg-surface-muted cursor-pointer' : ''}
+                  ${isSelected ? 'bg-primary text-white shadow-sm' : ''}
+                  ${isToday && !isSelected && isEnabled ? 'border border-line' : ''}
                 `}
                 aria-pressed={isSelected}
                 aria-disabled={!isEnabled}

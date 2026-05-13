@@ -91,7 +91,7 @@ const Tab = ({
                 alignItems: 'center',
               }}
             >
-              <div style={{ width: w, height: '1em' }} className="bg-gray-200 animate-pulse rounded-sm" />
+              <div style={{ width: w, height: '1em' }} className="bg-surface-active animate-pulse rounded-sm" />
             </div>
           );
         })}

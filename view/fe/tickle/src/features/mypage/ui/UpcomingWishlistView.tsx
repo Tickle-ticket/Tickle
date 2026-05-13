@@ -69,7 +69,7 @@ export const UpcomingWishlistView = () => {
 
   if (isError) {
     return (
-      <div className="w-full flex flex-col items-center justify-center py-20 bg-gray-50 rounded-2xl border border-gray-200">
+      <div className="w-full flex flex-col items-center justify-center py-20 bg-surface-subtle rounded-2xl border border-line">
         <Text typography="t5" fontWeight="bold" color="secondary" className="mb-2">목록을 불러오는 중 오류가 발생했습니다.</Text>
         <Text typography="t6" color="tertiary">
           {/* @ts-ignore */}
@@ -83,7 +83,7 @@ export const UpcomingWishlistView = () => {
     <div className="w-full animate-fade-in">
       <div className="mb-6 flex items-center justify-between">
         <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-blue-600">{activeWishlistCount}</span>개의 관심 공연이 있습니다.
+          총 <span className="font-bold text-primary">{activeWishlistCount}</span>개의 관심 공연이 있습니다.
         </Text>
       </div>
 
@@ -125,8 +125,8 @@ export const UpcomingWishlistView = () => {
             );
           })
         ) : (
-          <div className="w-full col-span-full flex flex-col items-center justify-center py-16 px-6 bg-gray-50 rounded-2xl border border-gray-200 text-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300 mb-5">
+          <div className="w-full col-span-full flex flex-col items-center justify-center py-16 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
             <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
@@ -140,11 +140,11 @@ export const UpcomingWishlistView = () => {
       </div>
 
       {/* 태블릿/데스크톱 그리드 뷰 (InfoCard) - md 이상에서만 표시 */}
-      <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 md:gap-6 pb-20 justify-items-center">
+      <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 pb-20 justify-items-center">
         {isLoading ? (
-          Array.from({ length: 6 }).map((_, idx) => (
+          Array.from({ length: 4 }).map((_, idx) => (
             <div key={idx} className="w-full flex justify-center">
-              <InfoCard src="" title="" isLoading={true} showTime={true} />
+              <InfoCard className="!w-full !max-w-[260px] sm:!max-w-[300px]" src="" title="" isLoading={true} showTime={true} />
             </div>
           ))
         ) : upcoming && upcoming.length > 0 ? (
@@ -159,22 +159,21 @@ export const UpcomingWishlistView = () => {
                   useMypageStore.getState().closeMypage();
                 }}
               >
-                <div className="w-full max-w-[280px]">
-                  <InfoCard
-                    layoutId={`poster-mypage-upcoming-${item.id}`}
-                    src={item.imageUrl}
-                    title={item.title}
-                    place={item.venue}
-                    day={item.date}
-                    disabled={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
-                    showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
-                    targetDate={item.openDate}
-                    isWishlisted={!isRemoved}
-                    onWishlistToggle={(e) => handleToggle(e, item.id)}
-                    wishlistVariant={isRemoved ? 'greyPlus' : 'default'}
-                    badges={item.badges}
-                  />
-                </div>
+                <InfoCard
+                  className="!w-full !max-w-[260px] sm:!max-w-[300px]"
+                  layoutId={`poster-mypage-upcoming-${item.id}`}
+                  src={item.imageUrl}
+                  title={item.title}
+                  place={item.venue}
+                  day={item.date}
+                  disabled={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
+                  showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
+                  targetDate={item.openDate}
+                  isWishlisted={!isRemoved}
+                  onWishlistToggle={(e) => handleToggle(e, item.id)}
+                  wishlistVariant={isRemoved ? 'greyPlus' : 'default'}
+                  badges={item.badges}
+                />
               </div>
             );
           })

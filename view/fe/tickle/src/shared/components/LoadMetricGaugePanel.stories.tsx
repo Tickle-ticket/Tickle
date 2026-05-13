@@ -102,7 +102,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-white p-6">
+      <div className="min-h-screen bg-surface p-6">
         <Story />
       </div>
     ),

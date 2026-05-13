@@ -32,6 +32,8 @@ import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { leaveQueue } from '@/src/shared/api/queueApi';
+import Lottie from 'lottie-react';
+import loveAnimation from '@/src/shared/lottle/Love.json';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -91,6 +93,19 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [isInvalidAccess, setIsInvalidAccess] = useState(false);
   const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
   const currentStepRef = useRef<string>('detail');
+  const [playLoveAnimation, setPlayLoveAnimation] = useState(false);
+
+  useEffect(() => {
+    const handleLoveAnimation = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.eventId === activeEventId?.toString()) {
+        setPlayLoveAnimation(false);
+        setTimeout(() => setPlayLoveAnimation(true), 10);
+      }
+    };
+    window.addEventListener('play-love-animation', handleLoveAnimation);
+    return () => window.removeEventListener('play-love-animation', handleLoveAnimation);
+  }, [activeEventId]);
 
   // ── Validate state on direct URL access ────────────────
   useEffect(() => {
@@ -271,6 +286,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         removeWishlist(activeEventId);
       } else {
         addWishlist(activeEventId);
+        window.dispatchEvent(new CustomEvent('play-love-animation', { detail: { eventId: activeEventId } }));
       }
 
       if (isFavorite) {
@@ -434,8 +450,8 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     return (
       <div className="flex w-full h-screen items-center justify-center bg-[#f8f8f8] font-sans">
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-gray-900">공연 정보를 찾을 수 없습니다</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold text-content">공연 정보를 찾을 수 없습니다</h1>
+          <p className="text-content-tertiary">
             {/* @ts-ignore */}
             {isError && (error as any)?.status === 404
               ? '존재하지 않거나 삭제된 공연입니다.'
@@ -451,13 +467,13 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-[#f8f8f8] gap-4">
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-gray-900">잘못된 접근입니다</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold text-content">잘못된 접근입니다</h1>
+          <p className="text-content-tertiary">
             예매 정보가 만료되었거나 비정상적인 접근입니다.
           </p>
           <button
             onClick={() => { window.location.href = '/'; }}
-            className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+            className="px-6 py-2.5 bg-content text-white rounded-xl font-bold hover:bg-surface-inverse transition-colors"
           >
             홈으로 가기
           </button>
@@ -475,7 +491,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         <Button
           color="dark"
           size="large"
-          className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-slate-800' : ''}`}
+          className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 transition-all duration-300 shadow-sm ${isUpcoming ? 'opacity-80 pointer-events-none bg-surface-inverse' : ''}`}
           onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
           isLoading={isLoading}
         >
@@ -484,7 +500,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
               <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(data.openDate)}</span>
             ) : (
               <div className="flex items-center justify-center whitespace-nowrap">
-                <div className="flex items-center bg-white/10 rounded-md px-2.5 py-1 border border-white/5 shadow-inner text-white">
+                <div className="flex items-center bg-surface/10 rounded-md px-2.5 py-1 border border-white/5 shadow-inner text-white">
                   <CountdownTimer targetDate={data.openDate} onExpire={() => setIsUpcoming(false)} variant="compact" />
                 </div>
               </div>
@@ -498,7 +514,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         <Button
           color="light"
           size="large"
-          className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-slate-50 opacity-90 pointer-events-none' : ''}`}
+          className={`flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 border border-black/10 transition-all duration-300 shadow-sm overflow-hidden ${isWaitlistUpcoming ? 'bg-surface-subtle opacity-90 pointer-events-none' : ''}`}
           onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
           isLoading={isLoading}
         >
@@ -507,7 +523,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
               <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString())}</span>
             ) : (
               <div className="flex items-center justify-center whitespace-nowrap">
-                <div className="flex items-center bg-slate-200/60 rounded-md px-2.5 py-1 border border-slate-300 shadow-inner text-slate-800">
+                <div className="flex items-center bg-surface-active/60 rounded-md px-2.5 py-1 border border-line-strong shadow-inner text-content">
                   <CountdownTimer targetDate={new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString()} onExpire={() => setIsWaitlistUpcoming(false)} variant="compact" />
                 </div>
               </div>
@@ -521,7 +537,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       {/* 찜하기 버튼 */}
       <button
         onClick={handleFavoriteToggle}
-        className={`w-14 h-14 flex items-center justify-center rounded-xl border transition-colors shadow-sm shrink-0 ${isFavorite ? 'border-red-100 bg-red-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+        className={`w-14 h-14 flex items-center justify-center rounded-xl border transition-colors shadow-sm shrink-0 ${isFavorite ? 'border-danger-light bg-danger-subtle' : 'border-line bg-surface hover:bg-surface-subtle'}`}
         aria-label={isFavorite ? '찜 해제' : '찜 추가'}
       >
         {isFavorite ? (
@@ -569,6 +585,17 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
           showGradient={false}
           className="w-full h-full rounded-none"
         >
+          {/* 하트 애니메이션 (상단 오버레이 레이어 - Mobile) */}
+          {playLoveAnimation && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <Lottie
+                animationData={loveAnimation}
+                loop={false}
+                onComplete={() => setPlayLoveAnimation(false)}
+                className="w-[60%] max-w-[300px] h-auto"
+              />
+            </div>
+          )}
           {/* 포스터 하단 그라데이션 오버레이 */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
         </BannerPoster>
@@ -636,9 +663,9 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
           <div className="flex flex-col gap-8 w-full">
             {/* 2. 가격 */}
             <div id="price" className="scroll-mt-48 transition-all duration-500 ease-in-out w-full">
-              <Box variant="flat" padding="large" className="w-full border border-black/5 flex flex-col gap-4 shadow-sm bg-white rounded-2xl">
+              <Box variant="flat" padding="large" className="w-full border border-black/5 flex flex-col gap-4 shadow-sm bg-surface rounded-2xl">
                 <Title title="가격 정보" bottomBorder={false} className="!px-0 !pt-0 !pb-2 mb-0 w-full [&>div]:!px-0 [&_h1]:!text-2xl shrink-0" />
-                <div className="w-full rounded-xl overflow-hidden border border-gray-100">
+                <div className="w-full rounded-xl overflow-hidden border border-line-subtle">
                   <Table
                     columns={[
                       {
@@ -647,14 +674,14 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                         align: 'left',
                         render: (row: any) => {
                           const gradeColors: Record<string, string> = {
-                            'VIP': 'bg-pink-400',
-                            'R': 'bg-yellow-400',
-                            'S': 'bg-orange-400',
-                            'A': 'bg-blue-400',
+                            'VIP': 'bg-danger',
+                            'R': 'bg-warning',
+                            'S': 'bg-warning',
+                            'A': 'bg-primary-light',
                           };
                           return (
                             <div className="flex items-center gap-3">
-                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.priceGrade] || 'bg-gray-200'}`} />
+                              <span className={`w-3 h-3 rounded-full ${gradeColors[row.priceGrade] || 'bg-surface-active'}`} />
                               <Text typography="t5" fontWeight="bold" color="primary">{row.priceGrade}</Text>
                             </div>
                           );
@@ -699,7 +726,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                             {selectedSchedule.times.map((timeObj: any, idx: number) => (
                               <div
                                 key={idx}
-                                className="inline-flex flex-col items-center justify-center px-6 py-3 border border-gray-200 rounded-xl bg-white"
+                                className="inline-flex flex-col items-center justify-center px-6 py-3 border border-line rounded-xl bg-surface"
                               >
                                 <Text typography="t4" fontWeight="bold" color="primary">{timeObj.time}</Text>
                               </div>
@@ -707,7 +734,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center h-32 border border-dashed border-gray-300 rounded-xl bg-gray-50/50">
+                        <div className="flex items-center justify-center h-32 border border-dashed border-line-strong rounded-xl bg-surface-subtle/50">
                           <Text typography="t6" color="tertiary">관람하실 날짜를 캘린더에서 선택해주세요.</Text>
                         </div>
                       )}
@@ -720,7 +747,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
           {/* 4. 상세 정보 */}
           <div id="details" className="scroll-mt-48 w-full mt-8">
-            <Box variant="flat" padding="medium" className="w-full border border-black/5 bg-gray-50 flex flex-col items-center justify-center min-h-[500px] overflow-hidden rounded-xl">
+            <Box variant="flat" padding="medium" className="w-full border border-black/5 bg-surface-subtle flex flex-col items-center justify-center min-h-[500px] overflow-hidden rounded-xl">
               {detailImageSrc && !detailImageFailed ? (
                 <Image
                   src={detailImageSrc}
@@ -734,7 +761,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                   onError={() => setDetailImageFailed(true)}
                 />
               ) : (
-                <div className="flex flex-col items-center gap-4 text-gray-400">
+                <div className="flex flex-col items-center gap-4 text-content-muted">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                     <circle cx="8.5" cy="8.5" r="1.5" />
@@ -751,7 +778,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
       {/* Booking Pipeline Overlays */}
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
-        <div className="fixed inset-0 z-[70] bg-white overflow-y-auto">
+        <div className="fixed inset-0 z-[70] bg-surface overflow-y-auto">
           <QueueView
             eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
             scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
@@ -770,7 +797,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         </div>
       )}
       {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
-        <div className="fixed inset-0 z-[70] bg-white overflow-y-auto">
+        <div className="fixed inset-0 z-[70] bg-surface overflow-y-auto">
           <BookView
             eventId={activeEventId}
             mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'}
@@ -838,14 +865,14 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     <div className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 flex flex-col gap-3 z-[100]">
       <button
         onClick={scrollToTop}
-        className="w-12 h-12 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-white transition-all text-gray-500 hover:text-blue-600 group"
+        className="w-12 h-12 flex items-center justify-center bg-surface/90 backdrop-blur-sm border border-line rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-surface transition-all text-content-tertiary hover:text-primary group"
         aria-label="맨 위로"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-y-0.5 transition-transform"><polyline points="18 15 12 9 6 15"></polyline></svg>
       </button>
       <button
         onClick={scrollToBottom}
-        className="w-12 h-12 flex items-center justify-center bg-white/90 backdrop-blur-sm border border-gray-200 rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-white transition-all text-gray-500 hover:text-blue-600 group"
+        className="w-12 h-12 flex items-center justify-center bg-surface/90 backdrop-blur-sm border border-line rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-surface transition-all text-content-tertiary hover:text-primary group"
         aria-label="맨 아래로"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -890,7 +917,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
       <main
         ref={scrollRef}
-        className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-800 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-900"
+        className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-surface-inverse [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-content"
       >
         <div className="hidden lg:block">
           <Header />

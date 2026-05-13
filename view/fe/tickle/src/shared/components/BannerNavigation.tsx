@@ -22,8 +22,8 @@ export const BannerNavigation = ({
             key={i}
             className={`h-1.5 rounded-full transition-all duration-300 ${
               i + 1 === current
-                ? 'w-5 bg-white drop-shadow-md'
-                : 'w-1.5 bg-white/40 drop-shadow-sm'
+                ? 'w-5 bg-surface drop-shadow-md'
+                : 'w-1.5 bg-surface/40 drop-shadow-sm'
             }`}
           />
         ))}
@@ -110,7 +110,7 @@ export const BannerNavigation = ({
     return (
       <button 
         onClick={onNext}
-        className={`w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] active:scale-95 transition-all text-gray-400 hover:text-blue-600 group ${className}`}
+        className={`w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full bg-surface shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-line-subtle/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] active:scale-95 transition-all text-content-muted hover:text-primary group ${className}`}
         aria-label="다음 포스터 보기"
       >
         <svg 
@@ -128,11 +128,11 @@ export const BannerNavigation = ({
 
   // 기본 형태: 토스 스타일의 통합된 알약(Pill) 형태의 화이트 내비게이션 바
   return (
-    <div className={`inline-flex items-center gap-4 px-5 py-2.5 rounded-full bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-gray-100 min-w-min ${className}`}>
+    <div className={`inline-flex items-center gap-4 px-5 py-2.5 rounded-full bg-surface shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-line-subtle min-w-min ${className}`}>
       {/* 이전 버튼 */}
       <button 
         onClick={onPrev}
-        className="p-2 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors text-gray-400 hover:text-gray-900"
+        className="p-2 flex items-center justify-center rounded-full hover:bg-surface-muted active:bg-surface-active transition-colors text-content-muted hover:text-content"
         aria-label="이전 포스터"
       >
         <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
@@ -142,17 +142,17 @@ export const BannerNavigation = ({
 
       {/* 포스터 번호 표시 (ex: 1 / 5) */}
       {current !== undefined && total !== undefined && (
-        <div className="text-base font-bold text-gray-800 tracking-wider flex items-center min-w-[3.5rem] justify-center">
-          <span className="text-blue-600">{current}</span> 
-          <span className="text-gray-200 mx-2 text-sm">/</span> 
-          <span className="text-gray-400">{total}</span>
+        <div className="text-base font-bold text-content tracking-wider flex items-center min-w-[3.5rem] justify-center">
+          <span className="text-primary">{current}</span> 
+          <span className="text-content-inverse-muted mx-2 text-sm">/</span> 
+          <span className="text-content-muted">{total}</span>
         </div>
       )}
 
       {/* 다음 버튼 */}
       <button 
         onClick={onNext}
-        className="p-2 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors text-gray-400 hover:text-gray-900"
+        className="p-2 flex items-center justify-center rounded-full hover:bg-surface-muted active:bg-surface-active transition-colors text-content-muted hover:text-content"
         aria-label="다음 포스터"
       >
         <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">

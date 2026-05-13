@@ -95,9 +95,9 @@ export default function QueueMonitoringPage() {
     <div className="space-y-6 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-blue-600">Admin API</p>
+          <p className="text-sm font-bold text-primary">Admin API</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">대기열 상태</h1>
-          <p className="mt-2 text-sm font-medium text-slate-500">
+          <p className="mt-2 text-sm font-medium text-content-tertiary">
             `/api/v1/admin/queues/{'{scheduleId}'}/stats` 응답 기준의 현재 상태입니다.
           </p>
         </div>
@@ -106,7 +106,7 @@ export default function QueueMonitoringPage() {
           <label className="min-w-0 flex-1 sm:w-[220px]">
             <span className="sr-only">스케줄 ID</span>
             <input
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm font-bold text-content outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
               inputMode="numeric"
               onChange={(event) => setScheduleIdInput(event.target.value)}
               placeholder="scheduleId"
@@ -120,30 +120,30 @@ export default function QueueMonitoringPage() {
       </header>
 
       {errorMessage ? (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-red-600">{errorMessage}</p>
+        <p className="rounded-lg bg-danger-subtle px-4 py-3 text-sm font-bold text-danger">{errorMessage}</p>
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-4">
         {cards.map((item) => (
-          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-slate-500">{item.label}</p>
+          <article key={item.label} className="rounded-lg border border-line bg-surface p-5 shadow-sm">
+            <p className="text-sm font-bold text-content-tertiary">{item.label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
-            <p className="mt-2 text-xs font-bold text-slate-500">{item.caption}</p>
+            <p className="mt-2 text-xs font-bold text-content-tertiary">{item.caption}</p>
           </article>
         ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <article className="rounded-lg border border-line bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-slate-950">스케줄 #{stats?.scheduleId ?? scheduleId}</h2>
-              <p className="mt-1 text-sm font-medium text-slate-500">
+              <p className="mt-1 text-sm font-medium text-content-tertiary">
                 {lastUpdatedAt ? `마지막 갱신: ${lastUpdatedAt}` : '아직 갱신 전입니다.'}
               </p>
             </div>
             <button
-              className="h-10 rounded-lg border border-slate-300 px-4 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+              className="h-10 rounded-lg border border-line-strong px-4 text-sm font-black text-content-secondary hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-content-muted"
               disabled={isLoading}
               onClick={() => void loadQueueStats()}
               type="button"
@@ -154,49 +154,49 @@ export default function QueueMonitoringPage() {
 
           <div className="mt-8 space-y-6">
             <div>
-              <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-600">
+              <div className="mb-2 flex items-center justify-between text-sm font-bold text-content-secondary">
                 <span>동시 입장 사용률</span>
                 <span>{usageRate.toFixed(1)}%</span>
               </div>
-              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${usageRate}%` }} />
+              <div className="h-4 overflow-hidden rounded-full bg-surface-muted">
+                <div className="h-full rounded-full bg-success" style={{ width: `${usageRate}%` }} />
               </div>
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-600">
+              <div className="mb-2 flex items-center justify-between text-sm font-bold text-content-secondary">
                 <span>대기 압력</span>
                 <span>{pressureRate.toFixed(1)}%</span>
               </div>
-              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-orange-500" style={{ width: `${pressureRate}%` }} />
+              <div className="h-4 overflow-hidden rounded-full bg-surface-muted">
+                <div className="h-full rounded-full bg-warning" style={{ width: `${pressureRate}%` }} />
               </div>
             </div>
           </div>
         </article>
 
-        <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <aside className="rounded-lg border border-line bg-surface p-5 shadow-sm">
           <h2 className="text-lg font-black text-slate-950">응답 필드</h2>
           <dl className="mt-4 space-y-4 text-sm">
             <div className="flex items-center justify-between gap-4">
-              <dt className="font-bold text-slate-500">scheduleId</dt>
-              <dd className="font-black text-slate-900">{stats?.scheduleId ?? '-'}</dd>
+              <dt className="font-bold text-content-tertiary">scheduleId</dt>
+              <dd className="font-black text-content">{stats?.scheduleId ?? '-'}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="font-bold text-slate-500">totalWaiting</dt>
-              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.totalWaiting) : '-'}</dd>
+              <dt className="font-bold text-content-tertiary">totalWaiting</dt>
+              <dd className="font-black text-content">{stats ? formatNumber(stats.totalWaiting) : '-'}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="font-bold text-slate-500">processingCount</dt>
-              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.processingCount) : '-'}</dd>
+              <dt className="font-bold text-content-tertiary">processingCount</dt>
+              <dd className="font-black text-content">{stats ? formatNumber(stats.processingCount) : '-'}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="font-bold text-slate-500">averageWaitSeconds</dt>
-              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.averageWaitSeconds) : '-'}</dd>
+              <dt className="font-bold text-content-tertiary">averageWaitSeconds</dt>
+              <dd className="font-black text-content">{stats ? formatNumber(stats.averageWaitSeconds) : '-'}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="font-bold text-slate-500">slotLimit</dt>
-              <dd className="font-black text-slate-900">{stats ? formatNumber(stats.slotLimit) : '-'}</dd>
+              <dt className="font-bold text-content-tertiary">slotLimit</dt>
+              <dd className="font-black text-content">{stats ? formatNumber(stats.slotLimit) : '-'}</dd>
             </div>
           </dl>
         </aside>

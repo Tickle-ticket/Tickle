@@ -184,7 +184,7 @@ export const Stage_4001 = ({
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
       // 텍스트 라벨 렌더링
-      ctx.fillStyle = '#9ca3af'; // text-gray-400
+      ctx.fillStyle = '#9ca3af'; // text-content-muted
       ctx.font = 'bold 12px sans-serif';
       labels.forEach(l => {
         ctx.textAlign = l.align;
@@ -281,7 +281,7 @@ export const Stage_4001 = ({
   };
 
   return (
-    <div className={`flex flex-col items-center gap-12 p-12 bg-white rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
+    <div className={`flex flex-col items-center gap-12 p-12 bg-surface rounded-2xl shadow-sm overflow-x-auto min-w-max ${className}`}>
       {/* 1. Stage Area */}
       <div className="flex flex-col items-center gap-3 w-full">
         <Stage width={480} height={72} label="무대" />

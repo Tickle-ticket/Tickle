@@ -25,33 +25,33 @@ export const Accordion = ({
 
   if (isLoading) {
     return (
-      <div className={`w-full border-b border-gray-100 last:border-b-0 py-4 md:py-5 ${className}`} aria-hidden="true">
+      <div className={`w-full border-b border-line-subtle last:border-b-0 py-4 md:py-5 ${className}`} aria-hidden="true">
         <div className="flex justify-between items-center shrink-0 w-full">
           {/* 타이틀 스켈레톤 */}
-          <div className="w-1/3 h-6 bg-gray-200 rounded-md animate-pulse" />
+          <div className="w-1/3 h-6 bg-surface-active rounded-md animate-pulse" />
           {/* 화살표 스켈레톤 */}
-          <div className="w-5 h-5 bg-gray-200 rounded-full animate-pulse" />
+          <div className="w-5 h-5 bg-surface-active rounded-full animate-pulse" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`w-full border-b border-gray-100 last:border-b-0 ${className}`}>
+    <div className={`w-full border-b border-line-subtle last:border-b-0 ${className}`}>
       {/* 아코디언 헤더(토글 버튼) */}
       <button
         type="button"
-        className="w-full flex justify-between items-center px-4 py-4 md:py-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80 active:opacity-60"
+        className="w-full flex justify-between items-center px-4 py-4 md:py-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg transition-opacity hover:opacity-80 active:opacity-60"
         onClick={handleToggle}
         aria-expanded={isOpen}
       >
-        <div className="flex-1 min-w-0 text-[17px] md:text-[19px] font-semibold text-gray-900 pr-4">
+        <div className="flex-1 min-w-0 text-[17px] md:text-[19px] font-semibold text-content pr-4">
           {title}
         </div>
         {/* 우측 쉐브론 화살표 애니메이션 */}
         <div 
           className={`shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] ${
-            isOpen ? 'rotate-180 text-[#3182f6]' : 'rotate-0 text-gray-400'
+            isOpen ? 'rotate-180 text-[#3182f6]' : 'rotate-0 text-content-muted'
           }`}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -67,7 +67,7 @@ export const Accordion = ({
         }`}
       >
         <div className="overflow-hidden min-h-0">
-          <div className="pb-4 md:pb-5 text-[15px] md:text-[16px] text-gray-600 leading-relaxed font-medium">
+          <div className="pb-4 md:pb-5 text-[15px] md:text-[16px] text-content-secondary leading-relaxed font-medium">
             {children}
           </div>
         </div>

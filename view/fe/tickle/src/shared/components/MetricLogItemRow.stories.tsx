@@ -36,8 +36,8 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-white p-6">
-        <ol className="divide-y divide-slate-200 rounded-md border border-slate-200 px-4">
+      <div className="min-h-screen bg-surface p-6">
+        <ol className="divide-y divide-line rounded-md border border-line px-4">
           <Story />
         </ol>
       </div>

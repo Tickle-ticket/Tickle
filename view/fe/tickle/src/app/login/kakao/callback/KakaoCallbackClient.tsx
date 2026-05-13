@@ -97,10 +97,10 @@ export function KakaoCallbackClient() {
   }, [router, searchParams]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500" />
-        <p className="text-sm font-medium text-slate-500">카카오 로그인을 처리하고 있습니다...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-line border-t-blue-500" />
+        <p className="text-sm font-medium text-content-tertiary">카카오 로그인을 처리하고 있습니다...</p>
       </div>
     </div>
   );

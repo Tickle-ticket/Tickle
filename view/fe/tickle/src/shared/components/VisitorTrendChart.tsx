@@ -91,7 +91,7 @@ export function VisitorTrendChart({
 
   return (
     <section
-      className="w-full overflow-hidden rounded-lg border border-slate-200 p-5 shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
+      className="w-full overflow-hidden rounded-lg border border-line p-5 shadow-[0_18px_46px_rgba(15,23,42,0.08)]"
       style={{ backgroundColor, color: textColor }}
     >
       <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -112,7 +112,7 @@ export function VisitorTrendChart({
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:min-w-[250px]">
-          <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+          <div className="rounded-lg border border-success-light bg-success-subtle/70 px-4 py-3">
             <p className="text-[11px] font-semibold" style={{ color: mutedTextColor }}>
               Current visitors
             </p>
@@ -127,7 +127,7 @@ export function VisitorTrendChart({
             </p>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <div className="rounded-lg border border-line bg-surface px-4 py-3">
             <p className="text-[11px] font-semibold" style={{ color: mutedTextColor }}>
               Peak
             </p>
@@ -137,7 +137,7 @@ export function VisitorTrendChart({
                 {unitLabel}
               </span>
             </p>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
               <div className="h-full rounded-full" style={{ width: `${Math.min(100, peakRatio)}%`, backgroundColor: lineColor }} />
             </div>
             <p className="mt-1 text-[11px] font-semibold" style={{ color: mutedTextColor }}>
@@ -148,7 +148,7 @@ export function VisitorTrendChart({
       </header>
 
       <div
-        className="rounded-lg border border-emerald-100 p-4"
+        className="rounded-lg border border-success-light p-4"
         style={{ width: '100%', height, backgroundColor: chartBackgroundColor }}
       >
         <ResponsiveContainer>

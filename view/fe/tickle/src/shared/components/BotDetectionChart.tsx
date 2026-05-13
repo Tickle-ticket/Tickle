@@ -74,54 +74,54 @@ export function BotDetectionChart({
   );
 
   return (
-    <section className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
-      <header className="border-b border-slate-200 p-5">
+    <section className="w-full overflow-hidden rounded-lg border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
+      <header className="border-b border-line p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
-            <p className="text-[12px] font-bold text-red-600">Bot detection</p>
+            <p className="text-[12px] font-bold text-danger">Bot detection</p>
             <h2 className="mt-1 truncate text-[20px] font-black leading-7 tracking-normal text-slate-950">
               {title}
             </h2>
-            <p className="mt-1 text-[12px] font-semibold leading-5 text-slate-500">{subtitle}</p>
+            <p className="mt-1 text-[12px] font-semibold leading-5 text-content-tertiary">{subtitle}</p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[560px] xl:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">오늘 탐지</p>
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">오늘 탐지</p>
               <p className="mt-1 text-[24px] font-black leading-8 text-slate-950">
                 {formatNumber(totalDetections)}
-                <span className="ml-1 text-[12px] font-bold text-slate-500">건</span>
+                <span className="ml-1 text-[12px] font-bold text-content-tertiary">건</span>
               </p>
-              <p className="mt-1 text-[11px] font-black text-slate-500">
+              <p className="mt-1 text-[11px] font-black text-content-tertiary">
                 최근 구간 {formatNumber(latestPoint?.totalDetections ?? 0)}건
               </p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">차단 완료</p>
-              <p className="mt-1 text-[24px] font-black leading-8 text-emerald-600">
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">차단 완료</p>
+              <p className="mt-1 text-[24px] font-black leading-8 text-success">
                 {formatNumber(totalBlockedBots)}
-                <span className="ml-1 text-[12px] font-bold text-slate-500">건</span>
+                <span className="ml-1 text-[12px] font-bold text-content-tertiary">건</span>
               </p>
-              <p className="mt-1 text-[11px] font-black text-slate-500">정책 차단 기준</p>
+              <p className="mt-1 text-[11px] font-black text-content-tertiary">정책 차단 기준</p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">차단율</p>
-              <p className="mt-1 text-[24px] font-black leading-8 text-blue-600">
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">차단율</p>
+              <p className="mt-1 text-[24px] font-black leading-8 text-primary">
                 {formatPercent(blockRate)}
               </p>
-              <p className={`mt-1 text-[11px] font-black ${blockRate >= targetBlockRate ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`mt-1 text-[11px] font-black ${blockRate >= targetBlockRate ? 'text-success' : 'text-danger'}`}>
                 목표 {formatPercent(targetBlockRate)}
               </p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-bold text-slate-500">피크 시간대</p>
-              <p className="mt-1 text-[24px] font-black leading-8 text-orange-500">
+            <div className="rounded-lg border border-line bg-surface-subtle px-4 py-3">
+              <p className="text-[11px] font-bold text-content-tertiary">피크 시간대</p>
+              <p className="mt-1 text-[24px] font-black leading-8 text-warning">
                 {peakPoint?.time ?? '-'}
               </p>
-              <p className="mt-1 text-[11px] font-black text-slate-500">
+              <p className="mt-1 text-[11px] font-black text-content-tertiary">
                 {formatNumber(peakPoint?.totalDetections ?? 0)}건 탐지
               </p>
             </div>
@@ -130,7 +130,7 @@ export function BotDetectionChart({
       </header>
 
       <div className="p-5">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" style={{ height }}>
+        <div className="rounded-lg border border-line bg-surface-subtle p-4" style={{ height }}>
           <ResponsiveContainer>
             <ComposedChart data={chartData} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 8" vertical={false} />

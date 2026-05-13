@@ -56,9 +56,9 @@ export const MyPageView = () => {
         ) : (
           <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
             {/* LNB (Left Navigation Bar) */}
-            <aside className="w-full md:w-[260px] shrink-0 sticky top-28 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-5 border-b border-gray-100 bg-gray-50">
-                <h2 className="text-lg font-black tracking-tight text-gray-900">마이페이지</h2>
+            <aside className="w-full md:w-[260px] shrink-0 sticky top-28 bg-surface border border-line rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-5 border-b border-line-subtle bg-surface-subtle">
+                <h2 className="text-lg font-black tracking-tight text-content">마이페이지</h2>
               </div>
               <div className="flex flex-col py-2">
                 {tabs.map((tab) => (
@@ -96,15 +96,15 @@ export const MyPageView = () => {
               {activeTab === 'WAITLIST' && <WaitlistManagementView />}
               
               {activeTab !== 'USER' && activeTab !== 'EDIT_PROFILE' && activeTab !== 'UPCOMING' && activeTab !== 'MY_TICKETS' && activeTab !== 'WAITLIST' && (
-                <div className="flex flex-col items-center justify-center py-32 border border-dashed border-gray-300 rounded-2xl bg-white/50">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-4">
+                <div className="flex flex-col items-center justify-center py-32 border border-dashed border-line-strong rounded-2xl bg-surface/50">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-4">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
                     <line x1="9" y1="9" x2="9.01" y2="9"></line>
                     <line x1="15" y1="9" x2="15.01" y2="9"></line>
                   </svg>
-                  <h3 className="text-lg font-bold text-gray-700 mb-1">준비 중인 페이지입니다</h3>
-                  <p className="text-sm text-gray-500">해당 기능은 곧 업데이트될 예정입니다.</p>
+                  <h3 className="text-lg font-bold text-content-secondary mb-1">준비 중인 페이지입니다</h3>
+                  <p className="text-sm text-content-tertiary">해당 기능은 곧 업데이트될 예정입니다.</p>
                 </div>
               )}
             </div>

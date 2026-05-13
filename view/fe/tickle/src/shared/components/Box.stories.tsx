@@ -26,7 +26,7 @@ type Story = StoryObj<typeof meta>;
 
 // 빈 박스 형태를 보여주기 위한 기본 임의 높이
 const EmptyContent = () => (
-  <div className="h-40 w-full flex items-center justify-center text-gray-400">
+  <div className="h-40 w-full flex items-center justify-center text-content-muted">
     박스 내부 영역 (children)
   </div>
 );
@@ -43,7 +43,7 @@ export const FlatGrayBox: Story = {
   args: {
     variant: 'gray',
     padding: 'medium',
-    children: <div className="h-20 w-full flex items-center justify-center text-gray-600 font-semibold">회색 내부 영역</div>,
+    children: <div className="h-20 w-full flex items-center justify-center text-content-secondary font-semibold">회색 내부 영역</div>,
   },
 };
 

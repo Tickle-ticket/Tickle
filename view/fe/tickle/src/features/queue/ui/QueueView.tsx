@@ -221,14 +221,14 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-50/95 backdrop-blur-sm z-50 p-4 sm:p-6 relative overflow-hidden">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-surface-subtle/95 backdrop-blur-sm z-50 p-4 sm:p-6 relative overflow-hidden">
       {/* 장식용 배경 요소 */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <Box variant="flat" padding="large" className="z-10 w-full max-w-sm sm:max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col items-center animate-fade-in relative">
+      <Box variant="flat" padding="large" className="z-10 w-full max-w-sm sm:max-w-md bg-surface rounded-3xl shadow-2xl border border-line-subtle flex flex-col items-center animate-fade-in relative">
         <button
           onClick={handleCloseClick}
-          className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+          className="absolute top-6 right-6 p-2 hover:bg-surface-muted rounded-full transition-colors text-content-tertiary"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -238,7 +238,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
         {status === 'PENDING' && (
           <div className="flex flex-col items-center gap-6 py-8 w-full">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             <div className="text-center flex flex-col items-center">
               <Text typography="t3" fontWeight="bold" color="primary" className="text-center">대기열 진입 중...</Text>
               <Text typography="t6" color="secondary" className="mt-4 break-keep text-center">잠시만 기다려주세요</Text>
@@ -248,7 +248,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
         {status === 'WAITING' && (
           <div className="flex flex-col items-center gap-8 w-full py-4">
-            <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-20 h-20 bg-primary-subtle text-primary rounded-full flex items-center justify-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
@@ -265,14 +265,14 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
               </Text>
             </div>
 
-            <div className="w-full flex flex-col gap-3 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            <div className="w-full flex flex-col gap-3 bg-surface-subtle p-6 rounded-2xl border border-line-subtle">
               <div className="flex justify-between items-center">
                 <Text typography="t6" color="secondary">내 대기 순서</Text>
-                <Text typography="t4" fontWeight="bold" className="text-blue-600">
+                <Text typography="t4" fontWeight="bold" className="text-primary">
                   {rank !== null ? `${rank.toLocaleString()}번째` : '계산 중...'}
                 </Text>
               </div>
-              <div className="h-px w-full bg-gray-200" />
+              <div className="h-px w-full bg-surface-active" />
               <div className="flex justify-between items-center">
                 <Text typography="t6" color="secondary">예상 대기 시간</Text>
                 <Text typography="t5" fontWeight="bold" color="primary">
@@ -285,21 +285,21 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
         {status === 'ERROR' && (
           <div className="flex flex-col items-center gap-6 py-8 w-full text-center">
-            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 bg-danger-subtle text-danger rounded-full flex items-center justify-center">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </div>
             <div className="flex flex-col items-center">
-              <Text typography="t3" fontWeight="bold" className="text-red-600 text-center">대기열 접속 오류</Text>
+              <Text typography="t3" fontWeight="bold" className="text-danger text-center">대기열 접속 오류</Text>
               <Text typography="t6" color="secondary" className="mt-4 break-keep leading-relaxed text-center">
                 일시적인 오류가 발생했습니다.<br />다시 시도해주세요.
               </Text>
             </div>
             <button
               onClick={onClose}
-              className="mt-4 px-6 py-3 bg-gray-900 text-white font-bold rounded-xl w-full hover:bg-gray-800 transition-colors"
+              className="mt-4 px-6 py-3 bg-content text-white font-bold rounded-xl w-full hover:bg-surface-inverse transition-colors"
             >
               확인
             </button>

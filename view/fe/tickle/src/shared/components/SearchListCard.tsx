@@ -26,7 +26,7 @@ export const SearchListCard = ({
   const displayBadges = badges.slice(0, 3);
 
   return (
-    <div className="relative flex flex-row items-stretch w-full gap-4 p-3 bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform">
+    <div className="relative flex flex-row items-stretch w-full gap-4 p-3 bg-surface rounded-2xl shadow-sm border border-line-subtle cursor-pointer active:scale-[0.98] transition-transform">
       {/* 썸네일 포스터 영역 */}
       <div className="relative w-[80px] h-[112px] md:w-[100px] md:h-[140px] shrink-0 overflow-hidden rounded-xl shadow-sm">
         <motion.div 
@@ -45,11 +45,11 @@ export const SearchListCard = ({
 
       {/* 우측 정보 텍스트 영역 */}
       <div className="flex flex-col justify-start flex-1 min-w-0 py-1">
-        <InfoTitle title={title} className="text-gray-900 mb-1 line-clamp-2" isLoading={isLoading} />
+        <InfoTitle title={title} className="text-content mb-1 line-clamp-2" isLoading={isLoading} />
         
         <div className="flex flex-col gap-0.5 mt-auto mb-2">
-          {place && <InfoPlace place={place} className="text-gray-500" isLoading={isLoading} />}
-          {day && <InfoDay day={day} className="text-gray-500" isLoading={isLoading} />}
+          {place && <InfoPlace place={place} className="text-content-tertiary" isLoading={isLoading} />}
+          {day && <InfoDay day={day} className="text-content-tertiary" isLoading={isLoading} />}
         </div>
         
         {!isLoading && displayBadges.length > 0 && (
@@ -78,10 +78,10 @@ export const SearchListCard = ({
           onClick={onWishlistToggle}
           className={`absolute bottom-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 active:scale-90 ${
             wishlistVariant === 'greyPlus'
-              ? 'bg-[#828282] hover:bg-gray-600'
+              ? 'bg-[#828282] hover:bg-surface-active'
               : isWishlisted 
-                ? 'bg-red-500 shadow-md shadow-red-500/20' 
-                : 'bg-gray-100 hover:bg-gray-200' 
+                ? 'bg-danger shadow-md shadow-red-500/20' 
+                : 'bg-surface-muted hover:bg-surface-active' 
           }`}
           aria-label={isWishlisted ? '찜 해제' : '찜 추가'}
         >

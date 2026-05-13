@@ -40,7 +40,7 @@ export const Dots: Story = {
     total: 5,
   },
   render: (args) => (
-    <div className="bg-gray-800 p-8 rounded-xl inline-block">
+    <div className="bg-surface-inverse p-8 rounded-xl inline-block">
       <BannerNavigation {...args} />
     </div>
   ),
@@ -53,7 +53,7 @@ export const Badge: Story = {
     total: 10,
   },
   render: (args) => (
-    <div className="bg-gray-800 p-10 rounded-xl inline-block">
+    <div className="bg-surface-inverse p-10 rounded-xl inline-block">
       <BannerNavigation {...args} />
     </div>
   ),

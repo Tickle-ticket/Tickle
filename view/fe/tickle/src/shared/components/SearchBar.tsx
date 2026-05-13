@@ -45,13 +45,13 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
     if (isLoading) {
       return (
         <div
-          className={`flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[1.5px] border-gray-200 bg-white ${fullWidth ? 'w-full' : 'w-[320px]'} ${className}`}
+          className={`flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[1.5px] border-line bg-surface ${fullWidth ? 'w-full' : 'w-[320px]'} ${className}`}
           aria-hidden="true"
         >
           {/* 돋보기 자리 스켈레톤 */}
-          <div className="w-[20px] h-[20px] rounded-full bg-gray-100 animate-pulse flex-shrink-0" />
+          <div className="w-[20px] h-[20px] rounded-full bg-surface-muted animate-pulse flex-shrink-0" />
           {/* 텍스트 힌트 자리 스켈레톤 */}
-          <div className="h-[14px] w-[120px] bg-gray-100 animate-pulse rounded-md" />
+          <div className="h-[14px] w-[120px] bg-surface-muted animate-pulse rounded-md" />
         </div>
       );
     }
@@ -59,9 +59,9 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
     return (
       <div
         className={`
-          flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[1.5px] transition-all bg-white
-          border-gray-200 shadow-sm
-          focus-within:border-gray-800 focus-within:shadow-md
+          flex items-center gap-3 ${heightClass} px-4 rounded-xl border-[1.5px] transition-all bg-surface
+          border-line shadow-sm
+          focus-within:border-line-strong focus-within:shadow-md
           ${fullWidth ? 'w-full' : 'w-[320px]'}
           ${className}
         `}
@@ -77,7 +77,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-400 flex-shrink-0"
+          className="text-content-muted flex-shrink-0"
         >
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -90,7 +90,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
           value={value}
           onChange={handleChange}
           placeholder={placeholder}
-          className={`flex-1 min-w-0 bg-transparent text-gray-800 ${textSizeClass} outline-none placeholder:text-gray-400 font-medium tracking-wide`}
+          className={`flex-1 min-w-0 bg-transparent text-content ${textSizeClass} outline-none placeholder:text-content-muted font-medium tracking-wide`}
           {...props}
         />
 
@@ -99,7 +99,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
           <button
             type="button"
             onClick={handleClear}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+            className="flex-shrink-0 text-content-muted hover:text-content-secondary transition-colors focus:outline-none"
             aria-label="검색어 지우기"
           >
             <svg

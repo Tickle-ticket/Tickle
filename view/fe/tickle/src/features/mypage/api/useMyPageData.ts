@@ -4,7 +4,7 @@ import { ApiResponse } from '@/src/shared/api/types';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
-import { getCancellationWaitCandidates, cancelCancellationWaitCandidate } from '@/src/shared/api/cancellationApi';
+import { getCancellationWaitCandidates, cancelCancellationWaitCandidate, passCancellationOffer } from '@/src/shared/api/cancellationApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
 export const useMyUpcomingWishlist = () => {
   return useQuery({
@@ -143,8 +143,15 @@ export const useWaitlistBookings = () => {
       const token = getAccessToken();
       if (!token) return [] as WaitlistBookingData[];
       
-      const response = await getCancellationWaitCandidates();
-      const candidates = response.data.candidates;
+      let candidates: any[];
+      try {
+        const response = await getCancellationWaitCandidates();
+        candidates = response.data.candidates;
+      } catch (err) {
+        // 결제 완료 후 등 유효하지 않은 상태에서 에러가 발생하면 빈 배열 반환
+        console.warn('취소표 대기 목록 조회 실패 (정상 케이스 가능):', err);
+        return [] as WaitlistBookingData[];
+      }
       
       // Group by scheduleId
       const grouped = candidates.reduce((acc: any, curr: any) => {
@@ -223,6 +230,22 @@ export const useCancelWaitlist = () => {
       const token = getAccessToken();
       if (!token) throw new Error('로그인이 필요합니다.');
       const response = await cancelCancellationWaitCandidate(candidateId);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['waitlistBookings'] });
+    },
+  });
+};
+
+export const usePassCancellationOffer = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (cancellationId: string | number) => {
+      const token = getAccessToken();
+      if (!token) throw new Error('로그인이 필요합니다.');
+      const response = await passCancellationOffer(cancellationId);
       return response.data;
     },
     onSuccess: () => {

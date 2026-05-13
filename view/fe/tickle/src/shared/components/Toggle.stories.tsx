@@ -48,11 +48,11 @@ export const AllSizes: Story = {
     return (
       <div className="flex flex-col gap-6 items-start">
         <div className="flex items-center gap-4">
-          <span className="w-16 text-sm text-gray-500 font-bold">Small</span>
+          <span className="w-16 text-sm text-content-tertiary font-bold">Small</span>
           <Toggle checked={c1} onChange={setC1} size="small" />
         </div>
         <div className="flex items-center gap-4">
-          <span className="w-16 text-sm text-gray-500 font-bold">Medium</span>
+          <span className="w-16 text-sm text-content-tertiary font-bold">Medium</span>
           <Toggle checked={c2} onChange={setC2} size="medium" />
         </div>
       </div>

@@ -71,7 +71,7 @@ export const Modal = ({
       {/* 모달 콘텐츠 */}
       <Box 
         variant="shadow" 
-        className={`relative w-full max-w-[320px] bg-white rounded-[20px] p-6 flex flex-col z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${className}`}
+        className={`relative w-full max-w-[320px] bg-surface rounded-[20px] p-6 flex flex-col z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${className}`}
       >
         <div className="flex flex-col items-center mb-6 gap-2 text-center">
           {title && (
@@ -101,7 +101,7 @@ export const Modal = ({
               onClick={handleCancel}
               disabled={isLoading}
               size="medium"
-              className="flex-1 rounded-[12px] !font-semibold transition-colors hover:bg-gray-200"
+              className="flex-1 rounded-[12px] !font-semibold transition-colors hover:bg-surface-active"
             >
               {cancelText}
             </Button>

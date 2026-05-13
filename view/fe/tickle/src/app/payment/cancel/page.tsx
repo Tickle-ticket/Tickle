@@ -39,13 +39,13 @@ function PaymentCancelContent() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-surface-subtle flex flex-col">
       <Header />
       <div className="flex-1 flex items-center justify-center py-12 px-4">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full text-center space-y-6">
-          <XCircleIcon className="w-20 h-20 text-gray-400 mx-auto" />
-          <h1 className="text-2xl font-extrabold text-gray-900">결제를 취소하셨습니다</h1>
-          <p className="text-gray-500">
+        <div className="bg-surface p-8 rounded-3xl shadow-xl max-w-lg w-full text-center space-y-6">
+          <XCircleIcon className="w-20 h-20 text-content-muted mx-auto" />
+          <h1 className="text-2xl font-extrabold text-content">결제를 취소하셨습니다</h1>
+          <p className="text-content-tertiary">
             {isProcessing ? '취소 처리 중입니다...' : '결제 과정에서 취소되었습니다. 다시 예매를 진행해주세요.'}
           </p>
 
@@ -54,8 +54,8 @@ function PaymentCancelContent() {
               onClick={() => eventId ? router.push(`/detail?id=${eventId}`) : router.push('/')}
               disabled={isProcessing}
               className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-surface-active text-content-muted cursor-not-allowed'
+                  : 'bg-surface-muted text-content-secondary hover:bg-surface-active'
                 }`}
             >
               다시 예매하기
@@ -67,8 +67,8 @@ function PaymentCancelContent() {
               }}
               disabled={isProcessing}
               className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
-                  ? 'bg-gray-300 text-white cursor-not-allowed'
-                  : 'bg-gray-600 text-white shadow-lg shadow-gray-600/30 hover:bg-gray-700'
+                  ? 'bg-surface-active text-white cursor-not-allowed'
+                  : 'bg-surface-active text-white shadow-lg shadow-gray-600/30 hover:bg-surface-inverse'
                 }`}
             >
               홈으로 돌아가기
@@ -98,7 +98,7 @@ function PaymentCancelContent() {
 
 export default function PaymentCancelPage() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
       <PaymentCancelContent />
     </React.Suspense>
   );

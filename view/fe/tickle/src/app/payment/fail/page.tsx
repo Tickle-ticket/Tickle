@@ -45,10 +45,10 @@ function PaymentFailContent() {
         <Header />
       </div>
       <div className="flex-1 flex items-center justify-center py-12 px-4">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full text-center space-y-6">
-          <ExclamationTriangleIcon className="w-20 h-20 text-red-500 mx-auto" />
-          <h1 className="text-2xl font-extrabold text-gray-900">결제가 실패했습니다</h1>
-          <p className="text-gray-500">
+        <div className="bg-surface p-8 rounded-3xl shadow-xl max-w-lg w-full text-center space-y-6">
+          <ExclamationTriangleIcon className="w-20 h-20 text-danger mx-auto" />
+          <h1 className="text-2xl font-extrabold text-content">결제가 실패했습니다</h1>
+          <p className="text-content-tertiary">
             {isProcessing ? '실패 처리 중입니다...' : reasonParam}
           </p>
 
@@ -57,8 +57,8 @@ function PaymentFailContent() {
               onClick={() => eventId ? router.push(`/detail?id=${eventId}`) : router.push('/')}
               disabled={isProcessing}
               className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-surface-active text-content-muted cursor-not-allowed'
+                  : 'bg-surface-muted text-content-secondary hover:bg-surface-active'
                 }`}
             >
               다시 예매하기
@@ -70,8 +70,8 @@ function PaymentFailContent() {
               }}
               disabled={isProcessing}
               className={`w-full py-4 font-bold rounded-xl transition-colors ${isProcessing
-                  ? 'bg-red-300 text-white cursor-not-allowed'
-                  : 'bg-red-600 text-white shadow-lg shadow-red-600/30 hover:bg-red-700'
+                  ? 'bg-danger-light text-white cursor-not-allowed'
+                  : 'bg-danger-hover text-white shadow-lg shadow-red-600/30 hover:bg-danger-hover'
                 }`}
             >
               홈으로 돌아가기
@@ -101,7 +101,7 @@ function PaymentFailContent() {
 
 export default function PaymentFailPage() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>}>
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#f8f8f8]"><div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
       <PaymentFailContent />
     </React.Suspense>
   );

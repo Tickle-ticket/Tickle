@@ -56,7 +56,7 @@ export const Seat = ({
   if (isLoading) {
     return (
       <div
-        className={`bg-gray-200 animate-pulse rounded-md ${className}`}
+        className={`bg-surface-active animate-pulse rounded-md ${className}`}
         style={{ width, height, ...style }}
         aria-hidden="true"
       />

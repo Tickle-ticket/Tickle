@@ -53,9 +53,9 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
   return (
     <div className="w-full min-h-screen bg-zinc-950 pb-[180px] md:pb-[220px] text-white">
       {/* 상단 네비게이션 헤더 */}
-      <div className="sticky top-0 z-10 bg-zinc-900/80 backdrop-blur-xl border-b border-white/10 px-4 py-3.5 flex items-center justify-between shadow-sm">
-        <button onClick={handleBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-white/10 active:bg-white/20 transition-colors">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-200">
+      <div className="sticky top-0 z-10 bg-surface-inverse/80 backdrop-blur-xl border-b border-white/10 px-4 py-3.5 flex items-center justify-between shadow-sm">
+        <button onClick={handleBack} className="p-1.5 -ml-1.5 rounded-full hover:bg-surface/10 active:bg-surface/20 transition-colors">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-inverse-muted">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
@@ -70,21 +70,21 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
             <InfoPoster src={item.imageUrl} alt={item.title} width="100%" height="100%" className="object-cover" />
           </div>
           <div className="flex flex-col justify-center">
-            <span className="px-2 py-1 bg-purple-500/20 text-purple-300 border border-purple-400/30 rounded text-[10px] font-black w-fit mb-2">
+            <span className="px-2 py-1 bg-accent/20 text-accent-light border border-accent/30 rounded text-[10px] font-black w-fit mb-2">
               취소표 대기중
             </span>
             <Text typography="t4" fontWeight="extrabold" className="text-white mb-1 leading-snug">
               {item.title}
             </Text>
-            <Text typography="t6" className="text-gray-400 font-medium mt-1">
+            <Text typography="t6" className="text-content-muted font-medium mt-1">
               {new Date(item.performanceDate).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
             </Text>
           </div>
         </div>
 
         {/* 대기중인 좌석 정보 */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
-          <Text typography="t6" fontWeight="bold" className="text-gray-300">대기중인 좌석 목록</Text>
+        <div className="bg-surface/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
+          <Text typography="t6" fontWeight="bold" className="text-content-muted">대기중인 좌석 목록</Text>
           <div className="flex flex-col gap-2">
             {item.seats && item.seats.map((seat: any) => {
               const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
@@ -92,37 +92,37 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
               let barClass = '';
 
               if (seat.waitlistNumber <= 0) {
-                badgeClass = 'bg-rose-500 text-white';
+                badgeClass = 'bg-highlight text-white';
                 barClass = 'bg-gradient-to-r from-rose-600 to-rose-400';
               } else if (seat.waitlistNumber <= 5) {
-                badgeClass = 'bg-blue-500/30 text-blue-200 border border-blue-400/50';
+                badgeClass = 'bg-primary/30 text-primary-light border border-primary/50';
                 barClass = 'bg-gradient-to-r from-blue-600 to-blue-400';
               } else if (seat.waitlistNumber <= 10) {
-                badgeClass = 'bg-green-500/30 text-green-200 border border-green-400/50';
+                badgeClass = 'bg-success/30 text-success-light border border-success/50';
                 barClass = 'bg-gradient-to-r from-green-600 to-green-400';
               } else {
-                badgeClass = 'bg-yellow-500/30 text-yellow-200 border border-yellow-400/50';
+                badgeClass = 'bg-warning/30 text-warning-light border border-warning/50';
                 barClass = 'bg-gradient-to-r from-yellow-600 to-yellow-400';
               }
 
               const isOffered = seat.waitlistNumber <= 0;
 
               return (
-                <div key={seat.id} className={`flex flex-col bg-black/40 p-3 rounded-xl border ${isOffered ? 'border-rose-500/50' : 'border-white/5'}`}>
+                <div key={seat.id} className={`flex flex-col bg-black/40 p-3 rounded-xl border ${isOffered ? 'border-danger/50' : 'border-white/5'}`}>
                   <div className="flex justify-between items-center text-sm mb-2">
-                    <span className="text-gray-100 font-bold">{seat.info}</span>
+                    <span className="text-content-inverse-muted font-bold">{seat.info}</span>
                     <span className={`px-2 py-0.5 rounded-md text-xs font-black ${badgeClass}`}>
                       {isOffered ? '배정됨!' : `대기 ${seat.waitlistNumber}번`}
                     </span>
                   </div>
                   {!isOffered ? (
-                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-surface/10 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${barClass}`} style={{ width: `${progress}%` }} />
                     </div>
                   ) : (
                     <button
                       onClick={() => onOpenPayment && onOpenPayment(seat.id)}
-                      className="mt-2 w-full py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-[13px] font-extrabold rounded-lg transition-all shadow-lg shadow-rose-600/30"
+                      className="mt-2 w-full py-2.5 bg-highlight hover:bg-danger-hover active:bg-danger-hover text-white text-[13px] font-extrabold rounded-lg transition-all shadow-lg shadow-rose-600/30"
                     >
                       상세 확인 및 결제
                     </button>
@@ -135,11 +135,11 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
       </div>
 
       {/* 하단 고정 액션 버튼 */}
-      <div className="fixed bottom-[70px] md:bottom-[100px] left-0 right-0 p-4 bg-zinc-900/90 backdrop-blur-md border-t border-white/10 z-20 pb-safe">
+      <div className="fixed bottom-[70px] md:bottom-[100px] left-0 right-0 p-4 bg-surface-inverse/90 backdrop-blur-md border-t border-white/10 z-20 pb-safe">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => setIsCancelModalOpen(true)}
-            className="w-full py-4 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-extrabold rounded-[14px] transition-colors text-[15px] border border-white/20"
+            className="w-full py-4 bg-surface/10 hover:bg-surface/20 active:bg-surface/30 text-white font-extrabold rounded-[14px] transition-colors text-[15px] border border-white/20"
           >
             대기 전체 취소하기
           </button>

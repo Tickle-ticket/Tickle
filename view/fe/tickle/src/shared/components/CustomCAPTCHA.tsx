@@ -319,12 +319,12 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
   if (keypad.length === 0) return null;
 
   return (
-    <div className={`relative flex flex-col items-center bg-white p-4 sm:p-6 rounded-2xl shadow-xl border w-full max-w-[280px] sm:max-w-sm transition-colors duration-300 ${isError ? 'border-red-500 bg-red-50' : 'border-gray-100'}`}>
+    <div className={`relative flex flex-col items-center bg-surface p-4 sm:p-6 rounded-2xl shadow-xl border w-full max-w-[280px] sm:max-w-sm transition-colors duration-300 ${isError ? 'border-danger bg-danger-subtle' : 'border-line-subtle'}`}>
       
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-20"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 sm:p-2 text-content-muted hover:text-content-secondary hover:bg-surface-muted rounded-full transition-colors z-20"
           aria-label="닫기"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

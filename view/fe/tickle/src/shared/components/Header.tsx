@@ -202,9 +202,9 @@ export const Header = ({ className = '' }: HeaderProps) => {
               </div>
 
               {isProfileOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] p-2 z-[60] flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-3 w-56 bg-surface/80 backdrop-blur-xl border border-line/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] p-2 z-[60] flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-200">
                   <button 
-                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
+                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-content-secondary hover:bg-surface-muted/50 hover:text-primary rounded-xl transition-colors text-left w-full"
                     onClick={() => {
                       setIsProfileOpen(false);
                       clearSearch();
@@ -218,7 +218,7 @@ export const Header = ({ className = '' }: HeaderProps) => {
                     마이페이지
                   </button>
                   <button 
-                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
+                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-content-secondary hover:bg-surface-muted/50 hover:text-primary rounded-xl transition-colors text-left w-full"
                     onClick={() => {
                       setIsProfileOpen(false);
                       clearSearch();
@@ -232,7 +232,7 @@ export const Header = ({ className = '' }: HeaderProps) => {
                     내 예매 관리
                   </button>
                   <button 
-                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
+                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-content-secondary hover:bg-surface-muted/50 hover:text-primary rounded-xl transition-colors text-left w-full"
                     onClick={() => {
                       setIsProfileOpen(false);
                       clearSearch();
@@ -246,7 +246,7 @@ export const Header = ({ className = '' }: HeaderProps) => {
                     나의 취소표 관리
                   </button>
                   <button 
-                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-gray-700 hover:bg-gray-100/50 hover:text-blue-600 rounded-xl transition-colors text-left w-full"
+                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-content-secondary hover:bg-surface-muted/50 hover:text-primary rounded-xl transition-colors text-left w-full"
                     onClick={() => {
                       setIsProfileOpen(false);
                       clearSearch();
@@ -260,10 +260,10 @@ export const Header = ({ className = '' }: HeaderProps) => {
                     관심 공연
                   </button>
                   
-                  <div className="h-[1px] bg-gray-200/50 my-1 mx-2" />
+                  <div className="h-[1px] bg-surface-active/50 my-1 mx-2" />
                   
                   <button 
-                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-red-500 hover:bg-red-50/50 hover:text-red-600 rounded-xl transition-colors text-left"
+                    className="flex items-center gap-3 px-4 py-3 text-[15px] font-bold text-danger hover:bg-danger-subtle/50 hover:text-danger rounded-xl transition-colors text-left"
                     onClick={handleLogout}
                   >
                     로그아웃
@@ -277,7 +277,7 @@ export const Header = ({ className = '' }: HeaderProps) => {
                 const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
                 router.push(`/login?redirect=${currentPath}`);
               }}
-              className="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center min-w-[72px] h-10"
+              className="px-4 py-2 text-sm font-bold text-content-secondary bg-surface border border-line rounded-full hover:bg-surface-subtle hover:text-primary transition-all shadow-sm flex items-center justify-center min-w-[72px] h-10"
             >
               로그인
             </button>

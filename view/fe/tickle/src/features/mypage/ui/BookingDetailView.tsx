@@ -46,17 +46,17 @@ export const BookingDetailView = ({ bookingId, onBack }: BookingDetailViewProps)
 
   if (isLoading || !bookingDetail) {
     return (
-      <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center">
-        <span className="text-gray-400 font-bold">불러오는 중...</span>
+      <div className="w-full min-h-screen bg-surface-subtle flex items-center justify-center">
+        <span className="text-content-muted font-bold">불러오는 중...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-        <span className="text-gray-600 font-bold">상세 정보를 불러오지 못했습니다.</span>
-        <button onClick={() => handleBack()} className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 rounded-xl font-bold text-gray-800 transition-colors">
+      <div className="w-full min-h-screen bg-surface-subtle flex flex-col items-center justify-center gap-4">
+        <span className="text-content-secondary font-bold">상세 정보를 불러오지 못했습니다.</span>
+        <button onClick={() => handleBack()} className="px-5 py-2.5 bg-surface-active hover:bg-surface-active rounded-xl font-bold text-content transition-colors">
           돌아가기
         </button>
       </div>
@@ -64,15 +64,15 @@ export const BookingDetailView = ({ bookingId, onBack }: BookingDetailViewProps)
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 pb-[180px] md:pb-[220px]">
+    <div className="w-full min-h-screen bg-surface-subtle pb-[180px] md:pb-[220px]">
       {/* 상단 네비게이션 헤더 */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-gray-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
-        <button onClick={() => handleBack()} className="p-1.5 -ml-1.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-800">
+      <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur-xl border-b border-line px-4 py-3.5 flex items-center justify-between shadow-sm">
+        <button onClick={() => handleBack()} className="p-1.5 -ml-1.5 rounded-full hover:bg-surface-muted active:bg-surface-active transition-colors">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-content">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <span className="font-extrabold text-gray-900 text-[17px] tracking-tight">예매 상세 내역</span>
+        <span className="font-extrabold text-content text-[17px] tracking-tight">예매 상세 내역</span>
         <div className="w-9"></div> {/* 중앙 정렬용 투명 여백 */}
       </div>
 
@@ -81,12 +81,12 @@ export const BookingDetailView = ({ bookingId, onBack }: BookingDetailViewProps)
       </div>
 
       {/* 하단 고정 액션 버튼 */}
-      <div className="fixed bottom-[70px] md:bottom-[100px] left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] z-20 pb-safe">
+      <div className="fixed bottom-[70px] md:bottom-[100px] left-0 right-0 p-4 bg-surface/90 backdrop-blur-md border-t border-line shadow-[0_-8px_30px_rgba(0,0,0,0.08)] z-20 pb-safe">
         <div className="max-w-2xl mx-auto flex gap-3">
           <button
             onClick={handleOpenCancelModal}
             disabled={bookingDetail.bookingStatus === 'CANCELLED'}
-            className="flex-1 py-4 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 disabled:bg-gray-100 disabled:text-gray-400 font-extrabold rounded-[14px] transition-colors text-[15px]"
+            className="flex-1 py-4 bg-danger-subtle hover:bg-danger-light active:bg-danger-light text-danger disabled:bg-surface-muted disabled:text-content-muted font-extrabold rounded-[14px] transition-colors text-[15px]"
           >
             {bookingDetail.bookingStatus === 'CANCELLED' ? '취소된 예매' : '예매 취소하기'}
           </button>
@@ -94,7 +94,7 @@ export const BookingDetailView = ({ bookingId, onBack }: BookingDetailViewProps)
           {bookingDetail.bookingStatus === 'PENDING_PAYMENT' && (
             <button
               onClick={() => { /* 결제 로직 연결 */ }}
-              className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-extrabold rounded-[14px] shadow-lg shadow-blue-500/30 transition-all text-[15px]"
+              className="flex-1 py-4 bg-primary hover:bg-primary-hover active:bg-primary-hover text-white font-extrabold rounded-[14px] shadow-lg shadow-blue-500/30 transition-all text-[15px]"
             >
               결제 진행하기
             </button>

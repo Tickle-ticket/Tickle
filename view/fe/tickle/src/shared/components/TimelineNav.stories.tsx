@@ -45,7 +45,7 @@ const navItems = [
 const InteractiveTimelineNav = (args: any) => {
   const [activeIndex, setActiveIndex] = useState(0);
   return (
-    <div className="w-[300px] h-[300px] p-8 border border-dashed border-gray-300 rounded-lg bg-white overflow-y-auto">
+    <div className="w-[300px] h-[300px] p-8 border border-dashed border-line-strong rounded-lg bg-surface overflow-y-auto">
       <TimelineNav 
         activeIndex={activeIndex} 
         onItemClick={(_, index) => setActiveIndex(index)} 

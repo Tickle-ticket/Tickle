@@ -63,7 +63,7 @@ export const Stage = ({
   if (isLoading) {
     return (
       <div 
-        className={`bg-gray-200 animate-pulse rounded-xl ${className}`}
+        className={`bg-surface-active animate-pulse rounded-xl ${className}`}
         style={{ width, height }}
         aria-hidden="true"
       />

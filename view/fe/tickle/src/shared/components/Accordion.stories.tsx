@@ -45,7 +45,7 @@ export const Open: Story = {
 
 export const Multiple: Story = {
   render: () => (
-    <div className="w-full max-w-xl mx-auto bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100">
+    <div className="w-full max-w-xl mx-auto bg-surface p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-line-subtle">
       <Accordion title="토스 스타일 애니메이션">
         CSS Grid를 이용한 0fr ➔ 1fr 트랜지션을 사용하여, 내부 높이가 얼마든 상관없이 부드럽게 자연스럽게 열립니다! JS 계산이 필요치 않아 성능도 우수합니다.
       </Accordion>

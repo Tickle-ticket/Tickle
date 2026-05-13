@@ -72,7 +72,7 @@ export const MobileBottomNav = () => {
   ];
 
   return (
-    <nav className={`fixed z-[100] flex items-center justify-around transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] lg:hidden bottom-0 left-0 right-0 w-full h-[68px] bg-white border-t border-gray-100 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.02)] md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:w-[320px] md:h-[64px] md:bg-white/90 md:backdrop-blur-xl md:border md:border-white/50 md:rounded-full md:shadow-[0_8px_32px_rgba(0,0,0,0.1)] md:pb-0 ${
+    <nav className={`fixed z-[100] flex items-center justify-around transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] lg:hidden bottom-0 left-0 right-0 w-full h-[68px] bg-surface border-t border-line-subtle pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.02)] md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:w-[320px] md:h-[64px] md:bg-surface/90 md:backdrop-blur-xl md:border md:border-white/50 md:rounded-full md:shadow-[0_8px_32px_rgba(0,0,0,0.1)] md:pb-0 ${
       isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[150%] opacity-0 pointer-events-none'
     }`}>
       {navItems.map(item => {
@@ -82,7 +82,7 @@ export const MobileBottomNav = () => {
             key={item.key}
             onClick={item.onClick}
             className={`flex flex-col items-center justify-center w-full h-full gap-1.5 transition-colors ${
-              item.isActive ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
+              item.isActive ? 'text-content' : 'text-content-muted hover:text-content-secondary'
             }`}
           >
             <Icon className="w-6 h-6" />

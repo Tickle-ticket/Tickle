@@ -66,16 +66,16 @@ export default function MockBotDetectionPage() {
     <div className="space-y-6 p-5 sm:p-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-slate-500">Example Mock</p>
+          <p className="text-sm font-bold text-content-tertiary">Example Mock</p>
           <h1 className="mt-1 text-2xl font-black tracking-normal text-slate-950">
             오늘 탐지된 봇/매크로 대시보드
           </h1>
         </div>
 
         <label className="flex w-full flex-col gap-2 sm:w-[320px]">
-          <span className="text-[12px] font-bold text-slate-500">검색</span>
+          <span className="text-[12px] font-bold text-content-tertiary">검색</span>
           <input
-            className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="h-11 rounded-lg border border-line-strong bg-surface px-3 text-sm font-bold text-content outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
             placeholder="공연명, IP, 계정 ID"
             type="search"
           />
@@ -84,10 +84,10 @@ export default function MockBotDetectionPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {summaryItems.map((item) => (
-          <article key={item.label} className="rounded-lg border border-slate-200 bg-white p-5">
-            <p className="text-sm font-bold text-slate-500">{item.label}</p>
+          <article key={item.label} className="rounded-lg border border-line bg-surface p-5">
+            <p className="text-sm font-bold text-content-tertiary">{item.label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{item.value}</p>
-            <p className="mt-2 text-xs font-bold text-slate-500">{item.caption}</p>
+            <p className="mt-2 text-xs font-bold text-content-tertiary">{item.caption}</p>
           </article>
         ))}
       </section>
@@ -99,8 +99,8 @@ export default function MockBotDetectionPage() {
         targetBlockRate={96}
       />
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
-        <header className="border-b border-slate-200 px-5 py-4">
+      <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
+        <header className="border-b border-line px-5 py-4">
           <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
             신고 및 탐지 내역
           </h2>
@@ -108,7 +108,7 @@ export default function MockBotDetectionPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+            <thead className="bg-surface-subtle text-content-tertiary">
               <tr>
                 <th className="px-5 py-3 font-black">대분류</th>
                 <th className="px-5 py-3 font-black">일자</th>
@@ -117,15 +117,15 @@ export default function MockBotDetectionPage() {
                 <th className="px-5 py-3 font-black">처리상태</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line-subtle">
               {detectionReports.map((report) => (
                 <tr key={`${report.category}-${report.date}`}>
-                  <td className="px-5 py-4 font-black text-slate-900">{report.category}</td>
-                  <td className="px-5 py-4 font-semibold text-slate-500">{report.date}</td>
-                  <td className="px-5 py-4 font-bold text-slate-900">{report.target}</td>
-                  <td className="px-5 py-4 font-black text-slate-900">{report.count}건</td>
+                  <td className="px-5 py-4 font-black text-content">{report.category}</td>
+                  <td className="px-5 py-4 font-semibold text-content-tertiary">{report.date}</td>
+                  <td className="px-5 py-4 font-bold text-content">{report.target}</td>
+                  <td className="px-5 py-4 font-black text-content">{report.count}건</td>
                   <td className="px-5 py-4">
-                    <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-black text-red-600">
+                    <span className="rounded-full bg-danger-subtle px-2.5 py-1 text-xs font-black text-danger">
                       {report.status}
                     </span>
                   </td>

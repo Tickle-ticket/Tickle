@@ -97,3 +97,19 @@ export const cancelCancellationWaitCandidate = async (
     }
   );
 };
+
+/**
+ * 배정된 취소표 제안 거절 (패스)
+ * 
+ * @param cancellationId 취소표 제안 ID
+ */
+export const passCancellationOffer = async (
+  cancellationId: number | string
+): Promise<ApiResponse<void>> => {
+  return apiClient<ApiResponse<void>>(
+    `/api/v1/cancellations/${cancellationId}/pass`,
+    {
+      method: 'POST',
+    }
+  );
+};

@@ -50,19 +50,19 @@ export const MyPageContent = () => {
   const renderLoginPrompt = () => (
     <div className="w-full flex flex-col items-center justify-center py-32 px-4 h-full animate-in fade-in duration-500">
       <div className="w-full max-w-md mx-auto flex flex-col items-center">
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+        <div className="w-20 h-20 bg-surface-muted rounded-full flex items-center justify-center mb-6">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
         </div>
-        <h3 className="text-xl font-black text-gray-800 mb-2">로그인이 필요합니다</h3>
-        <p className="text-gray-500 mb-8 text-center text-sm md:text-base leading-relaxed">
+        <h3 className="text-xl font-black text-content mb-2">로그인이 필요합니다</h3>
+        <p className="text-content-tertiary mb-8 text-center text-sm md:text-base leading-relaxed">
           마이페이지 기능을 이용하시려면<br className="sm:hidden" /> 로그인을 진행해주세요.
         </p>
         <button 
           onClick={handleLogin}
-          className="px-8 py-3.5 bg-[#2563eb] text-white font-bold rounded-full shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto"
+          className="px-8 py-3.5 bg-[#2563eb] text-white font-bold rounded-full shadow-lg shadow-blue-500/30 hover:bg-primary-hover hover:scale-105 active:scale-95 transition-all w-full sm:w-auto"
         >
           로그인하러 가기
         </button>
@@ -82,7 +82,7 @@ export const MyPageContent = () => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
+    <div className="w-full flex flex-col lg:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
       {/* 모바일/태블릿 전용 드릴다운 메뉴 리스트 - lg 미만 & 메뉴 열림 상태에서만 표시 */}
       {isMobileMenuOpen && (
         <div className="lg:hidden w-full flex flex-col gap-3 pb-20 animate-in fade-in slide-in-from-left-4 duration-300">
@@ -96,19 +96,19 @@ export const MyPageContent = () => {
                 setActiveTab(tab.id);
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-between p-5 bg-surface border border-line-subtle rounded-2xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
             >
-              <span className="text-[17px] font-bold text-gray-800">{tab.label}</span>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+              <span className="text-[17px] font-bold text-content">{tab.label}</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted">
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </button>
           ))}
           
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="mt-4 pt-4 border-t border-line">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center p-4 bg-red-50 text-red-600 font-bold rounded-2xl hover:bg-red-100 transition-colors"
+              className="w-full flex items-center justify-center p-4 bg-danger-subtle text-danger font-bold rounded-2xl hover:bg-danger-light transition-colors"
             >
               로그아웃
             </button>
@@ -117,9 +117,9 @@ export const MyPageContent = () => {
       )}
 
       {/* 데스크톱 전용 LNB (Left Navigation Bar) - lg 이상에서만 표시 */}
-      <aside className="hidden lg:block w-[260px] shrink-0 sticky top-28 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-gray-100 bg-gray-50">
-          <h2 className="text-lg font-black tracking-tight text-gray-900">마이페이지</h2>
+      <aside className="hidden lg:block w-[260px] shrink-0 sticky top-28 bg-surface border border-line rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-line-subtle bg-surface-subtle">
+          <h2 className="text-lg font-black tracking-tight text-content">마이페이지</h2>
         </div>
         <div className="flex flex-col py-2">
           {tabs.map((tab) => (
@@ -147,7 +147,7 @@ export const MyPageContent = () => {
         <div className="lg:hidden mb-2 -mt-2">
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
-            className="flex items-center gap-1.5 text-gray-500 font-bold py-2 pr-4 active:text-gray-900 transition-colors"
+            className="flex items-center gap-1.5 text-content-tertiary font-bold py-2 pr-4 active:text-content transition-colors"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"></polyline>
@@ -171,15 +171,15 @@ export const MyPageContent = () => {
         {activeTab === 'WAITLIST' && <WaitlistManagementView />}
         
         {activeTab !== 'USER' && activeTab !== 'EDIT_PROFILE' && activeTab !== 'UPCOMING' && activeTab !== 'MY_TICKETS' && activeTab !== 'WAITLIST' && (
-          <div className="flex flex-col items-center justify-center py-32 border border-dashed border-gray-300 rounded-2xl bg-white/50">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-4">
+          <div className="flex flex-col items-center justify-center py-32 border border-dashed border-line-strong rounded-2xl bg-surface/50">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-4">
               <circle cx="12" cy="12" r="10"></circle>
               <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
               <line x1="9" y1="9" x2="9.01" y2="9"></line>
               <line x1="15" y1="9" x2="15.01" y2="9"></line>
             </svg>
-            <h3 className="text-lg font-bold text-gray-700 mb-1">준비 중인 페이지입니다</h3>
-            <p className="text-sm text-gray-500">해당 기능은 곧 업데이트될 예정입니다.</p>
+            <h3 className="text-lg font-bold text-content-secondary mb-1">준비 중인 페이지입니다</h3>
+            <p className="text-sm text-content-tertiary">해당 기능은 곧 업데이트될 예정입니다.</p>
           </div>
         )}
       </div>

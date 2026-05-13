@@ -31,7 +31,7 @@ export const BannerPoster = ({
   if (isLoading) {
     return (
       <div
-        className={`relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-gray-200 animate-pulse rounded-none md:rounded-2xl ${defaultDimensions} ${className}`}
+        className={`relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-surface-active animate-pulse rounded-none md:rounded-2xl ${defaultDimensions} ${className}`}
         style={inlineStyle}
       />
     );
