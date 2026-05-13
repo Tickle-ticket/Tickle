@@ -74,6 +74,8 @@ pipeline {
                                         echo "[BE] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d --build be
                                         echo "[BE] 배포 완료"
+                                        echo "[BE] 사용하지 않는 구버전 도커 이미지 정리"
+                                        docker image prune -f
                                     '
                                 """
                             }
@@ -109,6 +111,8 @@ pipeline {
                                         echo "[Auth] 컨테이너 재시작 및 로컬 빌드"
                                         docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d --build auth
                                         echo "[Auth] 배포 완료"
+                                        echo "[Auth] 사용하지 않는 구버전 도커 이미지 정리"
+                                        docker image prune -f
                                     '
                                 """
                             }

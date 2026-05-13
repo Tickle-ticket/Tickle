@@ -85,6 +85,11 @@ services:
     depends_on:
       - mysql
       - redis-master
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ─── Node Exporter ────────────────────────────────
   node-exporter:
