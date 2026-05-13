@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminBlacklistController implements AdminBlacklistApiDoc {
 
     private final BlacklistService blacklistService;
+    private final com.ssafy.tickle.blacklist.application.AdminBlacklistDashboardService adminBlacklistDashboardService;
 
     /**
      * 블랙리스트 목록을 페이지네이션하여 조회합니다.
@@ -79,5 +80,13 @@ public class AdminBlacklistController implements AdminBlacklistApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(SuccessCode.OK, null));
+    }
+
+    @Override
+    @GetMapping("/dashboard")
+    public ResponseEntity<BaseResponse<com.ssafy.tickle.blacklist.presentation.dto.BlacklistDashboardResponse>> getDashboard() {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(adminBlacklistDashboardService.getDashboard()));
     }
 }

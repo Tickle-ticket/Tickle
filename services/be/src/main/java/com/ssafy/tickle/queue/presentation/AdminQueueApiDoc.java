@@ -38,4 +38,21 @@ public interface AdminQueueApiDoc {
             @Parameter(description = "조회할 공연 회차 식별자", required = true, example = "1")
             @PathVariable Long scheduleId
     );
+
+    @Operation(
+            summary = "공연 대기열 대시보드 조회",
+            description = "특정 공연 전체의 1시간 동안의 대기열 시계열 차트 데이터 및 요약 통계를 반환합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "대시보드 조회 성공")
+    ResponseEntity<BaseResponse<com.ssafy.tickle.queue.presentation.dto.QueueDashboardResponse>> getEventDashboard(
+            @Parameter(description = "조회할 공연 식별자", required = true, example = "1")
+            @PathVariable Long eventId
+    );
+
+    @Operation(
+            summary = "실시간 대기열 많은 공연 목록 조회",
+            description = "현재 대기열이 존재하는 모든 공연을 대기자 수 내림차순으로 정렬하여 반환합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "공연 목록 조회 성공")
+    ResponseEntity<BaseResponse<java.util.List<com.ssafy.tickle.queue.presentation.dto.QueueEventRankResponse>>> getTopWaitingEvents();
 }

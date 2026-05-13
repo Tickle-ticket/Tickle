@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminQueueController implements AdminQueueApiDoc {
 
     private final QueueStatusService queueStatusService;
+    private final com.ssafy.tickle.queue.application.service.AdminQueueDashboardService adminQueueDashboardService;
 
     /**
      * 특정 회차의 대기열 현황 통계를 조회합니다.
@@ -34,5 +35,23 @@ public class AdminQueueController implements AdminQueueApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(queueStatusService.getQueueStats(scheduleId)));
+    }
+
+    @Override
+    @GetMapping("/events/{eventId}/dashboard")
+    public ResponseEntity<BaseResponse<com.ssafy.tickle.queue.presentation.dto.QueueDashboardResponse>> getEventDashboard(
+            @PathVariable Long eventId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(adminQueueDashboardService.getEventDashboard(eventId)));
+    }
+
+    @Override
+    @GetMapping("/events/top")
+    public ResponseEntity<BaseResponse<java.util.List<com.ssafy.tickle.queue.presentation.dto.QueueEventRankResponse>>> getTopWaitingEvents() {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(adminQueueDashboardService.getTopWaitingEvents()));
     }
 }

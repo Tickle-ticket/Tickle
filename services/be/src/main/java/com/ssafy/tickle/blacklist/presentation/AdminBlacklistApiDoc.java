@@ -80,4 +80,11 @@ public interface AdminBlacklistApiDoc {
     ResponseEntity<BaseResponse<Void>> removeBlacklist(
             @Parameter(description = "블랙리스트 항목 식별자", required = true, example = "1") Long blacklistId
     );
+
+    @Operation(
+            summary = "봇 탐지 현황 대시보드 조회",
+            description = "오늘 기준의 전체 접속자 수, 탐지/차단율, 시간대별 탐지 그래프 데이터를 반환합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "대시보드 조회 성공")
+    ResponseEntity<BaseResponse<com.ssafy.tickle.blacklist.presentation.dto.BlacklistDashboardResponse>> getDashboard();
 }

@@ -100,5 +100,10 @@ public interface BlacklistRepository extends JpaRepository<Blacklist, Long> {
               END
             """)
     List<Object[]> countByScoreRange();
+
+    /**
+     * 특정 시점 사이의 블랙리스트 기록을 시간순으로 조회합니다. (대시보드 차트용)
+     */
+    List<Blacklist> findByCreatedAtBetweenOrderByCreatedAtAsc(Instant start, Instant end);
 }
 
