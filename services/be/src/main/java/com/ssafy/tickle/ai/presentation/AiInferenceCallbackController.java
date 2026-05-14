@@ -5,12 +5,12 @@ import com.ssafy.tickle.ai.presentation.dto.AiInferenceCallbackRequest;
 import com.ssafy.tickle.common.response.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -30,7 +30,7 @@ public class AiInferenceCallbackController implements AiInferenceCallbackApiDoc 
      *
      * @param internalSecret 내부 API 시크릿 키
      * @param requestId 요청 추적 ID
-     * @param userId    판정 대상 사용자 ID
+     * @param authorization 판정 대상 사용자 Authorization 헤더
      * @param request   AI 추론 결과 콜백 요청
      * @return AI 추론 결과 수신 성공 응답
      */
@@ -39,10 +39,10 @@ public class AiInferenceCallbackController implements AiInferenceCallbackApiDoc 
     public ResponseEntity<BaseResponse<Void>> receiveInferenceResult(
             @RequestHeader("X-Internal-Secret") String internalSecret,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
-            @RequestParam(required = false) Long userId,
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @Valid @RequestBody AiInferenceCallbackRequest request
     ) {
-        aiInferenceCallbackService.receive(userId, request);
+        aiInferenceCallbackService.receive(authorization, request);
         return ResponseEntity.ok(
                 BaseResponse.success(200, "AI 추론 결과를 정상적으로 수신했습니다.", null)
         );

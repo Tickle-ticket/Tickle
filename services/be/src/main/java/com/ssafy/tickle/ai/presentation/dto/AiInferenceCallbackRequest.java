@@ -1,5 +1,6 @@
 package com.ssafy.tickle.ai.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +15,6 @@ import java.time.LocalDate;
  *
  * @param recordId   AI 서버의 1차 봇 판별 결과 식별자
  * @param result      판정 결과
- * @param accessToken 판정 대상 사용자 accessToken
  * @param type        판별 대상 유형
  * @param scheduleId  회차 ID
  * @param eventId     공연 ID
@@ -23,6 +23,7 @@ import java.time.LocalDate;
  * @param description 판정 설명
  * @param createdAt   추론 결과 생성 시각
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record AiInferenceCallbackRequest(
         @NotBlank(message = "recordId는 필수입니다.")
         @Size(max = 128, message = "recordId는 128자를 초과할 수 없습니다.")
@@ -30,8 +31,6 @@ public record AiInferenceCallbackRequest(
 
         @NotNull(message = "result는 필수입니다.")
         InferenceResult result,
-
-        String accessToken,
 
         @NotNull(message = "type은 필수입니다.")
         InferenceType type,

@@ -32,18 +32,17 @@ public class AiInferenceCallbackService {
      * <p>AI가 봇으로 판정한 사용자를 {@code BOT_DETECTED} 사유로
      * 블랙리스트에 등록합니다. 이미 등록된 사용자는 블랙리스트 서비스에서 멱등하게 처리합니다.</p>
      *
-     * @param userId  판정 대상 사용자 ID
+     * @param authorization 판정 대상 사용자 Authorization 헤더
      * @param request 콜백 요청
      */
     @Transactional
-    public void receive(Long userId, AiInferenceCallbackRequest request) {
+    public void receive(String authorization, AiInferenceCallbackRequest request) {
+        Long targetUserId = jwtProvider.extractUserId(authorization);
 
         // result 가 block 이 아니면 조용히 무시
         if (request.result() != AiInferenceCallbackRequest.InferenceResult.BLOCK) {
             return;
         }
-
-        Long targetUserId = resolveUserId(userId, request);
 
         log.info(
                 "AI 추론 결과 수신: userId={}, recordId={}, result={}, type={}, scheduleId={}, eventId={}, eventDate={}, pMacro={}, createdAt={}",
@@ -69,22 +68,5 @@ public class AiInferenceCallbackService {
         }
 
         botDetectionCaptchaService.sendRetryCaptcha(targetUserId, request.recordId());
-    }
-
-    /**
-     * AI callback의 accessToken 또는 호환용 userId query parameter에서 판정 대상 사용자를 식별합니다.
-     *
-     * @param userId  호환용 query parameter 사용자 식별자
-     * @param request AI 추론 결과 콜백 요청
-     * @return 판정 대상 사용자 식별자
-     */
-    private Long resolveUserId(Long userId, AiInferenceCallbackRequest request) {
-        if (request.accessToken() != null && !request.accessToken().isBlank()) {
-            return jwtProvider.extractUserId(request.accessToken());
-        }
-        if (userId == null) {
-            throw new BaseException(GlobalErrorCode.INVALID_REQUEST, "accessToken 또는 userId가 필요합니다.");
-        }
-        return userId;
     }
 }
