@@ -14,7 +14,7 @@ export const EventItemSchema = Schema.Struct({
   eventStartAt: Schema.String,
   eventEndAt: Schema.String,
   categoryName: Schema.String,
-  thumbnailUrl: Schema.String,
+  thumbnailUrl: Schema.Union(Schema.String, Schema.Null),
   salesStartAt: Schema.optional(Schema.String),
   metadata: Schema.Struct({
     tags: Schema.Array(Schema.String),
