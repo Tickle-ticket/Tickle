@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Lottie from 'lottie-react';
+import dynamic from 'next/dynamic';
 import checkedAnimation from '@/src/shared/lottle/Checked.json';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
+
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 export interface CustomCAPTCHAProps {
   onSuccess: (token: string) => void;

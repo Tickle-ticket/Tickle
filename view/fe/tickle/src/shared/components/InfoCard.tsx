@@ -15,7 +15,7 @@ import loveAnimation from '../lottle/Love.json';
 // Lottie는 클라이언트 사이드에서만 렌더링되도록 dynamic import 처리
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
-export const InfoCard = ({
+export const InfoCard = React.memo(({
   src,
   alt = '포스터 이미지',
   disabled = false,
@@ -149,4 +149,6 @@ export const InfoCard = ({
       )}
     </div>
   );
-};
+});
+
+InfoCard.displayName = 'InfoCard';

@@ -38,5 +38,6 @@ export const useSearchData = (query: string) => {
       }) as SearchPerformance[];
     },
     enabled: !!query.trim(),
+    staleTime: 30_000,
   });
 };
