@@ -2,7 +2,9 @@ package com.ssafy.tickle.ai.presentation.dto;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -10,6 +12,7 @@ import java.time.LocalDate;
 /**
  * AI 추론 결과 콜백 요청 DTO입니다.
  *
+ * @param recordId   AI 서버의 1차 봇 판별 결과 식별자
  * @param result      판정 결과
  * @param accessToken 판정 대상 사용자 accessToken
  * @param type        판별 대상 유형
@@ -21,6 +24,10 @@ import java.time.LocalDate;
  * @param createdAt   추론 결과 생성 시각
  */
 public record AiInferenceCallbackRequest(
+        @NotBlank(message = "recordId는 필수입니다.")
+        @Size(max = 128, message = "recordId는 128자를 초과할 수 없습니다.")
+        String recordId,
+
         @NotNull(message = "result는 필수입니다.")
         InferenceResult result,
 
