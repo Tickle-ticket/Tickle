@@ -98,6 +98,8 @@ internal:
   auth:
     url: ${AUTH_INTERNAL_URL:http://localhost:8081}
     secret: ${INTERNAL_SECRET}
+  ai:
+    url: ${AI_INTERNAL_URL}
 
 jwt:
   # Auth 서버와 공유하는 JWT 서명 시크릿 키 (HS256, 32자 이상 권장)

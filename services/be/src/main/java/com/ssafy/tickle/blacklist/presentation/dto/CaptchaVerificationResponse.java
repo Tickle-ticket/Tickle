@@ -13,6 +13,11 @@ public record CaptchaVerificationResponse(
         CaptchaResult result
 ) {
 
+    /**
+     * CAPTCHA 검증 성공 후 FE가 모달을 닫을 수 있는 응답을 생성합니다.
+     *
+     * @return CAPTCHA 성공 종료 응답
+     */
     public static CaptchaVerificationResponse successClose() {
         return new CaptchaVerificationResponse(true, CaptchaResult.SUCCESS_CLOSE);
     }

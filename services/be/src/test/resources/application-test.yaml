@@ -37,6 +37,8 @@ internal:
   secret: test-internal-secret
   auth:
     url: http://localhost:8081
+  ai:
+    url: http://localhost:6000
 
 jwt:
   secret: test-jwt-secret-key-for-unit-test-minimum-32bytes!

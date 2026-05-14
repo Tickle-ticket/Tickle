@@ -3,6 +3,7 @@ package com.ssafy.tickle.ai.application;
 import com.ssafy.tickle.ai.presentation.dto.AiInferenceCallbackRequest;
 import com.ssafy.tickle.blacklist.application.BotDetectionCaptchaService;
 import com.ssafy.tickle.blacklist.application.BlacklistService;
+import com.ssafy.tickle.blacklist.infrastructure.cache.BotDetectionCaptchaRecordStore;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.JwtProvider;
@@ -22,6 +23,7 @@ public class AiInferenceCallbackService {
 
     private final BlacklistService blacklistService;
     private final BotDetectionCaptchaService botDetectionCaptchaService;
+    private final BotDetectionCaptchaRecordStore botDetectionCaptchaRecordStore;
     private final JwtProvider jwtProvider;
 
     /**
@@ -44,8 +46,9 @@ public class AiInferenceCallbackService {
         Long targetUserId = resolveUserId(userId, request);
 
         log.info(
-                "AI 추론 결과 수신: userId={}, result={}, type={}, scheduleId={}, eventId={}, eventDate={}, pMacro={}, createdAt={}",
+                "AI 추론 결과 수신: userId={}, recordId={}, result={}, type={}, scheduleId={}, eventId={}, eventDate={}, pMacro={}, createdAt={}",
                 targetUserId,
+                request.recordId(),
                 request.result(),
                 request.type(),
                 request.scheduleId(),
@@ -58,9 +61,23 @@ public class AiInferenceCallbackService {
         // 블랙리스트 등록 (pMacro를 botScore로 저장)
         Double botScore = request.pMacro() != null ? request.pMacro().doubleValue() : null;
         blacklistService.addFromAiResult(targetUserId, botScore, request.description());
-        botDetectionCaptchaService.sendRetryCaptcha(targetUserId);
+
+        // CAPTCHA verify에서 동일 사용자의 recordId인지 검증할 수 있도록 pending key를 남깁니다.
+        boolean saved = botDetectionCaptchaRecordStore.save(targetUserId, request.recordId());
+        if (!saved) {
+            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "CAPTCHA 검증 recordId 저장에 실패했습니다.");
+        }
+
+        botDetectionCaptchaService.sendRetryCaptcha(targetUserId, request.recordId());
     }
 
+    /**
+     * AI callback의 accessToken 또는 호환용 userId query parameter에서 판정 대상 사용자를 식별합니다.
+     *
+     * @param userId  호환용 query parameter 사용자 식별자
+     * @param request AI 추론 결과 콜백 요청
+     * @return 판정 대상 사용자 식별자
+     */
     private Long resolveUserId(Long userId, AiInferenceCallbackRequest request) {
         if (request.accessToken() != null && !request.accessToken().isBlank()) {
             return jwtProvider.extractUserId(request.accessToken());
