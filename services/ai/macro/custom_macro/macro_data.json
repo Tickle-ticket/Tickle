@@ -5,7 +5,9 @@
     "between_event_sec": 0.05,
     "mouse_steps": 1,
     "use_retina_scale": false,
-    "ocr_server_url": "http://127.0.0.1:8010"
+    "ocr_server_url": "http://127.0.0.1:8010",
+    "ocr_security_retry_max": 8,
+    "ocr_security_retry_interval_sec": 0.25
   },
   "macros": [
     {
@@ -15,25 +17,25 @@
         {
           "type": "click",
           "memo": "취소표 대기하기 클릭",
-          "x": 1935,
-          "y": 944,
+          "x": 1455,
+          "y": 980,
           "button": "left",
           "delay": 0.0
         },
         {
           "type": "wait",
           "memo": "대기열 이후 화면 전환 대기",
-          "seconds": 1.8
+          "seconds": 1.35
         },
         {
-          "type": "ocr_security",
-          "delay": 0,
-          "memo": "보안 인증 숫자 OCR 클릭"
+          "type": "cv_security",
+          "memo": "보안 인증 숫자 OCR 클릭",
+          "delay": 0.0
         },
         {
           "type": "wait",
           "memo": "",
-          "seconds": 3.1
+          "seconds": 2.9
         },
         {
           "type": "click",
@@ -116,6 +118,65 @@
       1730,
       1370
     ],
-    "ocr_scale": 2
+    "ocr_scale": 2,
+    "keypad_grid_rows": 3,
+    "keypad_grid_cols": 3,
+    "keypad_grid_pad_ratio": 0.1,
+    "keypad_cells": [
+      [
+        1194,
+        831,
+        1336,
+        974
+      ],
+      [
+        1370,
+        831,
+        1512,
+        974
+      ],
+      [
+        1546,
+        831,
+        1689,
+        974
+      ],
+      [
+        1194,
+        1008,
+        1336,
+        1151
+      ],
+      [
+        1370,
+        1008,
+        1512,
+        1151
+      ],
+      [
+        1546,
+        1008,
+        1689,
+        1151
+      ],
+      [
+        1194,
+        1185,
+        1336,
+        1329
+      ],
+      [
+        1370,
+        1185,
+        1512,
+        1329
+      ],
+      [
+        1546,
+        1185,
+        1689,
+        1329
+      ]
+    ]
   }
 }

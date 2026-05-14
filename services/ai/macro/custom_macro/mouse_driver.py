@@ -10,6 +10,47 @@ from PIL import Image, ImageChops
 SCREENSHOT_PATH = "screen.png"
 
 
+def _normalize_roi_box(roi_box):
+    """
+    Normalize ROI box into a (left, top, right, bottom) int tuple.
+    Accepts list/tuple of length 4. Returns None when invalid.
+    """
+    if roi_box is None:
+        return None
+
+    if isinstance(roi_box, (list, tuple)) and len(roi_box) == 4:
+        try:
+            left, top, right, bottom = [int(float(v)) for v in roi_box]
+        except Exception:
+            return None
+
+        if right <= left or bottom <= top:
+            return None
+
+        return left, top, right, bottom
+
+    return None
+
+
+def _crop_for_diff(img: Image.Image, roi_box):
+    box = _normalize_roi_box(roi_box)
+    if box is None:
+        return img
+
+    try:
+        w, h = img.size
+        left, top, right, bottom = box
+        left = max(0, min(left, w))
+        right = max(0, min(right, w))
+        top = max(0, min(top, h))
+        bottom = max(0, min(bottom, h))
+        if right <= left or bottom <= top:
+            return img
+        return img.crop((left, top, right, bottom))
+    except Exception:
+        return img
+
+
 @dataclass
 class RuntimeConfig:
     click_duration_sec: float = 0.05
@@ -130,6 +171,7 @@ def wait_until_screen_changed(
     interval_sec: float = 0.25,
     change_ratio_threshold: float = 0.015,
     stable_after_change_count: int = 2,
+    roi_box=None,
 ):
     print(
         f"[wait_change] timeout={timeout_sec}, "
@@ -137,11 +179,13 @@ def wait_until_screen_changed(
         f"threshold={change_ratio_threshold}"
     )
 
-    baseline = pyautogui.screenshot()
+    baseline_full = pyautogui.screenshot()
+    baseline = _crop_for_diff(baseline_full, roi_box)
     start = time.time()
 
     changed_once = False
     stable_count = 0
+    prev_full = baseline_full
     prev = baseline
 
     while True:
@@ -150,7 +194,8 @@ def wait_until_screen_changed(
 
         time.sleep(interval_sec)
 
-        current = pyautogui.screenshot()
+        current_full = pyautogui.screenshot()
+        current = _crop_for_diff(current_full, roi_box)
 
         if not changed_once:
             ratio = image_diff_ratio(baseline, current)
@@ -158,6 +203,7 @@ def wait_until_screen_changed(
             if ratio >= change_ratio_threshold:
                 print(f"[wait_change] screen changed, ratio={ratio:.4f}")
                 changed_once = True
+                prev_full = current_full
                 prev = current
 
             continue
@@ -171,7 +217,8 @@ def wait_until_screen_changed(
 
         if stable_count >= stable_after_change_count:
             print("[wait_change] screen stable after change")
-            current.save(SCREENSHOT_PATH)
+            current_full.save(SCREENSHOT_PATH)
             return True
 
+        prev_full = current_full
         prev = current

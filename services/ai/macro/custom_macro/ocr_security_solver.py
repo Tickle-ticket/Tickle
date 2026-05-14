@@ -61,6 +61,8 @@ Box = Tuple[int, int, int, int]
 
 _ocr = None
 _ocr_use_gpu = None
+_ocr_rec_only = None
+_ocr_rec_only_use_gpu = None
 
 
 def _parse_bool_env(value: Optional[str]) -> Optional[bool]:
@@ -76,6 +78,28 @@ def _parse_bool_env(value: Optional[str]) -> Optional[bool]:
         return None
 
     return None
+
+
+def _parse_int(value, default: int) -> int:
+    try:
+        if value is None:
+            return int(default)
+        if isinstance(value, bool):
+            return int(default)
+        return int(float(value))
+    except Exception:
+        return int(default)
+
+
+def _parse_float(value, default: float) -> float:
+    try:
+        if value is None:
+            return float(default)
+        if isinstance(value, bool):
+            return float(default)
+        return float(value)
+    except Exception:
+        return float(default)
 
 
 def _load_ocr_config() -> Dict[str, Any]:
@@ -104,6 +128,60 @@ def _load_ocr_config() -> Dict[str, Any]:
     return {}
 
 
+def get_ocr_config_effective() -> Dict[str, Any]:
+    """
+    Return the effective OCR-related knobs used by this solver.
+    (Useful for debugging /health outputs.)
+    """
+    loaded = _load_ocr_config()
+    config = loaded if isinstance(loaded, dict) else {}
+
+    env_use_angle = _parse_bool_env(os.getenv("OCR_USE_ANGLE_CLS"))
+    config_use_angle = _parse_bool_env(config.get("use_angle_cls") if isinstance(config, dict) else None)
+    use_angle_cls = (
+        env_use_angle
+        if env_use_angle is not None
+        else (config_use_angle if config_use_angle is not None else False)
+    )
+
+    env_det_side = os.getenv("OCR_DET_LIMIT_SIDE_LEN")
+    config_det_side = config.get("det_limit_side_len") if isinstance(config, dict) else None
+    det_limit_side_len = _parse_int(env_det_side if env_det_side is not None else config_det_side, default=640)
+    det_limit_side_len = max(160, min(det_limit_side_len, 1280))
+
+    env_drop_score = os.getenv("OCR_DROP_SCORE")
+    config_drop_score = config.get("drop_score") if isinstance(config, dict) else None
+    drop_score = _parse_float(env_drop_score if env_drop_score is not None else config_drop_score, default=0.5)
+    drop_score = max(0.0, min(drop_score, 1.0))
+
+    save_debug = _parse_bool_env(os.getenv("OCR_SAVE_DEBUG"))
+    if save_debug is None:
+        save_debug = False
+
+    capture_ambiguous = _parse_bool_env(os.getenv("OCR_CAPTURE_AMBIGUOUS"))
+    if capture_ambiguous is None:
+        capture_ambiguous = True
+
+    env_grid_first = _parse_bool_env(os.getenv("OCR_KEYPAD_GRID_FIRST"))
+    # Default OFF: whole-keypad OCR (single call) is typically faster than per-cell OCR.
+    keypad_grid_first = env_grid_first if env_grid_first is not None else bool(config.get("keypad_grid_first", False))
+
+    grid_rows = _parse_int(os.getenv("OCR_KEYPAD_GRID_ROWS"), default=_parse_int(config.get("keypad_grid_rows"), 4))
+    grid_cols = _parse_int(os.getenv("OCR_KEYPAD_GRID_COLS"), default=_parse_int(config.get("keypad_grid_cols"), 3))
+    grid_rows = max(2, min(grid_rows, 6))
+    grid_cols = max(2, min(grid_cols, 6))
+
+    return {
+        "use_angle_cls": bool(use_angle_cls),
+        "det_limit_side_len": int(det_limit_side_len),
+        "drop_score": float(drop_score),
+        "save_debug_image": bool(save_debug),
+        "capture_ambiguous": bool(capture_ambiguous),
+        "keypad_grid_first": bool(keypad_grid_first),
+        "keypad_grid_rows": int(grid_rows),
+        "keypad_grid_cols": int(grid_cols),
+    }
+
 def _paddle_cuda_available() -> bool:
     try:
         import paddle
@@ -130,9 +208,31 @@ def _build_ocr(use_gpu: bool):
         # more reliable for digits than Korean multilingual models.
         lang = "en"
 
+    # Speed-oriented defaults for this project's "digit keypad" use-case.
+    # You can override via env vars or ocr_config.json.
+    env_use_angle = _parse_bool_env(os.getenv("OCR_USE_ANGLE_CLS"))
+    config_use_angle = _parse_bool_env(config.get("use_angle_cls") if isinstance(config, dict) else None)
+    use_angle_cls = (
+        env_use_angle
+        if env_use_angle is not None
+        else (config_use_angle if config_use_angle is not None else False)
+    )
+
+    env_det_side = os.getenv("OCR_DET_LIMIT_SIDE_LEN")
+    config_det_side = config.get("det_limit_side_len") if isinstance(config, dict) else None
+    det_limit_side_len = _parse_int(env_det_side if env_det_side is not None else config_det_side, default=640)
+    det_limit_side_len = max(160, min(det_limit_side_len, 1280))
+
+    env_drop_score = os.getenv("OCR_DROP_SCORE")
+    config_drop_score = config.get("drop_score") if isinstance(config, dict) else None
+    drop_score = _parse_float(env_drop_score if env_drop_score is not None else config_drop_score, default=0.5)
+    drop_score = max(0.0, min(drop_score, 1.0))
+
     base_kwargs = {
-        "use_angle_cls": True,
+        "use_angle_cls": bool(use_angle_cls),
         "lang": lang,
+        "det_limit_side_len": int(det_limit_side_len),
+        "drop_score": float(drop_score),
     }
 
     # PaddleOCR has multiple major versions with different init args.
@@ -154,6 +254,93 @@ def _build_ocr(use_gpu: bool):
             pass
 
         return PaddleOCR(**base_kwargs)
+
+
+def _build_ocr_rec_only(use_gpu: bool):
+    """
+    Recognition-only OCR for small crops (e.g., keypad cells) to avoid det(dt_boxes).
+    Falls back to the normal OCR builder if the installed PaddleOCR version does not
+    support disabling detection via init args.
+    """
+    PaddleOCR = _lazy_import_paddleocr()
+    config = _load_ocr_config()
+    if not isinstance(config, dict):
+        config = {}
+
+    lang = config.get("lang")
+    lang = str(lang).strip().lower() if lang else ""
+    if not lang:
+        lang = "en"
+
+    env_use_angle = _parse_bool_env(os.getenv("OCR_USE_ANGLE_CLS"))
+    config_use_angle = _parse_bool_env(config.get("use_angle_cls"))
+    use_angle_cls = (
+        env_use_angle
+        if env_use_angle is not None
+        else (config_use_angle if config_use_angle is not None else False)
+    )
+
+    env_drop_score = os.getenv("OCR_DROP_SCORE")
+    drop_score = _parse_float(env_drop_score if env_drop_score is not None else config.get("drop_score"), default=0.5)
+    drop_score = max(0.0, min(drop_score, 1.0))
+
+    base_kwargs = {
+        "use_angle_cls": bool(use_angle_cls),
+        "lang": lang,
+        "drop_score": float(drop_score),
+    }
+
+    try:
+        return PaddleOCR(**base_kwargs, det=False, use_gpu=use_gpu)
+    except (TypeError, ValueError) as exc:
+        message = str(exc)
+        if "use_gpu" not in message and "det" not in message:
+            raise
+
+        try:
+            import paddle
+
+            paddle.device.set_device("gpu:0" if use_gpu else "cpu")
+        except Exception:
+            pass
+
+        try:
+            return PaddleOCR(**base_kwargs, det=False)
+        except Exception:
+            return _build_ocr(use_gpu=use_gpu)
+
+
+def get_ocr_rec_only(prefer_gpu: Optional[bool] = None):
+    global _ocr_rec_only, _ocr_rec_only_use_gpu
+
+    if _ocr_rec_only is None:
+        env_choice = _parse_bool_env(os.getenv("OCR_USE_GPU"))
+        if env_choice is None:
+            env_choice = _parse_bool_env(os.getenv("PADDLEOCR_USE_GPU"))
+
+        config_choice = None
+        if env_choice is None:
+            config = _load_ocr_config()
+            config_choice = _parse_bool_env(config.get("use_gpu") if isinstance(config, dict) else None)
+
+        prefer_gpu_effective = (
+            env_choice if env_choice is not None else (config_choice if config_choice is not None else prefer_gpu)
+        )
+        if prefer_gpu_effective is None:
+            prefer_gpu_effective = True
+
+        if prefer_gpu_effective and _paddle_cuda_available():
+            try:
+                _ocr_rec_only = _build_ocr_rec_only(use_gpu=True)
+                _ocr_rec_only_use_gpu = True
+                return _ocr_rec_only
+            except Exception:
+                _ocr_rec_only = None
+
+        _ocr_rec_only = _build_ocr_rec_only(use_gpu=False)
+        _ocr_rec_only_use_gpu = False
+
+    return _ocr_rec_only
 
 
 def get_ocr(prefer_gpu: Optional[bool] = None):
@@ -201,6 +388,16 @@ def get_ocr_runtime_info() -> Dict[str, Any]:
 
         info["paddle_device"] = str(paddle.device.get_device())
         info["paddle_compiled_with_cuda"] = bool(paddle.is_compiled_with_cuda())
+    except Exception:
+        pass
+
+    try:
+        info["effective_config"] = get_ocr_config_effective()
+    except Exception:
+        pass
+
+    try:
+        info["rec_only_use_gpu"] = _ocr_rec_only_use_gpu
     except Exception:
         pass
 
@@ -685,6 +882,68 @@ def run_ocr(image_path: str, scale: int = 2):
             os.remove(prepared_path)
 
 
+def run_ocr_rec_only(image_path: str, scale: int = 2):
+    """
+    OCR optimized for small single-digit crops.
+    Attempts to use a recognition-only OCR pipeline to avoid detection overhead.
+    Returns items compatible with choose_best_digit_* helpers.
+    """
+    scale = max(1, int(scale))
+
+    prepared_path = image_path + "_ocr.png"
+    prepared_path, scale_factor = prepare_ocr_image(
+        image_path,
+        prepared_path,
+        scale=scale,
+    )
+
+    try:
+        ocr = get_ocr_rec_only()
+
+        # Different PaddleOCR versions accept different call signatures.
+        try:
+            result = ocr.ocr(prepared_path, det=False, rec=True)
+        except TypeError:
+            try:
+                result = ocr.ocr(prepared_path, det=False)
+            except TypeError:
+                result = ocr.ocr(prepared_path)
+
+        items = []
+        if result is None:
+            return items
+
+        # When det=False, some versions return a list of [text, score] pairs per image.
+        for page_result in result:
+            if isinstance(page_result, dict):
+                # v3 style: reuse existing parser (boxes may be absent; parser handles missing)
+                items.extend(parse_paddle_v3_result(page_result, scale_factor))
+                continue
+
+            if isinstance(page_result, list):
+                # Common shapes:
+                # - [[text, score], [text, score], ...]
+                # - [[box, [text, score]], ...] (rare even with det=False)
+                for entry in page_result:
+                    try:
+                        if isinstance(entry, (list, tuple)) and len(entry) == 2 and isinstance(entry[0], str):
+                            text = str(entry[0]).strip()
+                            score = float(entry[1])
+                            items.append({"text": text, "score": score, "box": [0, 0, 0, 0]})
+                        elif isinstance(entry, (list, tuple)) and len(entry) == 2 and isinstance(entry[1], (list, tuple)):
+                            text = str(entry[1][0]).strip()
+                            score = float(entry[1][1])
+                            items.append({"text": text, "score": score, "box": [0, 0, 0, 0]})
+                    except Exception:
+                        continue
+
+        return items
+
+    finally:
+        if os.path.exists(prepared_path):
+            os.remove(prepared_path)
+
+
 def crop_image(image_path: str, crop_box: Box, save_path: str):
     img = Image.open(image_path).convert("RGB")
     width, height = img.size
@@ -702,6 +961,26 @@ def crop_image(image_path: str, crop_box: Box, save_path: str):
     img.crop((left, top, right, bottom)).save(save_path)
 
     return save_path
+
+
+def crop_bgr_by_box(bgr: np.ndarray, crop_box: Box) -> Optional[np.ndarray]:
+    """
+    Crop a BGR ndarray by (left, top, right, bottom). Returns a copy.
+    """
+    if bgr is None:
+        return None
+    try:
+        height, width = bgr.shape[:2]
+        left, top, right, bottom = crop_box
+        left = max(0, min(int(left), width))
+        right = max(0, min(int(right), width))
+        top = max(0, min(int(top), height))
+        bottom = max(0, min(int(bottom), height))
+        if right <= left or bottom <= top:
+            return None
+        return bgr[top:bottom, left:right].copy()
+    except Exception:
+        return None
 
 
 def detect_white_modal_box(image_path: str) -> Box:
@@ -1120,13 +1399,18 @@ def extract_keypad_buttons_by_grid(
     image_path: str,
     keypad_box: Box,
     ocr_scale: int,
-) -> Dict[str, List[float]]:
-    # Fallback: split keypad into 3x3 cells and OCR each cell.
-    cells = _split_box_into_grid(keypad_box, rows=3, cols=3, pad_ratio=0.10)
+    rows: int = 4,
+    cols: int = 3,
+) -> Tuple[Dict[str, List[float]], Dict[str, np.ndarray]]:
+    # Grid OCR: split keypad into NxM cells and OCR each cell.
+    rows = max(2, int(rows))
+    cols = max(2, int(cols))
+    cells = _split_box_into_grid(keypad_box, rows=rows, cols=cols, pad_ratio=0.10)
     if not cells:
-        return {}
+        return {}, {}
 
     buttons: Dict[str, List[float]] = {}
+    templates: Dict[str, np.ndarray] = {}
     temp_paths: List[str] = []
     overrides = _load_label_overrides()
 
@@ -1147,15 +1431,15 @@ def extract_keypad_buttons_by_grid(
                 buttons[digit] = [float(cx), float(cy)]
                 continue
 
-            # Per-cell OCR benefits from higher scale.
+            # Per-cell OCR benefits from higher scale; use rec-only path to avoid detection overhead.
             cell_scale = max(3, int(ocr_scale) + 1)
-            items = run_ocr(cell_path, scale=cell_scale)
+            items = run_ocr_rec_only(cell_path, scale=cell_scale)
             digit = choose_best_digit_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
             candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
 
             if digit is None:
                 # Retry with even higher scale.
-                items = run_ocr(cell_path, scale=max(4, cell_scale + 1))
+                items = run_ocr_rec_only(cell_path, scale=max(4, cell_scale + 1))
                 digit = choose_best_digit_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
                 if not candidates:
                     candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
@@ -1164,6 +1448,17 @@ def extract_keypad_buttons_by_grid(
                 continue
 
             digit = _heuristic_fix_1_vs_7(cell_path, digit)
+
+            # Build a template vector from this cell crop for later order-slot matching.
+            try:
+                bgr = cv2.imread(cell_path, cv2.IMREAD_COLOR)
+                if bgr is not None:
+                    mask = _mask_dark_digit(bgr)
+                    vec = _digit_to_unit_vector(mask)
+                    if vec is not None and digit not in templates:
+                        templates[digit] = vec
+            except Exception:
+                pass
 
             try:
                 if cell_hash:
@@ -1188,7 +1483,285 @@ def extract_keypad_buttons_by_grid(
             cy = (cell[1] + cell[3]) / 2.0
             buttons[digit] = [float(cx), float(cy)]
 
-        return buttons
+        return buttons, templates
+
+    finally:
+        for path in temp_paths:
+            if os.path.exists(path):
+                os.remove(path)
+
+
+def extract_sequence_by_slots_cv(
+    bgr_full: np.ndarray,
+    order_box: Box,
+    keypad_cell_vectors: List[Tuple[np.ndarray, List[float]]],
+) -> Tuple[List[str], Dict[str, List[float]], List[Box], List[float]]:
+    """
+    CV-only order-sequence extraction.
+    - Uses shape matching (cosine similarity) between:
+      - order-slot blue digit vectors
+      - keypad-cell dark digit vectors
+    - Uses label_overrides.json when available.
+    - Does NOT call PaddleOCR (no OCR fallback).
+    """
+    sequence: List[str] = []
+    buttons: Dict[str, List[float]] = {}
+    used_cell_indices = set()
+    slot_boxes = split_order_box_into_slots(order_box)
+    slot_scores: List[float] = []
+
+    try:
+        for idx, slot_box in enumerate(slot_boxes):
+            slot_bgr = crop_bgr_by_box(bgr_full, slot_box)
+            if slot_bgr is None:
+                slot_scores.append(0.0)
+                continue
+
+            mask = _mask_blue_digit(slot_bgr)
+            slot_vec = _digit_to_unit_vector(mask, size=32)
+            if slot_vec is None:
+                slot_scores.append(0.0)
+                continue
+
+            best_idx = None
+            best_score = -1.0
+            for cell_idx, (cell_vec, cell_center) in enumerate(keypad_cell_vectors or []):
+                if cell_vec is None:
+                    continue
+                if cell_idx in used_cell_indices:
+                    continue
+                try:
+                    score = float(np.dot(slot_vec, cell_vec))
+                except Exception:
+                    continue
+                if score > best_score:
+                    best_score = score
+                    best_idx = cell_idx
+
+            if best_idx is None:
+                slot_scores.append(0.0)
+                continue
+
+            key = f"s{idx + 1}"
+            sequence.append(key)
+            # lock the chosen cell by putting an entry into buttons under a unique key
+            _, chosen_center = keypad_cell_vectors[best_idx]
+            buttons[key] = chosen_center
+            used_cell_indices.add(best_idx)
+            slot_scores.append(float(max(0.0, min(1.0, best_score))))
+
+        return sequence, buttons, slot_boxes, slot_scores
+
+    finally:
+        pass
+
+
+def solve_security_challenge_cv(
+    image_path: str = SCREENSHOT_PATH,
+    mode: str = "auto",
+    order_box=None,
+    keypad_box=None,
+    keypad_cells=None,
+) -> Dict[str, Any]:
+    """
+    CV-only solver (no PaddleOCR).
+    Requires keypad_cells (pre-split boxes) for reliability.
+    """
+    modal_box, resolved_order_box, resolved_keypad_box = resolve_security_boxes(
+        image_path=image_path,
+        mode=mode,
+        order_box=order_box,
+        keypad_box=keypad_box,
+    )
+
+    parsed_cells = _parse_keypad_cells(keypad_cells)
+    if not parsed_cells:
+        raise ValueError("cv mode requires keypad_cells (generate once in GUI and save).")
+
+    bgr_full = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if bgr_full is None:
+        raise ValueError("failed to read image")
+
+    timings: Dict[str, Any] = {
+        "started_at": datetime.now().isoformat(timespec="seconds"),
+        "steps": [],
+    }
+
+    def _time_step(name: str, fn):
+        start = time.perf_counter()
+        out = fn()
+        timings["steps"].append({"name": name, "ms": round((time.perf_counter() - start) * 1000.0, 2)})
+        return out
+
+    def _keypad_vectors():
+        vectors: List[Tuple[np.ndarray, List[float]]] = []
+        for cell in parsed_cells:
+            crop = crop_bgr_by_box(bgr_full, cell)
+            if crop is None:
+                continue
+            mask = _mask_dark_digit(crop)
+            vec = _digit_to_unit_vector(mask, size=32)
+            if vec is None:
+                continue
+            cx = (cell[0] + cell[2]) / 2.0
+            cy = (cell[1] + cell[3]) / 2.0
+            vectors.append((vec, [float(cx), float(cy)]))
+        return vectors
+
+    keypad_cell_vectors = _time_step("keypad_cells_cv_vectors", _keypad_vectors)
+    if not keypad_cell_vectors:
+        raise RuntimeError("cv keypad failed to extract cell vectors")
+
+    sequence, buttons, order_slot_boxes, order_slot_scores = _time_step(
+        "extract_order_sequence_cv",
+        lambda: extract_sequence_by_slots_cv(
+            bgr_full=bgr_full,
+            order_box=resolved_order_box,
+            keypad_cell_vectors=keypad_cell_vectors,
+        ),
+    )
+
+    if len(sequence) < 3:
+        raise RuntimeError(f"cv order sequence not found. sequence={sequence}")
+
+    sequence = sequence[:3]
+
+    # Sequence keys are s1..s3 mapped to click points.
+    for key in sequence:
+        if key not in buttons:
+            raise RuntimeError(f"cv missing click point for {key}. buttons={buttons}")
+
+    return {
+        "sequence": sequence,
+        "buttons": buttons,
+        "mode": mode,
+        "modal_box": box_to_text(modal_box),
+        "order_box": box_to_text(resolved_order_box),
+        "keypad_box": box_to_text(resolved_keypad_box),
+        "timings": timings,
+    }
+
+def _parse_keypad_cells(value) -> Optional[List[Box]]:
+    """
+    Parse keypad_cells from request/config into a list of Box.
+    Accepts:
+    - list of [l,t,r,b]
+    - JSON string of that list
+    """
+    if value is None:
+        return None
+
+    raw = value
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            raw = json.loads(s)
+        except Exception:
+            return None
+
+    if not isinstance(raw, list) or not raw:
+        return None
+
+    out: List[Box] = []
+    for item in raw:
+        try:
+            if not isinstance(item, (list, tuple)) or len(item) != 4:
+                continue
+            left, top, right, bottom = [int(float(v)) for v in item]
+            if right <= left or bottom <= top:
+                continue
+            out.append((left, top, right, bottom))
+        except Exception:
+            continue
+
+    return out or None
+
+
+def extract_keypad_buttons_by_cells(
+    image_path: str,
+    cells: List[Box],
+    ocr_scale: int,
+) -> Tuple[Dict[str, List[float]], Dict[str, np.ndarray]]:
+    """
+    Use pre-defined keypad cell boxes to map digit -> click point.
+    This avoids any detection step on the keypad area.
+    """
+    if not cells:
+        return {}, {}
+
+    buttons: Dict[str, List[float]] = {}
+    templates: Dict[str, np.ndarray] = {}
+    temp_paths: List[str] = []
+    overrides = _load_label_overrides()
+
+    try:
+        for idx, cell in enumerate(cells):
+            cell_path = f"{image_path}_keypad_cell_{idx}.png"
+            temp_paths.append(cell_path)
+            crop_image(image_path, cell, cell_path)
+
+            cell_hash = _sha256_file(cell_path)
+            if cell_hash and cell_hash in overrides:
+                digit = overrides[cell_hash]
+                digit = _heuristic_fix_1_vs_7(cell_path, digit)
+                if digit not in buttons:
+                    cx = (cell[0] + cell[2]) / 2.0
+                    cy = (cell[1] + cell[3]) / 2.0
+                    buttons[digit] = [float(cx), float(cy)]
+                continue
+
+            cell_scale = max(3, int(ocr_scale) + 1)
+            items = run_ocr_rec_only(cell_path, scale=cell_scale)
+            digit = choose_best_digit_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+            candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+
+            if digit is None:
+                items = run_ocr_rec_only(cell_path, scale=max(4, cell_scale + 1))
+                digit = choose_best_digit_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+                if not candidates:
+                    candidates = _digit_candidates_from_items(items, min_score=min(OCR_MIN_SCORE, 0.10))
+
+            if digit is None:
+                continue
+
+            digit = _heuristic_fix_1_vs_7(cell_path, digit)
+
+            # Build a template vector from this cell crop for later order-slot matching.
+            try:
+                bgr = cv2.imread(cell_path, cv2.IMREAD_COLOR)
+                if bgr is not None:
+                    mask = _mask_dark_digit(bgr)
+                    vec = _digit_to_unit_vector(mask)
+                    if vec is not None and digit not in templates:
+                        templates[digit] = vec
+            except Exception:
+                pass
+
+            try:
+                if cell_hash:
+                    unlabeled_copy = _save_unlabeled_image_copy(cell_path, kind=f"keypad_cell_{idx}", image_hash=cell_hash)
+                    _append_pending_label({
+                        "ts": datetime.now().isoformat(timespec="seconds"),
+                        "kind": "keypad",
+                        "cell_index": idx,
+                        "hash": cell_hash,
+                        "predicted": digit,
+                        "candidates": candidates,
+                        "image": unlabeled_copy,
+                    })
+            except Exception:
+                pass
+
+            if digit in buttons:
+                continue
+
+            cx = (cell[0] + cell[2]) / 2.0
+            cy = (cell[1] + cell[3]) / 2.0
+            buttons[digit] = [float(cx), float(cy)]
+
+        return buttons, templates
 
     finally:
         for path in temp_paths:
@@ -1529,9 +2102,21 @@ def solve_security_challenge(
     mode: str = "auto",
     order_box=None,
     keypad_box=None,
+    keypad_cells=None,
     ocr_scale: int = 2,
 ):
     ocr_scale = max(2, int(ocr_scale or 2))
+    config = _load_ocr_config()
+    if not isinstance(config, dict):
+        config = {}
+    env_grid_first = _parse_bool_env(os.getenv("OCR_KEYPAD_GRID_FIRST"))
+    # Default OFF for performance. Enable explicitly when you want per-cell recovery.
+    keypad_grid_first = env_grid_first if env_grid_first is not None else bool(config.get("keypad_grid_first", False))
+    grid_rows = _parse_int(os.getenv("OCR_KEYPAD_GRID_ROWS"), default=_parse_int(config.get("keypad_grid_rows"), 4))
+    grid_cols = _parse_int(os.getenv("OCR_KEYPAD_GRID_COLS"), default=_parse_int(config.get("keypad_grid_cols"), 3))
+    grid_rows = max(2, min(grid_rows, 6))
+    grid_cols = max(2, min(grid_cols, 6))
+
     modal_box, resolved_order_box, resolved_keypad_box = resolve_security_boxes(
         image_path=image_path,
         mode=mode,
@@ -1561,6 +2146,7 @@ def solve_security_challenge(
     try:
         # order는 3개 슬롯으로 나눠서 각각 OCR
         # Keypad first: contains all digits and is easier/more stable to recognize.
+        # Speed: prefer grid-based per-cell OCR to avoid the expensive det(dt_boxes) pass on the whole keypad.
         _time_step("crop_keypad", lambda: crop_image(image_path, resolved_keypad_box, keypad_path))
         keypad_items = _time_step("ocr_keypad", lambda: run_ocr(keypad_path, scale=max(2, int(ocr_scale))))
 
@@ -1573,24 +2159,42 @@ def solve_security_challenge(
             ),
         )
 
-        if len(buttons) < 8:
-            grid_buttons = _time_step(
-                "grid_keypad_buttons",
-                lambda: extract_keypad_buttons_by_grid(
-                    image_path=image_path,
-                    keypad_box=resolved_keypad_box,
-                    ocr_scale=ocr_scale,
-                ),
-            )
-            # Merge: keep existing OCR hits, fill missing from grid OCR.
-            for digit, point in grid_buttons.items():
-                buttons.setdefault(digit, point)
-
-        # Build templates from keypad digits to improve order-slot recognition (esp. 1 vs 7).
-        templates = _time_step(
+        templates: Dict[str, np.ndarray] = _time_step(
             "build_keypad_templates",
             lambda: build_keypad_digit_templates(keypad_path, keypad_items or []),
         )
+
+        parsed_cells = _parse_keypad_cells(keypad_cells)
+        # Recovery is opt-in:
+        # - Provide keypad_cells in the request, or
+        # - Enable OCR_KEYPAD_GRID_FIRST / keypad_grid_first.
+        if len(buttons) < 8 and (parsed_cells is not None or keypad_grid_first):
+            try:
+                fill_buttons, fill_templates = _time_step(
+                    "keypad_recovery_fill",
+                    lambda: (
+                        extract_keypad_buttons_by_cells(
+                            image_path=image_path,
+                            cells=parsed_cells,
+                            ocr_scale=ocr_scale,
+                        )
+                        if parsed_cells
+                        else extract_keypad_buttons_by_grid(
+                            image_path=image_path,
+                            keypad_box=resolved_keypad_box,
+                            ocr_scale=ocr_scale,
+                            rows=grid_rows,
+                            cols=grid_cols,
+                        )
+                    ),
+                )
+                grid_buttons = fill_buttons
+                for digit, point in (fill_buttons or {}).items():
+                    buttons.setdefault(digit, point)
+                for digit, vec in (fill_templates or {}).items():
+                    templates.setdefault(digit, vec)
+            except Exception:
+                pass
 
         sequence, order_slot_boxes, order_slot_scores = _time_step(
             "extract_order_sequence",
@@ -1618,19 +2222,24 @@ def solve_security_challenge(
                 if os.path.exists(order_path):
                     os.remove(order_path)
 
-        _time_step(
-            "save_debug_image",
-            lambda: save_debug_image(
-                image_path=image_path,
-                sequence=sequence,
-                buttons=buttons,
-                modal_box=modal_box,
-                order_box=resolved_order_box,
-                keypad_box=resolved_keypad_box,
-                mode=mode,
-                order_slot_boxes=order_slot_boxes,
-            ),
-        )
+        save_debug = _parse_bool_env(os.getenv("OCR_SAVE_DEBUG"))
+        if save_debug is None:
+            # Default OFF for speed; enable explicitly when debugging.
+            save_debug = False
+        if save_debug:
+            _time_step(
+                "save_debug_image",
+                lambda: save_debug_image(
+                    image_path=image_path,
+                    sequence=sequence,
+                    buttons=buttons,
+                    modal_box=modal_box,
+                    order_box=resolved_order_box,
+                    keypad_box=resolved_keypad_box,
+                    mode=mode,
+                    order_slot_boxes=order_slot_boxes,
+                ),
+            )
 
         # Capture ambiguous samples for later labeling/training (does not affect the result).
         try:
