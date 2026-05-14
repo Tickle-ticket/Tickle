@@ -189,3 +189,76 @@ python services/ai/utils/split_by_version.py path/to/jsonl_dir --feature-key tim
 ```bash
 python services/ai/utils/split_by_version.py path/to/jsonl_dir --output-root path/to/out_root
 ```
+
+---
+
+## 5) `split_by_type.py`
+
+### 목적
+`trial_*.json`(또는 `*.json`) 디렉토리를 입력받아 `stage/type` 값 기준으로 폴더를 나눕니다.
+
+지원 키(기본 동작):
+- `stage` 우선
+- 없으면 `type`, `summary.stage`, `summary.type`도 자동으로 시도
+
+타입 정규화:
+- `DETAIL` / `CAPTCHA` / `BOOKING` (대소문자 상관없음)
+- 값에 해당 토큰이 포함되어 있으면 그 토큰으로 매핑 (예: `DETAIL_STAGE` → `detail`)
+
+기본 출력 구조:
+- 입력이 `.../data_v1`라면 내부에 `type_<stage>/` 폴더들을 생성
+
+### 사용 예시
+```bash
+python services/ai/utils/split_by_type.py path/to/trials_dir
+```
+
+type key 변경(도트 키 지원):
+```bash
+python services/ai/utils/split_by_type.py path/to/trials_dir --type-key summary.stage
+```
+
+허용 타입을 제한:
+```bash
+python services/ai/utils/split_by_type.py path/to/trials_dir --types detail,captcha,booking
+```
+
+---
+
+## 6) `process_jsonl_dataset.py`
+
+### 목적
+원본 `.jsonl` 폴더 하나를 입력하면 아래를 **한 번에** 수행해서 최종 폴더 구조로 저장합니다.
+
+Pipeline:
+1. jsonl → (row별) trial json 변환
+2. 버전 분리(v1/v2): `time_from_element_clickable_to_click_ms`가 `null`이면 v1, 값 있으면 v2
+3. type 분리(stage): `stage`(없으면 `summary.stage`) 값으로 `type_<stage>` 폴더 생성
+4. label 분리: `label`(없으면 `summary.label`) 값으로 `label_<label>` 폴더 생성
+
+출력 구조(기본):
+```
+<output_root>/<원본디렉토리명>_v1/DETAIL/ALLOW/trial_XXXXX.json
+<output_root>/<원본디렉토리명>_v2/CAPTCHA/BLOCK/trial_XXXXX.json
+```
+
+정규화 규칙:
+- type(stage): `DETAIL`, `CAPTCHA`, `BOOKING`으로 정규화
+- label: `ALLOW/BLOCK`으로 정규화
+  - `human/allow` → `ALLOW`
+  - `macro/block` → `BLOCK`
+
+### 사용 예시
+```bash
+python services/ai/utils/process_jsonl_dataset.py path/to/jsonl_dir
+```
+
+출력 루트 변경:
+```bash
+python services/ai/utils/process_jsonl_dataset.py path/to/jsonl_dir --output-root services/ai/data
+```
+
+버전 기준 feature 변경:
+```bash
+python services/ai/utils/process_jsonl_dataset.py path/to/jsonl_dir --version-feature-key time_from_element_clickable_to_click_ms
+```
