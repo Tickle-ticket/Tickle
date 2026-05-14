@@ -144,7 +144,7 @@ function PaymentSuccessContent() {
             <button
               onClick={() => {
                 closeMypage();
-                router.push('/');
+                window.location.href = '/';
               }}
               className="flex-1 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 hover:bg-primary-hover transition-colors"
             >
