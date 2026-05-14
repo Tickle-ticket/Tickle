@@ -664,7 +664,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       {/* Hero Section */}
       <section className="w-full lg:mt-3 flex flex-col items-start px-2 lg:px-0">
         <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex w-full max-w-2xl flex-col items-start">
+          <div className={`flex w-full ${MockLoginInlineElement ? 'max-w-2xl' : 'max-w-full'} flex-col items-start`}>
             <Title
               title={data?.title || ''}
               textColor="black"
