@@ -1,12 +1,11 @@
 package com.ssafy.tickle.blacklist.infrastructure.sse;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 봇 탐지 CAPTCHA 요청용 사용자별 SSE Emitter 저장소입니다.
@@ -21,13 +20,30 @@ public class BotDetectionSseEmitterRepository {
 
     public SseEmitter add(Long userId) {
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
-        emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>()).add(emitter);
+        CopyOnWriteArrayList<SseEmitter> userEmitters =
+                emitters.computeIfAbsent(userId, id -> new CopyOnWriteArrayList<>());
+        userEmitters.add(emitter);
 
-        emitter.onTimeout(() -> remove(userId, emitter));
+        emitter.onTimeout(() -> {
+            log.info("[BotDetectionSSE] timeout: userId={}", userId);
+            remove(userId, emitter);
+        });
         emitter.onCompletion(() -> remove(userId, emitter));
-        emitter.onError(e -> remove(userId, emitter));
+        emitter.onError(e -> {
+            log.warn(
+                    "[BotDetectionSSE] error: userId={}, type={}, message={}",
+                    userId,
+                    e.getClass().getSimpleName(),
+                    e.getMessage()
+            );
+            remove(userId, emitter);
+        });
 
-        log.debug("[BotDetectionSSE] Emitter 추가: userId={}", userId);
+        log.info(
+                "[BotDetectionSSE] subscribe: userId={}, count={}",
+                userId,
+                userEmitters.size()
+        );
         return emitter;
     }
 
@@ -41,12 +57,20 @@ public class BotDetectionSseEmitterRepository {
 
     public void remove(Long userId, SseEmitter emitter) {
         CopyOnWriteArrayList<SseEmitter> userEmitters = emitters.get(userId);
+        boolean removed = false;
+        int remainingCount = 0;
         if (userEmitters != null) {
-            userEmitters.remove(emitter);
+            removed = userEmitters.remove(emitter);
+            remainingCount = userEmitters.size();
             if (userEmitters.isEmpty()) {
                 emitters.remove(userId, userEmitters);
             }
         }
-        log.debug("[BotDetectionSSE] Emitter 제거: userId={}", userId);
+        log.debug(
+                "[BotDetectionSSE] remove: userId={}, removed={}, remaining={}",
+                userId,
+                removed,
+                remainingCount
+        );
     }
 }

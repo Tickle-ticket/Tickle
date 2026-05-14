@@ -3,12 +3,16 @@ package com.ssafy.tickle.common.exception;
 import com.ssafy.tickle.common.exception.code.ErrorCode;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -30,6 +34,7 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = exception.getErrorCode();
         return ResponseEntity
                 .status(errorCode.getStatus())
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(BaseResponse.error(errorCode.getStatus(), exception.getMessage()));
     }
 
@@ -46,6 +51,7 @@ public class GlobalExceptionHandler {
         log.error("handleMethodArgumentNotValidException", exception);
         return ResponseEntity
                 .status(GlobalErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(BaseResponse.error(
                         GlobalErrorCode.INVALID_INPUT_VALUE.getStatus(),
                         exception.getBindingResult().getAllErrors().get(0).getDefaultMessage()
@@ -65,10 +71,27 @@ public class GlobalExceptionHandler {
         log.error("handleHttpRequestMethodNotSupportedException", exception);
         return ResponseEntity
                 .status(GlobalErrorCode.METHOD_NOT_ALLOWED.getStatus())
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(BaseResponse.error(
                         GlobalErrorCode.METHOD_NOT_ALLOWED.getStatus(),
                         GlobalErrorCode.METHOD_NOT_ALLOWED.getMessage()
                 ));
+    }
+
+    /**
+     * SSE 등 비동기 요청 타임아웃은 응답 본문 없이 종료합니다.
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    protected ResponseEntity<Void> handleAsyncRequestTimeoutException(
+            AsyncRequestTimeoutException exception,
+            HttpServletRequest request
+    ) {
+        log.info(
+                "handleAsyncRequestTimeoutException: method={}, uri={}",
+                request.getMethod(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
     /**
@@ -82,6 +105,7 @@ public class GlobalExceptionHandler {
         log.error("handleException", exception);
         return ResponseEntity
                 .status(GlobalErrorCode.INTERNAL_SERVER_ERROR.getStatus())
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(BaseResponse.error(
                         GlobalErrorCode.INTERNAL_SERVER_ERROR.getStatus(),
                         GlobalErrorCode.INTERNAL_SERVER_ERROR.getMessage()
@@ -97,6 +121,7 @@ public class GlobalExceptionHandler {
 	) {
 		return ResponseEntity
 			.status(GlobalErrorCode.RESOURCE_NOT_FOUND.getStatus())
+			.contentType(MediaType.APPLICATION_JSON)
 			.body(BaseResponse.error(
 				GlobalErrorCode.RESOURCE_NOT_FOUND.getStatus(),
 				exception.getMessage()

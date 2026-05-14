@@ -12,7 +12,6 @@ import com.ssafy.tickle.blacklist.presentation.dto.CaptchaVerificationRequest;
 import com.ssafy.tickle.blacklist.presentation.dto.CaptchaVerificationResponse;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +43,14 @@ public class BotDetectionCaptchaService {
         SseEmitter emitter = sseEmitterRepository.add(userId);
         try {
             emitter.send(SseEmitter.event().comment("connected"));
-        } catch (IOException e) {
+            log.debug("[BotDetectionSSE] connected: userId={}", userId);
+        } catch (Exception e) {
+            log.warn(
+                    "[BotDetectionSSE] connected failed: userId={}, type={}, message={}",
+                    userId,
+                    e.getClass().getSimpleName(),
+                    e.getMessage()
+            );
             sseEmitterRepository.remove(userId, emitter);
         }
         return emitter;
@@ -88,14 +94,25 @@ public class BotDetectionCaptchaService {
      */
     private void sendCaptchaResult(Long userId, CaptchaBlockMessage message) {
         List<SseEmitter> emitters = sseEmitterRepository.findByUserId(userId);
+        log.info(
+                "[BotDetectionSSE] send captcha: userId={}, result={}, count={}",
+                userId,
+                message.result(),
+                emitters.size()
+        );
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.send(SseEmitter.event()
                         .name("captcha")
                         .data(message, MediaType.APPLICATION_JSON));
-                log.info("[BotDetectionSSE] CAPTCHA result 전송: userId={}, result={}", userId, message.result());
-            } catch (IOException e) {
-                log.warn("[BotDetectionSSE] CAPTCHA result 전송 실패: userId={}, message={}", userId, e.getMessage());
+                log.debug("[BotDetectionSSE] send success: userId={}", userId);
+            } catch (Exception e) {
+                log.warn(
+                        "[BotDetectionSSE] send failed: userId={}, type={}, message={}",
+                        userId,
+                        e.getClass().getSimpleName(),
+                        e.getMessage()
+                );
                 sseEmitterRepository.remove(userId, emitter);
             }
         }
