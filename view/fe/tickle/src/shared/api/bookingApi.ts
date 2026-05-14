@@ -38,4 +38,18 @@ export const bookingApi = {
       createApiResponseSchema(BookingPreorderResponseSchema)
     );
   },
+
+  mockPreorder: async (
+    request: BookingPreorderRequest
+  ): Promise<ApiResponse<BookingPreorderResponse>> => {
+    return apiClient<ApiResponse<BookingPreorderResponse>>(
+      `/api/v1/bookings/preorder/mock`,
+      {
+        method: 'POST',
+        body: request,
+      },
+      true,
+      createApiResponseSchema(BookingPreorderResponseSchema)
+    );
+  },
 };

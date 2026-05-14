@@ -11,6 +11,7 @@ interface TicketTypeStepProps {
   ) => Promise<any>;
   onCancel: () => void;
   isSubmitting?: boolean;
+  submitButtonText?: string;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -25,6 +26,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   onSubmitPreorder,
   onCancel,
   isSubmitting = false,
+  submitButtonText = '다음 단계',
 }) => {
   const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
   const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
@@ -294,7 +296,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
             : 'bg-primary text-white hover:bg-primary-hover active:scale-95 shadow-blue-600/20'
             }`}
         >
-          {isSubmitting ? '진행 중...' : '다음 단계'}
+          {isSubmitting ? '진행 중...' : submitButtonText}
         </button>
       </div>
     </div>

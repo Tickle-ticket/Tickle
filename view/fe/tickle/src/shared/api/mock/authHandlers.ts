@@ -29,6 +29,24 @@ export const authHandlers = [
     });
   }),
 
+  http.post(`${API_BASE_URL}/mock-login`, async ({ request }) => {
+    await delay(300);
+    const body = (await request.json()) as { name?: string; phoneNumber?: string };
+
+    if (!body.name || !/^010\d{8}$/.test(body.phoneNumber || '')) {
+      return HttpResponse.json({ status: 400, message: '이름과 전화번호를 확인해주세요.' }, { status: 400 });
+    }
+
+    return HttpResponse.json({
+      status: 200,
+      code: 'OK',
+      message: '성공',
+      data: {
+        accessToken: 'mock-test-access-token-' + Date.now(),
+      },
+    });
+  }),
+
   // 자체 회원가입
   http.post(`${API_BASE_URL}/signup`, async () => {
     await delay(300);

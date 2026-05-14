@@ -18,6 +18,7 @@ import { PaymentStep } from './components/PaymentStep';
 import { SeatSelectionPanel } from './components/SeatSelectionPanel';
 import { SeatMapPanel } from './components/SeatMapPanel';
 import { BookingModals } from './components/BookingModals';
+import { isMockBookingCompleteEvent } from '@/src/shared/config/mockEventConfig';
 
 interface BookViewProps {
   onClose: () => void;
@@ -74,6 +75,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const [isBotVerified, setIsBotVerified] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
+  const [isTestBookingCompleteModalOpen, setIsTestBookingCompleteModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
   const [errorModalConfig, setErrorModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm?: () => void, confirmText?: string, showCancelButton?: boolean }>({ isOpen: false, title: '', message: '' });
@@ -86,7 +88,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     }
   };
 
-  const { fetchOptions, submitPreorder, isOptionsLoading, isPreorderLoading, optionsData, setOptionsData } = useBookingPreorder();
+  const { fetchOptions, submitPreorder, submitMockPreorder, isOptionsLoading, isPreorderLoading, optionsData, setOptionsData } = useBookingPreorder();
 
   const bookingStep = useBookStore(s => s.bookingStep);
   const setBookingStep = useBookStore(s => s.setBookingStep);
@@ -622,6 +624,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
             <TicketTypeStep
               optionsData={optionsData}
               isSubmitting={isPreorderLoading}
+              submitButtonText={isMockBookingCompleteEvent(eventDetail.eventId) ? '참여 완료' : undefined}
               onSubmitPreorder={async (seatIds, optionSelections) => {
                 const isShadow = storyMode || isShadowModeActive;
                 const userId = userProfile?.userId;
@@ -637,6 +640,19 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   return;
                 }
                 try {
+                  if (isMockBookingCompleteEvent(eventDetail.eventId)) {
+                    await submitMockPreorder(
+                      parseInt(eventDetail.eventId, 10),
+                      parseInt(scheduleId!, 10),
+                      seatIds,
+                      optionSelections
+                    );
+                    isHoldingSeatRef.current = false;
+                    onLeaveQueue?.();
+                    setIsTestBookingCompleteModalOpen(true);
+                    return;
+                  }
+
                   if (storyMode) {
                     setPreorderBookingId(9999);
                     setBookingStep('PAYMENT');
@@ -725,6 +741,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       <BookingModals
         isExitModalOpen={isExitModalOpen}
         isWaitlistCompleteModalOpen={isWaitlistCompleteModalOpen}
+        isTestBookingCompleteModalOpen={isTestBookingCompleteModalOpen}
         isConflictModalOpen={isConflictModalOpen}
         errorModalConfig={errorModalConfig}
         handleCancelExit={handleCancelExit}
@@ -732,6 +749,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         handleCloseWaitlistComplete={() => {
           setIsWaitlistCompleteModalOpen(false);
           onClose(); // DetailView로 복귀
+        }}
+        handleCloseTestBookingComplete={() => {
+          setIsTestBookingCompleteModalOpen(false);
+          onClose();
         }}
         handleCloseConflictModal={() => {
           setIsConflictModalOpen(false);

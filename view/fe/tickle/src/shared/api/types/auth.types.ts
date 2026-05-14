@@ -41,6 +41,11 @@ export interface LoginRequest {
   password?: string;
 }
 
+export interface MockLoginRequest {
+  name: string;
+  phoneNumber: string;
+}
+
 export interface KakaoLoginRequest {
   code: string;
   state: string;
