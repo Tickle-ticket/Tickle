@@ -26,6 +26,8 @@ interface PaymentStepProps {
   onPaymentComplete?: () => void;
   isStandalone?: boolean;
   onStepChange?: (step: string) => void;
+  /** 결제하기 버튼 클릭 시 호출 (SSE 해제 등) */
+  onPaymentStart?: () => void;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -51,6 +53,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   onPaymentComplete,
   isStandalone = false,
   onStepChange,
+  onPaymentStart,
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
@@ -148,6 +151,10 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     }
 
     setIsProcessing(true);
+
+    // 결제 시작 시 SSE 등 외부 리소스 해제 트리거
+    onPaymentStart?.();
+
     try {
       const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
 

@@ -35,7 +35,6 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
 
       ws.onopen = (event) => {
         setIsConnected(true);
-        console.log(`[WS] Connected to ${url}`);
         if (onOpen) onOpen(event);
       };
 
@@ -45,7 +44,6 @@ export const useWebSocket = (url: string, options: UseWebSocketOptions = {}) => 
 
       ws.onclose = (event) => {
         setIsConnected(false);
-        console.log(`[WS] Disconnected from ${url}`);
         if (onClose) onClose(event);
 
         if (autoReconnect && isComponentMounted.current) {

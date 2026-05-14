@@ -136,9 +136,6 @@ export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent
 
     const flushed = collectorRef.current.setStage(stage);
     if (flushed) {
-      console.log(`[TrialCollector] Stage "${flushed.sessionId}" flushed:`, flushed);
-      console.log(`  → ${flushed.eventRows.length} events, ${flushed.summary.clickCount} clicks in ${flushed.summary.durationMs}ms`);
-
       // (legacy) submitTrial was removed because the backend doesn't have /api/v1/trials
 
       sendBehaviorEventFromTrial(flushed);

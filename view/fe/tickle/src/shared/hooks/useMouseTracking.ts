@@ -105,7 +105,6 @@ export const useMouseTracking = ({
     // 페이지 이탈 시 남은 버퍼 전송
     const handleBeforeUnload = () => {
       if (bufferRef.current.length > 0) {
-        console.log('[Bot Detection] Page unload detected, flushing remaining events...');
         flushBuffer();
       }
     };

@@ -43,7 +43,6 @@ export const BotDetector = ({ children }: { children: React.ReactNode }) => {
                 detail: "WebDriver를 통한 봇사용 감지",
               },
             });
-            console.log('[BotDetector] 블랙리스트 API 전송 완료');
           }
         } catch (error) {
           console.error('[BotDetector] 블랙리스트 API 전송 실패:', error);

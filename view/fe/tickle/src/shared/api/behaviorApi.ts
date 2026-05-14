@@ -89,7 +89,6 @@ export const sendBehaviorEvent = async ({
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[BehaviorEvent] accepted:', data);
     }
 
     return data as BehaviorEventResponse;

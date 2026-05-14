@@ -35,6 +35,9 @@ import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { leaveQueue } from '@/src/shared/api/queueApi';
 import Lottie from 'lottie-react';
 import loveAnimation from '@/src/shared/lottle/Love.json';
+import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
+import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
+import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -95,6 +98,55 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
   const currentStepRef = useRef<string>('detail');
   const [playLoveAnimation, setPlayLoveAnimation] = useState(false);
+
+  // ── 봇 탐지 CAPTCHA 상태 ──────────────────────────────────
+  const [showCaptchaOverlay, setShowCaptchaOverlay] = useState(false);
+  const [captchaDenied, setCaptchaDenied] = useState(false);
+
+  const { disconnect } = useBotDetectionSSE({
+    enabled: flowState !== 'NONE',
+    onRetryCaptcha: () => {
+      setCaptchaDenied(false);
+      setShowCaptchaOverlay(true);
+    },
+    onSuccessClose: () => {
+      setShowCaptchaOverlay(false);
+      setCaptchaDenied(false);
+    },
+    onDenyClose: () => {
+      setShowCaptchaOverlay(false);
+      setCaptchaDenied(true);
+    },
+  });
+
+  const handleCaptchaSuccess = useCallback(async (token: string) => {
+    try {
+      await verifyCaptcha({
+        success: true,
+        token,
+        type: 'CAPTCHA_RETRY',
+        eventId: activeEventId ? Number(activeEventId) : undefined,
+        createdAt: new Date().toISOString(),
+      });
+      // SSE에서 SUCCESS_CLOSE를 받으면 자동으로 닫힘
+    } catch (e) {
+      console.error('[CAPTCHA] verifyCaptcha 호출 실패:', e);
+    }
+  }, [activeEventId]);
+
+  const handleCaptchaFailure = useCallback(async () => {
+    try {
+      await verifyCaptcha({
+        success: false,
+        token: 'captcha-failed',
+        type: 'CAPTCHA_RETRY',
+        eventId: activeEventId ? Number(activeEventId) : undefined,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('[CAPTCHA] verifyCaptcha failure 호출 실패:', e);
+    }
+  }, [activeEventId]);
 
   const bookBtnTracker = useTargetTracker({ trackId: 'detail-book-btn', isClickable: !isUpcoming });
   const waitlistBtnTracker = useTargetTracker({ trackId: 'detail-waitlist-btn', isClickable: !isWaitlistUpcoming });
@@ -823,6 +875,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             onStepChange={handleBookStepChange}
             onStepBack={handleBookStepBack}
             storyMode={storyMode}
+            onPaymentStart={disconnect}
           />
         </div>
       )}
@@ -863,6 +916,50 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         description={modalConfig.content}
         confirmText={modalConfig.confirmText || '확인'}
         showCancelButton={modalConfig.showCancelButton ?? false}
+      />
+
+      {/* 봇 탐지 CAPTCHA 오버레이 */}
+      {showCaptchaOverlay && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-full max-w-[440px] mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <ReCaptcha
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY as string}
+              theme="light"
+              title="보안 검증이 필요합니다"
+              description="봇이 아닌지 확인하기 위해 아래 인증을 완료해 주세요."
+              buttonText="인증 완료"
+              showButton={true}
+              onSuccess={handleCaptchaSuccess}
+              onError={handleCaptchaFailure}
+              onExpire={handleCaptchaFailure}
+              onConfirm={handleCaptchaSuccess}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* CAPTCHA 실패(DENY_CLOSE) 안내 모달 */}
+      <Modal
+        isOpen={captchaDenied}
+        onClose={() => {
+          setCaptchaDenied(false);
+          setFlowState('NONE');
+          queueTokenRef.current = null;
+          setQueueToken(null);
+        }}
+        onConfirm={() => {
+          setCaptchaDenied(false);
+          setFlowState('NONE');
+          queueTokenRef.current = null;
+          setQueueToken(null);
+        }}
+        title="보안 검증 실패"
+        description="CAPTCHA 인증에 실패하여 예매를 진행할 수 없습니다. 다시 시도해 주세요."
+        confirmText="확인"
+        showCancelButton={false}
       />
     </div>
   );
