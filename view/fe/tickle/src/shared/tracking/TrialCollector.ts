@@ -445,6 +445,25 @@ export class TrialCollector {
     return Schema.decodeUnknownSync(TrialJSONSchema)(rawTrial);
   }
 
+  /**
+   * 현재 단계의 데이터를 전송하고 **데이터를 클리어**합니다.
+   * finalize()와 달리 finalized 플래그를 건드리지 않으므로
+   * 반복 호출이 가능합니다 (예: 선점 실패 → 재시도 시).
+   */
+  flushCurrentStage(): TrialJSON | null {
+    const result = this.flushStage();
+
+    if (result) {
+      // 현재 단계의 이벤트/윈도우 데이터만 클리어
+      const currentStage = this.stage;
+      this.eventRows = this.eventRows.filter(e => e.stage !== currentStage);
+      this.windowRows = this.windowRows.filter(w => w.stage !== currentStage);
+      this.stageStartTs = Date.now();
+    }
+
+    return result;
+  }
+
   destroy() {
     if (this.snapshotTimer) {
       clearInterval(this.snapshotTimer);

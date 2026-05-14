@@ -68,7 +68,7 @@ export default function QueueMonitoringPage() {
       const response = await fetchEventList({ page: 0, size: 100 });
       const items = response.data.items;
 
-      setEvents(items);
+      setEvents([...items]);
 
       if (items.length > 0) {
         setEventId((currentEventId) => {

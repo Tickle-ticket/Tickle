@@ -159,5 +159,17 @@ export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent
     return trial;
   }, [sendBehaviorEventFromTrial]);
 
-  return { setStage, setSelectedSeats, finalize };
+  // ── 현재 단계 전송 후 리셋 (반복 호출 가능) ───────────────
+  const flush = useCallback(async (): Promise<TrialJSON | null> => {
+    if (!collectorRef.current) return null;
+
+    const trial = collectorRef.current.flushCurrentStage();
+    if (!trial) return null;
+
+    sendBehaviorEventFromTrial(trial);
+
+    return trial;
+  }, [sendBehaviorEventFromTrial]);
+
+  return { setStage, setSelectedSeats, finalize, flush };
 };

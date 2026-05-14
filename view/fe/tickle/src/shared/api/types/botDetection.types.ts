@@ -6,6 +6,7 @@ export type CaptchaResult = 'RETRY_CAPTCHA' | 'SUCCESS_CLOSE' | 'DENY_CLOSE';
 /** SSE captcha 이벤트 data 페이로드 */
 export interface CaptchaEventData {
   result: CaptchaResult;
+  recordId?: string;
 }
 
 /** CAPTCHA 검증 요청 시 사용하는 플로우 유형 */
@@ -13,6 +14,8 @@ export type CaptchaVerifyType = 'BOOKING' | 'DETAIL' | 'CAPTCHA' | 'CAPTCHA_RETR
 
 /** POST /api/v1/bot-detection/captcha/verify 요청 바디 */
 export interface CaptchaVerifyRequest {
+  /** SSE에서 발급받은 Record ID */
+  recordId: string;
   /** FE 기준 CAPTCHA 성공 여부 */
   success: boolean;
   /** Cloudflare Turnstile token */

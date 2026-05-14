@@ -112,10 +112,20 @@ export const getSeatColors = (status: SeatStatus, color: SeatColor, isSelected: 
     const rootStyle = getComputedStyle(document.documentElement);
     const keys = ['selected', 'disabled', 'vip', 'r', 's', 'a', 'b', 'c', 'red', 'blue', 'pink', 'yellow', 'mint', 'green', 'purple', 'gray', 'orange', 'cyan', 'high', 'medium', 'low'];
     
+    const defaultColors: Record<string, { top: string; side: string }> = {
+      'vip': { top: '#d946ef', side: '#a21caf' },
+      'r': { top: '#3b82f6', side: '#1d4ed8' },
+      's': { top: '#22c55e', side: '#15803d' },
+      'a': { top: '#f97316', side: '#c2410c' },
+      'selected': { top: '#a855f7', side: '#7e22ce' },
+      'disabled': { top: '#e5e7eb', side: '#d1d5db' },
+    };
+
     keys.forEach(key => {
+      const defaultColor = defaultColors[key] || { top: '#60a5fa', side: '#3b82f6' };
       colorCache![key] = {
-        top: rootStyle.getPropertyValue(`--seat-${key}-top`).trim() || '#60a5fa',
-        side: rootStyle.getPropertyValue(`--seat-${key}-side`).trim() || '#3b82f6'
+        top: rootStyle.getPropertyValue(`--seat-${key}-top`).trim() || defaultColor.top,
+        side: rootStyle.getPropertyValue(`--seat-${key}-side`).trim() || defaultColor.side
       };
     });
   }

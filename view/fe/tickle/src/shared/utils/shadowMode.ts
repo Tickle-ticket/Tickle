@@ -10,7 +10,7 @@ export const isShadowMode = (eventId: string | null | undefined) =>
   eventId === SHADOW_EVENT_ID_AI || eventId === SHADOW_EVENT_ID_HUMAN;
 
 const getShadowTitle = (eventId: string) =>
-  eventId === SHADOW_EVENT_ID_HUMAN ? 'AI Shadow - Human' : 'AI Shadow - AI';
+  eventId === SHADOW_EVENT_ID_HUMAN ? 'SSAFY 티켓팅 테스트' : 'AI Shadow - AI';
 
 export const SHADOW_EVENT: PerformanceData = {
   id: SHADOW_EVENT_ID_AI,
@@ -102,8 +102,10 @@ export const generateShadowMockSeats = (): SeatAvailabilityResponse => {
 
       const isAvailable = alwaysOpen ? true : Math.random() > 0.6;
 
+      const fixedGrade = row <= 'E' ? 'VIP' : row <= 'J' ? 'R' : row <= 'O' ? 'S' : 'A';
+
       mockSeats[`${row}${i}`] = {
-        priceGrade: row <= 'E' ? 'VIP석' : row <= 'J' ? 'R석' : 'S석',
+        priceGrade: fixedGrade,
         isAvailable,
         sessionSeatId: idCounter++,
         waitingCount: isAvailable ? 0 : Math.floor(Math.random() * 5),
