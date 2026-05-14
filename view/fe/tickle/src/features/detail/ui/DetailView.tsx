@@ -112,10 +112,12 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   // ── 봇 탐지 CAPTCHA 상태 ──────────────────────────────────
   const [showCaptchaOverlay, setShowCaptchaOverlay] = useState(false);
   const [captchaDenied, setCaptchaDenied] = useState(false);
+  const [captchaRecordId, setCaptchaRecordId] = useState<string>('');
 
   const { disconnect } = useBotDetectionSSE({
     enabled: flowState !== 'NONE',
-    onRetryCaptcha: () => {
+    onRetryCaptcha: (recordId: string) => {
+      setCaptchaRecordId(recordId);
       setCaptchaDenied(false);
       setShowCaptchaOverlay(true);
     },
@@ -132,6 +134,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const handleCaptchaSuccess = useCallback(async (token: string) => {
     try {
       await verifyCaptcha({
+        recordId: captchaRecordId,
         success: true,
         token,
         type: 'CAPTCHA_RETRY',
@@ -142,11 +145,12 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     } catch (e) {
       console.error('[CAPTCHA] verifyCaptcha 호출 실패:', e);
     }
-  }, [activeEventId]);
+  }, [activeEventId, captchaRecordId]);
 
   const handleCaptchaFailure = useCallback(async () => {
     try {
       await verifyCaptcha({
+        recordId: captchaRecordId,
         success: false,
         token: 'captcha-failed',
         type: 'CAPTCHA_RETRY',
@@ -156,7 +160,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     } catch (e) {
       console.error('[CAPTCHA] verifyCaptcha failure 호출 실패:', e);
     }
-  }, [activeEventId]);
+  }, [activeEventId, captchaRecordId]);
 
   const bookBtnTracker = useTargetTracker({ trackId: 'detail-book-btn', isClickable: !isUpcoming });
   const waitlistBtnTracker = useTargetTracker({ trackId: 'detail-waitlist-btn', isClickable: !isWaitlistUpcoming });
@@ -403,12 +407,14 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         window.dispatchEvent(new CustomEvent('play-love-animation', { detail: { eventId: activeEventId } }));
       }
 
-      if (isFavorite) {
-        await deleteFavorite(activeEventId);
-      } else {
-        await createFavorite(activeEventId);
+      if (!storyMode && !isShadowMode(activeEventId)) {
+        if (isFavorite) {
+          await deleteFavorite(activeEventId);
+        } else {
+          await createFavorite(activeEventId);
+        }
+        queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
       }
-      queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
     } catch (error: any) {
       console.error('찜 등록/취소 실패:', error);
       if (isFavorite) {

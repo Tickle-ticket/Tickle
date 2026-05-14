@@ -41,7 +41,7 @@ const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') 
 
 export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue, onStepChange, onStepBack, onPaymentStart }: BookViewProps) => {
   const isShadowModeActive = isShadowMode(eventId);
-  const isWaitlistMode = mode === 'WAITLIST' || isShadowModeActive;
+  const isWaitlistMode = mode === 'WAITLIST' || (isShadowModeActive && eventId === '404');
   const isCancelMode = mode === 'CANCEL';
 
   const { data: userProfile } = useUserProfile();
@@ -443,13 +443,46 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           setIsWaitlistCompleteModalOpen(true);
         }
       } else {
-        if (sessionSeatIds.length > 0 && !storyMode) {
+        if (sessionSeatIds.length > 0 && !storyMode && !isShadowModeActive) {
           // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
           await seatApi.holdSeat(eventDetail.eventId, scheduleId!, admitToken || '', { sessionSeatIds });
 
           // 선점 성공 시 옵션(권종/할인) 데이터 조회
           await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), sessionSeatIds);
-        } else if (sessionSeatIds.length > 0 && storyMode) {
+        } else if (sessionSeatIds.length > 0 && (storyMode || isShadowModeActive)) {
+          if (isShadowModeActive) {
+            const hasUnavailableSeat = Array.from(selectedSeats).some(
+              seatId => seatsData[seatId]?.status === 'disabled'
+            );
+
+            if (hasUnavailableSeat) {
+              setErrorModalConfig({
+                isOpen: true,
+                title: '좌석 선점 실패',
+                message: '이미 선점된 좌석입니다. 다른 좌석을 선택해주세요.',
+                confirmText: '확인',
+                onConfirm: () => {
+                  setSelectedSeats(new Set());
+                }
+              });
+              setIsHolding(false);
+              return;
+            }
+
+            await finalizeTrial();
+            setErrorModalConfig({
+              isOpen: true,
+              title: '축하합니다!',
+              message: '커피 쿠폰을 획득하셨습니다.\n실전에서도 좋은 결과가 있길 바랄게요!',
+              confirmText: '확인',
+              onConfirm: () => {
+                onClose();
+              }
+            });
+            setIsHolding(false);
+            return;
+          }
+
           // storyMode일 경우 가격 옵션 목데이터 주입
           const mockedSeats = Array.from(selectedSeats).map(seatId => {
             const { priceGrade, price } = getSeatInfo(seatId);
@@ -525,7 +558,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         errorModalConfig={errorModalConfig}
         handleCancelExit={handleCancelExit}
         handleConfirmExit={handleConfirmExit}
-        handleCloseErrorModal={() => setErrorModalConfig(prev => ({ ...prev, isOpen: false }))}
+        handleCloseErrorModal={handleCloseErrorModal}
       />
     );
   }
@@ -758,7 +791,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           setIsConflictModalOpen(false);
           setSelectedSeats(new Set());
         }}
-        handleCloseErrorModal={() => setErrorModalConfig(prev => ({ ...prev, isOpen: false }))}
+        handleCloseErrorModal={handleCloseErrorModal}
       />
     </div>
   );

@@ -10,8 +10,8 @@ export type BotDetectionSSEStatus = 'idle' | 'connecting' | 'connected' | 'disco
 interface UseBotDetectionSSEOptions {
   /** SSE 연결 활성화 여부. false이면 연결하지 않습니다. */
   enabled: boolean;
-  /** RETRY_CAPTCHA 수신 시 콜백 */
-  onRetryCaptcha?: () => void;
+  /** RETRY_CAPTCHA 수신 시 콜백 (새로운 API 스펙에 따라 recordId 전달) */
+  onRetryCaptcha?: (recordId: string) => void;
   /** SUCCESS_CLOSE 수신 시 콜백 */
   onSuccessClose?: () => void;
   /** DENY_CLOSE 수신 시 콜백 */
@@ -89,7 +89,11 @@ export const useBotDetectionSSE = ({
 
         switch (data.result) {
           case 'RETRY_CAPTCHA':
-            onRetryCaptchaRef.current?.();
+            if (data.recordId) {
+              onRetryCaptchaRef.current?.(data.recordId);
+            } else {
+              console.warn('[BotDetection SSE] RETRY_CAPTCHA received but recordId is missing');
+            }
             break;
           case 'SUCCESS_CLOSE':
             onSuccessCloseRef.current?.();

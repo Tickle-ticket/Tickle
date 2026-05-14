@@ -102,8 +102,10 @@ export const generateShadowMockSeats = (): SeatAvailabilityResponse => {
 
       const isAvailable = alwaysOpen ? true : Math.random() > 0.6;
 
+      const fixedGrade = row <= 'E' ? 'VIP' : row <= 'J' ? 'R' : row <= 'O' ? 'S' : 'A';
+
       mockSeats[`${row}${i}`] = {
-        priceGrade: row <= 'E' ? 'VIP석' : row <= 'J' ? 'R석' : 'S석',
+        priceGrade: fixedGrade,
         isAvailable,
         sessionSeatId: idCounter++,
         waitingCount: isAvailable ? 0 : Math.floor(Math.random() * 5),

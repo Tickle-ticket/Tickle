@@ -44,7 +44,9 @@ export const PriceLegend = ({ prices, viewMode = 'grade' }: PriceLegendProps) =>
                 <div key={idx} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
                     <span className={`block w-3 h-3 shrink-0 rounded-full ${GRADE_COLORS[item.priceGrade] || 'bg-[var(--seat-gray-top)]'}`}></span>
-                    <span className="font-bold text-content-secondary">{item.priceGrade}석</span>
+                    <span className="font-bold text-content-secondary">
+                      {item.priceGrade.endsWith('석') ? item.priceGrade : `${item.priceGrade}석`}
+                    </span>
                   </div>
                   <span className="font-bold">{item.price.toLocaleString()}원</span>
                 </div>
