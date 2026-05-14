@@ -49,6 +49,7 @@ class BeCallbackClient:
 
         if access_token:
             headers["access-token"] = access_token
+            headers["Authorization"] = f"Bearer {access_token}"
 
         if request_id:
             headers["X-Request-Id"] = request_id
