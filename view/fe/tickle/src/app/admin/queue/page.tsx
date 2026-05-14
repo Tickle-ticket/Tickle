@@ -3,9 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getAdminQueueEventDashboard,
+  getAdminQueueEventDashboardStreamUrl,
   getAdminTopWaitingEvents,
+  getAdminTopWaitingEventsStreamUrl,
 } from '@/src/shared/api/adminApi';
-import { fetchEventList } from '@/src/shared/api/eventApi';
+import { apiClient } from '@/src/shared/api/client';
+import type { ApiResponse } from '@/src/shared/api/types';
 import type {
   QueueDashboardResponse,
   QueueEventRankResponse,
@@ -14,6 +17,7 @@ import type { EventItem } from '@/src/shared/api/types/event.types';
 import { Dropdown } from '@/src/shared/components/Dropdown';
 import { QueueStatusChart } from '@/src/shared/components/QueueStatusChart';
 import type { QueueStatusPoint } from '@/src/shared/components/QueueStatusChart';
+import { useSSE } from '@/src/shared/hooks/useSSE';
 
 const formatNumber = (value: number) => new Intl.NumberFormat('ko-KR').format(value);
 
@@ -41,15 +45,126 @@ function formatShortDateRange(startAt: string, endAt: string) {
   return `${formatter.format(startDate)}-${formatter.format(endDate)}`;
 }
 
+const QUEUE_TAIL_FILL_INTERVAL_MINUTES = 5;
+
+function formatChartTime(date: Date) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function getDateFromChartTime(time: string, now = new Date()) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time);
+
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(now);
+  date.setHours(Number(match[1]), Number(match[2]), 0, 0);
+
+  if (date.getTime() > now.getTime()) {
+    date.setDate(date.getDate() - 1);
+  }
+
+  return date;
+}
+
 function toQueueStatusPoints(data?: QueueDashboardResponse): QueueStatusPoint[] {
-  return (data?.chartData ?? []).map((point) => ({
+  if (!data) {
+    return [];
+  }
+
+  const points = (data.chartData ?? []).map((point) => ({
     time: point.time,
     waitingUsers: point.waitCount,
     incomingUsers: point.inflowCount,
     admittedUsers: point.admittedCount,
     estimatedWaitMinutes: point.expectedWaitMinutes,
   }));
+
+  const now = new Date();
+  const nowLabel = formatChartTime(now);
+  const currentPoint: QueueStatusPoint = {
+    time: nowLabel,
+    waitingUsers: data.currentWaiting,
+    incomingUsers: 0,
+    admittedUsers: data.admissionsPerMinute,
+    estimatedWaitMinutes: data.expectedWaitMinutes,
+  };
+  const latestPoint = points[points.length - 1];
+
+  if (!latestPoint) {
+    return data.currentWaiting > 0 || data.admissionsPerMinute > 0 ? [currentPoint] : points;
+  }
+
+  if (latestPoint.time === nowLabel) {
+    return points;
+  }
+
+  const latestDate = getDateFromChartTime(latestPoint.time, now);
+
+  if (!latestDate) {
+    return [...points, currentPoint];
+  }
+
+  if (data.currentWaiting === 0 && data.admissionsPerMinute === 0) {
+    const filledPoints = [...points];
+    const cursor = new Date(latestDate);
+    cursor.setMinutes(cursor.getMinutes() + QUEUE_TAIL_FILL_INTERVAL_MINUTES);
+
+    while (cursor.getTime() < now.getTime() && formatChartTime(cursor) !== nowLabel) {
+      filledPoints.push({
+        time: formatChartTime(cursor),
+        waitingUsers: 0,
+        incomingUsers: 0,
+        admittedUsers: 0,
+        estimatedWaitMinutes: 0,
+      });
+      cursor.setMinutes(cursor.getMinutes() + QUEUE_TAIL_FILL_INTERVAL_MINUTES);
+    }
+
+    return [...filledPoints, currentPoint];
+  }
+
+  return [...points, currentPoint];
 }
+
+const unwrapSseData = <T,>(payload: T | { data: T } | null) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data;
+  }
+
+  return payload as T | null;
+};
+
+type AdminEventListData = {
+  items?: EventItem[];
+};
+
+const unwrapApiData = <T,>(payload: T | ApiResponse<T>) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data;
+  }
+
+  return payload as T;
+};
+
+const fetchAdminEventOptions = async () => {
+  const response = await apiClient<ApiResponse<AdminEventListData> | AdminEventListData | EventItem[]>(
+    '/api/v1/events',
+    {
+      method: 'GET',
+      params: { page: 0, size: 100 },
+      auth: 'optional',
+    },
+  );
+  const data = unwrapApiData<AdminEventListData | EventItem[]>(response);
+
+  return Array.isArray(data) ? data : data.items ?? [];
+};
 
 export default function QueueMonitoringPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -60,13 +175,30 @@ export default function QueueMonitoringPage() {
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const dashboardStreamUrl = useMemo(
+    () => eventId ? getAdminQueueEventDashboardStreamUrl(eventId) : '',
+    [eventId],
+  );
+  const topEventsStreamUrl = useMemo(() => getAdminTopWaitingEventsStreamUrl(), []);
+  const { data: dashboardStreamData } = useSSE<QueueDashboardResponse | { data: QueueDashboardResponse }>(
+    dashboardStreamUrl,
+    { eventNames: ['queue.dashboard'] },
+  );
+  const { data: topEventsStreamData } = useSSE<QueueEventRankResponse[] | { data: QueueEventRankResponse[] }>(
+    topEventsStreamUrl,
+    { eventNames: ['queue.top'] },
+  );
+  const streamedDashboard = useMemo(() => unwrapSseData<QueueDashboardResponse>(dashboardStreamData), [dashboardStreamData]);
+  const streamedTopEvents = useMemo(() => unwrapSseData<QueueEventRankResponse[]>(topEventsStreamData), [topEventsStreamData]);
+  const visibleDashboard = streamedDashboard ?? dashboard;
+  const visibleTopEvents = streamedTopEvents ?? topEvents;
+  const visibleLastUpdatedAt = streamedDashboard || streamedTopEvents ? 'SSE 수신 중' : lastUpdatedAt;
 
   const loadRegisteredEvents = useCallback(async () => {
     setIsEventLoading(true);
 
     try {
-      const response = await fetchEventList({ page: 0, size: 100 });
-      const items = response.data.items;
+      const items = await fetchAdminEventOptions();
 
       setEvents([...items]);
 
@@ -121,7 +253,7 @@ export default function QueueMonitoringPage() {
     return () => window.clearTimeout(timeoutId);
   }, [loadQueueDashboard]);
 
-  const chartData = useMemo(() => toQueueStatusPoints(dashboard ?? undefined), [dashboard]);
+  const chartData = useMemo(() => toQueueStatusPoints(visibleDashboard ?? undefined), [visibleDashboard]);
 
   const eventOptions = useMemo(
     () => events.map((event) => ({
@@ -133,7 +265,7 @@ export default function QueueMonitoringPage() {
   );
 
   const summary = useMemo(() => {
-    if (!dashboard) {
+    if (!visibleDashboard) {
       return [
         { label: '현재 대기', value: '-', caption: '이벤트 대시보드 기준' },
         { label: '최근 유입', value: '-', caption: '최근 1시간' },
@@ -145,26 +277,26 @@ export default function QueueMonitoringPage() {
     return [
       {
         label: '현재 대기',
-        value: `${formatNumber(dashboard.currentWaiting)}명`,
-        caption: `전 대비 ${formatNumber(dashboard.waitingDifference)}명`,
+        value: `${formatNumber(visibleDashboard.currentWaiting)}명`,
+        caption: `전 대비 ${formatNumber(visibleDashboard.waitingDifference)}명`,
       },
       {
         label: '최근 유입',
-        value: `${formatNumber(dashboard.totalInflowLastHour)}명`,
+        value: `${formatNumber(visibleDashboard.totalInflowLastHour)}명`,
         caption: '최근 1시간',
       },
       {
         label: '분당 입장',
-        value: `${formatNumber(dashboard.admissionsPerMinute)}명`,
-        caption: `전 대비 ${formatNumber(dashboard.admissionsDifference)}명`,
+        value: `${formatNumber(visibleDashboard.admissionsPerMinute)}명`,
+        caption: `전 대비 ${formatNumber(visibleDashboard.admissionsDifference)}명`,
       },
       {
         label: '예상 대기',
-        value: formatMinutes(dashboard.expectedWaitMinutes),
-        caption: `피크 ${formatNumber(dashboard.peakWaiting)}명`,
+        value: formatMinutes(visibleDashboard.expectedWaitMinutes),
+        caption: `피크 ${formatNumber(visibleDashboard.peakWaiting)}명`,
       },
     ];
-  }, [dashboard]);
+  }, [visibleDashboard]);
 
   return (
     <div className="space-y-6 p-5 sm:p-8">
@@ -204,10 +336,10 @@ export default function QueueMonitoringPage() {
 
       <QueueStatusChart
         data={chartData}
-        performanceTitle={dashboard?.eventName ?? (eventId ? `이벤트 #${eventId}` : '공연을 선택해 주세요')}
-        performanceMeta={lastUpdatedAt ? `마지막 갱신: ${lastUpdatedAt}` : '아직 갱신 전입니다.'}
+        performanceTitle={visibleDashboard?.eventName ?? (eventId ? `이벤트 #${eventId}` : '공연을 선택해 주세요')}
+        performanceMeta={visibleLastUpdatedAt ? `마지막 갱신: ${visibleLastUpdatedAt}` : '아직 갱신 전입니다.'}
         capacityPerMinute={QUEUE_CAPACITY_PER_MINUTE}
-        targetWaitingUsers={dashboard?.peakTarget}
+        targetWaitingUsers={visibleDashboard?.peakTarget}
       />
 
       <section>
@@ -238,7 +370,7 @@ export default function QueueMonitoringPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle">
-                {topEvents.map((event) => (
+                {visibleTopEvents.map((event) => (
                   <tr key={`${event.rank}-${event.eventId}`}>
                     <td className="px-5 py-4 font-black text-primary">{event.rank}</td>
                     <td className="px-5 py-4 font-bold text-content">{event.eventName}</td>
@@ -252,7 +384,7 @@ export default function QueueMonitoringPage() {
                   </tr>
                 ))}
 
-                {!isDashboardLoading && topEvents.length === 0 ? (
+                {!isDashboardLoading && visibleTopEvents.length === 0 ? (
                   <tr>
                     <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={5}>
                       대기열 랭킹 데이터가 없습니다.

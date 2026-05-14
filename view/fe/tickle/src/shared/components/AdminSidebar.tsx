@@ -18,6 +18,7 @@ export interface AdminSidebarProps {
 }
 
 const defaultItems: AdminSidebarItem[] = [
+  { label: '서버 모니터링', href: '/admin/server' },
   { label: '대기열 상태', href: '/admin/queue' },
   { label: '봇 탐지 현황', href: '/admin/bot-detection' },
   { label: '블랙리스트 관리', href: '/admin' },

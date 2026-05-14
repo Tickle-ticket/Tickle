@@ -5,8 +5,11 @@ import {
   addAdminBlacklist,
   getAdminBlacklist,
   getAdminBlacklistDashboard,
+  getAdminBlacklistDashboardStreamUrl,
+  getAdminBlacklistStreamUrl,
   removeAdminBlacklist,
 } from '@/src/shared/api/adminApi';
+import { useSSE } from '@/src/shared/hooks/useSSE';
 import type {
   BlacklistDashboardResponse,
   BlacklistItem,
@@ -46,6 +49,14 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : '요청 처리 중 오류가 발생했습니다.';
 }
 
+const unwrapSseData = <T,>(payload: T | { data: T } | null) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data;
+  }
+
+  return payload as T | null;
+};
+
 export default function AdminBlacklistPage() {
   const [dashboard, setDashboard] = useState<BlacklistDashboardResponse | null>(null);
   const [pageData, setPageData] = useState<BlacklistPageResponse | null>(null);
@@ -60,11 +71,25 @@ export default function AdminBlacklistPage() {
   const [reason, setReason] = useState<BlacklistReason>('MANUAL_BLOCK');
   const [detail, setDetail] = useState('');
 
-  const items = useMemo(() => pageData?.items ?? [], [pageData]);
-  const totalPages = pageData?.totalPages ?? 0;
+  const dashboardStreamUrl = useMemo(() => getAdminBlacklistDashboardStreamUrl(), []);
+  const blacklistStreamUrl = useMemo(() => getAdminBlacklistStreamUrl(page, size), [page, size]);
+  const { data: dashboardStreamData } = useSSE<BlacklistDashboardResponse | { data: BlacklistDashboardResponse }>(
+    dashboardStreamUrl,
+    { eventNames: ['blacklist.dashboard'] },
+  );
+  const { data: blacklistStreamData } = useSSE<BlacklistPageResponse | { data: BlacklistPageResponse }>(
+    blacklistStreamUrl,
+    { eventNames: ['blacklist.list'] },
+  );
+  const streamedDashboard = useMemo(() => unwrapSseData<BlacklistDashboardResponse>(dashboardStreamData), [dashboardStreamData]);
+  const streamedPageData = useMemo(() => unwrapSseData<BlacklistPageResponse>(blacklistStreamData), [blacklistStreamData]);
+  const visibleDashboard = streamedDashboard ?? dashboard;
+  const visiblePageData = streamedPageData ?? pageData;
+  const items = useMemo(() => visiblePageData?.items ?? [], [visiblePageData]);
+  const totalPages = visiblePageData?.totalPages ?? 0;
 
   const summary = useMemo(() => {
-    if (!dashboard) {
+    if (!visibleDashboard) {
       return [
         { label: '총 접속자 수', value: '-', caption: '오늘 기준' },
         { label: '봇 탐지 수', value: '-', caption: '오늘 기준' },
@@ -76,26 +101,26 @@ export default function AdminBlacklistPage() {
     return [
       {
         label: '총 접속자 수',
-        value: formatNumber(dashboard.totalConnectionsToday),
+        value: formatNumber(visibleDashboard.totalConnectionsToday),
         caption: '오늘 기준',
       },
       {
         label: '봇 탐지 수',
-        value: `${formatNumber(dashboard.botDetectionCount)}건`,
+        value: `${formatNumber(visibleDashboard.botDetectionCount)}건`,
         caption: '오늘 기준',
       },
       {
         label: '차단 수',
-        value: `${formatNumber(dashboard.blockedCount)}건`,
+        value: `${formatNumber(visibleDashboard.blockedCount)}건`,
         caption: '정책 차단 완료',
       },
       {
         label: '피크 시간',
-        value: dashboard.peakTime || '-',
-        caption: `${formatNumber(dashboard.peakDetectionCount)}건 탐지`,
+        value: visibleDashboard.peakTime || '-',
+        caption: `${formatNumber(visibleDashboard.peakDetectionCount)}건 탐지`,
       },
     ];
-  }, [dashboard]);
+  }, [visibleDashboard]);
 
   const loadBlacklist = useCallback(async () => {
     setIsLoading(true);
@@ -348,7 +373,7 @@ export default function AdminBlacklistPage() {
           </span>
           <button
             className="rounded-lg border border-line-strong px-4 py-2 text-sm font-black text-content-secondary disabled:cursor-not-allowed disabled:text-content-muted"
-            disabled={!pageData?.hasNext}
+            disabled={!visiblePageData?.hasNext}
             onClick={() => setPage((current) => current + 1)}
             type="button"
           >
