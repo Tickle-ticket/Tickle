@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS behavior_feature_records (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT chk_behavior_feature_records_label
-    CHECK (label IN ('ALLOW', 'REVIEW', 'BLOCK')),
+    CHECK (label IN ('ALLOW', 'REVIEW', 'BLOCK', 'REVALIDATED')),
 
     CONSTRAINT chk_behavior_feature_records_p_macro
     CHECK (p_macro >= 0.0 AND p_macro <= 1.0)
