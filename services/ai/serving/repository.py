@@ -99,3 +99,18 @@ def insert_behavior_feature_gt_records(
     detection_results: list[DetectionResult],
 ) -> None:
     insert_records(conn, detection_results, "behavior_feature_records_gt")
+
+
+def mark_record_revalidated(conn, *, record_id: str) -> bool:
+    query = """
+        UPDATE behavior_feature_records
+        SET label = 'REVALIDATED'
+        WHERE record_id = %s
+    """
+
+    with conn.cursor() as cursor:
+        cursor.execute(query, (record_id,))
+        updated = cursor.rowcount > 0
+
+    conn.commit()
+    return updated
