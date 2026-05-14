@@ -99,4 +99,41 @@ export const bookingHandlers = [
       },
     });
   }),
+
+  http.post(`${API_BASE_URL}/bookings/preorder/mock`, async ({ request }) => {
+    const requestBody = (await request.json()) as any;
+    const optionSelections = requestBody.optionSelections || [];
+
+    const seats = optionSelections.map((opt: any, index: number) => {
+      const isDiscount = opt.discountName !== null;
+      const ticketPriceAmount = isDiscount ? 81000 : 90000;
+      const serviceFeeAmount = ticketPriceAmount * 0.05;
+
+      return {
+        sessionSeatId: opt.sessionSeatId,
+        seatLabel: `A-${index + 1}`,
+        discountName: opt.discountName,
+        ticketPriceAmount,
+        serviceFeeAmount,
+        finalPriceAmount: ticketPriceAmount + serviceFeeAmount,
+      };
+    });
+
+    const totalPaymentAmount = seats.reduce((acc: number, seat: any) => acc + seat.finalPriceAmount, 0);
+
+    return HttpResponse.json({
+      status: 200,
+      code: 'OK',
+      message: '성공',
+      data: {
+        bookingId: 6025001,
+        bookingNo: 'TEST-6025-COMPLETE',
+        bookingStatus: 'CONFIRMED',
+        currencyCode: 'KRW',
+        totalPaymentAmount,
+        holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        seats,
+      },
+    });
+  }),
 ];

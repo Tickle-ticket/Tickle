@@ -11,6 +11,7 @@ import {
   KakaoLoginResponse,
   KakaoLoginResponseSchema,
   KakaoSignUpRequest,
+  MockLoginRequest,
   PhoneCodeVerifyRequest,
 } from './types/auth.types';
 import { createApiResponseSchema } from '../utils/schema';
@@ -27,6 +28,19 @@ export const authApi = {
   login: async (request: LoginRequest): Promise<ApiResponse<TokenResponse>> => {
     return apiClient<ApiResponse<TokenResponse>>(
       buildAuthApiUrl('/api/v1/auth/login'),
+      {
+        method: 'POST',
+        body: request,
+        credentials: 'include',
+      },
+      false,
+      createApiResponseSchema(TokenResponseSchema)
+    );
+  },
+
+  mockLogin: async (request: MockLoginRequest): Promise<ApiResponse<TokenResponse>> => {
+    return apiClient<ApiResponse<TokenResponse>>(
+      buildAuthApiUrl('/api/v1/auth/mock-login'),
       {
         method: 'POST',
         body: request,

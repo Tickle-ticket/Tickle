@@ -4,11 +4,13 @@ import { Modal } from '@/src/shared/components/Modal';
 interface BookingModalsProps {
   isExitModalOpen: boolean;
   isWaitlistCompleteModalOpen: boolean;
+  isTestBookingCompleteModalOpen?: boolean;
   isConflictModalOpen: boolean;
   errorModalConfig: { isOpen: boolean; title: string; message: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean };
   handleCancelExit: () => void;
   handleConfirmExit: () => void;
   handleCloseWaitlistComplete: () => void;
+  handleCloseTestBookingComplete?: () => void;
   handleCloseConflictModal: () => void;
   handleCloseErrorModal: () => void;
 }
@@ -16,11 +18,13 @@ interface BookingModalsProps {
 export const BookingModals: React.FC<BookingModalsProps> = ({
   isExitModalOpen,
   isWaitlistCompleteModalOpen,
+  isTestBookingCompleteModalOpen = false,
   isConflictModalOpen,
   errorModalConfig,
   handleCancelExit,
   handleConfirmExit,
   handleCloseWaitlistComplete,
+  handleCloseTestBookingComplete,
   handleCloseConflictModal,
   handleCloseErrorModal,
 }) => {
@@ -44,6 +48,16 @@ export const BookingModals: React.FC<BookingModalsProps> = ({
         description="해당 좌석에 대한 취소표 대기 신청이 성공적으로 완료되었습니다. 취소표 발생 시 알림을 보내드립니다."
         confirmText="확인"
         onConfirm={handleCloseWaitlistComplete}
+        showCancelButton={false}
+      />
+
+      <Modal
+        isOpen={isTestBookingCompleteModalOpen}
+        onClose={() => {}}
+        title="참여해주셔서 감사합니다"
+        description="예매가 성공적으로 완료되었습니다."
+        confirmText="확인"
+        onConfirm={handleCloseTestBookingComplete}
         showCancelButton={false}
       />
 

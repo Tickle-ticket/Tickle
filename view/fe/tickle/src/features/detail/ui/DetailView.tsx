@@ -26,7 +26,7 @@ import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
-import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { getAccessToken, setAccessToken } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
@@ -34,12 +34,14 @@ import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { leaveQueue } from '@/src/shared/api/queueApi';
 import dynamic from 'next/dynamic';
+import { authApi } from '@/src/shared/api/authApi';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
 import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
 import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
+import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 
 const navItems = [
   { id: 'info', title: '공연 정보' },
@@ -95,6 +97,12 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const isFavorite = activeEventId ? !!wishlistMap[activeEventId] : false;
   const [detailImageFailed, setDetailImageFailed] = useState(false);
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
+  const [isMockLoginOpen, setIsMockLoginOpen] = useState(false);
+  const [mockLoginName, setMockLoginName] = useState('');
+  const [mockLoginPhone, setMockLoginPhone] = useState('');
+  const [mockLoginError, setMockLoginError] = useState('');
+  const [isMockLoginSubmitting, setIsMockLoginSubmitting] = useState(false);
+  const [pendingMockLoginFlow, setPendingMockLoginFlow] = useState<'QUEUE' | 'WAITLIST_QUEUE' | null>(null);
   const queryClient = useQueryClient();
   const [isInvalidAccess, setIsInvalidAccess] = useState(false);
   const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
@@ -203,7 +211,26 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     setFlowState((prev) => (prev === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK'));
   }, []);
 
+  const continueFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
+    // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 지금까지 수집된 DETAIL 데이터 전송
+    finalize();
+
+    flowScopeRef.current = state === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING';
+    setFlowState(state);
+
+    // 뒤로가기 감지를 위해 히스토리 엔트리 추가 (대기열 단계 플래그)
+    currentStepRef.current = 'queue';
+    window.history.pushState({ tickleStep: 'queue' }, '');
+  };
+
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
+    if (!storyMode && !isShadowMode(activeEventId) && state === 'QUEUE' && isMockLoginEvent(activeEventId)) {
+      setPendingMockLoginFlow(state);
+      setMockLoginError('');
+      setIsMockLoginOpen(true);
+      return;
+    }
+
     if (!storyMode && !getAccessToken() && !isShadowMode(activeEventId)) {
       setModalConfig({
         isOpen: true,
@@ -219,15 +246,44 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       return;
     }
 
-    // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 지금까지 수집된 DETAIL 데이터 전송
-    finalize();
+    continueFlowStart(state);
+  };
 
-    flowScopeRef.current = state === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING';
-    setFlowState(state);
+  const handleMockLoginSubmit = async () => {
+    const name = mockLoginName.trim();
+    const phoneNumber = mockLoginPhone.replace(/\D/g, '');
 
-    // 뒤로가기 감지를 위해 히스토리 엔트리 추가 (대기열 단계 플래그)
-    currentStepRef.current = 'queue';
-    window.history.pushState({ tickleStep: 'queue' }, '');
+    if (!name) {
+      setMockLoginError('이름을 입력해주세요.');
+      return;
+    }
+
+    if (!/^010\d{8}$/.test(phoneNumber)) {
+      setMockLoginError('전화번호는 010으로 시작하는 11자리 숫자로 입력해주세요.');
+      return;
+    }
+
+    try {
+      setIsMockLoginSubmitting(true);
+      setMockLoginError('');
+      const response = await authApi.mockLogin({ name, phoneNumber });
+      setAccessToken(response.data.accessToken);
+      await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+
+      const nextFlow = pendingMockLoginFlow;
+      setIsMockLoginOpen(false);
+      setPendingMockLoginFlow(null);
+      setMockLoginName('');
+      setMockLoginPhone('');
+
+      if (nextFlow) {
+        continueFlowStart(nextFlow);
+      }
+    } catch (error: any) {
+      setMockLoginError(error?.message || '목업 로그인에 실패했습니다.');
+    } finally {
+      setIsMockLoginSubmitting(false);
+    }
   };
 
   const flowStateRef = useRef(flowState);
@@ -905,6 +961,58 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         confirmText="나가기"
         showCancelButton={true}
       />
+
+      <Modal
+        isOpen={isMockLoginOpen}
+        onClose={() => {
+          if (isMockLoginSubmitting) return;
+          setIsMockLoginOpen(false);
+          setPendingMockLoginFlow(null);
+          setMockLoginError('');
+        }}
+        onConfirm={handleMockLoginSubmit}
+        title="이벤트 참여용 로그인"
+        description="상품 지급을 위해 이름과 전화번호를 입력해주세요"
+        confirmText="계속하기"
+        cancelText="취소"
+        showCancelButton={true}
+        isLoading={isMockLoginSubmitting}
+        isConfirmDisabled={isMockLoginSubmitting}
+        className="max-w-[360px]"
+      >
+        <div className="w-full flex flex-col gap-3 mt-2 text-left">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-content">
+            이름
+            <input
+              value={mockLoginName}
+              onChange={(e) => setMockLoginName(e.target.value)}
+              className="h-11 rounded-xl border border-line bg-surface px-3 text-[15px] font-medium outline-none focus:border-primary"
+              placeholder="김싸피"
+              maxLength={12}
+              disabled={isMockLoginSubmitting}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-content">
+            전화번호
+            <input
+              value={mockLoginPhone}
+              onChange={(e) => setMockLoginPhone(e.target.value)}
+              className="h-11 rounded-xl border border-line bg-surface px-3 text-[15px] font-medium outline-none focus:border-primary"
+              placeholder="01012345678"
+              inputMode="numeric"
+              disabled={isMockLoginSubmitting}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleMockLoginSubmit();
+                }
+              }}
+            />
+          </label>
+          {mockLoginError && (
+            <p className="text-sm font-medium text-danger">{mockLoginError}</p>
+          )}
+        </div>
+      </Modal>
 
       {/* 에러 모달 */}
       <Modal

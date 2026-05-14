@@ -58,12 +58,36 @@ export const useBookingPreorder = () => {
     }
   };
 
+  const submitMockPreorder = async (
+    eventId: number,
+    sessionId: number,
+    seatIds: number[],
+    optionSelections: { sessionSeatId: number; discountName: string }[]
+  ) => {
+    setIsPreorderLoading(true);
+    try {
+      const response = await bookingApi.mockPreorder({
+        eventId,
+        sessionId,
+        sessionSeatIds: seatIds,
+        optionSelections,
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Mock preorder failed:', err);
+      throw err;
+    } finally {
+      setIsPreorderLoading(false);
+    }
+  };
+
   return {
     optionsData,
     setOptionsData,
     isOptionsLoading,
     fetchOptions,
     submitPreorder,
+    submitMockPreorder,
     isPreorderLoading,
     preorderBookingId,
   };
