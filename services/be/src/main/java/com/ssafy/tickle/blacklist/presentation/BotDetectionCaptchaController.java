@@ -24,11 +24,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/bot-detection")
-public class BotDetectionCaptchaController {
+public class BotDetectionCaptchaController implements BotDetectionCaptchaApiDoc {
 
     private final BotDetectionCaptchaService botDetectionCaptchaService;
 
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Override
     public SseEmitter subscribe(
             @UserId Long userId,
             HttpServletResponse response
@@ -39,6 +40,7 @@ public class BotDetectionCaptchaController {
     }
 
     @PostMapping("/captcha/verify")
+    @Override
     public ResponseEntity<BaseResponse<CaptchaVerificationResponse>> verifyCaptcha(
             @UserId Long userId,
             @Valid @RequestBody CaptchaVerificationRequest request,
