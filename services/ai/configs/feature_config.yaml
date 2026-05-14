@@ -103,11 +103,8 @@ input_features_chan:
   - time_to_first_click_ms
   - time_from_element_visible_to_click_ms
   - time_from_element_clickable_to_click_ms
-  - inter_click_interval_ms
   - click_sequence_consistency_score
   - click_position_repeat_rate
-  - click_offset_from_element_center_px
-  - click_offset_variance_px
   - double_click_rate
   - misclick_rate
   - reclick_rate
@@ -128,7 +125,6 @@ input_features_chan:
   - mouse_hover_dwell_time_ms
   - mouse_stop_segment_count
   - mousemove_event_rate
-  - inter_element_move_interval_std_ms
   - edge_or_fixed_point_visit_rate
   - pre_click_path_300ms_total_distance_px
   - pre_click_path_300ms_straightness
