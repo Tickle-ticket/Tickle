@@ -18,7 +18,7 @@ import { PaymentStep } from './components/PaymentStep';
 import { SeatSelectionPanel } from './components/SeatSelectionPanel';
 import { SeatMapPanel } from './components/SeatMapPanel';
 import { BookingModals } from './components/BookingModals';
-import { isMockBookingCompleteEvent } from '@/src/shared/config/mockEventConfig';
+import { useBookFlowExceptions } from '../hooks/useBookFlowExceptions';
 
 interface BookViewProps {
   onClose: () => void;
@@ -75,7 +75,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const [isBotVerified, setIsBotVerified] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
-  const [isTestBookingCompleteModalOpen, setIsTestBookingCompleteModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
   const [errorModalConfig, setErrorModalConfig] = useState<{ isOpen: boolean, title: string, message: string, onConfirm?: () => void, confirmText?: string, showCancelButton?: boolean }>({ isOpen: false, title: '', message: '' });
@@ -134,6 +133,34 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   useEffect(() => {
     isHoldingSeatRef.current = bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId;
   }, [bookingStep, mode, eventDetail?.eventId, scheduleId]);
+
+  const {
+    handleWaitlistShadowException,
+    handleSeatShadowException,
+    generateStoryModeOptionsData,
+    handleTicketTypeSubmitException,
+    submitButtonText,
+    ExceptionModalsElement
+  } = useBookFlowExceptions({
+    eventId: eventDetail?.eventId || '',
+    storyMode: storyMode || false,
+    isShadowModeActive,
+    seatsData,
+    selectedSeats,
+    getSeatInfo,
+    getDetailedSeatInfo,
+    setErrorModalConfig,
+    setIsWaitlistCompleteModalOpen,
+    setIsConflictModalOpen,
+    setIsHolding,
+    setPreorderBookingId,
+    setBookingStep,
+    onClose,
+    onLeaveQueue,
+    submitMockPreorder,
+    isHoldingSeatRef,
+    onStepChange
+  });
 
   // 브라우저 뒤로가기(popstate)로 인한 단계 변경 감지 및 cleanup
   const prevBookingStepRef = useRef(bookingStep);
@@ -431,17 +458,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         .filter(Boolean) as number[];
 
       if (isWaitlistMode) {
-        if (storyMode || isShadowModeActive) {
-          await finalizeTrial();
-          setIsWaitlistCompleteModalOpen(true);
-        } else {
-          if (!admitToken) {
-            throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
-          }
-          await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
-          await finalizeTrial();
-          setIsWaitlistCompleteModalOpen(true);
+        if (await handleWaitlistShadowException()) return;
+
+        if (!admitToken) {
+          throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
         }
+        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
+        await finalizeTrial();
+        setIsWaitlistCompleteModalOpen(true);
       } else {
         if (sessionSeatIds.length > 0 && !storyMode && !isShadowModeActive) {
           // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
@@ -450,64 +474,13 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           // 선점 성공 시 옵션(권종/할인) 데이터 조회
           await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), sessionSeatIds);
         } else if (sessionSeatIds.length > 0 && (storyMode || isShadowModeActive)) {
-          if (isShadowModeActive) {
-            const hasUnavailableSeat = Array.from(selectedSeats).some(
-              seatId => seatsData[seatId]?.status === 'disabled'
-            );
-
-            if (hasUnavailableSeat) {
-              setErrorModalConfig({
-                isOpen: true,
-                title: '좌석 선점 실패',
-                message: '이미 선점된 좌석입니다. 다른 좌석을 선택해주세요.',
-                confirmText: '확인',
-                onConfirm: () => {
-                  setSelectedSeats(new Set());
-                }
-              });
-              setIsHolding(false);
-              return;
-            }
-
-            await finalizeTrial();
-            setErrorModalConfig({
-              isOpen: true,
-              title: '축하합니다!',
-              message: '커피 쿠폰을 획득하셨습니다.\n실전에서도 좋은 결과가 있길 바랄게요!',
-              confirmText: '확인',
-              onConfirm: () => {
-                onClose();
-              }
-            });
-            setIsHolding(false);
-            return;
-          }
+          if (await handleSeatShadowException()) return;
 
           // storyMode일 경우 가격 옵션 목데이터 주입
-          const mockedSeats = Array.from(selectedSeats).map(seatId => {
-            const { priceGrade, price } = getSeatInfo(seatId);
-            const detailedInfo = getDetailedSeatInfo(seatId);
-            const sessionSeatId = seatsData[seatId]?.sessionSeatId || Math.floor(Math.random() * 1000);
-            
-            return {
-              sessionSeatId,
-              seatLabel: detailedInfo,
-              priceGrade,
-              priceInfos: [
-                { discountName: '일반', discountRate: 0, ticketPriceAmount: price },
-                { discountName: '청소년할인', discountRate: 20, ticketPriceAmount: price * 0.8 },
-                { discountName: '국가유공자할인', discountRate: 50, ticketPriceAmount: price * 0.5 },
-              ]
-            };
-          });
-
-          setOptionsData({
-            eventId: eventDetail.eventId,
-            sessionId: parseInt(scheduleId!, 10),
-            currencyCode: 'KRW',
-            totalTicketPriceAmount: mockedSeats.reduce((sum, s) => sum + s.priceInfos[0].ticketPriceAmount, 0),
-            seats: mockedSeats
-          } as any);
+          const mockedOptionsData = generateStoryModeOptionsData(scheduleId!);
+          if (mockedOptionsData) {
+            setOptionsData(mockedOptionsData as any);
+          }
         }
 
         const gradeCounts: Record<string, number> = {};
@@ -657,7 +630,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
             <TicketTypeStep
               optionsData={optionsData}
               isSubmitting={isPreorderLoading}
-              submitButtonText={isMockBookingCompleteEvent(eventDetail.eventId) ? '참여 완료' : undefined}
+              submitButtonText={submitButtonText}
               onSubmitPreorder={async (seatIds, optionSelections) => {
                 const isShadow = storyMode || isShadowModeActive;
                 const userId = userProfile?.userId;
@@ -673,23 +646,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   return;
                 }
                 try {
-                  if (isMockBookingCompleteEvent(eventDetail.eventId)) {
-                    await submitMockPreorder(
-                      parseInt(eventDetail.eventId, 10),
-                      parseInt(scheduleId!, 10),
-                      seatIds,
-                      optionSelections
-                    );
-                    isHoldingSeatRef.current = false;
-                    onLeaveQueue?.();
-                    setIsTestBookingCompleteModalOpen(true);
-                    return;
-                  }
-
-                  if (storyMode) {
-                    setPreorderBookingId(9999);
-                    setBookingStep('PAYMENT');
-                    onStepChange?.('payment');
+                  if (await handleTicketTypeSubmitException(scheduleId!, seatIds, optionSelections)) {
+                    if (storyMode) onStepChange?.('payment');
                     return;
                   }
 
@@ -771,10 +729,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
 
 
+      {ExceptionModalsElement}
       <BookingModals
         isExitModalOpen={isExitModalOpen}
         isWaitlistCompleteModalOpen={isWaitlistCompleteModalOpen}
-        isTestBookingCompleteModalOpen={isTestBookingCompleteModalOpen}
         isConflictModalOpen={isConflictModalOpen}
         errorModalConfig={errorModalConfig}
         handleCancelExit={handleCancelExit}
@@ -782,10 +740,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         handleCloseWaitlistComplete={() => {
           setIsWaitlistCompleteModalOpen(false);
           onClose(); // DetailView로 복귀
-        }}
-        handleCloseTestBookingComplete={() => {
-          setIsTestBookingCompleteModalOpen(false);
-          onClose();
         }}
         handleCloseConflictModal={() => {
           setIsConflictModalOpen(false);
