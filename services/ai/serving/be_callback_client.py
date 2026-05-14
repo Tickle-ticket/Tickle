@@ -78,6 +78,14 @@ class BeCallbackClient:
             timeout=self.timeout_sec,
         )
 
+        print(
+            f"[ai-worker] BE callback response, "
+            f"record_id={record_id}, "
+            f"label={label}, "
+            f"status={response.status_code}, "
+            f"body={response.text}"
+        )
+
         if response.status_code < 200 or response.status_code >= 300:
             raise RuntimeError(
                 f"BE callback failed, status={response.status_code}, body={response.text}"
