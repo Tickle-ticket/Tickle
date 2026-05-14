@@ -16,7 +16,6 @@ import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoTokenResponse;
 import com.ssafy.tickle.auth.user.infrastructure.oauth.dto.KakaoUserInfoResponse;
 import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
-import com.ssafy.tickle.auth.user.presentation.dto.MockLoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
 import io.jsonwebtoken.Claims;
@@ -470,80 +469,6 @@ class AuthServiceTest {
                     .isInstanceOf(BaseException.class)
                     .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
                             .isEqualTo(AuthErrorCode.INVALID_PASSWORD));
-        }
-    }
-
-    // ── mockLogin ───────────────────────────────────────────────
-    @Nested
-    @DisplayName("목로그인 (mockLogin)")
-    class MockLoginTest {
-
-        private MockLoginRequest mockLoginRequest;
-
-        @BeforeEach
-        void setUp() {
-            mockLoginRequest = new MockLoginRequest(NAME, PHONE);
-        }
-
-        @Test
-        @DisplayName("기존 목로그인 계정이 있으면 회원 생성 없이 토큰을 반환한다")
-        void mockLogin_existingUser_success() {
-            given(authUserRepository.findByEmail("mock_" + PHONE + "@tickle.local")).willReturn(Optional.of(userAuthUser));
-            given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.USER)).willReturn(ACCESS_TOKEN);
-            given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
-            given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
-
-            TokenResult response = authService.mockLogin(mockLoginRequest);
-
-            assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
-            assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
-            verify(authUserRepository, never()).save(any());
-            verify(beInternalClient, never()).createUser(any());
-        }
-
-        @Test
-        @DisplayName("신규 전화번호면 자체 회원과 BE 사용자를 생성하고 토큰을 반환한다")
-        void mockLogin_newUser_success() {
-            given(authUserRepository.findByEmail("mock_" + PHONE + "@tickle.local")).willReturn(Optional.empty());
-            given(passwordEncoder.encode(anyString())).willReturn(ENCODED_PW);
-            given(authUserRepository.save(any(AuthUser.class))).willReturn(userAuthUser);
-            given(beInternalClient.createUser(any(CreateUserRequest.class))).willReturn(new CreateUserResponse(null));
-            given(jwtProvider.issueAccessToken(USER_ID, AuthUser.Role.USER)).willReturn(ACCESS_TOKEN);
-            given(jwtProvider.issueRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
-            given(jwtProvider.getRefreshTokenExpirySeconds()).willReturn(REFRESH_EXPIRY);
-
-            TokenResult response = authService.mockLogin(mockLoginRequest);
-
-            assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
-            assertThat(response.refreshToken()).isEqualTo(REFRESH_TOKEN);
-            verify(beInternalClient).createUser(
-                    argThat(req ->
-                            req.userId().equals(USER_ID) &&
-                            req.email().equals("mock_" + PHONE + "@tickle.local") &&
-                            req.name().equals(NAME) &&
-                            req.nickname().equals(NAME) &&
-                            req.phoneNumber().equals(PHONE) &&
-                            req.role() == AuthUser.Role.USER &&
-                            req.birthDate().equals(java.time.LocalDate.of(2000, 1, 1))
-                    )
-            );
-        }
-
-        @Test
-        @DisplayName("BE 내부 API 호출 실패 시 INTERNAL_SERVER_ERROR 예외를 던진다")
-        void mockLogin_beCallFails_throwsInternalServerError() {
-            given(authUserRepository.findByEmail("mock_" + PHONE + "@tickle.local")).willReturn(Optional.empty());
-            given(passwordEncoder.encode(anyString())).willReturn(ENCODED_PW);
-            given(authUserRepository.save(any(AuthUser.class))).willReturn(userAuthUser);
-            willThrow(new RuntimeException("BE 연결 실패"))
-                    .given(beInternalClient).createUser(any(CreateUserRequest.class));
-
-            assertThatThrownBy(() -> authService.mockLogin(mockLoginRequest))
-                    .isInstanceOf(BaseException.class)
-                    .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
-                            .isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR));
-
-            verify(jwtProvider, never()).issueAccessToken(any(), any());
         }
     }
 

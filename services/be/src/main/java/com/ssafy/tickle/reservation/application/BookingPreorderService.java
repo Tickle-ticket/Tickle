@@ -6,11 +6,7 @@ import com.ssafy.tickle.event.domain.EventPricePolicy;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.payment.config.PaymentConstants;
-import com.ssafy.tickle.payment.domain.Payment;
 import com.ssafy.tickle.payment.domain.PaymentErrorCode;
-import com.ssafy.tickle.payment.domain.PaymentTransaction;
-import com.ssafy.tickle.payment.infrastructure.persistence.PaymentRepository;
-import com.ssafy.tickle.payment.infrastructure.persistence.PaymentTransactionRepository;
 import com.ssafy.tickle.payment.presentation.dto.PaymentOptionSelectionRequest;
 import com.ssafy.tickle.reservation.domain.Booking;
 import com.ssafy.tickle.reservation.domain.BookingTicket;
@@ -50,8 +46,6 @@ public class BookingPreorderService {
     private final SeatHoldKeyStore seatHoldKeyStore;
     private final BookingRepository bookingRepository;
     private final BookingTicketRepository bookingTicketRepository;
-    private final PaymentRepository paymentRepository;
-    private final PaymentTransactionRepository paymentTransactionRepository;
 
     /**
      * 좌석과 권종 선택값을 기반으로 예매 초안을 생성합니다.
@@ -98,55 +92,6 @@ public class BookingPreorderService {
         }
 
         return createPreorder(user, session, seats, selectionBySeatId, holdExpiresAt(session.getId(), user.getId()));
-    }
-
-    /**
-     * 테스트용 목 예매 API입니다.
-     *
-     * <p>좌석 hold 정합성을 검증하지 않고 권종 선택 요청만으로 예매, 티켓, 결제, 좌석을 모두 완료 처리합니다.</p>
-     *
-     * @param userId 사용자 식별자
-     * @param request 예매 목 완료 요청
-     * @return 완료 처리된 예매 응답
-     */
-    @Transactional
-    public BookingPreorderResponse mockPreorder(Long userId, BookingPreorderRequest request) {
-        EventSession session = getSession(request.eventId(), request.sessionId());
-        User user = getUser(userId);
-        List<Long> seatIds = request.sessionSeatIds();
-
-        validateSeatIds(seatIds);
-        validateOptionSelections(seatIds, request.optionSelections());
-
-        List<SessionSeat> seats = sessionSeatRepository.findAllWithPricePolicyBySessionIdAndIdIn(session.getId(), seatIds);
-        validateSeatCount(seatIds, seats);
-
-        Map<Long, PaymentOptionSelectionRequest> selectionBySeatId = request.optionSelections().stream()
-                .collect(Collectors.toMap(
-                        PaymentOptionSelectionRequest::sessionSeatId,
-                        selection -> selection
-                ));
-
-        BookingPreorderResponse response = createPreorder(
-                user,
-                session,
-                seats,
-                selectionBySeatId,
-                holdExpiresAtOrNow(session.getId(), user.getId())
-        );
-        Booking booking = bookingRepository.findById(response.bookingId())
-                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "생성된 예매를 찾을 수 없습니다."));
-        List<BookingTicket> tickets = bookingTicketRepository.findByBookingId(booking.getId());
-
-        completeMockBooking(booking, tickets, seats);
-        seatHoldKeyStore.deleteHeld(session.getId(), user.getId());
-
-        return BookingPreorderResponse.from(
-                booking,
-                tickets,
-                getDiscountNameBySeatId(selectionBySeatId),
-                holdExpiresAtOrNow(session.getId(), user.getId())
-        );
     }
 
     /**
@@ -501,55 +446,4 @@ public class BookingPreorderService {
         }
     }
 
-    /**
-     * 조회된 좌석 개수가 요청 좌석 개수와 일치하는지 검증합니다.
-     *
-     * @param seatIds 요청 좌석 ID 목록
-     * @param seats DB에서 조회한 좌석 목록
-     */
-    private void validateSeatCount(List<Long> seatIds, List<SessionSeat> seats) {
-        if (seats.size() != seatIds.size()) {
-            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "요청한 좌석을 모두 찾을 수 없습니다.");
-        }
-    }
-
-    /**
-     * 테스트용 목 예매의 모든 상태를 결제 완료 기준으로 전환합니다.
-     *
-     * @param booking 완료 처리할 예매
-     * @param tickets 완료 처리할 티켓 목록
-     * @param seats 완료 처리할 좌석 목록
-     */
-    private void completeMockBooking(Booking booking, List<BookingTicket> tickets, List<SessionSeat> seats) {
-        booking.confirm();
-        tickets.forEach(BookingTicket::confirmBooking);
-        seats.forEach(SessionSeat::confirmBookingForMock);
-
-        Payment payment = Payment.readyKakaoPay(
-                booking,
-                booking.getTotalPaymentAmount(),
-                PaymentConstants.CURRENCY_KRW,
-                "MOCK"
-        );
-        payment.recordProviderTransactionId("mock-" + UUID.randomUUID());
-        payment.approve(booking.getTotalPaymentAmount());
-        paymentRepository.save(payment);
-        paymentTransactionRepository.save(PaymentTransaction.succeededApprove(
-                payment,
-                payment.getProviderTransactionId(),
-                "mock-approval-" + UUID.randomUUID(),
-                "{\"mock\":true}"
-        ));
-    }
-
-    /**
-     * Redis hold 만료 시각을 조회하되, 없으면 현재 시각을 반환합니다.
-     *
-     * @param sessionId 회차 식별자
-     * @param userId 사용자 식별자
-     * @return hold 만료 시각 또는 현재 시각
-     */
-    private Instant holdExpiresAtOrNow(Long sessionId, Long userId) {
-        return seatHoldKeyStore.getHeldExpiresAt(sessionId, userId).orElseGet(Instant::now);
-    }
 }

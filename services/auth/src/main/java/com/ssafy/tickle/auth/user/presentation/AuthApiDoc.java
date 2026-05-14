@@ -73,21 +73,6 @@ public interface AuthApiDoc {
     );
 
     /**
-     * 목로그인 API 문서 정의입니다.
-     */
-    @Operation(
-            summary = "목로그인",
-            description = "이름과 전화번호만으로 자체 회원을 생성하거나 기존 전화번호 계정으로 로그인한다. 성공 시 실제 자체 로그인과 동일하게 Access Token은 응답 Body, Refresh Token은 HttpOnly Cookie로 발급."
-    )
-    @ApiResponse(responseCode = "200", description = "목로그인 성공")
-    @ApiResponse(responseCode = "400", description = "유효성 검증 실패")
-    ResponseEntity<BaseResponse<AccessTokenResponse>> mockLogin(
-            @Valid @RequestBody MockLoginRequest request
-    );
-
-
-
-    /**
      * Kakao OAuth 로그인(토큰 발급) API 문서 정의입니다.
      */
     @Operation(

@@ -40,7 +40,6 @@ public class SecurityConfig {
                                 "/api/v1/auth/admin/signup",
                                 "/api/v1/auth/signup",
                                 "/api/v1/auth/login",
-                                "/api/v1/auth/mock-login",
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/reissue",
                                 "/api/v1/auth/kakao",

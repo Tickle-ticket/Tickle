@@ -42,23 +42,4 @@ public interface BookingPreorderApiDoc {
             @Valid @RequestBody BookingPreorderRequest request
     );
 
-    @Operation(
-            summary = "테스트용 목 예매 완료",
-            description = """
-                    테스트용으로 권종 선택 요청만 받아 예매, 티켓, 결제, 좌석 상태를 모두 완료 처리합니다.
-
-                    - 좌석 hold 정합성은 검증하지 않습니다.
-                    - 예매는 CONFIRMED, 티켓은 BOOKED, 결제는 APPROVED, 좌석은 CONFIRMED로 처리합니다.
-                    - 운영 결제 플로우를 우회하는 목 API입니다.
-                    """
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "목 예매 완료 성공"),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 권종 선택"),
-            @ApiResponse(responseCode = "404", description = "공연/회차/사용자/좌석을 찾을 수 없음")
-    })
-    ResponseEntity<BaseResponse<BookingPreorderResponse>> mockPreorder(
-            @Parameter(description = "JWT에서 추출한 사용자 식별자", required = true, example = "1") @UserId Long userId,
-            @Valid @RequestBody BookingPreorderRequest request
-    );
 }
