@@ -10,7 +10,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 어드민 블랙리스트 API 문서 인터페이스입니다.
@@ -88,4 +90,22 @@ public interface AdminBlacklistApiDoc {
     )
     @ApiResponse(responseCode = "200", description = "대시보드 조회 성공")
     ResponseEntity<BaseResponse<BlacklistDashboardResponse>> getDashboard();
+
+    /**
+     * 블랙리스트 목록 실시간 구독 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "블랙리스트 목록 구독 (SSE)",
+            description = "30초마다 블랙리스트 최신 1페이지를 push합니다."
+    )
+    SseEmitter subscribeBlacklist(HttpServletResponse response);
+
+    /**
+     * 봇 탐지 현황 대시보드 실시간 구독 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "봇 탐지 현황 대시보드 구독 (SSE)",
+            description = "10초마다 봇 탐지 현황 대시보드 데이터를 push합니다."
+    )
+    SseEmitter subscribeDashboard(HttpServletResponse response);
 }

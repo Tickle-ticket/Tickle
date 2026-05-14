@@ -7,8 +7,11 @@ import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.blacklist.application.AdminBlacklistDashboardService;
 import com.ssafy.tickle.blacklist.presentation.dto.BlacklistDashboardResponse;
+import com.ssafy.tickle.common.sse.AdminSseEmitterStore;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +21,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 
 /**
  * 어드민 블랙리스트 관리 API를 제공하는 컨트롤러입니다.
@@ -29,6 +35,7 @@ public class AdminBlacklistController implements AdminBlacklistApiDoc {
 
     private final BlacklistService blacklistService;
     private final AdminBlacklistDashboardService adminBlacklistDashboardService;
+    private final AdminSseEmitterStore adminSseEmitterStore;
 
     /**
      * 블랙리스트 목록을 페이지네이션하여 조회합니다.
@@ -90,5 +97,53 @@ public class AdminBlacklistController implements AdminBlacklistApiDoc {
         return ResponseEntity
                 .ok()
                 .body(BaseResponse.success(adminBlacklistDashboardService.getDashboard()));
+    }
+
+    /**
+     * 블랙리스트 목록을 SSE로 구독합니다.
+     */
+    @Override
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribeBlacklist(HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
+
+        SseEmitter emitter = new SseEmitter(AdminSseEmitterStore.EMITTER_TIMEOUT_MS);
+        adminSseEmitterStore.add(AdminSseEmitterStore.TOPIC_BLACKLIST_LIST, emitter);
+
+        try {
+            // 연결 즉시 1페이지 1회 전송
+            emitter.send(SseEmitter.event()
+                    .name("blacklist.list")
+                    .data(blacklistService.getBlacklist(0, 20), MediaType.APPLICATION_JSON));
+        } catch (IOException e) {
+            adminSseEmitterStore.remove(AdminSseEmitterStore.TOPIC_BLACKLIST_LIST, emitter);
+        }
+
+        return emitter;
+    }
+
+    /**
+     * 블랙리스트 대시보드를 SSE로 구독합니다.
+     */
+    @Override
+    @GetMapping(value = "/dashboard/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribeDashboard(HttpServletResponse response) {
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
+
+        SseEmitter emitter = new SseEmitter(AdminSseEmitterStore.EMITTER_TIMEOUT_MS);
+        adminSseEmitterStore.add(AdminSseEmitterStore.TOPIC_BLACKLIST_DASHBOARD, emitter);
+
+        try {
+            // 연결 즉시 현재 대시보드 1회 전송
+            emitter.send(SseEmitter.event()
+                    .name("blacklist.dashboard")
+                    .data(adminBlacklistDashboardService.getDashboard(), MediaType.APPLICATION_JSON));
+        } catch (IOException e) {
+            adminSseEmitterStore.remove(AdminSseEmitterStore.TOPIC_BLACKLIST_DASHBOARD, emitter);
+        }
+
+        return emitter;
     }
 }
