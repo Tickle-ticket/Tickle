@@ -36,6 +36,9 @@ python export_postgres_behavior_data.py --from-db-id <마지막_db_id>
 # docker-compose에서 쓰는 .env 파일 지정(기본값: services/ai/docker/.env)
 python export_postgres_behavior_data.py --env-file ../docker/.env --from-db-id 0
 
+python export_postgres_behavior_data.py --table behavior_feature_records_gt --from-db-id 0
+
+
 # 이번 실행에서 1000건만
 python export_postgres_behavior_data.py --from-db-id 0 --limit 1000
 ```
