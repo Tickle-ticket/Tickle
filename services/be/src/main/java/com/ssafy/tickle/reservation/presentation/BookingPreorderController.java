@@ -4,6 +4,7 @@ import com.ssafy.tickle.common.auth.UserId;
 import com.ssafy.tickle.common.exception.code.SuccessCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.reservation.application.BookingPreorderService;
+import com.ssafy.tickle.reservation.presentation.dto.BookingMockPreorderResponse;
 import com.ssafy.tickle.reservation.presentation.dto.BookingPreorderRequest;
 import com.ssafy.tickle.reservation.presentation.dto.BookingPreorderResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,4 +38,14 @@ public class BookingPreorderController implements BookingPreorderApiDoc {
         );
     }
 
+    @Override
+    @PostMapping("/bookings/preorder/mock")
+    public ResponseEntity<BaseResponse<BookingMockPreorderResponse>> mockPreorder(
+            @UserId Long userId,
+            @Valid @RequestBody BookingPreorderRequest request
+    ) {
+        return ResponseEntity.ok(
+                BaseResponse.success(SuccessCode.OK, bookingPreorderService.mockPreorder(userId, request))
+        );
+    }
 }
