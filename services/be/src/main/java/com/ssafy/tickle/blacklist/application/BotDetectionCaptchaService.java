@@ -94,12 +94,7 @@ public class BotDetectionCaptchaService {
      */
     private void sendCaptchaResult(Long userId, CaptchaBlockMessage message) {
         List<SseEmitter> emitters = sseEmitterRepository.findByUserId(userId);
-        log.info(
-                "[BotDetectionSSE] send captcha: userId={}, result={}, count={}",
-                userId,
-                message.result(),
-                emitters.size()
-        );
+        log.info("[BotDetectionSSE] send captcha: userId={}, result={}, count={}", userId, message.result(), emitters.size());
         for (SseEmitter emitter : emitters) {
             try {
                 emitter.send(SseEmitter.event()

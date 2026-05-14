@@ -3,16 +3,13 @@ package com.ssafy.tickle.common.exception;
 import com.ssafy.tickle.common.exception.code.ErrorCode;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -76,22 +73,6 @@ public class GlobalExceptionHandler {
                         GlobalErrorCode.METHOD_NOT_ALLOWED.getStatus(),
                         GlobalErrorCode.METHOD_NOT_ALLOWED.getMessage()
                 ));
-    }
-
-    /**
-     * SSE 등 비동기 요청 타임아웃은 응답 본문 없이 종료합니다.
-     */
-    @ExceptionHandler(AsyncRequestTimeoutException.class)
-    protected ResponseEntity<Void> handleAsyncRequestTimeoutException(
-            AsyncRequestTimeoutException exception,
-            HttpServletRequest request
-    ) {
-        log.info(
-                "handleAsyncRequestTimeoutException: method={}, uri={}",
-                request.getMethod(),
-                request.getRequestURI()
-        );
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
     /**

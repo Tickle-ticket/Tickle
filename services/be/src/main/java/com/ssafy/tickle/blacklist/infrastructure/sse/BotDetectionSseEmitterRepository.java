@@ -39,11 +39,7 @@ public class BotDetectionSseEmitterRepository {
             remove(userId, emitter);
         });
 
-        log.info(
-                "[BotDetectionSSE] subscribe: userId={}, count={}",
-                userId,
-                userEmitters.size()
-        );
+        log.info("[BotDetectionSSE] subscribe: userId={}, count={}", userId, userEmitters.size());
         return emitter;
     }
 
@@ -66,11 +62,6 @@ public class BotDetectionSseEmitterRepository {
                 emitters.remove(userId, userEmitters);
             }
         }
-        log.debug(
-                "[BotDetectionSSE] remove: userId={}, removed={}, remaining={}",
-                userId,
-                removed,
-                remainingCount
-        );
+        log.debug("[BotDetectionSSE] remove: userId={}, removed={}, remaining={}", userId, removed, remainingCount);
     }
 }
