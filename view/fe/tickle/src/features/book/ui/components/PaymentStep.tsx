@@ -484,7 +484,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       <button
         onClick={() => {
           if (bookingStep === 'PAYMENT') {
-            onCancel();
+            setBookingStep('TICKET_TYPE');
           } else {
             setBookingStep('PAYMENT');
           }

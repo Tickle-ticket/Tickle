@@ -28,7 +28,7 @@ export const drawSeat = ({
   isHovered = false,
 }: DrawSeatOptions) => {
   const isSelectable = status === 'selectable';
-  const effectiveIsSelected = isSelectable && isSelected;
+  const effectiveIsSelected = isSelected;
 
   const maxOffset = 6;
   const offset = effectiveIsSelected ? 2 : maxOffset;
@@ -61,8 +61,8 @@ export const drawSeat = ({
   const baseY = y + padding + maxOffset + hoverOffset;
   const topY = y + padding + (maxOffset - offset) + hoverOffset;
 
-  // 비활성화 좌석 처리 (투명도)
-  if (!isSelectable) {
+  // 비활성화 좌석 처리 (투명도, 단 선택된 좌석은 제외)
+  if (!isSelectable && !effectiveIsSelected) {
     ctx.globalAlpha = 0.5;
   }
 
@@ -120,11 +120,10 @@ export const getSeatColors = (status: SeatStatus, color: SeatColor, isSelected: 
     });
   }
 
-  const isSelectable = status === 'selectable';
-  const activeColorKey = !isSelectable
-    ? 'disabled'
-    : (isSelectable && isSelected)
-      ? 'selected'
+  const activeColorKey = isSelected
+    ? 'selected'
+    : status !== 'selectable'
+      ? 'disabled'
       : color || 'blue';
 
   return colorCache[activeColorKey] || { top: '#60a5fa', side: '#3b82f6' };

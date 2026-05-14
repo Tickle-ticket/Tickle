@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchEventList } from '@/src/shared/api/eventApi';
+import { fetchEventList, fetchCategories } from '@/src/shared/api/eventApi';
 
 export interface SearchPerformance {
   id: string;
@@ -19,7 +19,19 @@ export const useSearchData = (query: string) => {
       
       const params: any = { size: 20, page: 0 };
       if (query !== '전체') {
-        params.keyword = query;
+        try {
+          const categoryRes = await fetchCategories();
+          const matchedCategory = categoryRes.data?.categories?.find(c => c.categoryName === query);
+          
+          if (matchedCategory) {
+            params.categoryId = matchedCategory.categoryId;
+          } else {
+            params.keyword = query;
+          }
+        } catch (error) {
+          // 에러 발생 시 fallback으로 키워드 검색 사용
+          params.keyword = query;
+        }
       }
       
       const res = await fetchEventList(params);
