@@ -49,7 +49,7 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
 
         Long userId;
         try {
-            userId = jwtProvider.extractUserIdFromRequest(request).orElse(null);
+            userId = resolveAdminUserId(request);
         } catch (BaseException e) {
             log.warn("관리자 인증 실패 - 유효하지 않은 토큰: uri={}", request.getRequestURI());
             return writeForbidden(response, "관리자 인증이 필요합니다.");
@@ -72,6 +72,17 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         }
 
         return true;
+    }
+
+    private Long resolveAdminUserId(HttpServletRequest request) {
+        String token = jwtProvider.resolveToken(request);
+        if (token == null) {
+            token = request.getParameter("token");
+        }
+        if (token == null) {
+            return null;
+        }
+        return jwtProvider.extractUserId(token);
     }
 
     /**

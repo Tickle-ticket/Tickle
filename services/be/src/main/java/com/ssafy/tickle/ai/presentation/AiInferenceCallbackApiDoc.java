@@ -53,7 +53,7 @@ public interface AiInferenceCallbackApiDoc {
     ResponseEntity<BaseResponse<Void>> receiveInferenceResult(
             @RequestHeader("X-Internal-Secret") String internalSecret,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @Valid @RequestBody AiInferenceCallbackRequest request
     );
 }

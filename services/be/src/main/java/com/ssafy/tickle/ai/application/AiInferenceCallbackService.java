@@ -1,6 +1,7 @@
 package com.ssafy.tickle.ai.application;
 
 import com.ssafy.tickle.ai.presentation.dto.AiInferenceCallbackRequest;
+import com.ssafy.tickle.auth.domain.AuthErrorCode;
 import com.ssafy.tickle.blacklist.application.BotDetectionCaptchaService;
 import com.ssafy.tickle.blacklist.application.BlacklistService;
 import com.ssafy.tickle.blacklist.infrastructure.cache.BotDetectionCaptchaRecordStore;
@@ -37,6 +38,9 @@ public class AiInferenceCallbackService {
      */
     @Transactional
     public void receive(String authorization, AiInferenceCallbackRequest request) {
+        if (authorization == null || authorization.isBlank()) {
+            throw new BaseException(AuthErrorCode.MISSING_TOKEN);
+        }
         Long targetUserId = jwtProvider.extractUserId(authorization);
 
         // result 가 block 이 아니면 조용히 무시
