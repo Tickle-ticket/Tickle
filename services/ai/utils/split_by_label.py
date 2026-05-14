@@ -207,11 +207,20 @@ def main() -> None:
     parser.add_argument("--output-root", default=None, help="Output root directory. Defaults to input parent for directories.")
     parser.add_argument("--dataset-prefix", default=None, help="Prefix such as data_g2. Defaults to derived value.")
     parser.add_argument("--label-key", default="label", help="Record field used as label.")
+    parser.add_argument(
+        "--labels",
+        default="human,macro,allow,block",
+        help="Comma-separated label list to split. Default: human,macro,allow,block",
+    )
     parser.add_argument("--format", choices=("json", "jsonl"), default="json", help="Output file format.")
     parser.add_argument("--include-empty", action="store_true", help="Also write empty files for labels with no records.")
     parser.add_argument("--skip-unknown-labels", action="store_true", help="Ignore records with unknown labels.")
     parser.add_argument("--no-overwrite", action="store_true", help="Fail if a copied output file already exists.")
     args = parser.parse_args()
+
+    labels = tuple(label.strip().lower() for label in (args.labels or "").split(",") if label.strip())
+    if not labels:
+        raise ValueError("--labels must include at least one label")
 
     if Path(args.input).is_dir():
         output_paths = split_json_directory_by_label(
@@ -219,6 +228,7 @@ def main() -> None:
             args.output_root,
             dataset_prefix=args.dataset_prefix,
             label_key=args.label_key,
+            labels=labels,
             strict=not args.skip_unknown_labels,
             overwrite=not args.no_overwrite,
         )
@@ -235,6 +245,7 @@ def main() -> None:
         args.output_root,
         dataset_prefix=args.dataset_prefix,
         label_key=args.label_key,
+        labels=labels,
         output_format=args.format,
         include_empty=args.include_empty,
         strict=not args.skip_unknown_labels,
