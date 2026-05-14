@@ -446,4 +446,16 @@ public class BookingPreorderService {
         }
     }
 
+    /**
+     * 조회된 좌석 개수가 요청 좌석 개수와 일치하는지 검증합니다.
+     *
+     * @param seatIds 요청 좌석 ID 목록
+     * @param seats DB에서 조회한 좌석 목록
+     */
+    private void validateSeatCount(List<Long> seatIds, List<SessionSeat> seats) {
+        if (seats.size() != seatIds.size()) {
+            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "요청한 좌석을 모두 찾을 수 없습니다.");
+        }
+    }
+
 }
