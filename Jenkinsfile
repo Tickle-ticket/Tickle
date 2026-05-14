@@ -3,6 +3,8 @@ pipeline {
     agent any
 
     environment {
+        BUILD_BE   = 'true'
+        BUILD_AUTH = 'true'
         MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
     }
 
@@ -19,6 +21,7 @@ pipeline {
 
         stage('Detect Changes') {
             steps {
+                echo '===== [2/4] 변경된 서비스 감지 시작 ====='
                 script {
                     def changes = sh(
                         script: "git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD",
@@ -27,16 +30,8 @@ pipeline {
 
                     echo "변경된 파일 목록:\n${changes}"
 
-                    def isBe = changes.contains('services/be/') || changes.contains('infra/docker-compose/server1-main.yml')
-                    def isAuth = changes.contains('services/auth/') || changes.contains('infra/docker-compose/server4-auth.yml')
-        
-                    if (changes.contains('Jenkinsfile') || changes.isEmpty()) {
-                        echo "Jenkinsfile 변경 또는 변경사항 없음 → 강제 BE 배포"
-                        isBe = true
-                    }
-
-                    env.BUILD_BE = isBe ? 'true' : 'false'
-                    env.BUILD_AUTH = isAuth ? 'true' : 'false'
+                    env.BUILD_BE   = changes.contains('services/be/')   ? 'true' : 'false'
+                    env.BUILD_AUTH = changes.contains('services/auth/') ? 'true' : 'false'
 
                     echo "BE 배포 필요: ${env.BUILD_BE}"
                     echo "Auth 배포 필요: ${env.BUILD_AUTH}"
@@ -60,22 +55,15 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER1_IP} '
                                         set -e
-                                        source ~/.bashrc 2>/dev/null || true
+                                        echo "[BE] GitLab Registry 로그인"
+                                        docker login registry.lab.ssafy.com -u ${GITLAB_USER} -p ${GITLAB_PASS}
                                         echo "[BE] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
-                                        git checkout develop-be
-                                        git reset --hard origin/develop-be
-                                        echo "[BE] Gradle 애플리케이션 빌드"
-                                        cd services/be
-                                        chmod +x gradlew
-                                        ./gradlew clean build -x test
-                                        cd ../..
-                                        echo "[BE] 컨테이너 재시작 및 로컬 빌드"
+                                        git checkout be-feat-449
+                                        git reset --hard origin/be-feat-449
                                         docker compose --env-file .env -f infra/docker-compose/server1-main.yml up -d --build be
                                         echo "[BE] 배포 완료"
-                                        echo "[BE] 사용하지 않는 구버전 도커 이미지 정리"
-                                        docker image prune -f
                                     '
                                 """
                             }
@@ -97,22 +85,20 @@ pipeline {
                                 sh """
                                     ssh -o StrictHostKeyChecking=no ubuntu@${SERVER4_IP} '
                                         set -e
-                                        source ~/.bashrc 2>/dev/null || true
+                                        echo "[Auth] GitLab Registry 로그인"
+                                        docker login registry.lab.ssafy.com -u ${GITLAB_USER} -p ${GITLAB_PASS}
                                         echo "[Auth] 코드 최신화"
                                         cd ~/S14P31A203
                                         git fetch origin
-                                        git checkout develop-be
-                                        git reset --hard origin/develop-be
-                                        echo "[Auth] Gradle 애플리케이션 빌드"
-                                        cd services/auth
-                                        chmod +x gradlew
-                                        ./gradlew clean build -x test
-                                        cd ../..
-                                        echo "[Auth] 컨테이너 재시작 및 로컬 빌드"
-                                        docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d --build auth
+                                        git checkout be-feat-449
+                                        git pull origin be-feat-449
+                                        echo "[Auth] Docker 이미지 빌드 및 push"
+                                        docker build -t ${REGISTRY}/auth:latest ./services/auth
+                                        docker push ${REGISTRY}/auth:latest
+                                        echo "[Auth] 컨테이너 재시작"
+                                        docker compose --env-file .env -f infra/docker-compose/server4-auth.yml pull auth
+                                        docker compose --env-file .env -f infra/docker-compose/server4-auth.yml up -d auth
                                         echo "[Auth] 배포 완료"
-                                        echo "[Auth] 사용하지 않는 구버전 도커 이미지 정리"
-                                        docker image prune -f
                                     '
                                 """
                             }
