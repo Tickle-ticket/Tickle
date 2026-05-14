@@ -210,6 +210,27 @@ body {
   animation: dot-bounce 1s infinite ease-in-out;
 }
 
+/* 버튼 활성화 시 빨간 테두리 회전 애니메이션 */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes borderSpin {
+  0% { --border-angle: 0deg; }
+  100% { --border-angle: 360deg; }
+}
+
+.border-spin-overlay {
+  background: conic-gradient(from var(--border-angle), transparent 60%, #e11d48 80%, transparent 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 3px;
+  animation: borderSpin 1.5s linear forwards;
+}
+
 /* Seat Grade Badge Utilities */
 .grade-badge-vip {
   background-color: var(--badge-vip-bg);

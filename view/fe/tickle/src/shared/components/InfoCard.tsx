@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { InfoPoster } from './InfoPoster';
@@ -37,6 +37,26 @@ export const InfoCard = React.memo(({
 }: InfoCardProps) => {
 
   const [showLottie, setShowLottie] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+
+  // showTime이 켜져있고 targetDate가 있으면 만료 여부를 1초마다 체크
+  useEffect(() => {
+    if (!showTime || !targetDate) return;
+    
+    const check = () => {
+      const now = Date.now();
+      const target = new Date(targetDate).getTime();
+      if (now >= target) {
+        setIsExpired(true);
+      }
+    };
+    check();
+    const timer = setInterval(check, 1000);
+    return () => clearInterval(timer);
+  }, [showTime, targetDate]);
+
+  // 카운트다운이 끝나면 disabled를 해제
+  const effectiveDisabled = isExpired ? false : disabled;
 
   // 요구사항에 맞춰 뱃지는 최대 3개까지만 렌더링되게 방어 설계
   const displayBadges = badges.slice(0, 3);
@@ -59,7 +79,7 @@ export const InfoCard = React.memo(({
           <InfoPoster
             src={src}
             alt={alt}
-            disabled={disabled}
+            disabled={effectiveDisabled}
             isLoading={isLoading}
             priority={priority}
           />

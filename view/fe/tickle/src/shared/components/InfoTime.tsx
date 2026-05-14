@@ -11,6 +11,11 @@ const flipStyles = `
     0% { transform: rotateX(90deg); }
     100% { transform: rotateX(0deg); }
   }
+  @keyframes giantPop {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
   .animate-flipTop {
     animation: flipTop 0.25s ease-in forwards;
     backface-visibility: hidden;
@@ -21,6 +26,9 @@ const flipStyles = `
     transform: rotateX(90deg);
     backface-visibility: hidden;
     transform-style: preserve-3d;
+  }
+  .animate-giantPop {
+    animation: giantPop 0.4s ease-out forwards;
   }
 `;
 
@@ -151,10 +159,36 @@ export const InfoTime = ({ targetDate, className = '', isLoading = false }: Info
 
   if (isLoading) return null;
 
+  let isTenMinutesOrLess = false;
+  let giantNumberStr = "";
+
+  if (parts.length === 3) {
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    const seconds = parseInt(parts[2], 10);
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    
+    if (totalSeconds <= 10 && totalSeconds > 0) {
+      isTenMinutesOrLess = true;
+      giantNumberStr = totalSeconds.toString();
+    }
+  }
+
   return (
     <>
       <style>{flipStyles}</style>
-      <div className={`inline-flex items-center bg-content pt-1.5 pb-4 px-1.5 md:pt-2 md:pb-[20px] md:px-2 rounded-lg shadow-[0_8px_16px_rgba(0,0,0,0.8)] border border-line-strong/50 ${className}`}>
+
+      {/* 10분 카운트다운 거대 숫자 (플립 시계 뒤에 배경처럼 나타남) */}
+      {isTenMinutesOrLess && (
+        <div key={`giant-${giantNumberStr}`} className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+          <span className="text-white text-[160px] md:text-[200px] font-black tracking-tighter drop-shadow-[0_0_40px_rgba(255,255,255,0.8)] animate-giantPop">
+            {giantNumberStr}
+          </span>
+        </div>
+      )}
+
+      {!isTenMinutesOrLess && (
+      <div className={`inline-flex items-center bg-content pt-1.5 pb-4 px-1.5 md:pt-2 md:pb-[20px] md:px-2 rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.9)] border border-line-strong/50 relative z-10 ${className}`}>
         <div className="flex items-center">
           {hasColon ? (
             parts.map((part, index) => (
@@ -190,6 +224,7 @@ export const InfoTime = ({ targetDate, className = '', isLoading = false }: Info
           )}
         </div>
       </div>
+      )}
     </>
   );
 };

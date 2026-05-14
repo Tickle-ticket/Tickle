@@ -17,7 +17,7 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
   useEffect(() => {
     const calculateTimeLeft = () => {
       const difference = new Date(targetDate).getTime() - new Date().getTime();
-      
+
       if (difference <= 0) {
         if (onExpire) onExpire();
         return { days: 0, hours: 0, minutes: 0, seconds: 0 };
@@ -43,10 +43,28 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
   const pad = (num: number) => String(num).padStart(2, '0');
 
   if (variant === 'compact') {
-    return (
-      <span className="font-mono font-bold tracking-normal text-[14px] whitespace-nowrap">
+    const totalSeconds = timeLeft.days * 86400 + timeLeft.hours * 3600 + timeLeft.minutes * 60 + timeLeft.seconds;
+    
+    // 0초가 되면 타이머 자체를 숨김
+    if (totalSeconds <= 0) return null;
+    
+    const isWarning = totalSeconds <= 900;
+
+    const timeString = (
+      <>
         {timeLeft.days > 0 ? <span className="mr-1">{timeLeft.days}일</span> : null}
         {pad(timeLeft.hours)} : {pad(timeLeft.minutes)} : {pad(timeLeft.seconds)}
+      </>
+    );
+
+    return (
+      <span className="font-mono font-bold tracking-normal text-[14px] whitespace-nowrap relative">
+        <span className={isWarning ? 'invisible' : ''}>{timeString}</span>
+        {isWarning && (
+          <span className="absolute -top-[3px] -bottom-[3px] -left-[9px] -right-[9px] bg-danger text-white flex items-center justify-center rounded-md z-20 border border-danger">
+            {timeString}
+          </span>
+        )}
       </span>
     );
   }
