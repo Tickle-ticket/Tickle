@@ -73,21 +73,18 @@ export const useBotDetectionSSE = ({
     }
 
     setStatus('connecting');
-    console.log(`[BotDetection SSE] 연결 시도 → ${url.replace(/token=[^&]+/, 'token=***')}`);
 
     const es = new EventSource(url);
     eventSourceRef.current = es;
 
     es.onopen = () => {
       setStatus('connected');
-      console.log('[BotDetection SSE] ✅ Connected');
     };
 
     // `captcha` named event 리스너
     es.addEventListener('captcha', (event: MessageEvent) => {
       try {
         const data: CaptchaEventData = JSON.parse(event.data);
-        console.log('[BotDetection SSE] 📩 captcha 이벤트 수신:', data.result);
         setLastResult(data.result);
 
         switch (data.result) {

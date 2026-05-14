@@ -27,7 +27,6 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
       eventSource.onopen = () => {
         setIsConnected(true);
         setError(null);
-        console.log(`[SSE] Connected to ${url}`);
       };
 
       eventSource.onmessage = (event) => {

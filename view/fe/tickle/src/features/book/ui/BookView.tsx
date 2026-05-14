@@ -515,7 +515,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     return (
       <CaptchaStep
         onSuccess={(token) => {
-          console.log('Bot verified!', token);
           setIsBotVerified(true);
           onStepChange?.('seat');
         }}
