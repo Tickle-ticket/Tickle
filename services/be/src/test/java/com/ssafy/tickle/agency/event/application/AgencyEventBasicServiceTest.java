@@ -167,7 +167,7 @@ class AgencyEventBasicServiceTest {
     }
 
     @Test
-    @DisplayName("공연 시작 시각이 종료 시각보다 늦으면 예외가 발생한다")
+    @DisplayName("공연 시작 시각이 종료 시각보다 늦으면 예외가 발생한다.")
     void createBasicEvent_invalidTimeline() {
         AgencyCreateEventBasicRequest request = new AgencyCreateEventBasicRequest(
                 venue.getId(),
