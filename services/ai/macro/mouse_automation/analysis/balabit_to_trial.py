@@ -36,110 +36,12 @@ import pandas as pd
 import yaml
 
 from macro.mouse_automation.analysis.jsonl_to_trial import (
+    DOM_FEATURE_UNAVAILABLE,
+    OS_LEVEL_SUBSTITUTES,
     _add_nx_ny,
+    extract_metrics,
     validate_meta,
 )
-
-
-# === 7 feature 계산식 (vendored) ===
-# 출처: stash@{0}^3 services/ai/macro/mouse_automation/analysis/jsonl_to_trial.py
-# 정본 단일 출처: 144 의 jsonl_to_trial.py (현재 미커밋, ai-feat-294 stash)
-# TODO(refactor): 144 머지 시 본 인라인 블록 제거하고
-#                 from .jsonl_to_trial import extract_metrics 직접 호출로 교체.
-
-def _angle(dx: float, dy: float) -> float:
-    return math.atan2(dy, dx)
-
-
-def _build_segments(moves: list[dict]) -> list[dict]:
-    """mouse_move 이벤트 리스트 -> segment 리스트.
-
-    chunk 의 첫 mouse_move 는 dx/dy/dt_ms/speed 가 없어 segment 카운트에서 제외됨
-    (chan core.js 대비 segment 1개 적음 - 의도된 trade-off, lv2 와 동일).
-    """
-    segments: list[dict] = []
-    for m in moves:
-        dx = m.get("dx")
-        dy = m.get("dy")
-        dt = m.get("dt_ms")
-        speed = m.get("speed")
-        if dx is None or dy is None or dt is None or dt <= 0:
-            continue
-        dist = math.sqrt(dx * dx + dy * dy)
-        segments.append({
-            "dt": dt,
-            "dist": dist,
-            "speed": speed if speed is not None else (dist / dt),
-            "angle": _angle(dx, dy),
-        })
-    return segments
-
-
-def extract_seven_features(events: list[dict]) -> dict:
-    """우리 학습 7 feature 산출.
-
-    호출측이 events 의 mouse_move 항목에 사전계산된 dx/dy/dt_ms/speed 를
-    EventLogger 와 동일 형식으로 박아넣어야 함 (compute_deltas 참조).
-    """
-    out = {
-        "inter_click_interval_ms": None,
-        "mouse_total_travel_distance_px": None,
-        "mouse_avg_speed_px_per_ms": None,
-        "mouse_max_speed_px_per_ms": None,
-        "mouse_speed_change_mean": None,
-        "mouse_acceleration_mean": None,
-        "mouse_path_curvature_mean": None,
-    }
-    if not events:
-        return out
-
-    moves = [e for e in events if e.get("event") == "mouse_move"]
-    clicks = [e for e in events if e.get("event") == "mouse_click"]
-    segments = _build_segments(moves)
-    duration_ms = float(events[-1]["ts_ms"]) - float(events[0]["ts_ms"])
-
-    if len(clicks) >= 2:
-        intervals = [
-            float(clicks[i + 1]["ts_ms"]) - float(clicks[i]["ts_ms"])
-            for i in range(len(clicks) - 1)
-        ]
-        out["inter_click_interval_ms"] = round(mean(intervals), 3)
-
-    total_travel = sum(s["dist"] for s in segments)
-    out["mouse_total_travel_distance_px"] = round(total_travel, 3)
-
-    if duration_ms > 0:
-        out["mouse_avg_speed_px_per_ms"] = round(total_travel / duration_ms, 6)
-
-    if segments:
-        out["mouse_max_speed_px_per_ms"] = round(max(s["speed"] for s in segments), 6)
-
-    speed_changes: list[float] = []
-    accelerations: list[float] = []
-    direction_changes: list[float] = []
-    next_segments: list[dict] = []
-    for i in range(1, len(segments)):
-        prev = segments[i - 1]
-        nxt = segments[i]
-        speed_delta = abs(nxt["speed"] - prev["speed"])
-        speed_changes.append(speed_delta)
-        accelerations.append(speed_delta / max(nxt["dt"], 1))
-        angle_delta = abs(nxt["angle"] - prev["angle"])
-        direction_changes.append(min(angle_delta, 2 * math.pi - angle_delta))
-        next_segments.append(nxt)
-
-    if speed_changes:
-        out["mouse_speed_change_mean"] = round(mean(speed_changes), 6)
-    if accelerations:
-        out["mouse_acceleration_mean"] = round(mean(accelerations), 6)
-    if direction_changes:
-        curvatures = [
-            direction_changes[i] / max(next_segments[i]["dist"], 1)
-            for i in range(len(direction_changes))
-        ]
-        out["mouse_path_curvature_mean"] = round(mean(curvatures), 6)
-
-    return out
 
 
 # === 상수 ===
@@ -345,14 +247,15 @@ def build_trial(
       - root: coord_domain, screen_width, screen_height, algorithm_type, user_id
       - eventRows[*]: nx, ny (mouse_* 이벤트만, screen_width null 이므로 모두 null)
     """
+    screen_width: int | None = None
+    screen_height: int | None = None
+
     metrics: dict = {f: None for f in all_features}
-    metrics.update(extract_seven_features(events))
+    metrics.update(extract_metrics(events, all_features, screen_width, screen_height))
 
     duration_ms = (events[-1]["ts_ms"] - events[0]["ts_ms"]) if len(events) >= 2 else 0.0
     click_count = sum(1 for e in events if e.get("event") == "mouse_click")
 
-    screen_width: int | None = None
-    screen_height: int | None = None
     user_id = f"balabit_{user_name}"
 
     event_rows = [_add_nx_ny(dict(e), screen_width, screen_height) for e in events]
@@ -372,7 +275,17 @@ def build_trial(
             "durationMs": round(float(duration_ms), 3),
             "clickCount": click_count,
             "eventCount": len(events),
-            "metrics_compatibility": {},
+            # OS-level 호환성 메타. jsonl_to_trial 와 동일 구조 (단일 출처):
+            # - dom_feature_unavailable: 7개 (DOM 필수 6개 + click_sequence_consistency_score)
+            # - os_level_substitute: chan 과 정의 다른 5개
+            # - pre_click_scroll_flag: Balabit CSV 의 scroll state 는 DROP_STATES 로 drop
+            # - edge_or_fixed_point_visit_rate: RDP 환경, screen_width=None
+            "metrics_compatibility": {
+                "dom_feature_unavailable": list(DOM_FEATURE_UNAVAILABLE),
+                **OS_LEVEL_SUBSTITUTES,
+                "pre_click_scroll_flag": "dataset_unavailable",
+                "edge_or_fixed_point_visit_rate": "screen_dim_missing",
+            },
         },
         "metrics": metrics,
         "eventRows": event_rows,
