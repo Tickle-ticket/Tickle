@@ -62,6 +62,7 @@ public class AiInferenceCallbackService {
         Double botScore = request.pMacro() != null ? request.pMacro().doubleValue() : null;
         blacklistService.addFromAiResult(targetUserId, botScore, request.description());
 
+        // CAPTCHA verify에서 동일 사용자의 recordId인지 검증할 수 있도록 pending key를 남깁니다.
         boolean saved = botDetectionCaptchaRecordStore.save(targetUserId, request.recordId());
         if (!saved) {
             throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "CAPTCHA 검증 recordId 저장에 실패했습니다.");
@@ -70,6 +71,13 @@ public class AiInferenceCallbackService {
         botDetectionCaptchaService.sendRetryCaptcha(targetUserId, request.recordId());
     }
 
+    /**
+     * AI callback의 accessToken 또는 호환용 userId query parameter에서 판정 대상 사용자를 식별합니다.
+     *
+     * @param userId  호환용 query parameter 사용자 식별자
+     * @param request AI 추론 결과 콜백 요청
+     * @return 판정 대상 사용자 식별자
+     */
     private Long resolveUserId(Long userId, AiInferenceCallbackRequest request) {
         if (request.accessToken() != null && !request.accessToken().isBlank()) {
             return jwtProvider.extractUserId(request.accessToken());

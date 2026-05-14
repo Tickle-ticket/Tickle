@@ -21,6 +21,14 @@ public class AiCaptchaVerificationResultClient {
         this.aiRestClient = aiRestClient;
     }
 
+    /**
+     * AI 서버에 CAPTCHA 추가 검증 결과를 전송합니다.
+     *
+     * <p>이 전송은 사용자의 CAPTCHA 처리 결과를 AI 서버 기록에 보강하기 위한 best-effort 호출입니다.
+     * 실패하더라도 BE의 blacklist 해제/유지 흐름은 롤백하지 않습니다.</p>
+     *
+     * @param request AI 서버에 전달할 CAPTCHA 추가 검증 결과
+     */
     public void send(AiCaptchaVerificationResultRequest request) {
         try {
             aiRestClient.post()

@@ -28,6 +28,13 @@ public class BotDetectionCaptchaController implements BotDetectionCaptchaApiDoc 
 
     private final BotDetectionCaptchaService botDetectionCaptchaService;
 
+    /**
+     * 봇 탐지 CAPTCHA 상태를 수신할 SSE 연결을 등록합니다.
+     *
+     * @param userId   JWT에서 추출한 사용자 식별자
+     * @param response SSE 프록시 버퍼링 방지 헤더를 설정할 HTTP 응답
+     * @return CAPTCHA 상태 SSE emitter
+     */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Override
     public SseEmitter subscribe(
@@ -39,6 +46,14 @@ public class BotDetectionCaptchaController implements BotDetectionCaptchaApiDoc 
         return botDetectionCaptchaService.subscribe(userId);
     }
 
+    /**
+     * FE가 전달한 Cloudflare CAPTCHA 결과를 검증합니다.
+     *
+     * @param userId             JWT에서 추출한 사용자 식별자
+     * @param request            CAPTCHA 검증 요청
+     * @param httpServletRequest 클라이언트 IP 확인용 HTTP 요청
+     * @return CAPTCHA 검증 처리 결과
+     */
     @PostMapping("/captcha/verify")
     @Override
     public ResponseEntity<BaseResponse<CaptchaVerificationResponse>> verifyCaptcha(

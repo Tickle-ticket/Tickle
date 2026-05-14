@@ -21,6 +21,13 @@ public class BotDetectionCaptchaRecordStore {
 
     private final StringRedisTemplate stringRedisTemplate;
 
+    /**
+     * CAPTCHA 추가 검증 대상 recordId를 사용자 단위 pending key로 저장합니다.
+     *
+     * @param userId   CAPTCHA 재검증 대상 사용자 식별자
+     * @param recordId AI 서버의 1차 봇 판별 결과 식별자
+     * @return Redis 저장 성공 여부
+     */
     public boolean save(Long userId, String recordId) {
         String key = key(userId, recordId);
         try {
@@ -32,6 +39,13 @@ public class BotDetectionCaptchaRecordStore {
         }
     }
 
+    /**
+     * 사용자와 recordId 조합의 pending key가 존재하는지 확인합니다.
+     *
+     * @param userId   CAPTCHA 검증 요청 사용자 식별자
+     * @param recordId FE가 SSE에서 전달받아 검증 요청에 포함한 recordId
+     * @return pending key 존재 여부
+     */
     public boolean exists(Long userId, String recordId) {
         String key = key(userId, recordId);
         try {
@@ -42,6 +56,12 @@ public class BotDetectionCaptchaRecordStore {
         }
     }
 
+    /**
+     * CAPTCHA 추가 검증이 끝난 pending key를 삭제합니다.
+     *
+     * @param userId   CAPTCHA 검증 요청 사용자 식별자
+     * @param recordId AI 서버의 1차 봇 판별 결과 식별자
+     */
     public void delete(Long userId, String recordId) {
         String key = key(userId, recordId);
         try {
@@ -51,6 +71,13 @@ public class BotDetectionCaptchaRecordStore {
         }
     }
 
+    /**
+     * 다른 사용자의 recordId 재사용을 막기 위해 userId와 recordId를 함께 key로 구성합니다.
+     *
+     * @param userId   사용자 식별자
+     * @param recordId AI 서버의 1차 봇 판별 결과 식별자
+     * @return Redis key
+     */
     private String key(Long userId, String recordId) {
         return KEY_PREFIX + userId + ":" + recordId;
     }
