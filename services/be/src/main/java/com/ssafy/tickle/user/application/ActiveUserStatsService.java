@@ -35,12 +35,16 @@ public class ActiveUserStatsService {
     /**
      * 오늘 기준 실시간 접속 통계를 반환합니다.
      *
+     * <p>피크/평균은 스케줄러 스냅샷을 기반으로 하되, 현재 값보다 낮아지지 않도록 보정합니다.</p>
+     *
      * @return 현재/피크/평균 접속자 수
      */
     public ActiveUserStatsResponse getStats() {
         long current = getCurrentCount();
-        long peak = getPeakCount();
-        long average = getAverageCount();
+        // 피크: 저장된 값과 현재 중 큰 값 (스케줄러 미실행 시에도 정확)
+        long peak = Math.max(getPeakCount(), current);
+        // 평균: 현재 관측값 포함하여 계산 (스케줄러 미실행 시 current 자체가 평균)
+        long average = getAverageCountWithCurrent(current);
         return new ActiveUserStatsResponse(current, peak, average);
     }
 
@@ -81,25 +85,25 @@ public class ActiveUserStatsService {
     }
 
     /**
-     * 오늘의 평균 접속자 수를 반환합니다.
+     * 현재 관측값을 포함한 오늘의 평균 접속자 수를 반환합니다.
      *
-     * <p>5분 주기 스케줄러가 쌓은 스냅샷 합계 ÷ 스냅샷 횟수로 계산합니다.</p>
+     * <p>스케줄러가 한 번도 실행되지 않았을 경우(sum=0, count=0) {@code current} 자체를 평균으로 반환합니다.</p>
+     *
+     * @param current 현재 활성 접속자 수
      */
-    public long getAverageCount() {
+    public long getAverageCountWithCurrent(long current) {
         String sumKey = buildSnapshotSumKey();
         String countKey = buildSnapshotCountKey();
         try {
             String sumStr = redisTemplate.opsForValue().get(sumKey);
             String countStr = redisTemplate.opsForValue().get(countKey);
-            if (sumStr == null || countStr == null) {
-                return 0L;
-            }
-            long sum = Long.parseLong(sumStr);
-            long count = Long.parseLong(countStr);
-            return count > 0 ? sum / count : 0L;
+            long sum = sumStr != null ? Long.parseLong(sumStr) : 0L;
+            long count = countStr != null ? Long.parseLong(countStr) : 0L;
+            // 현재 관측값을 포함해서 (sum + current) / (count + 1)
+            return (sum + current) / (count + 1);
         } catch (Exception e) {
             log.warn("평균 접속자 수 조회 실패: {}", e.getMessage());
-            return 0L;
+            return current;
         }
     }
 
