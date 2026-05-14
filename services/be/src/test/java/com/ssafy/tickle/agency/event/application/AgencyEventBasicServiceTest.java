@@ -127,7 +127,7 @@ class AgencyEventBasicServiceTest {
     }
 
     @Test
-    @DisplayName("공연 기본정보를 등록하면 공연이 저장된다")
+    @DisplayName("공연 기본정보를 등록하면 공연이 저장된다.")
     void createBasicEvent_success() {
         AgencyCreateEventBasicRequest request = new AgencyCreateEventBasicRequest(
                 venue.getId(),
