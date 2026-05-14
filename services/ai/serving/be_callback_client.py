@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
 
@@ -10,7 +9,6 @@ BE_BOT_DETECTION_RESULT_URL = os.getenv("BE_BOT_DETECTION_RESULT_URL", "")
 BE_CALLBACK_TIMEOUT_SEC = float(os.getenv("BE_CALLBACK_TIMEOUT_SEC", "2.0"))
 BE_INTERNAL_SERVICE_TOKEN = os.getenv("BE_INTERNAL_SERVICE_TOKEN", "")
 BE_INTERNAL_SECRET = os.getenv("BE_INTERNAL_SECRET", "")
-BE_CALLBACK_USER_ID = os.getenv("BE_CALLBACK_USER_ID", "1001")
 
 
 class BeCallbackClient:
@@ -55,8 +53,6 @@ class BeCallbackClient:
         if request_id:
             headers["X-Request-Id"] = request_id
 
-        target_url = add_query_param(self.result_url, "userId", str(BE_CALLBACK_USER_ID))
-
         body = {
             "recordId": record_id,
             "result": str(label).upper(),
@@ -72,7 +68,7 @@ class BeCallbackClient:
         }
 
         response = requests.post(
-            target_url,
+            self.result_url,
             headers=headers,
             json=body,
             timeout=self.timeout_sec,
@@ -100,10 +96,3 @@ def create_be_callback_client() -> BeCallbackClient:
         timeout_sec=BE_CALLBACK_TIMEOUT_SEC,
         internal_service_token=BE_INTERNAL_SERVICE_TOKEN,
     )
-
-
-def add_query_param(url: str, key: str, value: str) -> str:
-    parts = urlsplit(url)
-    query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    query[key] = value
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
