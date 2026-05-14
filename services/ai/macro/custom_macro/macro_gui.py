@@ -45,6 +45,13 @@ DEFAULT_DATA = {
         "between_event_range_sec": [0.05, 0.05],
         "mouse_steps_range": [3, 3],
         "window_topmost": False,
+        "cv_fail_refresh": False,
+        "cv_retry_max": 1,
+        "cv_retry_interval_sec": 0.15,
+        "cv_refresh_press_enter": True,
+        "cv_refresh_restart_run": True,
+        "cv_refresh_restart_max": 5,
+        "stop_hotkey": "esc",
     },
     "security": {
         "mode": "manual",
@@ -197,6 +204,13 @@ def ensure_data_shape(data):
     runtime.setdefault("between_event_range_sec", [runtime.get("between_event_sec", 0.05), runtime.get("between_event_sec", 0.05)])
     runtime.setdefault("mouse_steps_range", [runtime.get("mouse_steps", 3), runtime.get("mouse_steps", 3)])
     runtime.setdefault("window_topmost", False)
+    runtime.setdefault("cv_fail_refresh", False)
+    runtime.setdefault("cv_retry_max", 1)
+    runtime.setdefault("cv_retry_interval_sec", 0.15)
+    runtime.setdefault("cv_refresh_press_enter", True)
+    runtime.setdefault("cv_refresh_restart_run", True)
+    runtime.setdefault("cv_refresh_restart_max", 5)
+    runtime.setdefault("stop_hotkey", "esc")
 
     security = data["security"]
     security.setdefault("mode", "manual")
@@ -679,7 +693,7 @@ class EventDialog(tk.Toplevel):
         _toggle_seat_controls()
 
         tk.Button(
-            self,
+            root,
             text="저장",
             padx=24,
             pady=7,
@@ -687,7 +701,7 @@ class EventDialog(tk.Toplevel):
             command=self._save
         ).grid(row=8, column=0, columnspan=2, pady=12)
 
-        normalize_button_colors(self)
+        normalize_button_colors(root)
 
     def _start_wheel_pick(self):
         """
@@ -854,6 +868,61 @@ class RuntimeTab(tk.Frame):
         self.ms_min_var = tk.StringVar(value=str(ms_lo))
         self.ms_max_var = tk.StringVar(value=str(ms_hi))
 
+        # CV error handling
+        self.cv_fail_refresh_var = tk.BooleanVar(value=bool(runtime.get("cv_fail_refresh", False)))
+        self.cv_retry_max_var = tk.StringVar(value=str(runtime.get("cv_retry_max", 1)))
+        self.cv_retry_interval_var = tk.StringVar(value=str(runtime.get("cv_retry_interval_sec", 0.15)))
+        self.cv_refresh_enter_var = tk.BooleanVar(value=bool(runtime.get("cv_refresh_press_enter", True)))
+        self.cv_refresh_restart_run_var = tk.BooleanVar(value=bool(runtime.get("cv_refresh_restart_run", True)))
+        self.cv_refresh_restart_max_var = tk.StringVar(value=str(runtime.get("cv_refresh_restart_max", 5)))
+        self.stop_hotkey_var = tk.StringVar(value=str(runtime.get("stop_hotkey", "esc")))
+
+        # Runtime tab has many rows; make it scrollable so controls don't get cut off.
+        container = tk.Frame(self, bg=bg)
+        container.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(container, bg=bg, highlightthickness=0)
+        vscroll = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vscroll.set)
+
+        vscroll.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        root = tk.Frame(canvas, bg=bg)
+        window_id = canvas.create_window((0, 0), window=root, anchor="nw")
+
+        def _on_canvas_configure(evt):
+            try:
+                canvas.itemconfigure(window_id, width=evt.width)
+            except Exception:
+                pass
+
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _on_configure(_evt=None):
+            try:
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+
+        root.bind("<Configure>", _on_configure)
+
+        def _on_mousewheel(evt):
+            try:
+                canvas.yview_scroll(int(-1 * (evt.delta / 120)), "units")
+                return "break"
+            except Exception:
+                return None
+
+        def _bind_wheel(_evt):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _unbind_wheel(_evt):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", _bind_wheel)
+        canvas.bind("<Leave>", _unbind_wheel)
+
         rows = [
             ("마우스 이동 시간, 초", self.click_duration_var),
             ("클릭 간격, 초", self.between_click_var),
@@ -864,7 +933,7 @@ class RuntimeTab(tk.Frame):
 
         for row, (label_text, var) in enumerate(rows):
             tk.Label(
-                self,
+                root,
                 text=label_text,
                 bg=bg,
                 fg=fg,
@@ -874,7 +943,7 @@ class RuntimeTab(tk.Frame):
             width = 28 if label_text == "OCR 서버 URL" else 14
 
             tk.Entry(
-                self,
+                root,
                 textvariable=var,
                 bg=ent,
                 fg=fg,
@@ -885,7 +954,7 @@ class RuntimeTab(tk.Frame):
             ).grid(row=row, column=1, sticky="w", padx=12, pady=8)
 
         tk.Checkbutton(
-            self,
+            root,
             text="Retina 스케일 보정 사용",
             variable=self.retina_var,
             bg=bg,
@@ -897,7 +966,7 @@ class RuntimeTab(tk.Frame):
         ).grid(row=5, column=0, columnspan=2, sticky="w", padx=12, pady=8)
 
         tk.Button(
-            self,
+            root,
             text="속도 파라미터 저장",
             padx=18,
             pady=8,
@@ -907,7 +976,7 @@ class RuntimeTab(tk.Frame):
 
         # Randomization controls (English labels to avoid encoding issues)
         tk.Label(
-            self,
+            root,
             text="Randomization (optional)",
             bg=bg,
             fg="#f9fafb",
@@ -915,7 +984,7 @@ class RuntimeTab(tk.Frame):
         ).grid(row=7, column=0, columnspan=2, sticky="w", padx=14, pady=(10, 6))
 
         tk.Checkbutton(
-            self,
+            root,
             text="Enable range randomization",
             variable=self.randomize_enabled_var,
             bg=bg,
@@ -927,11 +996,11 @@ class RuntimeTab(tk.Frame):
         ).grid(row=8, column=0, columnspan=2, sticky="w", padx=12, pady=6)
 
         def entry_row(row, label_text, var, width=18):
-            tk.Label(self, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
+            tk.Label(root, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
                 row=row, column=0, sticky="e", padx=12, pady=6
             )
             tk.Entry(
-                self,
+                root,
                 textvariable=var,
                 bg=ent,
                 fg=fg,
@@ -946,10 +1015,10 @@ class RuntimeTab(tk.Frame):
         entry_row(11, "Between runs (sec)", self.between_runs_var, width=12)
 
         def minmax_row(row, label_text, vmin, vmax):
-            tk.Label(self, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
+            tk.Label(root, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
                 row=row, column=0, sticky="e", padx=12, pady=6
             )
-            mm = tk.Frame(self, bg=bg)
+            mm = tk.Frame(root, bg=bg)
             mm.grid(row=row, column=1, sticky="w", padx=12, pady=6)
             tk.Entry(mm, textvariable=vmin, bg=ent, fg=fg, insertbackground=fg, relief="flat", width=10, font=("Consolas", 10)).pack(side="left")
             tk.Label(mm, text=" ~ ", bg=bg, fg=fg, font=("Consolas", 10)).pack(side="left")
@@ -959,6 +1028,97 @@ class RuntimeTab(tk.Frame):
         minmax_row(13, "between_click_sec range", self.bc_min_var, self.bc_max_var)
         minmax_row(14, "between_event_sec range", self.be_min_var, self.be_max_var)
         minmax_row(15, "mouse_steps range", self.ms_min_var, self.ms_max_var)
+
+        tk.Label(
+            root,
+            text="CV Security (optional)",
+            bg=bg,
+            fg="#f9fafb",
+            font=("Malgun Gothic", 11, "bold"),
+        ).grid(row=16, column=0, columnspan=2, sticky="w", padx=14, pady=(12, 6))
+
+        tk.Checkbutton(
+            root,
+            text="On CV error: press F5 and continue",
+            variable=self.cv_fail_refresh_var,
+            bg=bg,
+            fg=fg,
+            selectcolor=ent,
+            activebackground=bg,
+            activeforeground=fg,
+            font=("Malgun Gothic", 10),
+        ).grid(row=17, column=0, columnspan=2, sticky="w", padx=12, pady=6)
+
+        tk.Checkbutton(
+            root,
+            text="After F5: press Enter",
+            variable=self.cv_refresh_enter_var,
+            bg=bg,
+            fg=fg,
+            selectcolor=ent,
+            activebackground=bg,
+            activeforeground=fg,
+            font=("Malgun Gothic", 10),
+        ).grid(row=18, column=0, columnspan=2, sticky="w", padx=32, pady=4)
+
+        tk.Checkbutton(
+            root,
+            text="After refresh: restart current run from step 1",
+            variable=self.cv_refresh_restart_run_var,
+            bg=bg,
+            fg=fg,
+            selectcolor=ent,
+            activebackground=bg,
+            activeforeground=fg,
+            font=("Malgun Gothic", 10),
+        ).grid(row=19, column=0, columnspan=2, sticky="w", padx=32, pady=4)
+
+        def entry_row_simple(row, label_text, var, width=14):
+            tk.Label(root, text=label_text, bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
+                row=row, column=0, sticky="e", padx=12, pady=6
+            )
+            tk.Entry(
+                root,
+                textvariable=var,
+                bg=ent,
+                fg=fg,
+                insertbackground=fg,
+                relief="flat",
+                width=width,
+                font=("Consolas", 10),
+            ).grid(row=row, column=1, sticky="w", padx=12, pady=6)
+
+        entry_row_simple(20, "cv_retry_max", self.cv_retry_max_var, width=10)
+        entry_row_simple(21, "cv_retry_interval_sec", self.cv_retry_interval_var, width=10)
+        entry_row_simple(22, "cv_refresh_restart_max", self.cv_refresh_restart_max_var, width=10)
+
+        tk.Label(
+            root,
+            text="Hotkeys (optional)",
+            bg=bg,
+            fg="#f9fafb",
+            font=("Malgun Gothic", 11, "bold"),
+        ).grid(row=23, column=0, columnspan=2, sticky="w", padx=14, pady=(12, 6))
+
+        tk.Label(root, text="Stop hotkey", bg=bg, fg=fg, font=("Malgun Gothic", 10)).grid(
+            row=24, column=0, sticky="e", padx=12, pady=6
+        )
+        ttk.Combobox(
+            root,
+            textvariable=self.stop_hotkey_var,
+            values=["esc", "f12", "f11", "pause"],
+            width=12,
+            state="readonly",
+        ).grid(row=24, column=1, sticky="w", padx=12, pady=6)
+
+        tk.Button(
+            root,
+            text="Save (runtime)",
+            padx=18,
+            pady=8,
+            font=("Malgun Gothic", 10, "bold"),
+            command=self.save_runtime,
+        ).grid(row=25, column=0, columnspan=2, padx=12, pady=14)
 
         normalize_button_colors(self)
 
@@ -990,6 +1150,13 @@ class RuntimeTab(tk.Frame):
                 "between_click_range_sec": [bc_lo, bc_hi],
                 "between_event_range_sec": [be_lo, be_hi],
                 "mouse_steps_range": [ms_lo, ms_hi],
+                "cv_fail_refresh": bool(self.cv_fail_refresh_var.get()),
+                "cv_retry_max": int(float(self.cv_retry_max_var.get() or 1)),
+                "cv_retry_interval_sec": float(self.cv_retry_interval_var.get() or 0.15),
+                "cv_refresh_press_enter": bool(self.cv_refresh_enter_var.get()),
+                "cv_refresh_restart_run": bool(self.cv_refresh_restart_run_var.get()),
+                "cv_refresh_restart_max": int(float(self.cv_refresh_restart_max_var.get() or 5)),
+                "stop_hotkey": (self.stop_hotkey_var.get() or "esc").strip().lower(),
             })
 
             save_data(self.data)
@@ -1193,6 +1360,7 @@ class SecurityTab(tk.Frame):
         bg = "#1e1e2e"
         fg = "#cdd6f4"
         ent = "#313244"
+        root = self
 
         security = self.data.setdefault("security", {})
 
@@ -1374,7 +1542,7 @@ class SecurityTab(tk.Frame):
         ).pack(side="left")
 
         tk.Button(
-            self,
+            root,
             text="보안 인증 설정 저장",
             padx=20,
             pady=9,
@@ -2127,8 +2295,12 @@ class MacroTab(tk.Frame):
                     repeat_runs = 1
                     between_runs_sec = 0.0
 
+                # Flatten runs into a single plan, but keep run start indices so we can
+                # restart the current run after certain failures (e.g. cv_security refresh).
                 events_plan = []
+                run_start_indices = []
                 for run_idx in range(repeat_runs):
+                    run_start_indices.append(len(events_plan))
                     events_plan.extend(events)
                     if between_runs_sec > 0 and run_idx != repeat_runs - 1:
                         events_plan.append({
@@ -2139,13 +2311,27 @@ class MacroTab(tk.Frame):
 
                 total_events = max(1, len(events_plan))
 
-                for i, event in enumerate(events_plan, start=1):
+                def _current_run_start(pos: int) -> int:
+                    start = 0
+                    for s in run_start_indices:
+                        if s <= pos:
+                            start = s
+                        else:
+                            break
+                    return start
+
+                refresh_restart_counts = {}
+
+                pos = 0
+                while pos < len(events_plan):
                     if not _running:
                         break
 
                     # Sample runtime per event (if randomize_enabled is False, this is fixed).
                     runtime = sample_runtime(self.data, rng)
 
+                    event = events_plan[pos]
+                    i = pos + 1
                     event_type = event.get("type")
                     memo = event.get("memo", "")
 
@@ -2274,14 +2460,75 @@ class MacroTab(tk.Frame):
                             )
 
                     elif event_type == "cv_security":
-                        # CV solver is fully separate from OCR. If it fails, we raise and stop.
-                        capture_screen(SCREENSHOT_PATH)
-                        result = request_cv_security_challenge(
-                            image_path=SCREENSHOT_PATH,
-                            server_url=ocr_server_url,
-                            security_config=security_config,
-                            timeout_sec=15,
-                        )
+                        cv_retry_max = int(base_runtime_raw.get("cv_retry_max", 1) or 1)
+                        cv_retry_max = max(1, min(cv_retry_max, 10))
+                        cv_retry_interval = float(base_runtime_raw.get("cv_retry_interval_sec", 0.15) or 0.15)
+                        cv_retry_interval = max(0.0, min(cv_retry_interval, 5.0))
+
+                        last_error = None
+                        result = None
+
+                        for attempt in range(1, cv_retry_max + 1):
+                            if not _running:
+                                break
+                            try:
+                                capture_screen(SCREENSHOT_PATH)
+                                result = request_cv_security_challenge(
+                                    image_path=SCREENSHOT_PATH,
+                                    server_url=ocr_server_url,
+                                    security_config=security_config,
+                                    timeout_sec=15,
+                                )
+                                last_error = None
+                                break
+                            except Exception as error:
+                                last_error = error
+                                result = None
+                                print(f"[cv_security] attempt {attempt}/{cv_retry_max} failed: {error}")
+                                if attempt != cv_retry_max and cv_retry_interval > 0:
+                                    time.sleep(cv_retry_interval)
+
+                        if result is None:
+                            if bool(base_runtime_raw.get("cv_fail_refresh", False)):
+                                self.after(0, self.status_cb, f"[{i}/{total_events}] cv_security failed -> F5 refresh and continue")
+                                try:
+                                    pyautogui.press("f5")
+                                    if bool(base_runtime_raw.get("cv_refresh_press_enter", True)):
+                                        time.sleep(0.05)
+                                        pyautogui.press("enter")
+                                except Exception:
+                                    pass
+
+                                try:
+                                    roi_box = union_boxes(
+                                        security_config.get("order_box"),
+                                        security_config.get("keypad_box"),
+                                    )
+                                    wait_until_screen_changed(
+                                        timeout_sec=15.0,
+                                        interval_sec=0.25,
+                                        change_ratio_threshold=0.015,
+                                        roi_box=roi_box,
+                                    )
+                                except Exception:
+                                    pass
+
+                                if bool(base_runtime_raw.get("cv_refresh_restart_run", True)):
+                                    run_start = _current_run_start(pos)
+                                    refresh_restart_counts.setdefault(run_start, 0)
+                                    refresh_restart_counts[run_start] += 1
+                                    limit = int(base_runtime_raw.get("cv_refresh_restart_max", 5) or 5)
+                                    limit = max(1, min(limit, 50))
+                                    if refresh_restart_counts[run_start] > limit:
+                                        raise RuntimeError(f"cv_security refresh restart exceeded limit={limit}")
+                                    pos = run_start
+                                    continue
+
+                                # Otherwise, continue with the next event after refresh.
+                                pos += 1
+                                continue
+
+                            raise RuntimeError(f"cv_security failed after {cv_retry_max} attempts: {last_error}")
 
                         sequence = result["sequence"]
                         buttons = result["buttons"]
@@ -2340,6 +2587,7 @@ class MacroTab(tk.Frame):
                         raise ValueError(f"알 수 없는 이벤트 타입입니다: {event_type}")
 
                     time.sleep(runtime.between_event_sec)
+                    pos += 1
 
                 self.after(0, self.status_cb, "매크로 완료")
 
@@ -2517,7 +2765,8 @@ class MacroApp(tk.Tk):
             except Exception:
                 return
 
-            if name == "esc":
+            stop_hotkey = str(self.data.get("runtime", {}).get("stop_hotkey", "esc") or "esc").strip().lower()
+            if name == stop_hotkey:
                 stop_all()
                 self.after(0, self.set_status, "ESC, 긴급 중단")
                 return
