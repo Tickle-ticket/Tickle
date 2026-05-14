@@ -215,7 +215,7 @@ class AgencyEventBasicServiceTest {
     }
 
     @Test
-    @DisplayName("공연 가격정책을 등록하면 가격 정책이 저장된다")
+    @DisplayName("공연 가격정책을 등록하면 가격 정책이 저장된다.")
     void createPricePolicies_success() {
         Event event = eventRepository.save(createEvent("가격 정책 공연"));
 
