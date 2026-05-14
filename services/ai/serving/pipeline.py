@@ -110,6 +110,7 @@ def send_be_callbacks(
             be_callback_client.send_result(
                 access_token=result.item.access_token,
                 request_id=result.item.request_id,
+                record_id=result.record_id,
                 payload=result.item.payload,
                 label=result.label,
                 p_macro=result.p_macro,

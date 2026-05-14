@@ -32,6 +32,7 @@ class BeCallbackClient:
         *,
         access_token: str | None,
         request_id: str | None,
+        record_id: str,
         payload: dict[str, Any],
         label: str,
         p_macro: float,
@@ -57,6 +58,7 @@ class BeCallbackClient:
         target_url = add_query_param(self.result_url, "userId", str(BE_CALLBACK_USER_ID))
 
         body = {
+            "recordId": record_id,
             "result": str(label).upper(),
             "type": payload.get("type"),
             "scheduleId": payload.get("scheduleId") or payload.get("schedule_id"),
