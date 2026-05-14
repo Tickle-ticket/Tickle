@@ -103,7 +103,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [showCaptchaOverlay, setShowCaptchaOverlay] = useState(false);
   const [captchaDenied, setCaptchaDenied] = useState(false);
 
-  const { status: sseStatus } = useBotDetectionSSE({
+  const { disconnect } = useBotDetectionSSE({
     enabled: flowState !== 'NONE',
     onRetryCaptcha: () => {
       setCaptchaDenied(false);
@@ -875,6 +875,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             onStepChange={handleBookStepChange}
             onStepBack={handleBookStepBack}
             storyMode={storyMode}
+            onPaymentStart={disconnect}
           />
         </div>
       )}

@@ -32,11 +32,13 @@ interface BookViewProps {
   onLeaveQueue?: () => void;
   onStepChange?: (step: string) => void;
   onStepBack?: (targetStep: string) => void;
+  /** 결제하기 버튼 클릭 시 호출 (SSE 해제 등) */
+  onPaymentStart?: () => void;
 }
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue, onStepChange, onStepBack }: BookViewProps) => {
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue, onStepChange, onStepBack, onPaymentStart }: BookViewProps) => {
   const isShadowModeActive = isShadowMode(eventId);
   const isWaitlistMode = mode === 'WAITLIST' || isShadowModeActive;
   const isCancelMode = mode === 'CANCEL';
@@ -715,6 +717,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           onPaymentComplete={() => onLeaveQueue?.()}
           storyMode={storyMode}
           onStepChange={onStepChange}
+          onPaymentStart={onPaymentStart}
         />
       )}
 
