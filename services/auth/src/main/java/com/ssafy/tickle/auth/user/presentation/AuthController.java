@@ -12,6 +12,7 @@ import com.ssafy.tickle.auth.user.domain.AuthErrorCode;
 import com.ssafy.tickle.auth.user.presentation.dto.AccessTokenResponse;
 import com.ssafy.tickle.auth.user.presentation.dto.AdminSignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.MockLoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeSendRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.PhoneCodeVerifyRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
@@ -98,6 +99,24 @@ public class AuthController implements AuthApiDoc {
             @Valid @RequestBody LoginRequest request
     ) {
         TokenResult tokenResult = authService.login(request);
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())
+                .body(BaseResponse.success(toAccessTokenResponse(tokenResult)));
+    }
+
+    /**
+     * 목로그인 API입니다.
+     *
+     * @param request 목로그인 요청 (name, phoneNumber)
+     * @return 발급된 토큰 응답
+     */
+    @Override
+    @PostMapping("/mock-login")
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> mockLogin(
+            @Valid @RequestBody MockLoginRequest request
+    ) {
+        TokenResult tokenResult = authService.mockLogin(request);
         return ResponseEntity
                 .ok()
                 .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(tokenResult.refreshToken()).toString())

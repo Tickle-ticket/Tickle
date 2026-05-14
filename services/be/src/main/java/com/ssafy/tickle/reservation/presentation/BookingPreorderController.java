@@ -36,4 +36,15 @@ public class BookingPreorderController implements BookingPreorderApiDoc {
                 BaseResponse.success(SuccessCode.OK, bookingPreorderService.preorder(userId, request))
         );
     }
+
+    @Override
+    @PostMapping("/bookings/preorder/mock")
+    public ResponseEntity<BaseResponse<BookingPreorderResponse>> mockPreorder(
+            @UserId Long userId,
+            @Valid @RequestBody BookingPreorderRequest request
+    ) {
+        return ResponseEntity.ok(
+                BaseResponse.success(SuccessCode.OK, bookingPreorderService.mockPreorder(userId, request))
+        );
+    }
 }
