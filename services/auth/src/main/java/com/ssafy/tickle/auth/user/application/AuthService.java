@@ -18,6 +18,7 @@ import com.ssafy.tickle.auth.user.infrastructure.persistence.AuthUserRepository;
 import com.ssafy.tickle.auth.user.presentation.dto.AdminSignUpRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.KakaoLoginResponse;
 import com.ssafy.tickle.auth.user.presentation.dto.LoginRequest;
+import com.ssafy.tickle.auth.user.presentation.dto.MockLoginRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.ReissueRequest;
 import com.ssafy.tickle.auth.user.presentation.dto.SignUpRequest;
 import io.jsonwebtoken.Claims;
@@ -33,6 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -185,6 +187,54 @@ public class AuthService {
         }
 
         return issueTokens(authUser);
+    }
+
+    /**
+     * 목로그인을 처리합니다.
+     *
+     * <p>전화번호로 기존 계정이 있으면 즉시 토큰을 발급하고, 없으면 자체 로그인용 LOCAL USER를 생성한 뒤
+     * BE 사용자까지 생성하고 실제 로그인과 동일한 토큰 응답을 반환한다.</p>
+     *
+     * @param request 목로그인 요청 (name, phoneNumber)
+     * @return 발급된 Access Token / Refresh Token / userId
+     */
+    @Transactional
+    public TokenResult mockLogin(MockLoginRequest request) {
+        String email = generateMockEmail(request.phoneNumber());
+        Optional<AuthUser> existingUser = authUserRepository.findByEmail(email);
+        if (existingUser.isPresent()) {
+            return issueTokens(existingUser.get());
+        }
+
+        Instant now = Instant.now();
+        AuthUser authUser = AuthUser.builder()
+                .email(email)
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .role(AuthUser.Role.USER)
+                .phoneNumber(request.phoneNumber())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+
+        AuthUser saved = authUserRepository.save(authUser);
+        try {
+            beInternalClient.createUser(new CreateUserRequest(
+                    saved.getId(),
+                    generateUserNo(),
+                    email,
+                    request.name(),
+                    request.name(),
+                    request.phoneNumber(),
+                    AuthUser.Role.USER,
+                    null,
+                    LocalDate.of(2000, 1, 1)
+            ));
+        } catch (Exception e) {
+            log.error("목로그인 BE 내부 사용자 생성 실패, 트랜잭션 롤백 예정: userId={}", saved.getId(), e);
+            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        return issueTokens(saved);
     }
 
     /**
@@ -450,6 +500,10 @@ public class AuthService {
      */
     private String generateUserNo() {
         return "TK-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    }
+
+    private String generateMockEmail(String phoneNumber) {
+        return "mock_" + phoneNumber + "@tickle.local";
     }
 
     private boolean isBlank(String value) {
