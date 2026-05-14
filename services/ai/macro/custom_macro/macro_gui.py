@@ -556,7 +556,7 @@ class EventDialog(tk.Toplevel):
         super().__init__(parent)
         self._parent = parent
         self.title("이벤트 편집")
-        self.resizable(False, False)
+        self.resizable(True, True)
         self.configure(bg="#1e1e2e")
         self.result = None
         self._mouse_listener = None
@@ -570,6 +570,13 @@ class EventDialog(tk.Toplevel):
             "memo": ""
         }
 
+        # If main window is pinned(always-on-top), keep this dialog pinned too.
+        try:
+            topmost = bool(parent.winfo_toplevel().attributes("-topmost"))
+            self.attributes("-topmost", topmost)
+        except Exception:
+            pass
+
         self._build()
         self._start_wheel_pick()
         self.grab_set()
@@ -579,11 +586,56 @@ class EventDialog(tk.Toplevel):
         fg = "#cdd6f4"
         ent = "#313244"
 
+        # Scrollable container (event dialog can have many fields)
+        container = tk.Frame(self, bg=bg)
+        container.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(container, bg=bg, highlightthickness=0)
+        vscroll = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vscroll.set)
+
+        vscroll.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        root = tk.Frame(canvas, bg=bg)
+        window_id = canvas.create_window((0, 0), window=root, anchor="nw")
+
+        def _on_configure(_evt=None):
+            try:
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            except Exception:
+                pass
+
+        def _on_canvas_configure(evt):
+            try:
+                canvas.itemconfigure(window_id, width=evt.width)
+            except Exception:
+                pass
+
+        root.bind("<Configure>", _on_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _on_mousewheel(evt):
+            try:
+                canvas.yview_scroll(int(-1 * (evt.delta / 120)), "units")
+                return "break"
+            except Exception:
+                return None
+
+        def _bind_wheel(_evt):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _unbind_wheel(_evt):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", _bind_wheel)
+        canvas.bind("<Leave>", _unbind_wheel)
+
         pad = {"padx": 12, "pady": 5}
 
         def label(text, row):
             tk.Label(
-                self,
+                root,
                 text=text,
                 bg=bg,
                 fg=fg,
@@ -592,7 +644,7 @@ class EventDialog(tk.Toplevel):
 
         def entry(var, row, width=14):
             e = tk.Entry(
-                self,
+                root,
                 textvariable=var,
                 width=width,
                 bg=ent,
@@ -617,7 +669,7 @@ class EventDialog(tk.Toplevel):
 
         label("이벤트 타입", 0)
         type_box = ttk.Combobox(
-            self,
+            root,
             textvariable=self.type_var,
             values=["click", "wait", "wait_change", "wait_security", "ocr_security", "cv_security", "seat_set", "screenshot", "pause"],
             width=18,
@@ -638,7 +690,7 @@ class EventDialog(tk.Toplevel):
         entry(self.seconds_var, 4)
 
         label("버튼", 5)
-        btn_frame = tk.Frame(self, bg=bg)
+        btn_frame = tk.Frame(root, bg=bg)
         btn_frame.grid(row=5, column=1, sticky="w", **pad)
 
         for value, text in [
@@ -670,7 +722,7 @@ class EventDialog(tk.Toplevel):
             seat_values = ["random"]
 
         seat_box = ttk.Combobox(
-            self,
+            root,
             textvariable=self.seat_set_var,
             values=seat_values,
             width=26,
@@ -1768,7 +1820,7 @@ class MacroTab(tk.Frame):
         hotkey_combo = ttk.Combobox(
             self,
             textvariable=self.hotkey_var,
-            values=["f1", "f2", "f3", "f4", "f7", "f8", "f9", "f10", "f11"],
+            values=["none", "f1", "f2", "f3", "f4", "f7", "f8", "f9", "f10", "f11"],
             width=12,
             state="readonly"
         )
@@ -1876,7 +1928,8 @@ class MacroTab(tk.Frame):
             return
 
         macro = self.data["macros"][idx]
-        self.hotkey_var.set(macro.get("hotkey", "f9"))
+        hotkey = (macro.get("hotkey", "") or "").strip().lower()
+        self.hotkey_var.set(hotkey if hotkey else "none")
         self._refresh_events()
 
     def _on_hotkey_change(self, _event=None):
@@ -1885,7 +1938,20 @@ class MacroTab(tk.Frame):
         if idx < 0:
             return
 
-        self.data["macros"][idx]["hotkey"] = self.hotkey_var.get()
+        chosen = (self.hotkey_var.get() or "").strip().lower()
+        if chosen == "none":
+            chosen = ""
+
+        # Enforce uniqueness: one hotkey triggers only one macro.
+        # If another macro already uses the chosen hotkey, clear it there.
+        if chosen:
+            for j, m in enumerate(self.data.get("macros", [])):
+                if j == idx:
+                    continue
+                if (m.get("hotkey", "") or "").strip().lower() == chosen:
+                    m["hotkey"] = ""
+
+        self.data["macros"][idx]["hotkey"] = chosen
         save_data(self.data)
 
     def _refresh_events(self):
@@ -2165,6 +2231,12 @@ class MacroTab(tk.Frame):
         top.title("SeatSet Pool")
         top.minsize(420, 520)
         top.configure(bg="#1e1e2e")
+
+        # Follow main window pin(always-on-top) setting.
+        try:
+            top.attributes("-topmost", bool(self.winfo_toplevel().attributes("-topmost")))
+        except Exception:
+            pass
 
         tk.Label(
             top,
