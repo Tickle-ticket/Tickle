@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useDeferredValue } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useHomeBanners, useHomeRanking, useHomeUpcoming, useHomeCategories } from '@/src/features/home/api/useHomeData';
@@ -32,8 +32,10 @@ import { Modal } from '@/src/shared/components/Modal';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { DetailView } from '@/src/features/detail/ui/DetailView';
-import Lottie from 'lottie-react';
+import dynamic from 'next/dynamic';
 import loveAnimation from '@/src/shared/lottle/Love.json';
+
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 
 
@@ -121,11 +123,11 @@ const sectionVariants: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: 'easeOut' }
+    transition: { duration: 0.2, ease: 'easeOut' }
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.15 }
+    transition: { duration: 0.08 }
   }
 };
 
@@ -158,6 +160,10 @@ export const HomeView = () => {
   const { data: upcoming, isLoading: upcomingLoading } = useHomeUpcoming();
   const { searchValue, setSearchValue } = useSearchStore();
   const { isMypageOpen } = useMypageStore();
+
+  // 레이아웃 전환(배너 접기/홈 숨기기)은 searchValue로 즉시 처리하고,
+  // 무거운 SearchContent 마운트는 deferredSearchValue로 지연 처리
+  const deferredSearchValue = useDeferredValue(searchValue);
 
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -310,7 +316,7 @@ export const HomeView = () => {
 
           {/* Left Column: 배너 슬라이드 */}
       <aside
-        className={`relative transition-[width,height,min-width,opacity] duration-300 ease-in-out shrink-0 ${isBannerFolded
+        className={`relative transition-[width,height,min-width,opacity] duration-150 ease-out shrink-0 will-change-[width,opacity] ${isBannerFolded
           ? 'hidden lg:block lg:w-0 lg:min-w-0 opacity-0'
           : activeDetailId
             ? 'hidden lg:block lg:h-full lg:w-2/5 lg:min-w-[40%] opacity-100'
@@ -398,7 +404,7 @@ export const HomeView = () => {
       {/* Toggle Button - absolute positioning을 사용하여 flex 레이아웃의 빈 공간(gap) 발생 방지 */}
       {!searchValue && !isMypageOpen && (
         <div 
-          className={`absolute top-1/2 -translate-y-1/2 z-50 hidden lg:flex transition-all duration-300 ease-in-out ${
+          className={`absolute top-1/2 -translate-y-1/2 z-50 hidden lg:flex transition-[left,transform] duration-150 ease-out ${
             isBannerFolded ? 'left-0 translate-x-2' : 'left-[40%] -translate-x-1/2'
           }`}
         >
@@ -410,28 +416,35 @@ export const HomeView = () => {
       )}
 
       {/* Right Column: Main Content */}
-      <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-500 relative ${activeDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={activeDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-150 relative ${activeDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={activeDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
         <div className="hidden lg:block">
           <Header />
         </div>
 
         {/* 검색 중일 때: 홈 컨텐츠 대신 검색 결과 렌더링 */}
-        <AnimatePresence mode="wait">
-          {searchValue ? (
-            <motion.div key="search" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0">
-              <SearchContent query={searchValue} />
-            </motion.div>
-          ) : isMypageOpen ? (
-            <motion.div key="mypage" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0">
-              <MyPageContent />
-            </motion.div>
-          ) : activeDetailId ? (
-            <motion.div key="detail" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0">
-              <DetailView isOverlay={true} />
-            </motion.div>
-          ) : (
-            <motion.div key="home" variants={sectionVariants} initial="hidden" animate="visible" exit="exit" className="flex-1 w-full min-w-0 flex flex-col">
+        {searchValue && (
+          <div key="search" className="flex-1 w-full min-w-0 animate-fade-in">
+            {deferredSearchValue ? (
+              <SearchContent query={deferredSearchValue} />
+            ) : (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        )}
+        {!searchValue && isMypageOpen && (
+          <div key="mypage" className="flex-1 w-full min-w-0 animate-fade-in">
+            <MyPageContent />
+          </div>
+        )}
+        {!searchValue && !isMypageOpen && activeDetailId && (
+          <div key="detail" className="flex-1 w-full min-w-0 animate-fade-in">
+            <DetailView isOverlay={true} />
+          </div>
+        )}
+        <div className={`flex-1 w-full min-w-0 flex flex-col ${searchValue || isMypageOpen || activeDetailId ? 'hidden' : ''}`}>
               {(canEnterAgency || canEnterAdmin) ? (
                 <section className="mt-4">
                   <div className="rounded-2xl border border-line bg-surface px-5 py-4 shadow-sm">
@@ -640,9 +653,7 @@ export const HomeView = () => {
                   )}
                 </div>
               </section>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
 
         {/* 알림 모달 */}
         <Modal

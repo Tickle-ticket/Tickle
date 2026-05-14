@@ -66,7 +66,7 @@ export const verifyCaptcha = async (body: CaptchaVerifyRequest): Promise<Captcha
     credentials: isCrossOrigin ? 'same-origin' : 'include',
     headers: {
       'Content-Type': 'application/json',
-      'access-token': accessToken,
+      'Authorization': `Bearer ${accessToken}`,
       'X-Internal-Secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET || '',
     },
     body: JSON.stringify(body),

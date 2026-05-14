@@ -33,8 +33,10 @@ import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { leaveQueue } from '@/src/shared/api/queueApi';
-import Lottie from 'lottie-react';
+import dynamic from 'next/dynamic';
 import loveAnimation from '@/src/shared/lottle/Love.json';
+
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
 import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
 import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
