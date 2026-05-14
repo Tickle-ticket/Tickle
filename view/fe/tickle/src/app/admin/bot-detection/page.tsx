@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getAdminBlacklistDashboard,
+  getAdminBlacklistDashboardStreamUrl,
   getAdminBotStats,
+  getAdminBotStatsStreamUrl,
 } from '@/src/shared/api/adminApi';
 import type {
   BlacklistDashboardResponse,
@@ -11,6 +13,7 @@ import type {
 } from '@/src/shared/api/types/admin.types';
 import { BotDetectionChart } from '@/src/shared/components/BotDetectionChart';
 import type { BotDetectionPoint } from '@/src/shared/components/BotDetectionChart';
+import { useSSE } from '@/src/shared/hooks/useSSE';
 
 const reasonLabels: Record<string, string> = {
   BOT_DETECTED: '봇 자동 탐지',
@@ -49,12 +52,35 @@ function toBotDetectionPoints(data?: BlacklistDashboardResponse): BotDetectionPo
   }));
 }
 
+const unwrapSseData = <T,>(payload: T | { data: T } | null) => {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data;
+  }
+
+  return payload as T | null;
+};
+
 export default function BotDetectionPage() {
   const [dashboard, setDashboard] = useState<BlacklistDashboardResponse | null>(null);
   const [stats, setStats] = useState<BotDetectionStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const dashboardStreamUrl = useMemo(() => getAdminBlacklistDashboardStreamUrl(), []);
+  const statsStreamUrl = useMemo(() => getAdminBotStatsStreamUrl(), []);
+  const { data: dashboardStreamData } = useSSE<BlacklistDashboardResponse | { data: BlacklistDashboardResponse }>(
+    dashboardStreamUrl,
+    { eventNames: ['blacklist.dashboard'] },
+  );
+  const { data: statsStreamData } = useSSE<BotDetectionStatsResponse | { data: BotDetectionStatsResponse }>(
+    statsStreamUrl,
+    { eventNames: ['bot.stats'] },
+  );
+  const streamedDashboard = useMemo(() => unwrapSseData<BlacklistDashboardResponse>(dashboardStreamData), [dashboardStreamData]);
+  const streamedStats = useMemo(() => unwrapSseData<BotDetectionStatsResponse>(statsStreamData), [statsStreamData]);
+  const visibleDashboard = streamedDashboard ?? dashboard;
+  const visibleStats = streamedStats ?? stats;
+  const visibleLastUpdatedAt = streamedDashboard || streamedStats ? 'SSE 수신 중' : lastUpdatedAt;
 
   const loadStats = useCallback(async () => {
     setIsLoading(true);
@@ -84,10 +110,10 @@ export default function BotDetectionPage() {
     return () => window.clearTimeout(timeoutId);
   }, [loadStats]);
 
-  const chartData = useMemo(() => toBotDetectionPoints(dashboard ?? undefined), [dashboard]);
+  const chartData = useMemo(() => toBotDetectionPoints(visibleDashboard ?? undefined), [visibleDashboard]);
 
   const summaryItems = useMemo(() => {
-    if (!dashboard) {
+    if (!visibleDashboard) {
       return [
         { label: '총 접속자 수', value: '-', caption: '오늘 00:00부터 현재까지' },
         { label: '봇 탐지 수', value: '-', caption: '매크로/우회/비정상 요청' },
@@ -98,21 +124,21 @@ export default function BotDetectionPage() {
     return [
       {
         label: '총 접속자 수',
-        value: formatNumber(dashboard.totalConnectionsToday),
+        value: formatNumber(visibleDashboard.totalConnectionsToday),
         caption: '오늘 00:00부터 현재까지',
       },
       {
         label: '봇 탐지 수',
-        value: formatNumber(dashboard.botDetectionCount),
-        caption: `피크 ${dashboard.peakTime || '-'} / ${formatNumber(dashboard.peakDetectionCount)}건`,
+        value: formatNumber(visibleDashboard.botDetectionCount),
+        caption: `피크 ${visibleDashboard.peakTime || '-'} / ${formatNumber(visibleDashboard.peakDetectionCount)}건`,
       },
       {
         label: '차단 수',
-        value: `${formatNumber(dashboard.blockedCount)}건`,
+        value: `${formatNumber(visibleDashboard.blockedCount)}건`,
         caption: '정책 차단 완료',
       },
     ];
-  }, [dashboard]);
+  }, [visibleDashboard]);
 
   return (
     <div className="space-y-6 p-5 sm:p-8">
@@ -150,7 +176,7 @@ export default function BotDetectionPage() {
       <BotDetectionChart
         data={chartData}
         title="탐지된 봇 그래프"
-        subtitle={lastUpdatedAt ? `오늘 시간대별 탐지 유형과 누적 탐지 건수 / 마지막 갱신: ${lastUpdatedAt}` : '오늘 시간대별 탐지 유형과 누적 탐지 건수'}
+        subtitle={visibleLastUpdatedAt ? `오늘 시간대별 탐지 유형과 누적 탐지 건수 / 마지막 갱신: ${visibleLastUpdatedAt}` : '오늘 시간대별 탐지 유형과 누적 탐지 건수'}
       />
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -174,7 +200,7 @@ export default function BotDetectionPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle">
-                {(stats?.recentItems ?? []).map((item) => (
+                {(visibleStats?.recentItems ?? []).map((item) => (
                   <tr key={item.blacklistId} className="align-top">
                     <td className="px-5 py-4 font-black text-content">{item.blacklistId}</td>
                     <td className="px-5 py-4 font-bold text-content-secondary">{item.userId}</td>
@@ -191,7 +217,7 @@ export default function BotDetectionPage() {
                   </tr>
                 ))}
 
-                {!isLoading && (stats?.recentItems.length ?? 0) === 0 ? (
+                {!isLoading && (visibleStats?.recentItems.length ?? 0) === 0 ? (
                   <tr>
                     <td className="px-5 py-10 text-center text-sm font-bold text-content-tertiary" colSpan={6}>
                       최근 차단 내역이 없습니다.
@@ -211,13 +237,13 @@ export default function BotDetectionPage() {
             <div>
               <h3 className="text-sm font-black text-content">사유별 통계</h3>
               <div className="mt-3 space-y-3">
-                {(stats?.byReason ?? []).map((item) => (
+                {(visibleStats?.byReason ?? []).map((item) => (
                   <div key={item.reason} className="flex items-center justify-between gap-3 text-sm">
                     <span className="font-bold text-content-tertiary">{reasonLabels[item.reason] ?? item.reason}</span>
                     <span className="font-black text-content">{formatNumber(item.count)}건</span>
                   </div>
                 ))}
-                {!isLoading && (stats?.byReason.length ?? 0) === 0 ? (
+                {!isLoading && (visibleStats?.byReason.length ?? 0) === 0 ? (
                   <p className="text-sm font-bold text-content-tertiary">통계가 없습니다.</p>
                 ) : null}
               </div>
@@ -226,13 +252,13 @@ export default function BotDetectionPage() {
             <div className="border-t border-line pt-5">
               <h3 className="text-sm font-black text-content">AI 점수 구간</h3>
               <div className="mt-3 space-y-3">
-                {(stats?.scoreDistribution ?? []).map((item) => (
+                {(visibleStats?.scoreDistribution ?? []).map((item) => (
                   <div key={item.scoreRange} className="flex items-center justify-between gap-3 text-sm">
                     <span className="font-bold text-content-tertiary">{item.scoreRange}</span>
                     <span className="font-black text-content">{formatNumber(item.count)}건</span>
                   </div>
                 ))}
-                {!isLoading && (stats?.scoreDistribution.length ?? 0) === 0 ? (
+                {!isLoading && (visibleStats?.scoreDistribution.length ?? 0) === 0 ? (
                   <p className="text-sm font-bold text-content-tertiary">통계가 없습니다.</p>
                 ) : null}
               </div>

@@ -107,3 +107,14 @@ export interface QueueEventRankResponse {
   waitCount: number;
   expectedWaitMinutes: number;
 }
+
+export interface ActiveUserStatsResponse {
+  currentCount: number;
+  peakCount: number;
+  averageCount: number;
+  chartData?: Array<{
+    time: string;
+    currentCount: number;
+    averageCount: number;
+  }>;
+}

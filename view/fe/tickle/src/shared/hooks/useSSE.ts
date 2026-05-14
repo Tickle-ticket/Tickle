@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 interface UseSSEOptions {
   autoReconnect?: boolean;
   reconnectInterval?: number;
+  eventNames?: string[];
 }
 
 export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
-  const { autoReconnect = true, reconnectInterval = 3000 } = options;
+  const { autoReconnect = true, reconnectInterval = 3000, eventNames = [] } = options;
+  const eventNamesKey = eventNames.join('\u001F');
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Event | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -18,6 +20,7 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
   useEffect(() => {
     // URL이 없으면 연결하지 않음 (지연 연결 지원)
     if (!url) return;
+    const subscribedEventNames = eventNamesKey ? eventNamesKey.split('\u001F') : [];
 
     const connect = () => {
       // EventSource는 자동으로 브라우저 쿠키를 포함하여 요청합니다. (withCredentials 옵션 지원)
@@ -29,7 +32,7 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
         setError(null);
       };
 
-      eventSource.onmessage = (event) => {
+      const handleMessage = (event: MessageEvent) => {
         try {
           const parsedData = JSON.parse(event.data);
           setData(parsedData);
@@ -38,6 +41,11 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
           setData(event.data as unknown as T);
         }
       };
+
+      eventSource.onmessage = handleMessage;
+      subscribedEventNames.forEach((eventName) => {
+        eventSource.addEventListener(eventName, handleMessage as EventListener);
+      });
 
       eventSource.onerror = (err) => {
         setIsConnected(false);
@@ -65,7 +73,7 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
       }
       setIsConnected(false);
     };
-  }, [url, autoReconnect, reconnectInterval]);
+  }, [url, autoReconnect, reconnectInterval, eventNamesKey]);
 
   return { data, isConnected, error };
 };
