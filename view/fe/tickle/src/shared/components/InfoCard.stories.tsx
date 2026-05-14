@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import React, { useState } from 'react';
 import { InfoCard } from './InfoCard';
 
 const meta = {
@@ -67,5 +68,26 @@ export const LoadingState: Story = {
     src: '',
     title: '',
     isLoading: true,
+  },
+};
+
+export const TimerCountDown: Story = {
+  name: '10초 카운트다운',
+  render: (args) => {
+    // 렌더링 시점에 10초 뒤 시간을 설정하여, 스토리를 클릭할 때마다 10초부터 시작
+    const [targetDate] = useState(() => Date.now() + 10 * 1000);
+    return <InfoCard {...args} targetDate={targetDate} />;
+  },
+  args: {
+    src: 'https://images.unsplash.com/photo-1543807535-eceef0bc6599?q=80&w=1000&auto=format&fit=crop',
+    title: '뮤지컬 〈빌리 엘리어트〉',
+    place: '블루스퀘어 우리은행홀',
+    day: '2026.04.12 - 2026.07.26',
+    badges: ['매진임박'],
+    rank: 3,
+    showRank: false,
+    showTime: true,
+    disabled: false,
+    isLoading: false,
   },
 };

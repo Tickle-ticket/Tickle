@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { WaitlistSeatCard } from './WaitlistSeatCard';
 
 const meta = {
-  title: 'Components/WaitlistSeatCard',
+  title: 'Shared/WaitlistSeatCard',
   component: WaitlistSeatCard,
   parameters: {
     layout: 'padded',

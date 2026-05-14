@@ -14,6 +14,8 @@ import { Box } from '@/src/shared/components/Box';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { SectionNav } from '@/src/shared/components/SectionNav';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
+import { BookButton } from '@/src/shared/components/BookButton';
+import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useBookStore } from '@/src/features/book/store/useBookStore';
@@ -87,8 +89,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
   const [isWaitlistUpcoming, setIsWaitlistUpcoming] = useState(false);
-  const [justOpened, setJustOpened] = useState(false);
-  const [justWaitlistOpened, setJustWaitlistOpened] = useState(false);
   const [isMoreThanOneDayLeft, setIsMoreThanOneDayLeft] = useState(false);
   const [isWaitlistMoreThanOneDayLeft, setIsWaitlistMoreThanOneDayLeft] = useState(false);
   const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
@@ -548,79 +548,26 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       <div className="flex items-center flex-1 gap-2">
 
         {/* 예매하기 버튼 */}
-        <Button
-          {...bookBtnTracker}
-          color="dark"
-          size="large"
-          className={`relative flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 transition-all duration-300 shadow-sm !overflow-visible ${isUpcoming ? 'opacity-80 pointer-events-none bg-surface-inverse' : ''}`}
+        <BookButton
+          trackerProps={bookBtnTracker}
+          isUpcoming={isUpcoming}
+          isMoreThanOneDayLeft={isMoreThanOneDayLeft}
+          targetDate={data?.openDate}
+          onTimerExpire={() => setIsUpcoming(false)}
           onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
           isLoading={isLoading}
-        >
-          {justOpened && (
-            <span className="absolute inset-[-3px] rounded-xl z-50 pointer-events-none border-spin-overlay" />
-          )}
-          {isUpcoming && data?.openDate ? (
-            isMoreThanOneDayLeft ? (
-              <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(data.openDate)}</span>
-            ) : (
-              <>
-                <span className="text-[15px] font-bold tracking-wider">예매하기</span>
-                <div 
-                  className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center rounded-md px-2 py-0.5 border border-white/10 shadow-md text-white scale-[0.85] z-10 whitespace-nowrap"
-                  style={{ backgroundColor: 'var(--toss-grey-700)' }}
-                >
-                  <CountdownTimer 
-                    targetDate={data.openDate} 
-                    onExpire={() => {
-                      setIsUpcoming(false);
-                      setJustOpened(true);
-                      setTimeout(() => setJustOpened(false), 3000);
-                    }} 
-                    variant="compact" 
-                  />
-                </div>
-              </>
-            )
-          ) : (
-            <span className="font-bold tracking-wider text-[15px]">예매하기</span>
-          )}
-        </Button>
+        />
 
         {/* 취소표 대기하기 버튼 */}
-        <Button
-          {...waitlistBtnTracker}
-          color="light"
-          size="large"
-          className={`relative flex-1 flex items-center justify-center h-14 !rounded-xl !px-0 border border-black/10 transition-all duration-300 shadow-sm !overflow-visible ${isWaitlistUpcoming ? 'bg-surface-subtle opacity-90 pointer-events-none' : ''}`}
+        <WaitlistButton
+          trackerProps={waitlistBtnTracker}
+          isUpcoming={isWaitlistUpcoming}
+          isMoreThanOneDayLeft={isWaitlistMoreThanOneDayLeft}
+          targetDate={data?.openDate ? new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString() : undefined}
+          onTimerExpire={() => setIsWaitlistUpcoming(false)}
           onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
           isLoading={isLoading}
-        >
-          {justWaitlistOpened && (
-            <span className="absolute inset-[-3px] rounded-xl z-50 pointer-events-none border-spin-overlay" />
-          )}
-          {isWaitlistUpcoming && data?.openDate ? (
-            isWaitlistMoreThanOneDayLeft ? (
-              <span className="font-bold tracking-wider text-[15px]">{formatOpenDate(new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString())}</span>
-            ) : (
-              <>
-                <span className="text-[15px] font-bold tracking-wider text-content">취소표 대기하기</span>
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center bg-white rounded-md px-2 py-0.5 border border-black/10 shadow-md text-content scale-[0.85] z-10 whitespace-nowrap">
-                  <CountdownTimer 
-                    targetDate={new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString()} 
-                    onExpire={() => {
-                      setIsWaitlistUpcoming(false);
-                      setJustWaitlistOpened(true);
-                      setTimeout(() => setJustWaitlistOpened(false), 3000);
-                    }} 
-                    variant="compact" 
-                  />
-                </div>
-              </>
-            )
-          ) : (
-            <span className="font-bold tracking-wider text-[15px]">취소표 대기하기</span>
-          )}
-        </Button>
+        />
 
       </div>
 

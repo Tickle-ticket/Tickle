@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Turnstile } from './Turnstile';
 
 const meta = {
-  title: 'Components/Turnstile',
+  title: 'Shared/Turnstile',
   component: Turnstile,
   parameters: {
     layout: 'centered',

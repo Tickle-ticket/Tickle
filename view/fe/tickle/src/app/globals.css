@@ -231,6 +231,17 @@ body {
   animation: borderSpin 1.5s linear forwards;
 }
 
+/* 버튼 빨간색 깜빡임 애니메이션 */
+@keyframes flashRed {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.animate-flash-red {
+  animation: flashRed 0.6s ease-in-out forwards;
+}
+
 /* Seat Grade Badge Utilities */
 .grade-badge-vip {
   background-color: var(--badge-vip-bg);
