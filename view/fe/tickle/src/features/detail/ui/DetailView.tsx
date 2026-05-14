@@ -26,7 +26,7 @@ import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
-import { getAccessToken, setAccessToken } from '@/src/shared/api/tokenManager';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
@@ -38,6 +38,7 @@ import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
 import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
 import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
 import { useEventFlowStart } from '@/src/features/detail/hooks/useEventFlowStart';
+import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
@@ -69,6 +70,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
   const urlId = searchParams?.get('id');
   const activeEventId = selectedDetailId || urlId;
+  const isMockLoginDetail = isMockLoginEvent(activeEventId);
 
   const scrollRef = useRef<HTMLElement>(null);
 
@@ -218,7 +220,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     window.history.pushState({ tickleStep: 'queue' }, '');
   };
 
-  const { handleFlowStart, MockLoginModalElement } = useEventFlowStart({
+  const { handleFlowStart, MockLoginInlineElement } = useEventFlowStart({
     activeEventId,
     storyMode,
     continueFlowStart,
@@ -660,19 +662,25 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       </div>
 
       {/* Hero Section */}
-      <section className="max-w-2xl lg:mt-3 flex flex-col items-start px-2 lg:px-0">
-        <Title
-          title={data?.title || ''}
-          textColor="black"
-          className="!bg-transparent [&>div]:!p-0 !text-3xl sm:!text-4xl md:!text-5xl lg:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.15] [&_h1]:whitespace-pre-line"
-          bottomBorder={false}
-          isLoading={isLoading}
-        />
+      <section className="w-full lg:mt-3 flex flex-col items-start px-2 lg:px-0">
+        <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex w-full max-w-2xl flex-col items-start">
+            <Title
+              title={data?.title || ''}
+              textColor="black"
+              className="!bg-transparent [&>div]:!p-0 !text-3xl sm:!text-4xl md:!text-5xl lg:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.15] [&_h1]:whitespace-pre-line"
+              bottomBorder={false}
+              isLoading={isLoading}
+            />
 
-        <div className="flex flex-col gap-1.5 mt-4 sm:mt-5">
-          <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-80" isLoading={isLoading} />
-          <BannerPlace place={data?.venue || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] font-bold" isLoading={isLoading} />
-          <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-90" isLoading={isLoading} />
+            <div className="flex flex-col gap-1.5 mt-4 sm:mt-5">
+              <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-80" isLoading={isLoading} />
+              <BannerPlace place={data?.venue || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] font-bold" isLoading={isLoading} />
+              <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-90" isLoading={isLoading} />
+            </div>
+          </div>
+
+          {MockLoginInlineElement}
         </div>
 
         <div className="flex flex-col gap-3 mt-8 w-full max-w-[540px]">
@@ -904,7 +912,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         showCancelButton={true}
       />
 
-      {MockLoginModalElement}
 
       {/* 에러 모달 */}
       <Modal
@@ -1024,9 +1031,11 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         ref={scrollRef}
         className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-surface-inverse [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-content"
       >
-        <div className="hidden lg:block">
-          <Header />
-        </div>
+        {!isMockLoginDetail && (
+          <div className="hidden lg:block">
+            <Header />
+          </div>
+        )}
 
         <div className="flex-1 w-full min-w-0">
           {renderContent()}

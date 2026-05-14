@@ -62,7 +62,7 @@ export const SectionNav = ({
             className={`
               relative flex flex-1 items-center justify-center py-2.5 sm:py-3 rounded-xl text-sm sm:text-[15px] font-extrabold transition-all duration-300
               ${isActive 
-                ? 'text-white bg-[#3182f6] shadow-sm' 
+                ? 'text-white bg-[var(--toss-grey-700)] shadow-sm' 
                 : 'text-content-tertiary hover:text-content hover:bg-black/5'
               }
             `}
