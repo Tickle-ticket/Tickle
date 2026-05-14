@@ -28,6 +28,8 @@ interface PaymentStepProps {
   onStepChange?: (step: string) => void;
   /** 결제하기 버튼 클릭 시 호출 (SSE 해제 등) */
   onPaymentStart?: () => void;
+  submitPreorder?: (eventId: number, scheduleId: number, seatIds: number[], optionSelections: any[]) => Promise<any>;
+  setPreorderBookingId?: (id: number | null) => void;
 }
 
 const priceGradeDotColors: Record<string, string> = {
@@ -54,10 +56,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   isStandalone = false,
   onStepChange,
   onPaymentStart,
+  submitPreorder,
+  setPreorderBookingId,
 }) => {
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
   const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
+  const pendingOptionSelections = useBookStore((s: any) => s.pendingOptionSelections);
 
   const router = useRouter();
   const [isKakaoPopupOpen, setIsKakaoPopupOpen] = useState(false);
@@ -136,8 +141,12 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const handlePayment = async () => {
     const isShadow = storyMode || isShadowMode(eventId);
 
-    if (!isShadow && !cancellationId && (!scheduleId || !preorderBookingId || !selectedPayMethod)) {
-      console.error('Missing required payment parameters:', { scheduleId, preorderBookingId, selectedPayMethod });
+    if (!isShadow && !cancellationId && (!scheduleId || !selectedPayMethod)) {
+      console.error('Missing required payment parameters:', { scheduleId, selectedPayMethod });
+      return;
+    }
+    if (!isShadow && !cancellationId && !preorderBookingId && !pendingOptionSelections) {
+      console.error('Missing booking data: neither preorderBookingId nor pendingOptionSelections available');
       return;
     }
     if (isShadow && !selectedPayMethod) {
@@ -156,6 +165,25 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     onPaymentStart?.();
 
     try {
+      // 결제 확정 전 preorder API를 호출하여 예약 초안을 확정합니다.
+      let currentBookingId = preorderBookingId;
+      if (!currentBookingId && submitPreorder && pendingOptionSelections && scheduleId) {
+        const preorderRes = await submitPreorder(
+          parseInt(eventId, 10),
+          parseInt(scheduleId, 10),
+          pendingOptionSelections.seatIds,
+          pendingOptionSelections.optionSelections
+        );
+        if (preorderRes?.bookingId) {
+          currentBookingId = preorderRes.bookingId;
+          setPreorderBookingId?.(preorderRes.bookingId);
+        } else {
+          onError('예약 실패', '예약 초안 생성에 실패했습니다. 다시 시도해주세요.');
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
 
       if (isShadow) {
@@ -244,7 +272,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       const selectRes = await paymentApi.selectPaymentMethod(
         eventId,
         scheduleId!,
-        { bookingId: preorderBookingId!, paymentMethod }
+        { bookingId: currentBookingId!, paymentMethod }
       );
 
       const nextAction = selectRes.data?.nextAction;
@@ -261,7 +289,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         const bankRes = await paymentApi.confirmBankTransferPayment(
           eventId,
           scheduleId!,
-          { bookingId: preorderBookingId! }
+          { bookingId: currentBookingId! }
         );
         if (bankRes.data) {
           (window as any).__isNavigatingToPayment__ = true;
@@ -278,7 +306,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           eventId,
           scheduleId!,
           {
-            bookingId: preorderBookingId!
+            bookingId: currentBookingId!
           }
         );
 

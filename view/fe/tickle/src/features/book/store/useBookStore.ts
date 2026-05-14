@@ -39,6 +39,10 @@ interface BookingState {
   priceGradeTicketCounts: Record<string, Record<string, number>>;
   setPriceGradeTicketCounts: (counts: Record<string, Record<string, number>> | ((prev: Record<string, Record<string, number>>) => Record<string, Record<string, number>>)) => void;
 
+  // Pending option selections (saved from TicketTypeStep, consumed by PaymentStep)
+  pendingOptionSelections: { seatIds: number[]; optionSelections: { sessionSeatId: number; discountName: string }[] } | null;
+  setPendingOptionSelections: (selections: { seatIds: number[]; optionSelections: { sessionSeatId: number; discountName: string }[] } | null) => void;
+
   // Payment Form
   buyerName: string;
   setBuyerName: (name: string) => void;
@@ -73,6 +77,7 @@ const initialState = {
   selectedSeatsToCancel: new Set<string>(),
   isModifyModeActive: false,
   priceGradeTicketCounts: {},
+  pendingOptionSelections: null,
   buyerName: '',
   buyerEmail: '',
   buyerPhone: '',
@@ -114,6 +119,8 @@ export const useBookStore = create<BookingState>((set, get) => ({
   setPriceGradeTicketCounts: (updater) => set((state) => ({
     priceGradeTicketCounts: typeof updater === 'function' ? updater(state.priceGradeTicketCounts) : updater
   })),
+
+  setPendingOptionSelections: (selections) => set({ pendingOptionSelections: selections }),
 
   setBuyerName: (name) => set({ buyerName: name }),
   setBuyerEmail: (email) => set({ buyerEmail: email }),

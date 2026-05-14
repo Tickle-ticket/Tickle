@@ -105,6 +105,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     },
   });
   const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
+  const setPendingOptionSelections = useBookStore((s: any) => s.setPendingOptionSelections);
 
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
@@ -646,42 +647,16 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   });
                   return;
                 }
-                try {
-                  if (await handleTicketTypeSubmitException(scheduleId!, seatIds, optionSelections)) {
-                    if (storyMode) onStepChange?.('payment');
-                    return;
-                  }
 
-                  const res = await submitPreorder(
-                    parseInt(eventDetail.eventId, 10),
-                    parseInt(scheduleId!, 10),
-                    seatIds,
-                    optionSelections
-                  );
-                  if (res?.bookingId) {
-                    setPreorderBookingId(res.bookingId);
-                    setBookingStep('PAYMENT');
-                    onStepChange?.('payment');
-                  }
-                } catch (err: any) {
-                  if (err.status === 400) {
-                    setErrorModalConfig({ isOpen: true, title: '요청 오류', message: '유효하지 않은 권종을 선택했습니다. 권종/할인 선택을 다시 확인해주세요. (400)' });
-                  } else if (err.status === 404) {
-                    setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '해당 회차나 예매 정보를 찾을 수 없습니다. 다시 시도해주세요. (404)' });
-                  } else if (err.status === 409) {
-                    setErrorModalConfig({ 
-                      isOpen: true, 
-                      title: '선점 만료', 
-                      message: err.message || '좌석 선점 시간이 만료되었습니다. 좌석을 다시 선택해주세요.',
-                      onConfirm: () => {
-                        setSelectedSeats(new Set());
-                        setBookingStep('SEAT');
-                      }
-                    });
-                  } else {
-                    setErrorModalConfig({ isOpen: true, title: '결제 오류', message: err.message || '결제 처리 중 오류가 발생했습니다.' });
-                  }
+                if (await handleTicketTypeSubmitException(scheduleId!, seatIds, optionSelections)) {
+                  if (storyMode) onStepChange?.('payment');
+                  return;
                 }
+
+                // 권종 선택 결과를 store에 저장 (결제하기 버튼에서 preorder API 호출 시 사용)
+                setPendingOptionSelections({ seatIds, optionSelections });
+                setBookingStep('PAYMENT');
+                onStepChange?.('payment');
               }}
               onCancel={async () => {
                 if (scheduleId) {
@@ -707,17 +682,11 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           scheduleId={scheduleId}
           userId={userProfile?.userId}
           userProfile={userProfile}
-          onCancel={async () => {
-            if (preorderBookingId) {
-              try {
-                await reservationApi.cancelReservation(preorderBookingId);
-                setPreorderBookingId(null);
-              } catch (err) {
-                console.error('Failed to cancel draft booking', err);
-              }
-            }
-            // 예약 초안이 취소되면 백엔드에서 좌석 선점도 풀리므로 안전하게 SEAT 단계로 돌아가 다시 선점하도록 유도합니다.
-            setBookingStep('SEAT');
+          submitPreorder={submitPreorder}
+          setPreorderBookingId={setPreorderBookingId}
+          onCancel={() => {
+            // 약관 동의에서 뒤로가기 → 권종 선택 화면으로 복귀 (선택된 권종은 store에 유지됨)
+            setBookingStep('TICKET_TYPE');
           }}
           onConflictError={() => setIsConflictModalOpen(true)}
           onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
