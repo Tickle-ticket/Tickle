@@ -10,8 +10,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 어드민 대기열 현황 조회 API 문서 인터페이스입니다.
@@ -59,4 +61,26 @@ public interface AdminQueueApiDoc {
     )
     @ApiResponse(responseCode = "200", description = "공연 목록 조회 성공")
     ResponseEntity<BaseResponse<List<QueueEventRankResponse>>> getTopWaitingEvents();
+
+    /**
+     * 특정 공연 대기열 대시보드 실시간 구독 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "공연 대기열 대시보드 구독 (SSE)",
+            description = "2초마다 공연 대기열 대시보드 데이터를 push합니다."
+    )
+    SseEmitter subscribeEventDashboard(
+            @Parameter(description = "구독할 공연 식별자", required = true, example = "1")
+            @PathVariable Long eventId,
+            HttpServletResponse response
+    );
+
+    /**
+     * 실시간 대기열 많은 공연 목록 구독 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "대기열 많은 공연 목록 구독 (SSE)",
+            description = "2초마다 대기열 상위 랭킹 데이터를 push합니다."
+    )
+    SseEmitter subscribeTopWaitingEvents(HttpServletResponse response);
 }

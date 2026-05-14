@@ -5,7 +5,9 @@ import com.ssafy.tickle.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 어드민 봇 탐지 현황 API 문서 인터페이스입니다.
@@ -32,4 +34,13 @@ public interface AdminBotDetectionApiDoc {
     )
     @ApiResponse(responseCode = "200", description = "봇 탐지 현황 조회 성공")
     ResponseEntity<BaseResponse<BotDetectionStatsResponse>> getStats();
+
+    /**
+     * 봇 탐지 현황 실시간 구독 API 문서 정의입니다.
+     */
+    @Operation(
+            summary = "봇 탐지 현황 구독 (SSE)",
+            description = "5초마다 실시간 봇 탐지 통계를 push합니다."
+    )
+    SseEmitter subscribeBotStats(HttpServletResponse response);
 }
