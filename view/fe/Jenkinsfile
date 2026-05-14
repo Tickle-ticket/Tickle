@@ -29,8 +29,8 @@ pipeline {
         NEXT_PUBLIC_KAKAO_REDIRECT_URI = 'https://tickle-ticket.co.kr/oauth/callback'
         NEXT_PUBLIC_PAYMENT_BASE_URL = 'https://tickle-ticket.co.kr'
         NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAADOcVYSwitvl9qep'
-        NEXT_PUBLIC_MOCK_LOGIN_EVENT_ID='6024'
-        NEXT_PUBLIC_MOCK_BOOKING_COMPLETE_EVENT_ID='6024'
+        NEXT_PUBLIC_MOCK_LOGIN_EVENT_ID='6031'
+        NEXT_PUBLIC_MOCK_BOOKING_COMPLETE_EVENT_ID='6031'
     }
 
     stages {
