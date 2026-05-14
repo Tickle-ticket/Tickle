@@ -76,11 +76,7 @@ export const apiClient = async <T>(
     // 401 또는 302(리다이렉트) 발생 시 인증 만료로 간주하여 TokenManager 핸들러로 위임
     // 단, accessToken이 없는 비회원 상태에서는 토큰 갱신을 시도하지 않음
     if (!isAuthEndpoint && shouldAttachAccessToken && (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302)) {
-      if (auth === 'optional') {
-        clearTokens();
-        return apiClient<T>(path, { ...options, auth: 'none' }, true, schema);
-      }
-      return handle401<T>(path, options, _isRetry);
+      return handle401<T>(path, options, _isRetry, schema);
     }
 
     if (!response.ok) {
@@ -128,9 +124,17 @@ export const apiClient = async <T>(
 const handle401 = async <T>(
   path: string,
   options: RequestOptions,
-  _isRetry: boolean
+  _isRetry: boolean,
+  schema?: Schema.Schema.AnyNoContext
 ): Promise<T> => {
+  const isOptionalAuth = options.auth === 'optional';
+
   if (_isRetry) {
+    if (isOptionalAuth) {
+      clearTokens();
+      return apiClient<T>(path, { ...options, auth: 'none' }, true, schema);
+    }
+
     // 재시도까지 했는데 실패했다면 로그인 페이지로 리다이렉트
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
       const currentPath = encodeURIComponent(window.location.pathname + window.location.search);
@@ -144,7 +148,7 @@ const handle401 = async <T>(
     return new Promise<T>((resolve, reject) => {
       enqueueWait(() => {
         // 리프레시가 완료되면 이 콜백이 실행되어 원래 요청을 재시도함
-        apiClient<T>(path, options, true).then(resolve).catch(reject);
+        apiClient<T>(path, options, true, schema).then(resolve).catch(reject);
       });
     });
   }
@@ -159,8 +163,14 @@ const handle401 = async <T>(
       // 갱신 성공 시 대기열에 있던 모든 요청 방출(실행)
       flushWaitQueue();
       // 내 원래 요청도 재시도
-      return apiClient<T>(path, options, true);
+      return apiClient<T>(path, options, true, schema);
     } else {
+      if (isOptionalAuth) {
+        clearWaitQueue();
+        clearTokens();
+        return apiClient<T>(path, { ...options, auth: 'none' }, true, schema);
+      }
+
       // 갱신 실패 시 큐 비우고, 로컬 스토리지 비우고, 로그인 페이지로 강제 이동
       clearWaitQueue();
       clearTokens();
@@ -176,6 +186,10 @@ const handle401 = async <T>(
     // ApiError가 이미 위 분기에서 throw된 경우 토큰은 이미 정리된 상태이므로 중복 처리하지 않음
     if (error instanceof ApiError) {
       throw error;
+    }
+    if (isOptionalAuth) {
+      clearTokens();
+      return apiClient<T>(path, { ...options, auth: 'none' }, true, schema);
     }
     clearTokens();
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
