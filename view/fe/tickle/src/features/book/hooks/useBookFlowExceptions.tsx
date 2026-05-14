@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { isMockBookingCompleteEvent } from '@/src/shared/config/mockEventConfig';
 import { Modal } from '@/src/shared/components/Modal';
 
@@ -22,6 +21,8 @@ interface UseBookFlowExceptionsParams {
   submitMockPreorder: (eventId: number, scheduleId: number, seatIds: number[], optionSelections: any[]) => Promise<any>;
   isHoldingSeatRef: React.MutableRefObject<boolean>;
   onStepChange?: (step: string) => void;
+  /** BookView의 실제 TrialCollector finalize 함수를 주입받습니다. */
+  finalizeTrial: () => Promise<any>;
 }
 
 export const useBookFlowExceptions = ({
@@ -42,15 +43,15 @@ export const useBookFlowExceptions = ({
   onLeaveQueue,
   submitMockPreorder,
   isHoldingSeatRef,
-  onStepChange
+  onStepChange,
+  finalizeTrial
 }: UseBookFlowExceptionsParams) => {
-  const { finalize } = useTrialCollector({ enabled: false, initialStage: 'booking' });
   const [isTestBookingCompleteModalOpen, setIsTestBookingCompleteModalOpen] = useState(false);
 
   // 대기열 모드일 때 섀도우/스토리 예외
   const handleWaitlistShadowException = async (): Promise<boolean> => {
     if (storyMode || isShadowModeActive) {
-      await finalize();
+      // finalizeTrial은 handleNextStep 최상단에서 이미 호출됨
       setIsWaitlistCompleteModalOpen(true);
       return true; // handled
     }
@@ -60,6 +61,8 @@ export const useBookFlowExceptions = ({
   // 좌석 선점 시 섀도우 예외 (커피쿠폰 및 충돌)
   const handleSeatShadowException = async (): Promise<boolean> => {
     if (isShadowModeActive) {
+      // finalizeTrial은 handleNextStep 최상단에서 이미 호출됨
+
       const hasUnavailableSeat = Array.from(selectedSeats).some(
         seatId => seatsData[seatId]?.status === 'disabled'
       );
@@ -70,7 +73,6 @@ export const useBookFlowExceptions = ({
         return true;
       }
 
-      await finalize();
       setErrorModalConfig({
         isOpen: true,
         title: '축하합니다!',

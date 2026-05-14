@@ -11,9 +11,10 @@ interface UseEventFlowStartParams {
   storyMode: boolean;
   continueFlowStart: (state: 'QUEUE' | 'WAITLIST_QUEUE') => void;
   setModalConfig: (config: { isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }) => void;
+  finalize: () => Promise<any>;
 }
 
-export const useEventFlowStart = ({ activeEventId, storyMode, continueFlowStart, setModalConfig }: UseEventFlowStartParams) => {
+export const useEventFlowStart = ({ activeEventId, storyMode, continueFlowStart, setModalConfig, finalize }: UseEventFlowStartParams) => {
   const queryClient = useQueryClient();
   const [isMockLoginOpen, setIsMockLoginOpen] = useState(false);
   const [mockLoginName, setMockLoginName] = useState('');
@@ -23,6 +24,9 @@ export const useEventFlowStart = ({ activeEventId, storyMode, continueFlowStart,
   const [pendingMockLoginFlow, setPendingMockLoginFlow] = useState<'QUEUE' | 'WAITLIST_QUEUE' | null>(null);
 
   const handleFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
+    // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 무조건 지금까지 수집된 DETAIL 데이터를 전송합니다.
+    finalize();
+
     if (!storyMode && !isShadowMode(activeEventId) && state === 'QUEUE' && isMockLoginEvent(activeEventId)) {
       setPendingMockLoginFlow(state);
       setMockLoginError('');

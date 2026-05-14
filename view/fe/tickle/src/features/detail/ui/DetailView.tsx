@@ -210,9 +210,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   }, []);
 
   const continueFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
-    // 예매하기(또는 예매/대기열 시작) 버튼을 누르면 지금까지 수집된 DETAIL 데이터 전송
-    finalize();
-
     flowScopeRef.current = state === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING';
     setFlowState(state);
 
@@ -225,7 +222,8 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     activeEventId,
     storyMode,
     continueFlowStart,
-    setModalConfig
+    setModalConfig,
+    finalize
   });
 
   const flowStateRef = useRef(flowState);

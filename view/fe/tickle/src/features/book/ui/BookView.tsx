@@ -93,7 +93,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const setBookingStep = useBookStore(s => s.setBookingStep);
 
   // ── Trial Collector (행동 데이터 수집) ──────────────────────
-  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial } = useTrialCollector({
+  const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial, flush: flushTrial } = useTrialCollector({
     // 인원 선택 버튼을 누르기 전(CAPTCHA, SEAT)까지만 활성화
     enabled: (mode === 'BOOK' || mode === 'WAITLIST') && (!isBotVerified || bookingStep === 'SEAT'),
     userId: userProfile?.userId,
@@ -159,7 +159,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     onLeaveQueue,
     submitMockPreorder,
     isHoldingSeatRef,
-    onStepChange
+    onStepChange,
+    finalizeTrial
   });
 
   // 브라우저 뒤로가기(popstate)로 인한 단계 변경 감지 및 cleanup
@@ -453,6 +454,12 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
     try {
       setIsHolding(true);
+
+      // 🔥 인원 선택/대기 버튼을 누르면 무조건 booking event를 전송합니다.
+      // flushTrial은 finalizeTrial과 달리 반복 호출이 가능하여,
+      // 선점 실패(409) 후 재시도 시에도 매번 새 booking event를 전송합니다.
+      await flushTrial();
+
       const sessionSeatIds = Array.from(selectedSeats)
         .map(seatId => seatsData[seatId]?.sessionSeatId)
         .filter(Boolean) as number[];
@@ -464,7 +471,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
         }
         await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
-        await finalizeTrial();
         setIsWaitlistCompleteModalOpen(true);
       } else {
         if (sessionSeatIds.length > 0 && !storyMode && !isShadowModeActive) {
@@ -493,11 +499,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           initial[priceGrade] = {};
         });
         setPriceGradeTicketCounts(initial);
-
-        // 🔥 인원 선택(권종) 단계로 넘어가기 직전에 데이터 수집 완전 종료 및 전송!
-        if (!storyMode) {
-          await finalizeTrial();
-        }
 
         setBookingStep('TICKET_TYPE');
         onStepChange?.('ticket_type');
