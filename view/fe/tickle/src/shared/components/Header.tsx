@@ -5,7 +5,7 @@ import { SearchBar } from '@/src/shared/components/SearchBar';
 import { Avatar } from '@/src/shared/components/Avatar';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { authApi } from '@/src/shared/api/authApi';
-import { clearTokens } from '@/src/shared/api/tokenManager';
+import { clearTokens, getAccessToken } from '@/src/shared/api/tokenManager';
 import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
@@ -41,7 +41,12 @@ export const Header = ({ className = '' }: HeaderProps) => {
         setSearchValue(q);
       }
 
-      if (view === 'mypage') {
+      if (view === 'mypage' && !getAccessToken()) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('view');
+        url.searchParams.delete('tab');
+        window.history.replaceState(null, '', url.pathname + url.search);
+      } else if (view === 'mypage') {
         const mypageStore = useMypageStore.getState();
         if (!mypageStore.isMypageOpen || mypageStore.activeTab !== tab) {
           openMypage((tab as any) || 'USER');
