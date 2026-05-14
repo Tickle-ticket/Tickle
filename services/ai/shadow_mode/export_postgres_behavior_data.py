@@ -73,7 +73,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "PostgreSQL의 behavior feature 테이블에서 학습용 데이터를 추출합니다.\n"
-            "- 출력 필드: trialID, label, features(=기존 metrics)\n"
+            "- 출력 필드: trialID, type, label, features(=기존 metrics)\n"
             "- trialID는 마지막 trialID를 입력받아 다음 값부터 순차 부여합니다."
         )
     )
@@ -144,7 +144,7 @@ def main() -> None:
 
                 cur.execute(
                     """
-                    SELECT id, label, features
+                    SELECT id, type, label, features
                     FROM public.{table_name}
                     WHERE id > %s
                     ORDER BY id
@@ -160,6 +160,7 @@ def main() -> None:
                 for row in rows:
                     payload = {
                         "trialID": next_trial_id,
+                        "type": row["type"],
                         "label": row["label"],
                         "features": row["features"],
                     }
