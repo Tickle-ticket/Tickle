@@ -925,7 +925,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         >
           <div className="w-full max-w-[440px] mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <ReCaptcha
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAADOcVYSwitvl9qep'}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY as string}
               theme="light"
               title="보안 검증이 필요합니다"
               description="봇이 아닌지 확인하기 위해 아래 인증을 완료해 주세요."
