@@ -67,6 +67,15 @@ class BeCallbackClient:
             or datetime.now(timezone.utc).isoformat(),
         }
 
+        print(
+            f"[ai-worker] BE callback request, "
+            f"record_id={record_id}, "
+            f"label={label}, "
+            f"url={self.result_url}, "
+            f"headers={mask_headers(headers)}, "
+            f"body={body}"
+        )
+
         response = requests.post(
             self.result_url,
             headers=headers,
@@ -96,3 +105,19 @@ def create_be_callback_client() -> BeCallbackClient:
         timeout_sec=BE_CALLBACK_TIMEOUT_SEC,
         internal_service_token=BE_INTERNAL_SERVICE_TOKEN,
     )
+
+
+def mask_headers(headers: dict[str, str]) -> dict[str, str]:
+    sensitive_headers = {"authorization", "access-token", "x-internal-secret"}
+
+    return {
+        key: mask_value(value) if key.lower() in sensitive_headers else value
+        for key, value in headers.items()
+    }
+
+
+def mask_value(value: str) -> str:
+    if len(value) <= 8:
+        return "<redacted>"
+
+    return f"{value[:4]}...{value[-4:]}"
