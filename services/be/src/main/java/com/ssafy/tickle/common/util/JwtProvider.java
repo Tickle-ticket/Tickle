@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
+import com.ssafy.tickle.user.domain.UserRole;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
@@ -63,6 +65,29 @@ public class JwtProvider {
             return Optional.empty();
         }
         return Optional.of(extractUserId(token));
+    }
+
+    /**
+     * Bearer 토큰에서 UserRole을 추출합니다.
+     *
+     * @param request HTTP 요청
+     * @return UserRole, 토큰 없거나 파싱 실패 시 empty
+     */
+    public Optional<UserRole> extractRoleFromRequest(HttpServletRequest request) {
+        String token = resolveToken(request);
+        if (token == null) {
+            return Optional.empty();
+        }
+        try {
+            Claims claims = parseClaims(token);
+            String roleName = claims.get("role", String.class);
+            if (roleName == null) {
+                return Optional.empty();
+            }
+            return Optional.of(UserRole.valueOf(roleName));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     /**

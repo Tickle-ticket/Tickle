@@ -3,6 +3,7 @@ package com.ssafy.tickle.user.presentation.interceptor;
 import com.ssafy.tickle.common.util.JwtProvider;
 import com.ssafy.tickle.user.domain.User;
 import com.ssafy.tickle.user.domain.UserAccessLog;
+import com.ssafy.tickle.user.domain.UserRole;
 import com.ssafy.tickle.user.infrastructure.persistence.UserAccessLogRepository;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,6 +40,7 @@ public class UserAccessLogInterceptor implements HandlerInterceptor {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    public static final String ACTIVE_USERS_ZSET_KEY = "active_users_zset";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -47,15 +50,22 @@ public class UserAccessLogInterceptor implements HandlerInterceptor {
         }
 
         Long userId;
+        UserRole userRole;
         try {
             userId = jwtProvider.extractUserIdFromRequest(request).orElse(null);
+            userRole = jwtProvider.extractRoleFromRequest(request).orElse(null);
         } catch (Exception e) {
             // 토큰 만료 등 인증 오류 시에는 로그 적재를 생략 (정상 사용자 아님)
             return true;
         }
 
-        if (userId == null) {
+        if (userId == null || userRole == null) {
             return true;
+        }
+
+        // 일반 사용자(USER)만 실시간 접속자 추적 대상
+        if (userRole == UserRole.USER) {
+            trackActiveUser(userId);
         }
 
         String ipAddress = getClientIp(request);
@@ -75,6 +85,25 @@ public class UserAccessLogInterceptor implements HandlerInterceptor {
         }
 
         return true; // 무조건 통과 (로깅 목적인 인터셉터)
+    }
+
+    /**
+     * Redis ZSet에 현재 사용자를 실시간 접속자로 등록합니다.
+     *
+     * <p>score는 현재 epoch 초, member는 userId 문자열입니다.
+     * ZSet은 당일 자정에 만료되도록 TTL을 설정합니다.</p>
+     */
+    private void trackActiveUser(Long userId) {
+        try {
+            long nowEpoch = Instant.now().getEpochSecond();
+            redisTemplate.opsForZSet().add(ACTIVE_USERS_ZSET_KEY, String.valueOf(userId), nowEpoch);
+            // 자정에 키 만료 (UTC 기준으로 다음날 0시)
+            ZonedDateTime midnightKst = ZonedDateTime.now(KST).toLocalDate().plusDays(1).atStartOfDay(KST);
+            long ttlSeconds = midnightKst.toInstant().getEpochSecond() - nowEpoch;
+            redisTemplate.expire(ACTIVE_USERS_ZSET_KEY, Duration.ofSeconds(ttlSeconds));
+        } catch (Exception e) {
+            log.warn("실시간 접속자 추적 Redis 오류 (userId={}): {}", userId, e.getMessage());
+        }
     }
 
     private void recordAccessLog(HttpServletRequest request, Long userId, String ipAddress) {
