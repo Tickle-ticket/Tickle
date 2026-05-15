@@ -81,14 +81,16 @@ export const UpcomingWishlistView = () => {
 
   return (
     <div className="w-full animate-fade-in">
-      <div className="mb-6 flex items-center justify-between">
-        <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-primary">{activeWishlistCount}</span>개의 관심 공연이 있습니다.
-        </Text>
-      </div>
+      {activeWishlistCount > 0 && (
+        <div className="mb-6 flex items-center justify-between">
+          <Text typography="t5" color="secondary">
+            총 <span className="font-bold text-primary">{activeWishlistCount}</span>개의 관심 공연이 있습니다.
+          </Text>
+        </div>
+      )}
 
       {/* 모바일 가로 리스트(SearchListCard) 렌더링 - md 미만에서만 표시 */}
-      <div className="flex flex-col gap-3 md:hidden pb-20">
+      <div className="flex flex-col gap-3 md:hidden">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, idx) => (
             <div key={idx} className="w-full">
@@ -125,14 +127,14 @@ export const UpcomingWishlistView = () => {
             );
           })
         ) : (
-          <div className="w-full col-span-full flex flex-col items-center justify-center py-16 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+          <div className="w-full col-span-full flex flex-col items-center justify-center py-24 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
             <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
               관심 있는 공연이 없습니다.
             </Text>
-            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px] md:max-w-none">
+            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-none">
               홈 화면에서 기대되는 공연에 하트를 눌러보세요!
             </Text>
           </div>
@@ -140,7 +142,7 @@ export const UpcomingWishlistView = () => {
       </div>
 
       {/* 태블릿/데스크톱 그리드 뷰 (InfoCard) - md 이상에서만 표시 */}
-      <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 pb-20 justify-items-center">
+      <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 justify-items-center">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, idx) => (
             <div key={idx} className="w-full flex justify-center">
@@ -177,7 +179,19 @@ export const UpcomingWishlistView = () => {
               </div>
             );
           })
-        ) : null}
+        ) : (
+          <div className="col-span-full w-full flex flex-col items-center justify-center py-24 px-6 bg-surface-subtle rounded-2xl border border-line text-center">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-content-muted mb-5">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
+              관심 있는 공연이 없습니다.
+            </Text>
+            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-none">
+              홈 화면에서 기대되는 공연에 하트를 눌러보세요!
+            </Text>
+          </div>
+        )}
       </div>
 
       {/* 에러 모달 */}

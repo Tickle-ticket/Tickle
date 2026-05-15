@@ -91,7 +91,7 @@ export const WaitlistButton = ({
 
   const totalSec = timeLeft.days * 86400 + timeLeft.hours * 3600 + timeLeft.minutes * 60 + timeLeft.seconds;
   const isWarning = totalSec > 0 && totalSec <= 10;
-  const showTimer = targetDate && !isMoreThanOneDayLeft;
+  const showTimer = targetDate && !isMoreThanOneDayLeft && !timerExpired;
 
   return (
     <div className="relative flex-1 flex w-full">

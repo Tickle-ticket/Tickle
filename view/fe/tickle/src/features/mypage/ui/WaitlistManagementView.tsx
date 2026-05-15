@@ -136,13 +136,15 @@ export const WaitlistManagementView = () => {
 
   return (
     <div className="w-full animate-fade-in relative">
-      <div className="mb-6 flex items-center justify-between">
-        <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-primary">{flatSeats.length}</span>건의 좌석 대기 중
-        </Text>
-      </div>
+      {flatSeats.length > 0 && (
+        <div className="mb-6 flex items-center justify-between">
+          <Text typography="t5" color="secondary">
+            총 <span className="font-bold text-primary">{flatSeats.length}</span>건의 좌석 대기 중
+          </Text>
+        </div>
+      )}
 
-      <div className="flex flex-col gap-6 pb-20">
+      <div className="flex flex-col gap-6">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="w-full h-20 bg-surface-muted animate-pulse rounded-2xl" />
@@ -163,7 +165,7 @@ export const WaitlistManagementView = () => {
             <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
               취소표 대기 내역이 없습니다.
             </Text>
-            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px] md:max-w-none">
+            <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-none">
               원하시는 공연의 취소표 대기를 걸어보세요!
             </Text>
           </div>

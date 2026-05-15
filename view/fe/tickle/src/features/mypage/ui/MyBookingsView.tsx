@@ -148,9 +148,13 @@ export const MyBookingsView = () => {
   return (
     <div className="w-full animate-fade-in">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <Text typography="t5" color="secondary">
-          총 <span className="font-bold text-primary">{filteredBookings.length}</span>건의 예매 내역이 있습니다.
-        </Text>
+        {filteredBookings.length > 0 ? (
+          <Text typography="t5" color="secondary">
+            총 <span className="font-bold text-primary">{filteredBookings.length}</span>건의 예매 내역이 있습니다.
+          </Text>
+        ) : (
+          <div />
+        )}
         <SegmentedControl
           options={filterOptions}
           value={filterStatus}
@@ -161,7 +165,7 @@ export const MyBookingsView = () => {
 
       <div className="w-full">
         {/* 데스크탑 뷰 (md 이상): 반응형 그리드 */}
-        <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 pb-20 justify-items-center">
+        <div className="hidden md:grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6 justify-items-center">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, idx) => (
               <div key={idx} className="w-full max-w-[300px] aspect-[2/3] bg-surface-muted animate-pulse rounded-2xl" />
@@ -200,7 +204,7 @@ export const MyBookingsView = () => {
         </div>
 
         {/* 모바일 뷰 (md 미만): 리스트 형태 */}
-        <div className="grid md:hidden grid-cols-1 gap-3 pb-20">
+        <div className="grid md:hidden grid-cols-1 gap-3">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, idx) => (
               <div key={idx} className="w-full h-[140px] bg-surface-muted animate-pulse rounded-2xl" />
@@ -230,7 +234,7 @@ export const MyBookingsView = () => {
               <Text typography="t5" fontWeight="bold" color="secondary" textAlign="center" className="mb-2 break-keep">
                 예매 내역이 없습니다.
               </Text>
-              <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-[260px]">
+              <Text typography="t6" color="tertiary" textAlign="center" className="break-keep max-w-none">
                 새로운 공연을 예매해 보세요!
               </Text>
             </div>

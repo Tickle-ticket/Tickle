@@ -11,6 +11,7 @@ import Button from '@/src/shared/components/Button';
 import { Text } from '@/src/shared/components/Text';
 import { Table } from '@/src/shared/components/Table';
 import { Box } from '@/src/shared/components/Box';
+import { Badge } from '@/src/shared/components/Badge';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { SectionNav } from '@/src/shared/components/SectionNav';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
@@ -671,9 +672,25 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
               isLoading={isLoading}
             />
 
-            <div className="flex flex-col gap-1.5 mt-4 sm:mt-5">
-              <BannerSubtitle subtitle={data?.subTitle || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-80" isLoading={isLoading} />
-              <BannerPlace place={data?.venue || ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] font-bold" isLoading={isLoading} />
+            {(data?.subTitle || (data?.tags && data.tags.length > 0)) && (
+              <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
+                {data?.subTitle && (
+                  <Badge variant="fill" color="grey" size="medium" className="px-3 py-1 font-bold shadow-sm bg-black/5 border-none ring-0">
+                    {data.subTitle}
+                  </Badge>
+                )}
+                {data?.tags?.map((tag, idx) => {
+                  const displayTag = tag.startsWith('#') ? tag.slice(1) : tag;
+                  return (
+                    <Badge key={idx} variant="fill" color="grey" size="medium" className="px-3 py-1 font-bold shadow-sm bg-black/5 border-none ring-0">
+                      {displayTag}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5 mt-3 sm:mt-4">
               <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-90" isLoading={isLoading} />
             </div>
           </div>
@@ -705,20 +722,43 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             <Box variant="flat" padding="medium" className="w-full border border-black/5">
               <div className="flex flex-col items-start gap-4">
                 <Title title="공연 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
-                <div className="flex flex-col gap-6 w-full">
-                  {[
-                    { title: '장소', descriptions: [data?.venue || '', data?.venueAddress || ''] },
-                    { title: '공지사항', descriptions: data?.notice?.split('\n') || [] }
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex flex-col gap-1.5">
-                      <Text typography="t6" fontWeight="bold" color="primary">{item.title}</Text>
-                      <div className="flex flex-col gap-0.5">
-                        {item.descriptions.map((desc, dIdx) => desc && (
-                          <Text key={dIdx} typography="t6" color="secondary">{desc}</Text>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                <div className="w-full">
+                  <Table
+                    columns={[
+                      { key: 'label', header: '', align: 'left', width: '90px', render: (row) => row.label },
+                      { key: 'value', header: '', align: 'left', render: (row) => row.value }
+                    ]}
+                    data={[
+                      {
+                        label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">카테고리</Text>,
+                        value: <Text typography="t6" color="primary" fontWeight="bold">{data?.subTitle || ''}</Text>
+                      },
+                      {
+                        label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">공연 기간</Text>,
+                        value: <Text typography="t6" color="primary" fontWeight="bold">{data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''}</Text>
+                      },
+                      {
+                        label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">장소</Text>,
+                        value: (
+                          <div className="flex flex-col">
+                            <Text typography="t6" color="primary" fontWeight="bold">{data?.venue || ''}</Text>
+                            {data?.venueAddress && <Text typography="t7" color="secondary">{data?.venueAddress}</Text>}
+                          </div>
+                        )
+                      },
+                      {
+                        label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">공지사항</Text>,
+                        value: (
+                          <div className="flex flex-col gap-0.5">
+                            {data?.notice?.split('\n').map((desc, dIdx) => desc && (
+                              <Text key={dIdx} typography="t6" color="primary" fontWeight="bold">{desc}</Text>
+                            ))}
+                          </div>
+                        )
+                      }
+                    ]}
+                    className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-surface-subtle/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-line-subtle"
+                  />
                 </div>
               </div>
             </Box>
