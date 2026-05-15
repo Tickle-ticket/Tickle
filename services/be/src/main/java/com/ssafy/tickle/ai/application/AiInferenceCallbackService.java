@@ -80,6 +80,8 @@ public class AiInferenceCallbackService {
 
     private boolean isIgnoredType(AiInferenceCallbackRequest.InferenceType type) {
         return type == AiInferenceCallbackRequest.InferenceType.BOOKING
-                || type == AiInferenceCallbackRequest.InferenceType.DETAIL;
+                || type == AiInferenceCallbackRequest.InferenceType.DETAIL
+                || type == AiInferenceCallbackRequest.InferenceType.CAPTCHA
+                || type == AiInferenceCallbackRequest.InferenceType.CAPTCHA_RETRY;
     }
 }
