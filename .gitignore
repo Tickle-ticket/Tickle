@@ -1,0 +1,12 @@
+node_modules/
+services/ai/train/model_joblib/
+.env
+
+# Local working notes (per-developer)
+tasks/
+
+# IDE / local tool artifacts
+.vscode/
+.jupyter-config/
+
+.DS_Store

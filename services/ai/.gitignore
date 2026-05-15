@@ -1,0 +1,63 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+data/
+node_modules/
+model_joblib/
+
+# --- Data ---
+data/
+
+# --- Models ---
+models/**/*.pkl
+models/**/*.pt
+models/**/*.joblib
+models/**/*.onnx
+models/**/saved/
+models/**/checkpoints/
+
+# --- DB ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Logs / artifacts ---
+*.log
+logs/
+artifacts/
+outputs/
+
+# --- Node  ---
+node_modules/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Temp ---
+tmp/
+temp/
+*.tmp
+
+# --- automouse ---
+automouse_data.json
+
+# --- ingest ---
+.gradle/
+build/
+bin/

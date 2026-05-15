@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>매크로 제어</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; }
+    .shell { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 18px; padding: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    label { display: grid; gap: 8px; font-size: 13px; color: #cbd5e1; }
+    input, select { border-radius: 10px; border: 1px solid #334155; background: #020617; color: #f8fafc; padding: 10px 12px; }
+    input[type="checkbox"] { width: 18px; height: 18px; }
+    button { border: none; border-radius: 12px; padding: 12px 16px; font-weight: 700; cursor: pointer; }
+    .primary { background: #f97316; color: white; }
+    .muted { color: #94a3b8; font-size: 13px; }
+    pre { background: #020617; color: #cbd5e1; border-radius: 14px; padding: 14px; overflow: auto; font-size: 12px; }
+    .jobs { display: grid; gap: 10px; }
+    .job { background: #0b1220; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="card">
+      <h1>Playwright 매크로 제어</h1>
+      <p class="muted">simulator와 분리된 상태로 매크로를 실행합니다. UI 흐름과 자동화 레이어를 나눠 두면 나중에 다른 웹사이트로 옮기기 쉬워집니다.</p>
+    </div>
+
+    <div class="card">
+      <div class="grid">
+        <label>Python 실행 경로
+          <input id="python_path" value="" placeholder="비워두면 collector_api의 Python을 사용합니다" />
+        </label>
+        <label>대상 URL
+          <input id="url" value="http://localhost:5173" />
+        </label>
+        <label>좌석
+          <input id="seats" value="B3 B4" />
+        </label>
+        <label>반복 횟수
+          <input id="repeat" type="number" min="1" value="1" />
+        </label>
+        <label>Trial 라벨
+          <select id="trial_label">
+            <option value="macro" selected>매크로</option>
+            <option value="human">사람</option>
+          </select>
+        </label>
+        <label>브라우저 기본 지연(ms)
+          <input id="slow_mo_ms" type="number" min="0" value="120" />
+        </label>
+        <label>행동 사이 지연(ms)
+          <input id="action_delay_ms" type="number" min="0" value="80" />
+        </label>
+        <label>호버 유지 시간(ms)
+          <input id="hover_ms" type="number" min="0" value="35" />
+        </label>
+        <label>타이핑 지연(ms)
+          <input id="typing_delay_ms" type="number" min="0" value="85" />
+        </label>
+        <label>마우스 이동 단계 수
+          <input id="mouse_steps" type="number" min="1" value="6" />
+        </label>
+        <label>최대 대기 시간(ms)
+          <input id="timeout_ms" type="number" min="1000" value="15000" />
+        </label>
+      </div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <span class="muted">빠른 반복 프리셋</span>
+        <button type="button" data-repeat-preset="1">1x</button>
+        <button type="button" data-repeat-preset="5">5x</button>
+        <button type="button" data-repeat-preset="10">10x</button>
+        <button type="button" data-repeat-preset="20">20x</button>
+        <button type="button" data-repeat-preset="50">50x</button>
+      </div>
+      <div class="grid" style="margin-top: 16px;">
+        <label><span>대기열 건너뛰기</span><input id="skip_queue" type="checkbox" checked /></label>
+        <label><span>예매 확정까지 진행</span><input id="confirm_booking" type="checkbox" checked /></label>
+        <label><span>헤드리스 실행</span><input id="headless" type="checkbox" /></label>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
+        <button class="primary" id="run_btn">매크로 실행</button>
+        <span class="muted" id="status_msg">준비 완료</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>실행 이력</h2>
+      <div class="jobs" id="jobs"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    async function fetchJobs() {
+      const response = await fetch('/api/macro/jobs');
+      const jobs = await response.json();
+      $('jobs').innerHTML = jobs.slice().reverse().map(job => `
+        <div class="job">
+          <div><strong>${job.job_id}</strong> | ${job.status} | label=${job.trial_label} | repeat=${job.repeat}</div>
+          <div class="muted">${job.command.join(' ')}</div>
+          <pre>${(job.logs || '').slice(-3000)}</pre>
+        </div>
+      `).join('') || '<div class="muted">아직 실행 이력이 없습니다.</div>';
+    }
+
+    async function runMacro() {
+      const payload = {
+        python_path: $('python_path').value.trim() || null,
+        url: $('url').value.trim(),
+        seats: $('seats').value.trim().split(/\s+/).filter(Boolean),
+        repeat: Number($('repeat').value || 1),
+        trial_label: $('trial_label').value,
+        skip_queue: $('skip_queue').checked,
+        confirm_booking: $('confirm_booking').checked,
+        headless: $('headless').checked,
+        timeout_ms: Number($('timeout_ms').value || 15000),
+        slow_mo_ms: Number($('slow_mo_ms').value || 0),
+        action_delay_ms: Number($('action_delay_ms').value || 0),
+        hover_ms: Number($('hover_ms').value || 0),
+        typing_delay_ms: Number($('typing_delay_ms').value || 0),
+        mouse_steps: Number($('mouse_steps').value || 1),
+      };
+
+      $('status_msg').textContent = '매크로 작업 시작 중...';
+      const response = await fetch('/api/macro/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      $('status_msg').textContent = result.ok ? `작업 시작: ${result.job_id}` : '작업 시작 실패';
+      await fetchJobs();
+    }
+
+    $('run_btn').addEventListener('click', () => {
+      runMacro().catch((error) => {
+        $('status_msg').textContent = `오류: ${error.message}`;
+      });
+    });
+
+    document.querySelectorAll('[data-repeat-preset]').forEach((button) => {
+      button.addEventListener('click', () => {
+        $('repeat').value = button.dataset.repeatPreset;
+      });
+    });
+
+    fetchJobs().catch(() => {});
+    setInterval(() => fetchJobs().catch(() => {}), 2000);
+  </script>
+</body>
+</html>
