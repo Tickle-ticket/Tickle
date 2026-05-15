@@ -56,6 +56,12 @@ const TERM_MODAL_CONTENT = {
   },
 } as const;
 
+const AGENCY_APPROVAL_MODAL_CONTENT = {
+  title: '관리자 승인 필요',
+  description:
+    '기획사 회원가입은 관리자 승인 후 이용할 수 있습니다.\n\n승인이 완료되기 전에는 기획사 계정 가입을 진행할 수 없습니다.',
+} as const;
+
 const ERROR_FIELDS: readonly ErrorField[] = [
   'email',
   'password',
@@ -322,6 +328,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
   const [receiveAnnouncements, setReceiveAnnouncements] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [openModalType, setOpenModalType] = useState<keyof typeof TERM_MODAL_CONTENT | null>(null);
+  const [isAgencyApprovalModalOpen, setIsAgencyApprovalModalOpen] = useState(false);
 
   const totalSteps = STEP_LABELS.length;
   const activeModal = openModalType ? TERM_MODAL_CONTENT[openModalType] : null;
@@ -434,11 +441,21 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
       return;
     }
 
+    if (isAgencySignup && currentStep === 2) {
+      setIsAgencyApprovalModalOpen(true);
+      return;
+    }
+
     setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
 
   const handlePrev = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleCloseAgencyApprovalModal = () => {
+    setIsAgencyApprovalModalOpen(false);
+    router.push('/');
   };
 
   const handleSendCode = async () => {
@@ -488,7 +505,7 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
     }
   };
 
-  const isSignupDisabled = (isAgencySignup && !selectedAgencyId) || !isPhoneVerified || isSubmitting || !isTermsAgreed;
+  const isSignupDisabled = isAgencySignup || !isPhoneVerified || isSubmitting || !isTermsAgreed;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -500,6 +517,12 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         setCurrentStep(step);
         return;
       }
+    }
+
+    if (isAgencySignup) {
+      setCurrentStep(2);
+      setIsAgencyApprovalModalOpen(true);
+      return;
     }
 
     if (!isTermsAgreed) {
@@ -867,6 +890,16 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
         title={activeModal?.title}
         description={activeModal?.description}
         confirmText="닫기"
+        showCancelButton={false}
+      />
+
+      <Modal
+        isOpen={isAgencyApprovalModalOpen}
+        onClose={handleCloseAgencyApprovalModal}
+        onConfirm={handleCloseAgencyApprovalModal}
+        title={AGENCY_APPROVAL_MODAL_CONTENT.title}
+        description={AGENCY_APPROVAL_MODAL_CONTENT.description}
+        confirmText="확인"
         showCancelButton={false}
       />
     </>

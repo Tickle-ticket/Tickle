@@ -5,6 +5,13 @@ import { authApi } from '@/src/shared/api/authApi';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 
+const MOCK_LOGIN_USER_STORAGE_KEY = 'mockLoginUser';
+
+type MockLoginUser = {
+  name: string;
+  phoneNumber: string;
+};
+
 interface UseEventFlowStartParams {
   activeEventId: string | null;
   storyMode: boolean;
@@ -33,9 +40,27 @@ export const useEventFlowStart = ({
   const [mockLoginError, setMockLoginError] = useState('');
   const [isMockLoginSubmitting, setIsMockLoginSubmitting] = useState(false);
   const [isMockLoginDropdownOpen, setIsMockLoginDropdownOpen] = useState(false);
-  const [activeMockUser, setActiveMockUser] = useState<{ name: string; phoneNumber: string } | null>(null);
+  const [activeMockUser, setActiveMockUser] = useState<MockLoginUser | null>(() => {
+    if (typeof window === 'undefined' || !getAccessToken()) {
+      return null;
+    }
+
+    try {
+      const storedMockUser = window.localStorage.getItem(MOCK_LOGIN_USER_STORAGE_KEY);
+      return storedMockUser ? (JSON.parse(storedMockUser) as MockLoginUser) : null;
+    } catch {
+      window.localStorage.removeItem(MOCK_LOGIN_USER_STORAGE_KEY);
+      return null;
+    }
+  });
 
   const isMockLoginEnabled = !storyMode && !isShadowMode(activeEventId) && isMockLoginEvent(activeEventId);
+
+  React.useEffect(() => {
+    if (isMockLoginEnabled && !getAccessToken()) {
+      window.localStorage.removeItem(MOCK_LOGIN_USER_STORAGE_KEY);
+    }
+  }, [isMockLoginEnabled]);
 
   const handleMockLoginSubmit = async () => {
     if (isMockLoginSubmitting) return;
@@ -60,7 +85,9 @@ export const useEventFlowStart = ({
       setMockLoginError('');
       const response = await authApi.mockLogin({ name, phoneNumber });
       setAccessToken(response.data.accessToken);
-      setActiveMockUser({ name, phoneNumber });
+      const mockUser = { name, phoneNumber };
+      setActiveMockUser(mockUser);
+      window.localStorage.setItem(MOCK_LOGIN_USER_STORAGE_KEY, JSON.stringify(mockUser));
       await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       setIsMockLoginDropdownOpen(false);
     } catch (error: any) {
@@ -78,6 +105,7 @@ export const useEventFlowStart = ({
       // 테스트용 로그아웃은 클라이언트 토큰 정리가 우선입니다.
     } finally {
       clearTokens();
+      window.localStorage.removeItem(MOCK_LOGIN_USER_STORAGE_KEY);
       setActiveMockUser(null);
       setMockLoginName('');
       setMockLoginPhone('');
