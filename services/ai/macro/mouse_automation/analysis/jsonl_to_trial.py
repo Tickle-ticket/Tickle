@@ -99,7 +99,24 @@ TIER2_FEATURES = [
     "mouse_overshoot_flag",
 ]
 
-EXTRACTABLE_FEATURES = TIER1_FEATURES + TIER2_FEATURES  # 16개
+# 3차 (370 추가) — OS-level 에서 (x,y,t) 만으로 측정 가능한 11개.
+# 7개는 chan core.js 정의와 동일, 4개는 OS-substitute (DOM element 부재로 대체 정의).
+# 정책: click_sequence_consistency_score 는 OS-substitute 가 휴리스틱이라 제외 (보겸 결정 2026-05-11).
+TIER3_FEATURES = [
+    "pre_click_path_300ms_total_distance_px",  # core.js 동일
+    "pre_click_path_300ms_straightness",       # core.js 동일
+    "pre_click_path_500ms_total_distance_px",  # core.js 동일
+    "pre_click_path_500ms_straightness",       # core.js 동일
+    "pre_click_hover_time_ms",                 # OS-substitute (직전 500ms 마지막 stop-segment dt)
+    "pre_click_scroll_flag",                   # core.js 동일. lv2/human/Balabit 모두 scroll 미기록 → 항상 null 가능
+    "click_position_repeat_rate",              # core.js 동일
+    "click_offset_variance_px",                # OS-substitute (centroid 까지 거리 분산)
+    "double_click_rate",                       # OS-substitute (inter-click < 300ms 비율)
+    "inter_element_move_interval_std_ms",      # OS-substitute (클릭 간 간격의 std)
+    "edge_or_fixed_point_visit_rate",          # core.js 동일. screen_width 없으면 null
+]
+
+EXTRACTABLE_FEATURES = TIER1_FEATURES + TIER2_FEATURES + TIER3_FEATURES  # 27개
 
 # === chan core.js 일치 임계값 ===
 
@@ -117,6 +134,14 @@ DIRECTION_CHANGE_RAD = math.pi / 6
 OVERSHOOT_WINDOW_MS = 500
 OVERSHOOT_MIN_DIST = 12
 OVERSHOOT_BOUNCE_DELTA = 24
+
+# TIER3 임계값 (chan core.js 일치)
+PRE_CLICK_300_MS = 300
+PRE_CLICK_500_MS = 500
+PRE_CLICK_HOVER_WINDOW_MS = 500           # pre_click_hover_time_ms 의 lookback
+DOUBLE_CLICK_MS = 300                     # OS-substitute: inter-click < 300ms 면 double click
+CLICK_POSITION_REPEAT_TOL_PX = 6          # core.js line 149 와 동일
+EDGE_PX_DEFAULT = 20                      # core.js line 263 와 동일
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -164,11 +189,50 @@ def _build_segments(moves: list[dict]) -> list[dict]:
     return segments
 
 
-def extract_metrics(events: list[dict], all_features: list[str]) -> dict:
-    """44개 feature 키 dict 반환. 추출 가능한 16개만 값, 나머지 None.
+def _pre_click_path_stats(
+    moves: list[dict],
+    click_ts: float,
+    window_ms: int,
+) -> tuple[float | None, float | None]:
+    """클릭 직전 window_ms 내 mouse_move 의 (total_distance, straightness).
+
+    core.js summarizePath (line 96-109) 와 동일 정의:
+    - total_distance = 인접 move 쌍의 (Δx, Δy) 합
+    - straightness = (first→last 직선거리) / total_distance
+    - move 가 2개 미만이면 (None, None) (caller 가 평균 집계 시 스킵)
+    - total_distance = 0 인 경우 (좌표 변화 없음): (0.0, 0.0) 반환
+    """
+    window_moves = [
+        m for m in moves
+        if m.get("ts_ms") is not None and 0 <= (click_ts - m["ts_ms"]) <= window_ms
+    ]
+    if len(window_moves) < 2:
+        return None, None
+    total = 0.0
+    for a, b in zip(window_moves, window_moves[1:]):
+        dx = b["x"] - a["x"]
+        dy = b["y"] - a["y"]
+        total += math.sqrt(dx * dx + dy * dy)
+    if total == 0:
+        return 0.0, 0.0
+    first, last = window_moves[0], window_moves[-1]
+    straight = math.sqrt((last["x"] - first["x"]) ** 2 + (last["y"] - first["y"]) ** 2)
+    return total, straight / total
+
+
+def extract_metrics(
+    events: list[dict],
+    all_features: list[str],
+    screen_width: int | None = None,
+    screen_height: int | None = None,
+) -> dict:
+    """44개 feature 키 dict 반환. OS-level 가능 27개에 한해 값, 나머지 None.
 
     정의는 chan/browser_automation simulator/src/tracking/core.js 와 일치.
-    예외 1개: mouse_hover_dwell_time_ms 는 DOM 부재로 OS-level 대체 정의 사용.
+    예외 (OS-substitute): mouse_hover_dwell_time_ms, pre_click_hover_time_ms,
+    click_offset_variance_px, double_click_rate, inter_element_move_interval_std_ms.
+
+    screen_width/height 가 None 이면 edge_or_fixed_point_visit_rate 는 null.
 
     ⚠️ jsonl 첫 mouse_move 는 dx/dy/dt_ms/speed 없어 segment 에서 제외됨
        (_build_segments 참조). chan 대비 segment 1개 적음.
@@ -353,12 +417,197 @@ def extract_metrics(events: list[dict], all_features: list[str]) -> dict:
             break
     metrics["mouse_overshoot_flag"] = overshoot_flag
 
+    # === 3차 11개 (TIER3) ===
+
+    # 17-20. pre_click_path_300/500ms_{total_distance_px, straightness}
+    # core.js summarizePath (line 96-109) 와 동일 정의. _pre_click_path_stats 헬퍼 참조.
+    total_300_list: list[float] = []
+    straight_300_list: list[float] = []
+    total_500_list: list[float] = []
+    straight_500_list: list[float] = []
+    for c in clicks:
+        click_ts = c.get("ts_ms")
+        if click_ts is None:
+            continue
+        t300, s300 = _pre_click_path_stats(moves, click_ts, PRE_CLICK_300_MS)
+        if t300 is not None:
+            total_300_list.append(t300)
+            straight_300_list.append(s300)
+        t500, s500 = _pre_click_path_stats(moves, click_ts, PRE_CLICK_500_MS)
+        if t500 is not None:
+            total_500_list.append(t500)
+            straight_500_list.append(s500)
+    if total_300_list:
+        metrics["pre_click_path_300ms_total_distance_px"] = round(mean(total_300_list), 3)
+        metrics["pre_click_path_300ms_straightness"] = round(mean(straight_300_list), 6)
+    if total_500_list:
+        metrics["pre_click_path_500ms_total_distance_px"] = round(mean(total_500_list), 3)
+        metrics["pre_click_path_500ms_straightness"] = round(mean(straight_500_list), 6)
+
+    # 21. pre_click_hover_time_ms — OS 대체 정의
+    # 각 클릭 직전 PRE_CLICK_HOVER_WINDOW_MS 내 마지막 stop-segment 의 dt 평균.
+    # stop-segment 정의는 13번 (mouse_stop_segment_count) 과 동일 (dt >= 120 OR speed < 0.02).
+    # 단위 충돌 방지: chan 은 DOM hoverSample duration → metrics_compatibility 에 명시.
+    stop_moves_ts_dt: list[tuple[float, float]] = []
+    for m in moves:
+        dt = m.get("dt_ms")
+        speed = m.get("speed")
+        ts = m.get("ts_ms")
+        if dt is None or speed is None or ts is None:
+            continue
+        if dt >= STOP_DT_THRESHOLD_MS or speed < STOP_SPEED_THRESHOLD:
+            stop_moves_ts_dt.append((float(ts), float(dt)))
+    pre_click_hover_list: list[float] = []
+    for c in clicks:
+        click_ts = c.get("ts_ms")
+        if click_ts is None:
+            continue
+        candidates = [
+            (ts, dt) for ts, dt in stop_moves_ts_dt
+            if 0 <= (click_ts - ts) <= PRE_CLICK_HOVER_WINDOW_MS
+        ]
+        if candidates:
+            _, last_stop_dt = max(candidates, key=lambda x: x[0])
+            pre_click_hover_list.append(last_stop_dt)
+    if pre_click_hover_list:
+        metrics["pre_click_hover_time_ms"] = round(mean(pre_click_hover_list), 3)
+
+    # 22. pre_click_scroll_flag — core.js line 288 동일
+    # ⚠️ lv2_collector / human_recorder / Balabit CSV 셋 다 mouse_scroll event 미기록.
+    # 실측 (raw jsonl 10 + g1_human trial 5) 에서 scroll event 0건. 사실상 항상 null.
+    # 방어적 구현: scroll event 가 있는 경우에만 계산 (compatibility 에 dataset_unavailable 마커).
+    scrolls = [e for e in events if e.get("event") == "mouse_scroll"]
+    if scrolls and clicks:
+        flags: list[int] = []
+        for c in clicks:
+            click_ts = c.get("ts_ms")
+            if click_ts is None:
+                continue
+            has_scroll = any(
+                s.get("ts_ms") is not None
+                and 0 <= (click_ts - s["ts_ms"]) <= PRE_CLICK_HOVER_WINDOW_MS
+                for s in scrolls
+            )
+            flags.append(1 if has_scroll else 0)
+        if flags:
+            metrics["pre_click_scroll_flag"] = round(mean(flags), 6)
+
+    # 23. click_position_repeat_rate (core.js line 148-150 동일)
+    # 각 클릭 i: 이전 클릭 j 중 |x_i - x_j| <= 6 AND |y_i - y_j| <= 6 가 하나라도 있으면 카운트.
+    if clicks:
+        repeat_count = 0
+        for i, c in enumerate(clicks):
+            cx = c.get("x")
+            cy = c.get("y")
+            if cx is None or cy is None:
+                continue
+            for j in range(i):
+                px = clicks[j].get("x")
+                py = clicks[j].get("y")
+                if px is None or py is None:
+                    continue
+                if (
+                    abs(cx - px) <= CLICK_POSITION_REPEAT_TOL_PX
+                    and abs(cy - py) <= CLICK_POSITION_REPEAT_TOL_PX
+                ):
+                    repeat_count += 1
+                    break
+        metrics["click_position_repeat_rate"] = round(repeat_count / len(clicks), 6)
+
+    # 24. click_offset_variance_px — OS 대체 정의
+    # chan: 클릭 좌표 - DOM element 중심 의 분산 (DOM 부재로 OS-level 불가)
+    # 우리: 클릭 좌표들의 centroid 기준 거리의 분산
+    if len(clicks) >= 2:
+        coords = [
+            (c["x"], c["y"]) for c in clicks
+            if c.get("x") is not None and c.get("y") is not None
+        ]
+        if len(coords) >= 2:
+            cx_mean = mean(x for x, _ in coords)
+            cy_mean = mean(y for _, y in coords)
+            dists = [
+                math.sqrt((x - cx_mean) ** 2 + (y - cy_mean) ** 2)
+                for x, y in coords
+            ]
+            d_mean = mean(dists)
+            variance = mean((d - d_mean) ** 2 for d in dists)
+            metrics["click_offset_variance_px"] = round(variance, 6)
+
+    # 25. double_click_rate — OS 대체 정의
+    # chan: native dblclick event 비율
+    # 우리: inter-click-interval < 300ms 인 클릭 쌍의 비율 (각 빠른 쌍 1개로 카운트)
+    if len(clicks) >= 2:
+        intervals = [
+            float(clicks[i + 1]["ts_ms"]) - float(clicks[i]["ts_ms"])
+            for i in range(len(clicks) - 1)
+        ]
+        rapid = sum(1 for it in intervals if it < DOUBLE_CLICK_MS)
+        metrics["double_click_rate"] = round(rapid / len(clicks), 6)
+
+    # 26. inter_element_move_interval_std_ms — OS 대체 정의
+    # chan: trackId 변화 시점 간 간격의 std (DOM track 단위, OS 부재로 불가)
+    # 우리: inter-click-interval 의 std (OS 에서 "element 간 이동" 의 가장 가까운 대체)
+    if len(clicks) >= 3:
+        intervals = [
+            float(clicks[i + 1]["ts_ms"]) - float(clicks[i]["ts_ms"])
+            for i in range(len(clicks) - 1)
+        ]
+        m_int = mean(intervals)
+        var = mean((it - m_int) ** 2 for it in intervals)
+        metrics["inter_element_move_interval_std_ms"] = round(math.sqrt(var), 6)
+
+    # 27. edge_or_fixed_point_visit_rate (core.js line 263 동일)
+    # screen_width/height 가 모두 있을 때만 계산. lv2_collector / Balabit 둘 다 None →
+    # 항상 null 유지 (compatibility 에 screen_dim_missing 마커).
+    if screen_width and screen_height and moves:
+        edge_count = 0
+        for m in moves:
+            x = m.get("x")
+            y = m.get("y")
+            if x is None or y is None:
+                continue
+            if (
+                x <= EDGE_PX_DEFAULT
+                or x >= screen_width - EDGE_PX_DEFAULT
+                or y <= EDGE_PX_DEFAULT
+                or y >= screen_height - EDGE_PX_DEFAULT
+            ):
+                edge_count += 1
+        metrics["edge_or_fixed_point_visit_rate"] = round(edge_count / len(moves), 6)
+
     return metrics
+
+
+# OS-level (mouse_automation_lv2 + external_balabit) 에서 원리상 / 인프라상 채울 수 없는 feature 리스트.
+# - dom_feature_unavailable: DOM element 정보 부재 → 6개 click feature 산출 불가
+# - click_sequence_consistency_score: OS-substitute 정의가 휴리스틱이라 산출 보류 (보겸 결정 2026-05-11)
+DOM_FEATURE_UNAVAILABLE = [
+    "time_from_element_visible_to_click_ms",
+    "time_from_element_clickable_to_click_ms",
+    "click_offset_from_element_center_px",
+    "misclick_rate",
+    "reclick_rate",
+    "immediate_post_render_click_rate",
+    "click_sequence_consistency_score",
+]
+
+# OS-level 에서 chan core.js 와 정의가 다른 metric (silent 단위 충돌 방지).
+OS_LEVEL_SUBSTITUTES = {
+    "mouse_hover_dwell_time_ms": "os_level_substitute",       # chan = DOM hoverSample
+    "pre_click_hover_time_ms": "os_level_substitute",          # chan = DOM hoverSample
+    "click_offset_variance_px": "os_level_substitute",         # chan = element center 기준
+    "double_click_rate": "os_level_substitute",                # chan = native dblclick
+    "inter_element_move_interval_std_ms": "os_level_substitute",  # chan = trackId 단위
+}
 
 
 def build_summary(events: list[dict], session_id: str, source: str) -> dict:
     duration_ms = (events[-1]["ts_ms"] - events[0]["ts_ms"]) if events else 0.0
     click_count = sum(1 for e in events if e.get("event") == "mouse_click")
+    # lv2_collector / human_recorder 는 mouse_scroll event 미기록 (raw jsonl 실측 0건)
+    # → pre_click_scroll_flag 는 항상 null (dataset_unavailable)
+    # screen_width/height 가 trial root 에서 None → edge_or_fixed_point_visit_rate 도 null
+    # (이 두 마커는 jsonl_to_trial 풀 일괄 적용. balabit_to_trial 도 동일 패턴 사용)
     return {
         "collection_pipeline": resolve_collection_pipeline(source),
         "session_id": session_id,
@@ -366,10 +615,11 @@ def build_summary(events: list[dict], session_id: str, source: str) -> dict:
         "durationMs": round(float(duration_ms), 3),
         "clickCount": click_count,
         "eventCount": len(events),
-        # OS-level vs chan/browser_automation 정의 호환성 메타.
-        # 정의가 다른 metric 만 명시 (silent 단위 충돌 방지).
         "metrics_compatibility": {
-            "mouse_hover_dwell_time_ms": "os_level_substitute",
+            "dom_feature_unavailable": list(DOM_FEATURE_UNAVAILABLE),
+            **OS_LEVEL_SUBSTITUTES,
+            "pre_click_scroll_flag": "dataset_unavailable",
+            "edge_or_fixed_point_visit_rate": "screen_dim_missing",
         },
     }
 
@@ -523,7 +773,7 @@ def jsonl_to_trial(
         "algorithm_type": algorithm_type,
         "user_id": user_id,
         "summary": build_summary(events, session_id, source),
-        "metrics": extract_metrics(events, all_features),
+        "metrics": extract_metrics(events, all_features, screen_width, screen_height),
         "eventRows": event_rows,
     }
 

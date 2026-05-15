@@ -5,4 +5,8 @@ services/ai/train/model_joblib/
 # Local working notes (per-developer)
 tasks/
 
+# IDE / local tool artifacts
+.vscode/
+.jupyter-config/
+
 .DS_Store
