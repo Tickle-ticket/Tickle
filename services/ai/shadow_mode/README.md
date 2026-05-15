@@ -14,7 +14,7 @@ DB에 별도 테이블을 추가하지 않고 파일로 관리하는 경우, 매
 
 PostgreSQL의 `public.behavior_feature_records`에서 학습용 JSONL로 내보냅니다.
 
-- 출력 필드: `trialID`, `label`, `features`(= DB의 `features` JSONB)
+- 출력 필드: `trialID`, `record_id`, `event_id`, `type`, `label`, `features`(= DB의 `features` JSONB)
 - `trialID`는 export 파일 내부에서 `1`부터 다시 순차 부여합니다.
 - 중복/누락 방지를 위해 DB에서 어디까지 읽었는지 `--from-db-id`로 지정합니다.
 
