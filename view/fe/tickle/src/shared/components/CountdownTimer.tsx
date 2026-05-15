@@ -4,9 +4,11 @@ interface CountdownTimerProps {
   targetDate: string;
   onExpire?: () => void;
   variant?: 'default' | 'compact';
+  containerClassName?: string;
+  containerStyle?: React.CSSProperties;
 }
 
-export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: CountdownTimerProps) => {
+export const CountdownTimer = ({ targetDate, onExpire, variant = 'default', containerClassName, containerStyle }: CountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -65,7 +67,7 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
   if (variant === 'compact') {
     const totalSeconds = timeLeft.days * 86400 + timeLeft.hours * 3600 + timeLeft.minutes * 60 + timeLeft.seconds;
     
-    // 0초가 되면 타이머 자체를 숨김
+    // 0초가 되면 타이머 + 컨테이너 전체를 숨김
     if (totalSeconds <= 0) return null;
     
     const isWarning = totalSeconds <= 900;
@@ -77,7 +79,7 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
       </>
     );
 
-    return (
+    const timerContent = (
       <span className="font-mono font-bold tracking-normal text-[14px] whitespace-nowrap relative">
         <span className={isWarning ? 'invisible' : ''}>{timeString}</span>
         {isWarning && (
@@ -87,6 +89,17 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
         )}
       </span>
     );
+
+    // containerClassName이 있으면 컨테이너 div로 감싸서 반환
+    if (containerClassName) {
+      return (
+        <div className={containerClassName} style={containerStyle}>
+          {timerContent}
+        </div>
+      );
+    }
+
+    return timerContent;
   }
 
   const TimeUnit = ({ value, label }: { value: number; label: string }) => {

@@ -75,15 +75,12 @@ export const BookButton = ({
           <>
             <span className="relative z-10 text-[15px] font-bold tracking-wider">예매하기</span>
             {!timerExpired && (
-            <div 
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center rounded-md px-2 py-0.5 border border-white/10 shadow-md text-white scale-[0.85] z-10 whitespace-nowrap"
-              style={{ backgroundColor: 'var(--toss-grey-700)' }}
-            >
               <CountdownTimer 
                 targetDate={targetDate} 
-                variant="compact" 
+                variant="compact"
+                containerClassName="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center rounded-md px-2 py-0.5 border border-white/10 shadow-md text-white scale-[0.85] z-10 whitespace-nowrap"
+                containerStyle={{ backgroundColor: 'var(--toss-grey-700)' }}
               />
-            </div>
             )}
           </>
         )

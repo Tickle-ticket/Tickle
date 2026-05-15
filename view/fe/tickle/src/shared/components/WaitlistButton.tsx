@@ -75,12 +75,11 @@ export const WaitlistButton = ({
           <>
             <span className="relative z-10 text-[15px] font-bold tracking-wider text-content">취소표 대기하기</span>
             {!timerExpired && (
-            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center bg-white rounded-md px-2 py-0.5 border border-black/10 shadow-md text-content scale-[0.85] z-10 whitespace-nowrap">
               <CountdownTimer 
                 targetDate={targetDate} 
-                variant="compact" 
+                variant="compact"
+                containerClassName="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center bg-white rounded-md px-2 py-0.5 border border-black/10 shadow-md text-content scale-[0.85] z-10 whitespace-nowrap"
               />
-            </div>
             )}
           </>
         )
