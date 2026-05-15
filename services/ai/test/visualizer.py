@@ -118,7 +118,8 @@ def save_evaluation_plots(
         _plot_score_by_type(ax_type, predictions, threshold, missing_heavy_threshold=missing_heavy_threshold)
         ax_type.set_title("P(macro) by Type")
         fig_type.tight_layout()
-        fig_type.savefig(score_type_path, dpi=160)
+        # Legend is placed outside axes; ensure it is included in the saved image.
+        fig_type.savefig(score_type_path, dpi=160, bbox_inches="tight")
         plt.close(fig_type)
 
     result = {
@@ -142,7 +143,8 @@ def _plot_score_distribution(ax: Any, y_true: np.ndarray, y_score: np.ndarray, t
     ax.set_xlabel("P(macro)")
     ax.set_ylabel("Trial count")
     ax.set_xlim(0.0, 1.0)
-    ax.legend(frameon=False)
+    # Keep legend out of dense histogram area
+    ax.legend(frameon=False, loc="upper left")
     _style_axes(ax)
 
 
@@ -268,4 +270,19 @@ def _plot_score_by_type(
         seen.add(l)
         uniq_h.append(h)
         uniq_l.append(l)
-    ax.legend(uniq_h, uniq_l, frameon=False, ncols=2, fontsize=9)
+
+    # Put legend at lower-left to avoid overlapping with data points.
+    # (DETAIL/CAPTCHA/BOOKING + macro + imputed-heavy + threshold)
+    # Put legend fully outside the plot area.
+    ax.legend(
+        uniq_h,
+        uniq_l,
+        frameon=False,
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        ncols=1,
+        fontsize=9,
+        handletextpad=0.5,
+        columnspacing=0.8,
+        borderaxespad=0.0,
+    )
