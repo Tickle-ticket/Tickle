@@ -14,6 +14,7 @@ from feature_extractor import extract_feature_values
 class TrialSample:
     path: Path
     trial_id: int | str | None
+    sample_type: str | None
     label: str | None
     features: dict[str, float]
 
@@ -48,6 +49,15 @@ def _extract_label(trial: dict[str, Any]) -> str | None:
     return None
 
 
+def _extract_type(trial: dict[str, Any]) -> str | None:
+    if trial.get("type") is not None:
+        return str(trial.get("type"))
+    summary = trial.get("summary")
+    if isinstance(summary, dict) and summary.get("type") is not None:
+        return str(summary.get("type"))
+    return None
+
+
 def iter_trial_paths(data_dir: str | Path, pattern: str = "**/trial_*.json") -> Iterable[Path]:
     root = Path(data_dir).expanduser().resolve()
     if not root.exists():
@@ -68,6 +78,7 @@ def load_trial_sample(path: str | Path, feature_names: list[str]) -> TrialSample
     return TrialSample(
         path=path,
         trial_id=_extract_trial_id(trial, path),
+        sample_type=_extract_type(trial),
         label=_extract_label(trial),
         features=extract_feature_values(metrics, feature_names),
     )

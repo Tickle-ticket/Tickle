@@ -14,6 +14,38 @@ class EvaluationResult:
     predictions: list[dict[str, Any]]
 
 
+def _map_label_to_int(label: str | None, label_mapping: dict[str, int]) -> int | None:
+    if label is None:
+        return None
+
+    label_str = str(label)
+    if label_str in label_mapping:
+        return int(label_mapping[label_str])
+
+    # Common project convention:
+    # - human == ALLOW
+    # - macro == BLOCK
+    upper = label_str.strip().upper()
+    if upper == "ALLOW":
+        if "human" in label_mapping:
+            return int(label_mapping["human"])
+        if "HUMAN" in label_mapping:
+            return int(label_mapping["HUMAN"])
+    if upper == "BLOCK":
+        if "macro" in label_mapping:
+            return int(label_mapping["macro"])
+        if "MACRO" in label_mapping:
+            return int(label_mapping["MACRO"])
+
+    # Be tolerant to case differences in mapping keys.
+    lower_map = {str(k).strip().lower(): int(v) for k, v in label_mapping.items()}
+    key = label_str.strip().lower()
+    if key in lower_map:
+        return int(lower_map[key])
+
+    return None
+
+
 def predict_macro_scores(model: object, x: Any) -> np.ndarray:
     if hasattr(model, "predict_proba"):
         probs = np.asarray(model.predict_proba(x), dtype=np.float64)  # type: ignore[attr-defined]
@@ -51,7 +83,11 @@ def evaluate_binary_classifier(
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("Missing dependency: scikit-learn is required for performance metrics.") from exc
 
-    labeled = [(idx, sample) for idx, sample in enumerate(samples) if sample.label in label_mapping]
+    labeled = [
+        (idx, sample)
+        for idx, sample in enumerate(samples)
+        if _map_label_to_int(sample.label, label_mapping) is not None
+    ]
     if not labeled:
         raise RuntimeError(f"No samples have labels included in label_mapping={label_mapping}.")
 
@@ -59,7 +95,10 @@ def evaluate_binary_classifier(
     indices = [idx for idx, _sample in labeled]
     y_score = scores_all[indices]
     y_pred = (y_score >= threshold).astype(int)
-    y_true = np.asarray([label_mapping[str(sample.label)] for _idx, sample in labeled], dtype=int)
+    y_true_list = [_map_label_to_int(sample.label, label_mapping) for _idx, sample in labeled]
+    if any(v is None for v in y_true_list):
+        raise RuntimeError("Internal error: y_true contained unmapped labels after filtering.")
+    y_true = np.asarray([int(v) for v in y_true_list], dtype=int)
 
     metrics: dict[str, Any] = {
         "sample_count": int(len(labeled)),
@@ -96,15 +135,40 @@ def evaluate_binary_classifier(
     for row_idx, (sample_idx, sample) in enumerate(labeled):
         pred = int(y_pred[row_idx])
         true = int(y_true[row_idx])
+
+        nan_count: int | None = None
+        nan_ratio: float | None = None
+        try:
+            if hasattr(x, "iloc"):
+                # pandas.DataFrame
+                row = x.iloc[int(sample_idx)]
+                nan_count = int(row.isna().sum())
+                total = int(row.shape[0])
+                nan_ratio = float(nan_count / total) if total > 0 else None
+            else:
+                # numpy-like
+                import numpy as _np
+
+                row_arr = _np.asarray(x[int(sample_idx)])
+                nan_count = int(_np.isnan(row_arr).sum())
+                total = int(row_arr.size)
+                nan_ratio = float(nan_count / total) if total > 0 else None
+        except Exception:
+            nan_count = None
+            nan_ratio = None
+
         predictions.append(
             {
                 "trial_id": sample.trial_id,
+                "type": getattr(sample, "sample_type", None),
                 "label": sample.label,
                 "y_true": true,
                 "p_macro": float(y_score[row_idx]),
                 "pred": pred,
                 "pred_label": "macro" if pred == 1 else "human",
                 "is_correct": bool(pred == true),
+                "nan_count": nan_count,
+                "nan_ratio": nan_ratio,
                 "file": str(sample.path),
                 "sample_index": int(sample_idx),
             }
