@@ -12,9 +12,11 @@ class PerformanceTestConfig:
     ai_root: Path
     model_path: Path
     meta_path: Path
-    data_dir: Path
+    data_dir: Path | None
+    jsonl_path: Path | None
     glob_pattern: str
     threshold: float
+    missing_heavy_threshold: float
     include_unlabeled: bool
     output_json: Path | None
     predictions_jsonl: Path | None
@@ -69,12 +71,13 @@ def load_performance_test_config(config_path: str | Path) -> PerformanceTestConf
     model_path = _resolve_path(paths.get("model_path"), ai_root)
     meta_path = _resolve_path(paths.get("meta_path"), ai_root)
     data_dir = _resolve_path(paths.get("data_dir"), ai_root)
+    jsonl_path = _resolve_path(paths.get("jsonl_path"), ai_root) or _resolve_path(paths.get("data_jsonl"), ai_root)
     if model_path is None:
         raise ValueError("config must define paths.model_path")
     if meta_path is None:
         raise ValueError("config must define paths.meta_path")
-    if data_dir is None:
-        raise ValueError("config must define paths.data_dir")
+    if data_dir is None and jsonl_path is None:
+        raise ValueError("config must define at least one of paths.data_dir or paths.jsonl_path")
 
     return PerformanceTestConfig(
         config_path=config_path,
@@ -82,8 +85,10 @@ def load_performance_test_config(config_path: str | Path) -> PerformanceTestConf
         model_path=model_path,
         meta_path=meta_path,
         data_dir=data_dir,
+        jsonl_path=jsonl_path,
         glob_pattern=str(evaluation.get("glob", "**/trial_*.json")),
         threshold=float(evaluation.get("threshold", 0.5)),
+        missing_heavy_threshold=float(evaluation.get("missing_heavy_threshold", 0.2)),
         include_unlabeled=bool(evaluation.get("include_unlabeled", False)),
         output_json=_resolve_path(outputs.get("metrics_json"), ai_root),
         predictions_jsonl=_resolve_path(outputs.get("predictions_jsonl"), ai_root),

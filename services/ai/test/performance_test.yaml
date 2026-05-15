@@ -3,16 +3,28 @@
 ai_root: .
 
 paths:
-  model_path: train/model_joblib/logistic_9_g1_v1/model.joblib
-  meta_path: train/model_joblib/logistic_9_g1_v1/meta.json
+  model_path: train/model_joblib/randomforest_28_g_v1/model.joblib
+  meta_path: train/model_joblib/randomforest_28_g_v1/meta.json
+
+  # trial_*.json 기반 평가(run_performance_test.py)에서 사용
   data_dir: data/data_c1
 
+  # JSONL 기반 평가(run_performance_test_jsonl.py)에서 사용
+  # - 파일(.jsonl) 또는 폴더 경로 가능
+  # - CLI에서 --data를 주면 그게 우선
+  jsonl_path: C:\Users\SSAFY\Desktop\ws\free\develop-ai\S14P31A203\services\ai\data\data_tickle_0515_human\tickle_0515_allow.jsonl
+
 evaluation:
+  # run_performance_test.py에서 data_dir 아래 파일 glob
   glob: "**/trial_*.json"
-  threshold: 0.5
+  threshold: 0.89
   include_unlabeled: false
 
+  # score_by_type.png에서 결측치(=imputer로 채워진 비율)가 높은 샘플을 별도 색(보라색)으로 표시하는 기준
+  # 예: 0.2면 feature 34개 중 약 7개 이상 NaN이면 보라색으로 표시
+  missing_heavy_threshold: 0.2
+
 outputs:
-  metrics_json: test/outputs/logistic_9_g1_v1_cv_c1/metrics.json
-  predictions_jsonl: test/ouputs/logistic_9_g1_v1_cv_c1/predictions.jsonl
-  visualizations_dir: test/outputs/logistic_9_g1_v1_cv_c1/plots
+  metrics_json: test/outputs/randomforest_28_g_v1/metrics.json
+  predictions_jsonl: test/outputs/randomforest_28_g_v1/predictions.jsonl
+  visualizations_dir: test/outputs/randomforest_28_g_v1/plots

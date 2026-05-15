@@ -31,6 +31,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-json", default=None, help="Override metrics JSON output path.")
     parser.add_argument("--predictions-jsonl", default=None, help="Override prediction rows output path.")
     parser.add_argument("--visualizations-dir", default=None, help="Override plot output directory.")
+    parser.add_argument(
+        "--no-outputs",
+        action="store_true",
+        help="Do not write any output files/plots (ignores config.outputs unless explicitly overridden).",
+    )
     return parser.parse_args()
 
 
@@ -64,12 +69,19 @@ def main() -> None:
     model_path = resolve_override(args.model_path, config.ai_root, config.model_path)
     meta_path = resolve_override(args.meta_path, config.ai_root, config.meta_path)
     data_dir = resolve_override(args.data_dir, config.ai_root, config.data_dir)
+    if data_dir is None:
+        raise ValueError("data_dir is required for run_performance_test.py. Set paths.data_dir in config or pass --data-dir.")
     output_json = resolve_override(args.output_json, config.ai_root, config.output_json)
     predictions_jsonl = resolve_override(args.predictions_jsonl, config.ai_root, config.predictions_jsonl)
     visualizations_dir = resolve_override(args.visualizations_dir, config.ai_root, config.visualizations_dir)
     glob_pattern = args.glob or config.glob_pattern
     threshold = args.threshold if args.threshold is not None else config.threshold
     include_unlabeled = args.include_unlabeled or config.include_unlabeled
+
+    if args.no_outputs:
+        output_json = None
+        predictions_jsonl = None
+        visualizations_dir = None
 
     artifact = load_artifact(model_path, meta_path)
     feature_names = artifact.feature_names
@@ -96,6 +108,7 @@ def main() -> None:
             result.metrics,
             output_dir=visualizations_dir,
             threshold=threshold,
+            missing_heavy_threshold=config.missing_heavy_threshold,
         )
 
     summary = {
