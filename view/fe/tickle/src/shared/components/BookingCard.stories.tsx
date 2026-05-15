@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { BookingCard } from './BookingCard';
-import { BookingData } from '@/src/features/mypage/api/useMyPageData';
+import { BookingData } from '../../features/mypage/api/useMyPageData';
 
 const meta = {
   title: 'Shared/BookingCard',
@@ -23,10 +23,14 @@ type Story = StoryObj<typeof meta>;
 
 const mockBooking: BookingData = {
   id: 'BKG-1234',
+  eventId: 'EVT-1',
   title: '티클 콘서트 2026',
   venue: '티클 아레나',
   status: 'CONFIRMED',
   performanceDate: '2026-06-23T16:30:00Z',
+  bookingDate: '2026-05-15T12:00:00Z',
+  bookingNo: 'BN-0001',
+  totalPaymentAmount: 150000,
   ticketCount: 2,
   seatInfo: 'D구역 F열 14번 외 1매',
   imageUrl: 'https://images.unsplash.com/photo-1540039155732-d6f74b52b310?auto=format&fit=crop&q=80',

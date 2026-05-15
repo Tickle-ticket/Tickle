@@ -67,26 +67,31 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default', cont
   if (variant === 'compact') {
     const totalSeconds = timeLeft.days * 86400 + timeLeft.hours * 3600 + timeLeft.minutes * 60 + timeLeft.seconds;
     
-    // 0초가 되면 타이머 + 컨테이너 전체를 숨김
-    if (totalSeconds <= 0) return null;
+    // 부드러운 슬라이드 업 애니메이션을 위해 0초가 되어도 DOM에서 즉시 제거하지 않음
+    // if (totalSeconds <= 0) return null;
     
     const isWarning = totalSeconds <= 900;
 
     const timeString = (
-      <>
-        {timeLeft.days > 0 ? <span className="mr-1">{timeLeft.days}일</span> : null}
-        {pad(timeLeft.hours)} : {pad(timeLeft.minutes)} : {pad(timeLeft.seconds)}
-      </>
+      <div className="flex items-center gap-1.5 font-bold tracking-tight">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+        <div className="flex items-center tabular-nums">
+          {timeLeft.days > 0 ? <span className="mr-1.5 text-[14px]">{timeLeft.days}일</span> : null}
+          <span>{pad(timeLeft.hours)}</span>
+          <span className="opacity-50 mx-[2px] relative -top-[1px]">:</span>
+          <span>{pad(timeLeft.minutes)}</span>
+          <span className="opacity-50 mx-[2px] relative -top-[1px]">:</span>
+          <span className={isWarning ? 'animate-pulse' : ''}>{pad(timeLeft.seconds)}</span>
+        </div>
+      </div>
     );
 
     const timerContent = (
-      <span className="font-mono font-bold tracking-normal text-[14px] whitespace-nowrap relative">
-        <span className={isWarning ? 'invisible' : ''}>{timeString}</span>
-        {isWarning && (
-          <span className="absolute -top-[3px] -bottom-[3px] -left-[9px] -right-[9px] bg-danger text-white flex items-center justify-center rounded-md z-20 border border-danger">
-            {timeString}
-          </span>
-        )}
+      <span className={`text-[15px] whitespace-nowrap transition-colors duration-300 ${isWarning ? 'text-danger drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'text-primary'}`}>
+        {timeString}
       </span>
     );
 
