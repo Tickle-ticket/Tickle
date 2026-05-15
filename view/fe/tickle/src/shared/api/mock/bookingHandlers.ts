@@ -133,6 +133,8 @@ export const bookingHandlers = [
         totalPaymentAmount,
         holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         seats,
+        win: true,
+        winNumber: 1,
       },
     });
   }),

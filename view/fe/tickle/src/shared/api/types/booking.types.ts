@@ -33,6 +33,38 @@ export const BookingPreorderResponseSchema = Schema.Struct({
 
 export type BookingPreorderResponse = Schema.Schema.Type<typeof BookingPreorderResponseSchema>;
 
+// === Mock Preorder Types (Duplicated for Separation) ===
+
+export interface MockPreorderRequest {
+  eventId: number;
+  sessionId: number;
+  sessionSeatIds: number[];
+  optionSelections: PaymentOptionSelectionRequest[];
+}
+
+export const MockPreorderSeatResponseSchema = Schema.Struct({
+  sessionSeatId: Schema.Number,
+  seatLabel: Schema.String,
+  discountName: Schema.NullOr(Schema.String),
+  ticketPriceAmount: Schema.Number,
+  serviceFeeAmount: Schema.Number,
+  finalPriceAmount: Schema.Number,
+});
+
+export const MockPreorderResponseSchema = Schema.Struct({
+  bookingId: Schema.Number,
+  bookingNo: Schema.String,
+  bookingStatus: Schema.String,
+  currencyCode: Schema.String,
+  totalPaymentAmount: Schema.Number,
+  holdExpiresAt: Schema.String,
+  seats: Schema.Array(MockPreorderSeatResponseSchema),
+  win: Schema.Boolean,
+  winNumber: Schema.Number,
+});
+
+export type MockPreorderResponse = Schema.Schema.Type<typeof MockPreorderResponseSchema>;
+
 export interface BookingOptionsRequest {
   eventId: number;
   sessionId: number;

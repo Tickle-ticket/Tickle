@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import checkedAnimation from '@/src/shared/lottle/Checked.json';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
 
 export interface CustomCAPTCHAProps {
   onSuccess: (token: string) => void;

@@ -36,7 +36,7 @@ import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 import dynamic from 'next/dynamic';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
 
 
 

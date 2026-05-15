@@ -7,7 +7,10 @@ import {
   BookingPreorderResponseSchema,
   BookingOptionsRequest,
   BookingOptionsResponse,
-  BookingOptionsResponseSchema
+  BookingOptionsResponseSchema,
+  MockPreorderRequest,
+  MockPreorderResponse,
+  MockPreorderResponseSchema
 } from './types/booking.types';
 
 export const bookingApi = {
@@ -40,16 +43,16 @@ export const bookingApi = {
   },
 
   mockPreorder: async (
-    request: BookingPreorderRequest
-  ): Promise<ApiResponse<BookingPreorderResponse>> => {
-    return apiClient<ApiResponse<BookingPreorderResponse>>(
+    request: MockPreorderRequest
+  ): Promise<ApiResponse<MockPreorderResponse>> => {
+    return apiClient<ApiResponse<MockPreorderResponse>>(
       `/api/v1/bookings/preorder/mock`,
       {
         method: 'POST',
         body: request,
       },
       true,
-      createApiResponseSchema(BookingPreorderResponseSchema)
+      createApiResponseSchema(MockPreorderResponseSchema)
     );
   },
 };

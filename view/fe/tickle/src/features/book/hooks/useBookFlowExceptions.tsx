@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { isMockBookingCompleteEvent } from '@/src/shared/config/mockEventConfig';
-import { Modal } from '@/src/shared/components/Modal';
+import { MockResultModal } from '../ui/components/MockResultModal';
 
 interface UseBookFlowExceptionsParams {
   eventId: string;
@@ -47,6 +47,8 @@ export const useBookFlowExceptions = ({
   finalizeTrial
 }: UseBookFlowExceptionsParams) => {
   const [isTestBookingCompleteModalOpen, setIsTestBookingCompleteModalOpen] = useState(false);
+  const [mockWin, setMockWin] = useState(false);
+  const [mockWinNumber, setMockWinNumber] = useState(0);
 
   // 대기열 모드일 때 섀도우/스토리 예외
   const handleWaitlistShadowException = async (): Promise<boolean> => {
@@ -125,7 +127,7 @@ export const useBookFlowExceptions = ({
     optionSelections: any[]
   ): Promise<boolean> => {
     if (isMockBookingCompleteEvent(eventId)) {
-      await submitMockPreorder(
+      const response = await submitMockPreorder(
         parseInt(eventId, 10),
         parseInt(scheduleId, 10),
         seatIds,
@@ -133,7 +135,11 @@ export const useBookFlowExceptions = ({
       );
       isHoldingSeatRef.current = false;
       onLeaveQueue?.();
+      
+      setMockWin(response.win);
+      setMockWinNumber(response.winNumber);
       setIsTestBookingCompleteModalOpen(true);
+      
       return true;
     }
 
@@ -150,19 +156,14 @@ export const useBookFlowExceptions = ({
   const submitButtonText = isMockBookingCompleteEvent(eventId) ? '참여 완료' : undefined;
 
   const ExceptionModalsElement = (
-    <Modal
+    <MockResultModal
       isOpen={isTestBookingCompleteModalOpen}
       onClose={() => {
         setIsTestBookingCompleteModalOpen(false);
         onClose();
       }}
-      title="참여 완료"
-      description="이벤트 참여가 완료되었습니다."
-      confirmText="확인"
-      onConfirm={() => {
-        setIsTestBookingCompleteModalOpen(false);
-        onClose();
-      }}
+      win={mockWin}
+      winNumber={mockWinNumber}
     />
   );
 

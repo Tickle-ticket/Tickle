@@ -13,7 +13,7 @@ import type { InfoCardProps } from './types';
 import loveAnimation from '../lottle/Love.json';
 
 // Lottie는 클라이언트 사이드에서만 렌더링되도록 dynamic import 처리
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
 
 export const InfoCard = React.memo(({
   src,

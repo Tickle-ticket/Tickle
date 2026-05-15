@@ -43,7 +43,7 @@ import { useEventFlowStart } from '@/src/features/detail/hooks/useEventFlowStart
 import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
 
 
 const navItems = [
@@ -552,7 +552,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
           trackerProps={bookBtnTracker}
           isUpcoming={isUpcoming}
           isMoreThanOneDayLeft={isMoreThanOneDayLeft}
-          targetDate={data?.openDate}
+          targetDate={data?.openDate || undefined}
           onTimerExpire={() => setIsUpcoming(false)}
           onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
           isLoading={isLoading}
