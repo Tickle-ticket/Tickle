@@ -24,6 +24,8 @@ def save_evaluation_plots(
     metrics: dict[str, Any],
     output_dir: str | Path,
     threshold: float,
+    *,
+    missing_heavy_threshold: float = 0.2,
 ) -> dict[str, str]:
     try:
         import matplotlib
@@ -43,6 +45,7 @@ def save_evaluation_plots(
 
     summary_path = output_dir / "evaluation_summary.png"
     score_path = output_dir / "score_distribution.png"
+    score_type_path = output_dir / "score_by_type.png"
     cm_path = output_dir / "confusion_matrix.png"
 
     fig, axes = plt.subplots(2, 2, figsize=(13, 9))
@@ -72,8 +75,12 @@ def save_evaluation_plots(
             ax.set_xticks([])
             ax.set_yticks([])
 
-    _plot_score_distribution(axes[1, 1], y_true, y_score, threshold)
-    axes[1, 1].set_title("P(macro) Distribution")
+    if any(row.get("type") for row in predictions):
+        _plot_score_by_type(axes[1, 1], predictions, threshold, missing_heavy_threshold=missing_heavy_threshold)
+        axes[1, 1].set_title("P(macro) by Type")
+    else:
+        _plot_score_distribution(axes[1, 1], y_true, y_score, threshold)
+        axes[1, 1].set_title("P(macro) Distribution")
 
     metric_text = (
         f"n={metrics.get('sample_count')}  "
@@ -106,11 +113,22 @@ def save_evaluation_plots(
     fig_score.savefig(score_path, dpi=160)
     plt.close(fig_score)
 
-    return {
+    if any(row.get("type") for row in predictions):
+        fig_type, ax_type = plt.subplots(figsize=(8, 4.8))
+        _plot_score_by_type(ax_type, predictions, threshold, missing_heavy_threshold=missing_heavy_threshold)
+        ax_type.set_title("P(macro) by Type")
+        fig_type.tight_layout()
+        fig_type.savefig(score_type_path, dpi=160)
+        plt.close(fig_type)
+
+    result = {
         "summary_png": str(summary_path),
         "confusion_matrix_png": str(cm_path),
         "score_distribution_png": str(score_path),
     }
+    if score_type_path.exists():
+        result["score_by_type_png"] = str(score_type_path)
+    return result
 
 
 def _plot_score_distribution(ax: Any, y_true: np.ndarray, y_score: np.ndarray, threshold: float) -> None:
@@ -126,3 +144,128 @@ def _plot_score_distribution(ax: Any, y_true: np.ndarray, y_score: np.ndarray, t
     ax.set_xlim(0.0, 1.0)
     ax.legend(frameon=False)
     _style_axes(ax)
+
+
+def _plot_score_by_type(
+    ax: Any,
+    predictions: list[dict[str, Any]],
+    threshold: float,
+    *,
+    missing_heavy_threshold: float,
+) -> None:
+    # Type colors
+    palette = {
+        "DETAIL": "#3B82F6",
+        "CAPTCHA": "#F59E0B",
+        "BOOKING": "#10B981",
+        "OTHER": "#6B7280",
+    }
+
+    # Make macro points visually distinct regardless of type color
+    macro_color = "#EF4444"  # red
+    missing_heavy_color = "#8B5CF6"  # purple
+    missing_heavy_threshold = float(missing_heavy_threshold)
+
+    types = [str(row.get("type") or "").strip().upper() for row in predictions]
+    scores = np.asarray([float(row["p_macro"]) for row in predictions], dtype=float)
+    y_true = np.asarray([int(row["y_true"]) for row in predictions], dtype=int)
+    nan_ratio = np.asarray(
+        [
+            float(row.get("nan_ratio")) if row.get("nan_ratio") is not None else 0.0
+            for row in predictions
+        ],
+        dtype=float,
+    )
+    is_missing_heavy = nan_ratio >= missing_heavy_threshold
+
+    # Keep canonical order for the known stages
+    ordered_types = [t for t in ("DETAIL", "CAPTCHA", "BOOKING") if t in set(types)]
+    other_types = sorted({t for t in set(types) if t and t not in ordered_types})
+    ordered_types.extend(other_types)
+    if not ordered_types:
+        ordered_types = ["OTHER"]
+
+    # Jittered strip plot: marker encodes true label, color encodes type
+    rng = np.random.default_rng(42)
+    for i, t in enumerate(ordered_types):
+        idx = np.asarray([tt == t for tt in types], dtype=bool)
+        if not np.any(idx):
+            continue
+        y_base = np.full(int(np.sum(idx)), i, dtype=float)
+        jitter = rng.normal(0.0, 0.06, size=y_base.shape[0])
+        y = y_base + jitter
+
+        color = palette.get(t, palette["OTHER"])
+        # human: circle (type color), macro: red X (type-agnostic)
+        human_idx = idx & (y_true == 0)
+        macro_idx = idx & (y_true == 1)
+        if np.any(human_idx):
+            # Split by missing-heavy for visibility
+            human_clean = human_idx & (~is_missing_heavy)
+            human_heavy = human_idx & is_missing_heavy
+            if np.any(human_clean):
+                ax.scatter(
+                    scores[human_clean],
+                    (np.full(int(np.sum(human_clean)), i, dtype=float) + rng.normal(0.0, 0.06, size=int(np.sum(human_clean)))),
+                    s=18,
+                    alpha=0.55,
+                    color=color,
+                    marker="o",
+                    edgecolors="none",
+                    label=t,
+                )
+            if np.any(human_heavy):
+                ax.scatter(
+                    scores[human_heavy],
+                    (np.full(int(np.sum(human_heavy)), i, dtype=float) + rng.normal(0.0, 0.06, size=int(np.sum(human_heavy)))),
+                    s=18,
+                    alpha=0.7,
+                    color=missing_heavy_color,
+                    marker="o",
+                    edgecolors="none",
+                    label="imputed-heavy",
+                )
+        if np.any(macro_idx):
+            macro_clean = macro_idx & (~is_missing_heavy)
+            macro_heavy = macro_idx & is_missing_heavy
+            if np.any(macro_clean):
+                ax.scatter(
+                    scores[macro_clean],
+                    (np.full(int(np.sum(macro_clean)), i, dtype=float) + rng.normal(0.0, 0.06, size=int(np.sum(macro_clean)))),
+                    s=22,
+                    alpha=0.65,
+                    color=macro_color,
+                    marker="x",
+                    linewidths=1.2,
+                    label="macro",
+                )
+            if np.any(macro_heavy):
+                ax.scatter(
+                    scores[macro_heavy],
+                    (np.full(int(np.sum(macro_heavy)), i, dtype=float) + rng.normal(0.0, 0.06, size=int(np.sum(macro_heavy)))),
+                    s=22,
+                    alpha=0.85,
+                    color=missing_heavy_color,
+                    marker="x",
+                    linewidths=1.4,
+                    label="imputed-heavy",
+                )
+
+    ax.axvline(threshold, color="#111827", linestyle="--", linewidth=1.6, label=f"threshold={threshold:.2f}")
+    ax.set_yticks(range(len(ordered_types)))
+    ax.set_yticklabels(ordered_types)
+    ax.set_xlabel("P(macro)")
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylabel("Type")
+    _style_axes(ax)
+    # De-duplicate legend entries
+    handles, labels = ax.get_legend_handles_labels()
+    seen = set()
+    uniq_h, uniq_l = [], []
+    for h, l in zip(handles, labels):
+        if l in seen:
+            continue
+        seen.add(l)
+        uniq_h.append(h)
+        uniq_l.append(l)
+    ax.legend(uniq_h, uniq_l, frameon=False, ncols=2, fontsize=9)
