@@ -38,6 +38,10 @@ public class AiInferenceCallbackService {
      */
     @Transactional
     public void receive(String authorization, AiInferenceCallbackRequest request) {
+        if (isIgnoredType(request.type())) {
+            return;
+        }
+
         if (authorization == null || authorization.isBlank()) {
             throw new BaseException(AuthErrorCode.MISSING_TOKEN);
         }
@@ -72,5 +76,10 @@ public class AiInferenceCallbackService {
         }
 
         botDetectionCaptchaService.sendRetryCaptcha(targetUserId, request.recordId());
+    }
+
+    private boolean isIgnoredType(AiInferenceCallbackRequest.InferenceType type) {
+        return type == AiInferenceCallbackRequest.InferenceType.BOOKING
+                || type == AiInferenceCallbackRequest.InferenceType.DETAIL;
     }
 }
