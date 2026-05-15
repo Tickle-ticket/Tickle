@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Button from './Button';
 import { CountdownTimer } from './CountdownTimer';
 import type { ButtonProps } from './types';
@@ -22,7 +22,10 @@ export const BookButton = ({
   trackerProps,
   ...rest
 }: BookButtonProps) => {
-  const [justOpened, setJustOpened] = useState(false);
+  const [timerExpired, setTimerExpired] = useState(() => 
+    targetDate ? new Date(targetDate).getTime() <= Date.now() : false
+  );
+  const hasExpiredRef = useRef(timerExpired);
 
   const formatOpenDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -35,15 +38,21 @@ export const BookButton = ({
     return `${month}.${day}(${dayOfWeek}) ${hours}:${minutes}`;
   };
 
-  const handleExpire = () => {
-    setJustOpened(true);
-    setTimeout(() => {
-      setJustOpened(false);
-    }, 600);
-    if (onTimerExpire) {
-      onTimerExpire();
-    }
-  };
+  // 100ms 간격으로 직접 만료 감지 → 타이머 즉시 제거
+  useEffect(() => {
+    if (!targetDate || hasExpiredRef.current) return;
+
+    const checkExpiry = () => {
+      if (new Date(targetDate).getTime() <= Date.now() && !hasExpiredRef.current) {
+        hasExpiredRef.current = true;
+        setTimerExpired(true);
+        onTimerExpire?.();
+      }
+    };
+
+    const interval = setInterval(checkExpiry, 100);
+    return () => clearInterval(interval);
+  }, [targetDate, onTimerExpire]);
 
   return (
     <Button
@@ -59,25 +68,23 @@ export const BookButton = ({
       isLoading={isLoading}
       {...rest}
     >
-      {justOpened && (
-        <span className="absolute inset-0 rounded-xl z-0 pointer-events-none bg-danger animate-flash-red" />
-      )}
       {isUpcoming && targetDate ? (
         isMoreThanOneDayLeft ? (
           <span className="relative z-10 font-bold tracking-wider text-[15px]">{formatOpenDate(targetDate)}</span>
         ) : (
           <>
             <span className="relative z-10 text-[15px] font-bold tracking-wider">예매하기</span>
+            {!timerExpired && (
             <div 
               className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center rounded-md px-2 py-0.5 border border-white/10 shadow-md text-white scale-[0.85] z-10 whitespace-nowrap"
               style={{ backgroundColor: 'var(--toss-grey-700)' }}
             >
               <CountdownTimer 
                 targetDate={targetDate} 
-                onExpire={handleExpire} 
                 variant="compact" 
               />
             </div>
+            )}
           </>
         )
       ) : (

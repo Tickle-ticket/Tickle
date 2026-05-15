@@ -137,7 +137,7 @@ export const useBookFlowExceptions = ({
       onLeaveQueue?.();
       
       setMockWin(response.win);
-      setMockWinNumber(response.winNumber);
+      setMockWinNumber(response.winCount);
       setIsTestBookingCompleteModalOpen(true);
       
       return true;

@@ -127,10 +127,28 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
             </h3>
             {selectedDate ? (
               <div className="flex flex-wrap gap-2 animate-fade-in">
-                {eventDetail.schedules.find((s: any) => s.date === selectedDate)?.times.map((timeObj: any, idx: number) => (
+                {eventDetail.schedules.find((s: any) => s.date === selectedDate)?.times.map((timeObj: any, idx: number) => {
+                  const now = Date.now();
+                  const isPast = new Date(timeObj.startAt).getTime() < now;
+
+                  // 예매: salesOpenAt ~ salesCloseAt 범위 내인지 확인
+                  const salesOpen = timeObj.salesOpenAt ? new Date(timeObj.salesOpenAt).getTime() : 0;
+                  const salesClose = timeObj.salesCloseAt ? new Date(timeObj.salesCloseAt).getTime() : Infinity;
+                  const isBookingSaleActive = now >= salesOpen && now <= salesClose;
+
+                  // 취소표 대기: cancellationWaitOpenAt ~ salesCloseAt 범위 내인지 확인
+                  const waitlistOpen = timeObj.cancellationWaitOpenAt ? new Date(timeObj.cancellationWaitOpenAt).getTime() : 0;
+                  const isWaitlistActive = now >= waitlistOpen && now <= salesClose;
+
+                  const isSaleActive = isWaitlistMode ? isWaitlistActive : isBookingSaleActive;
+                  const isDisabled = isPast || !isSaleActive;
+
+                  return (
                   <button
                     key={timeObj.time}
+                    disabled={isDisabled}
                     onClick={() => {
+                      if (isDisabled) return;
                       const newTime = timeObj.time;
 
                       // 이전에 확정된 스케줄이 있고, 그 스케줄과 다른 일시를 선택했다면
@@ -145,35 +163,18 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                       setConfirmedSchedule({ date: selectedDate!, time: newTime, scheduleId: timeObj.scheduleId });
                       setIsModifyingSchedule(false);
                     }}
-                    className={`w-[calc(50%-4px)] min-w-[125px] px-3 py-2.5 rounded-xl border-2 font-bold transition-all text-center flex flex-col items-center justify-center gap-0.5 ${selectedTime === timeObj.time
-                      ? 'border-primary bg-primary text-white shadow-md shadow-blue-600/20 transform scale-[1.02]'
-                      : 'border-line bg-surface text-content-secondary hover:border-primary hover:bg-primary-subtle:bg-surface-inverse'
+                    className={`w-[calc(50%-4px)] min-w-[125px] h-[44px] px-3 rounded-xl border-2 font-bold transition-all text-center flex items-center justify-center ${
+                      isDisabled
+                        ? 'border-line bg-surface-subtle text-content-muted cursor-not-allowed opacity-50'
+                        : selectedTime === timeObj.time
+                        ? 'border-primary bg-primary text-white shadow-md shadow-blue-600/20 transform scale-[1.02]'
+                        : 'border-line bg-surface text-content-secondary hover:border-primary hover:bg-primary-subtle:bg-surface-inverse'
                       }`}
                   >
-                    <span className="text-[16px]">{timeObj.time}</span>
-                    <div className="flex flex-wrap gap-1.5 justify-center mt-0.5">
-                      {timeObj.remainingSeats.map((seat: any) => {
-                        const gradeColors: Record<string, string> = {
-                          'VIP': 'grade-badge-vip',
-                          'R': 'grade-badge-r',
-                          'S': 'grade-badge-s',
-                          'A': 'grade-badge-a',
-                        };
-                        const defaultColor = 'bg-surface-subtle text-content-secondary border-line';
-
-                        return (
-                          <span
-                            key={seat.priceGrade}
-                            className={`flex items-center gap-0.5 px-1 py-[1px] rounded-[4px] text-[10px] border ${gradeColors[seat.priceGrade] || defaultColor}`}
-                          >
-                            <span className="font-extrabold">{seat.priceGrade}</span>
-                            <span>{seat.count}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
+                    <span className="text-[15px]">{timeObj.time}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-7 bg-surface-subtle rounded-xl border border-dashed border-line-strong animate-fade-in">

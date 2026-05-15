@@ -13,13 +13,29 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
     minutes: 0,
     seconds: 0,
   });
+  const onExpireRef = React.useRef(onExpire);
+  onExpireRef.current = onExpire;
+  const hasExpiredRef = React.useRef(false);
 
   useEffect(() => {
+    // 이미 만료된 경우 즉시 처리
+    if (new Date(targetDate).getTime() <= Date.now()) {
+      setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      if (!hasExpiredRef.current) {
+        hasExpiredRef.current = true;
+        onExpireRef.current?.();
+      }
+      return;
+    }
+
     const calculateTimeLeft = () => {
-      const difference = new Date(targetDate).getTime() - new Date().getTime();
+      const difference = new Date(targetDate).getTime() - Date.now();
 
       if (difference <= 0) {
-        if (onExpire) onExpire();
+        if (!hasExpiredRef.current) {
+          hasExpiredRef.current = true;
+          onExpireRef.current?.();
+        }
         return { days: 0, hours: 0, minutes: 0, seconds: 0 };
       }
 
@@ -34,11 +50,15 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default' }: Co
     setTimeLeft(calculateTimeLeft());
 
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
+      const result = calculateTimeLeft();
+      setTimeLeft(result);
+      if (hasExpiredRef.current) {
+        clearInterval(timer);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [targetDate, onExpire]);
+  }, [targetDate]);
 
   const pad = (num: number) => String(num).padStart(2, '0');
 

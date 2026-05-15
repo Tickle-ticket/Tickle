@@ -60,7 +60,7 @@ export const MockPreorderResponseSchema = Schema.Struct({
   holdExpiresAt: Schema.String,
   seats: Schema.Array(MockPreorderSeatResponseSchema),
   win: Schema.Boolean,
-  winNumber: Schema.Number,
+  winCount: Schema.Number,
 });
 
 export type MockPreorderResponse = Schema.Schema.Type<typeof MockPreorderResponseSchema>;

@@ -10,6 +10,10 @@ export interface EventSchedule {
     sessionNo: number;
     time: string;
     startAt: string;
+    status: string;
+    salesOpenAt: string;
+    salesCloseAt: string;
+    cancellationWaitOpenAt: string;
     remainingSeats: { priceGrade: string; count: number }[];
   }[];
 }
@@ -49,7 +53,7 @@ export const useEventDetail = (eventId?: string) => {
       const response = await fetchEventDetail(eventId);
       const data = response.data;
 
-      const scheduleMap = new Map<string, { scheduleId: string, sessionNo: number, time: string, startAt: string, remainingSeats: any[] }[]>();
+      const scheduleMap = new Map<string, { scheduleId: string, sessionNo: number, time: string, startAt: string, status: string, salesOpenAt: string, salesCloseAt: string, cancellationWaitOpenAt: string, remainingSeats: any[] }[]>();
       data.sessions.forEach(session => {
         const dateObj = new Date(session.startAt);
         const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;
@@ -63,6 +67,10 @@ export const useEventDetail = (eventId?: string) => {
           sessionNo: session.sessionNo,
           time,
           startAt: session.startAt,
+          status: session.status,
+          salesOpenAt: session.salesOpenAt,
+          salesCloseAt: session.salesCloseAt,
+          cancellationWaitOpenAt: session.cancellationWaitOpenAt,
           remainingSeats: []
         });
       });

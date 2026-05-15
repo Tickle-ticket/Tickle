@@ -65,7 +65,7 @@ const meta: Meta<typeof BookView> = {
                 holdExpiresAt: new Date(Date.now() + 600000).toISOString(),
                 seats: [],
                 win: isWin,
-                winNumber: isWin ? 1 : 0
+                winCount: isWin ? 1 : 0
               }
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }

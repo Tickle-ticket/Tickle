@@ -234,12 +234,15 @@ body {
 /* 버튼 빨간색 깜빡임 애니메이션 */
 @keyframes flashRed {
   0% { opacity: 0; }
-  30% { opacity: 1; }
+  15% { opacity: 0.9; }
+  30% { opacity: 0; }
+  45% { opacity: 0.9; }
+  60% { opacity: 0.7; }
   100% { opacity: 0; }
 }
 
 .animate-flash-red {
-  animation: flashRed 0.6s ease-in-out forwards;
+  animation: flashRed 1s ease-in-out forwards;
 }
 
 /* Seat Grade Badge Utilities */
