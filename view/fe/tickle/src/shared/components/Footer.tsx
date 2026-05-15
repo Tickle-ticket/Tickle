@@ -3,12 +3,12 @@ import Link from 'next/link';
 
 export const Footer = () => {
   return (
-    <footer className="shrink-0 mt-16 bg-surface border-t border-line-subtle py-12 px-8 md:px-12 text-content-tertiary text-sm -mx-6 -mb-12 md:-mx-10 md:-mb-16">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-8">
+    <footer className="shrink-0 mt-10 bg-surface border-t border-line-subtle py-6 px-6 md:px-12 text-content-tertiary text-xs -mx-6 -mb-12 md:-mx-10 md:-mb-16">
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-6">
         
         {/* Left Side: Brand and Info */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 text-2xl font-black text-content tracking-tighter">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-xl font-black text-content tracking-tighter">
             TICKLE
           </div>
           <div className="flex flex-col gap-1 text-content-muted">
@@ -20,10 +20,10 @@ export const Footer = () => {
         </div>
 
         {/* Right Side: Links */}
-        <div className="flex gap-12">
+        <div className="flex gap-10">
           {/* Service Links */}
-          <div className="flex flex-col gap-3">
-            <h3 className="text-content font-bold mb-1">서비스</h3>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-content font-bold mb-0.5 text-sm">서비스</h3>
             <Link href="/support/notice" className="hover:text-primary transition-colors">공지사항</Link>
             <Link href="/support/terms" className="hover:text-primary transition-colors">이용약관</Link>
             <Link href="/support/privacy" className="font-bold text-content-secondary hover:text-primary transition-colors">개인정보처리방침</Link>
@@ -31,8 +31,8 @@ export const Footer = () => {
           </div>
 
           {/* Social Links (Placeholders) */}
-          <div className="flex flex-col gap-3">
-            <h3 className="text-content font-bold mb-1">소셜</h3>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-content font-bold mb-0.5 text-sm">소셜</h3>
             <a href="#" className="hover:text-primary transition-colors">Instagram</a>
             <a href="#" className="hover:text-primary transition-colors">YouTube</a>
             <a href="#" className="hover:text-primary transition-colors">Twitter</a>
@@ -41,7 +41,7 @@ export const Footer = () => {
 
       </div>
 
-      <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-line-subtle flex flex-col md:flex-row justify-between items-center gap-4 text-content-muted">
+      <div className="max-w-6xl mx-auto mt-6 pt-4 border-t border-line-subtle flex flex-col md:flex-row justify-between items-center gap-3 text-content-muted">
         <p>© 2026 TICKLE. All rights reserved.</p>
         <div className="flex gap-4">
           <span className="cursor-pointer hover:text-content transition-colors">한국어</span>
