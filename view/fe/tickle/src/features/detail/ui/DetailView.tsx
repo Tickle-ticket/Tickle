@@ -400,8 +400,29 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       };
 
       checkTime();
+
+      // 1초 간격으로 일반 표시 업데이트
       const timer = setInterval(checkTime, 1000);
-      return () => clearInterval(timer);
+
+      // openTime 도달 시 즉시 활성화하는 정밀 타이머
+      const timeUntilOpen = openTime - Date.now();
+      let openTimeout: ReturnType<typeof setTimeout> | null = null;
+      if (timeUntilOpen > 0) {
+        openTimeout = setTimeout(checkTime, timeUntilOpen);
+      }
+
+      // waitlistOpenTime 도달 시 즉시 활성화
+      const timeUntilWaitlist = waitlistOpenTime - Date.now();
+      let waitlistTimeout: ReturnType<typeof setTimeout> | null = null;
+      if (waitlistOpenTime > 0 && timeUntilWaitlist > 0) {
+        waitlistTimeout = setTimeout(checkTime, timeUntilWaitlist);
+      }
+
+      return () => {
+        clearInterval(timer);
+        if (openTimeout) clearTimeout(openTimeout);
+        if (waitlistTimeout) clearTimeout(waitlistTimeout);
+      };
     }
   }, [data?.openDate]);
 
