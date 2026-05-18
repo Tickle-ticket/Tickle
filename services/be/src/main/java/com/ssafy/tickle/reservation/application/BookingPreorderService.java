@@ -45,13 +45,13 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class BookingPreorderService {
 
-    private static final Long start = 20741L;
+    private static final Long start = 164571L;
     private static final List<Long> MOCK_WIN_SESSION_SEAT_IDS = List.of(
             start,
             start+1,
-            start+50,
-            start+100,
-            start+150
+            start+52,
+            start+104,
+            start+156
     );
 
     private final EventSessionRepository eventSessionRepository;
