@@ -6,6 +6,9 @@ from dataclasses import dataclass
 import pyautogui
 from PIL import Image, ImageChops
 
+pyautogui.FAILSAFE = True
+pyautogui.PAUSE = 0.0
+
 
 SCREENSHOT_PATH = "screen.png"
 
