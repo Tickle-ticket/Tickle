@@ -1,0 +1,14 @@
+{
+  "DETAIL": {
+    "allow_max_score": 0.4,
+    "block_min_score": 0.75
+  },
+  "CAPTCHA": {
+    "allow_max_score": 0.4,
+    "block_min_score": 0.75
+  },
+  "BOOKING": {
+    "allow_max_score": 0.4,
+    "block_min_score": 0.75
+  }
+}

@@ -61,3 +61,7 @@ automouse_data.json
 .gradle/
 build/
 bin/
+
+input_features.json
+thresholds.json
+
