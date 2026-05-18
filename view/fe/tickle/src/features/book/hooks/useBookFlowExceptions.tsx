@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { isMockBookingCompleteEvent } from '@/src/shared/config/mockEventConfig';
+import { isMockBookingCompleteEvent, isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 import { MockResultModal } from '../ui/components/MockResultModal';
 
 interface UseBookFlowExceptionsParams {
@@ -126,7 +126,7 @@ export const useBookFlowExceptions = ({
     seatIds: number[], 
     optionSelections: any[]
   ): Promise<boolean> => {
-    if (isMockBookingCompleteEvent(eventId)) {
+    if (isMockBookingCompleteEvent(eventId) || isMockLoginEvent(eventId)) {
       const response = await submitMockPreorder(
         parseInt(eventId, 10),
         parseInt(scheduleId, 10),
@@ -153,7 +153,7 @@ export const useBookFlowExceptions = ({
     return false;
   };
 
-  const submitButtonText = isMockBookingCompleteEvent(eventId) ? '참여 완료' : undefined;
+  const submitButtonText = (isMockBookingCompleteEvent(eventId) || isMockLoginEvent(eventId)) ? '참여 완료' : undefined;
 
   const ExceptionModalsElement = (
     <MockResultModal

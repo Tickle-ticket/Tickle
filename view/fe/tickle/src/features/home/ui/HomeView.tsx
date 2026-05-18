@@ -32,7 +32,6 @@ import { Modal } from '@/src/shared/components/Modal';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useDetailData } from '@/src/features/detail/api/useDetailData';
 import { DetailView } from '@/src/features/detail/ui/DetailView';
-import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 import dynamic from 'next/dynamic';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
@@ -187,7 +186,6 @@ export const HomeView = () => {
 
   const { selectedDetailId, isDetailBannerOpen, openDetail, closeDetail, clickedLayoutId } = useDetailStore();
   const activeDetailId = selectedDetailId || urlDetailId;
-  const isMockLoginDetail = isMockLoginEvent(activeDetailId);
   const { data: detailData, isLoading: detailLoading } = useDetailData(activeDetailId || undefined);
   const accessRoles = getAccessTokenRoles();
   const canEnterAgency = accessRoles.includes('ORGANIZER');
@@ -420,11 +418,9 @@ export const HomeView = () => {
       {/* Right Column: Main Content */}
       <main className={`flex-1 min-w-0 flex flex-col px-4 pt-0 pb-24 md:px-8 md:pb-10 lg:px-10 lg:pb-16 lg:h-full lg:overflow-y-auto transition-all duration-150 relative ${activeDetailId ? '' : 'scrollbar-hide [&::-webkit-scrollbar]:hidden'}`} style={activeDetailId ? {} : { scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
 
-        {!isMockLoginDetail && (
           <div className="hidden lg:block">
             <Header />
           </div>
-        )}
 
         {/* 검색 중일 때: 홈 컨텐츠 대신 검색 결과 렌더링 */}
         {searchValue && (

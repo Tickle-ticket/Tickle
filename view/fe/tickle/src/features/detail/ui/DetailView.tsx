@@ -41,7 +41,6 @@ import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
 import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
 import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
 import { useEventFlowStart } from '@/src/features/detail/hooks/useEventFlowStart';
-import { isMockLoginEvent } from '@/src/shared/config/mockEventConfig';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
 const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
@@ -73,7 +72,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
   const urlId = searchParams?.get('id');
   const activeEventId = selectedDetailId || urlId;
-  const isMockLoginDetail = isMockLoginEvent(activeEventId);
 
   const scrollRef = useRef<HTMLElement>(null);
 
@@ -223,7 +221,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     window.history.pushState({ tickleStep: 'queue' }, '');
   };
 
-  const { handleFlowStart, MockLoginInlineElement } = useEventFlowStart({
+  const { handleFlowStart } = useEventFlowStart({
     activeEventId,
     storyMode,
     continueFlowStart,
@@ -663,7 +661,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
       {/* Hero Section */}
       <section className="w-full lg:mt-3 flex flex-col items-start px-2 lg:px-0">
         <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className={`flex w-full ${MockLoginInlineElement ? 'max-w-2xl' : 'max-w-full'} flex-col items-start`}>
+          <div className={`flex w-full max-w-full flex-col items-start`}>
             <Title
               title={data?.title || ''}
               textColor="black"
@@ -694,8 +692,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
               <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-90" isLoading={isLoading} />
             </div>
           </div>
-
-          {MockLoginInlineElement}
         </div>
 
         <div className="flex flex-col gap-3 mt-8 w-full max-w-[540px]">
