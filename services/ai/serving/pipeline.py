@@ -142,9 +142,15 @@ def process_batch(
     detection_results = list(gt_results)
 
     if inference_items:
-        features_list = [item.payload["features"] for item in inference_items]
+        prediction_items = [
+            {
+                "type": item.payload.get("type"),
+                "features": item.payload["features"],
+            }
+            for item in inference_items
+        ]
 
-        predictions = predictor.predict_batch(features_list)
+        predictions = predictor.predict_batch(prediction_items)
         detection_results.extend(build_detection_results(inference_items, predictions))
 
     be_sent_count, be_skipped_count, be_failed_count = send_be_callbacks(
