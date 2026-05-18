@@ -578,6 +578,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
             viewMode={viewMode}
             setViewMode={setViewMode}
             seatPrices={SEAT_PRICES}
+            maxSelectable={maxSelectable}
+            selectedCount={selectedSeats.size}
           />
         </div>
 

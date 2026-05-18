@@ -23,6 +23,8 @@ interface SeatMapPanelProps {
   viewMode: 'grade' | 'congestion';
   setViewMode: (mode: 'grade' | 'congestion') => void;
   seatPrices: any[];
+  maxSelectable?: number;
+  selectedCount?: number;
 }
 
 export const SeatMapPanel: React.FC<SeatMapPanelProps> = ({
@@ -37,6 +39,8 @@ export const SeatMapPanel: React.FC<SeatMapPanelProps> = ({
   viewMode,
   setViewMode,
   seatPrices,
+  maxSelectable,
+  selectedCount,
 }) => {
   return (
     <div className="w-full h-full bg-surface-muted lg:border-r border-b lg:border-b-0 border-line shadow-inner relative group/map overflow-hidden">
@@ -117,6 +121,22 @@ export const SeatMapPanel: React.FC<SeatMapPanelProps> = ({
             size="medium"
             className="hidden sm:flex"
           />
+        </div>
+      )}
+
+      {/* Maximum Selection Limit Notice */}
+      {scheduleId && !isModifyingSchedule && !isSeatsLoading && selectedCount !== undefined && maxSelectable !== undefined && maxSelectable !== 99 && selectedCount >= maxSelectable && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex justify-center animate-fade-in pointer-events-none w-full px-4">
+          <div className="bg-surface/95 backdrop-blur-md px-4 sm:px-5 py-3 rounded-2xl shadow-lg border border-danger/30 flex items-center gap-2 sm:gap-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-danger shrink-0">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span className="text-sm sm:text-base font-bold text-content break-keep">
+              예매 가능 한도(최대 4개)를 모두 선택하여 더 이상 좌석을 선택할 수 없습니다.
+            </span>
+          </div>
         </div>
       )}
 
