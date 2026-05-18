@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class BookingPreorderService {
 
-    private static final Long start = 164571L;
+    private static final Long start = 164761L;
     private static final List<Long> MOCK_WIN_SESSION_SEAT_IDS = List.of(
             start,
             start+1,
