@@ -4,9 +4,7 @@ import com.ssafy.tickle.ai.presentation.dto.AiInferenceCallbackRequest;
 import com.ssafy.tickle.auth.domain.AuthErrorCode;
 import com.ssafy.tickle.blacklist.application.BotDetectionCaptchaService;
 import com.ssafy.tickle.blacklist.application.BlacklistService;
-import com.ssafy.tickle.blacklist.infrastructure.cache.BotDetectionCaptchaRecordStore;
 import com.ssafy.tickle.common.exception.BaseException;
-import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.util.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +22,6 @@ public class AiInferenceCallbackService {
 
     private final BlacklistService blacklistService;
     private final BotDetectionCaptchaService botDetectionCaptchaService;
-    private final BotDetectionCaptchaRecordStore botDetectionCaptchaRecordStore;
     private final JwtProvider jwtProvider;
 
     /**
@@ -38,12 +35,6 @@ public class AiInferenceCallbackService {
      */
     @Transactional
     public void receive(String authorization, AiInferenceCallbackRequest request) {
-        // [테스트용 임시 비활성화] AI 서버 테스트 중 캡차 팝업 미표시 — 테스트 완료 후 원복 필요
-        // be-feat-449의 isIgnoredType() 동작과 동일: 모든 타입(BOOKING/DETAIL/CAPTCHA/CAPTCHA_RETRY) 무시
-        log.info("AI 추론 콜백 수신 (캡차 처리 비활성화 중): type={}, result={}", request.type(), request.result());
-        return;
-
-        /*
         if (authorization == null || authorization.isBlank()) {
             throw new BaseException(AuthErrorCode.MISSING_TOKEN);
         }
@@ -67,17 +58,12 @@ public class AiInferenceCallbackService {
                 request.createdAt()
         );
 
-        // 블랙리스트 등록 (pMacro를 botScore로 저장)
+        // 블랙리스트 등록 (pMacro를 botScore로 저장) — 재접속 시에도 API 차단
         Double botScore = request.pMacro() != null ? request.pMacro().doubleValue() : null;
         blacklistService.addFromAiResult(targetUserId, botScore, request.description());
 
-        // CAPTCHA verify에서 동일 사용자의 recordId인지 검증할 수 있도록 pending key를 남깁니다.
-        boolean saved = botDetectionCaptchaRecordStore.save(targetUserId, request.recordId());
-        if (!saved) {
-            throw new BaseException(GlobalErrorCode.INTERNAL_SERVER_ERROR, "CAPTCHA 검증 recordId 저장에 실패했습니다.");
-        }
-
-        botDetectionCaptchaService.sendRetryCaptcha(targetUserId, request.recordId());
-        */
+        // 현재 연결된 세션에 즉시 차단 이벤트 전송 — FE 강제 로그아웃
+        // 캡차(sendRetryCaptcha) 없이 바로 BOT_BLOCKED 이벤트를 전달한다.
+        botDetectionCaptchaService.sendBotBlocked(targetUserId, request.recordId());
     }
 }

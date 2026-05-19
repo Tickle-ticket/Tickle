@@ -67,6 +67,19 @@ public class BotDetectionCaptchaService {
     }
 
     /**
+     * AI 봇 탐지 즉시 차단 이벤트를 SSE로 전송합니다.
+     *
+     * <p>캡차 없이 바로 차단하는 경우 사용합니다. FE는 이 이벤트 수신 즉시 강제 로그아웃 처리합니다.
+     * 블랙리스트 DB 등록은 호출 측(AiInferenceCallbackService)에서 처리합니다.</p>
+     *
+     * @param userId   차단 대상 사용자 식별자
+     * @param recordId AI 서버의 봇 판별 결과 식별자
+     */
+    public void sendBotBlocked(Long userId, String recordId) {
+        sendCaptchaResult(userId, CaptchaBlockMessage.botBlocked(recordId));
+    }
+
+    /**
      * 같은 사용자의 모든 SSE 연결에 CAPTCHA 성공 종료 신호를 전송합니다.
      *
      * @param userId   CAPTCHA 검증 성공 사용자 식별자
