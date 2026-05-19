@@ -38,6 +38,12 @@ public class AiInferenceCallbackService {
      */
     @Transactional
     public void receive(String authorization, AiInferenceCallbackRequest request) {
+        // [테스트용 임시 비활성화] AI 서버 테스트 중 캡차 팝업 미표시 — 테스트 완료 후 원복 필요
+        // be-feat-449의 isIgnoredType() 동작과 동일: 모든 타입(BOOKING/DETAIL/CAPTCHA/CAPTCHA_RETRY) 무시
+        log.info("AI 추론 콜백 수신 (캡차 처리 비활성화 중): type={}, result={}", request.type(), request.result());
+        return;
+
+        /*
         if (authorization == null || authorization.isBlank()) {
             throw new BaseException(AuthErrorCode.MISSING_TOKEN);
         }
@@ -72,5 +78,6 @@ public class AiInferenceCallbackService {
         }
 
         botDetectionCaptchaService.sendRetryCaptcha(targetUserId, request.recordId());
+        */
     }
 }
