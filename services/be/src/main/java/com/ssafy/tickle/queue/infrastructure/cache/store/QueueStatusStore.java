@@ -7,10 +7,14 @@ import com.ssafy.tickle.queue.domain.QueueRequestStatus;
 import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.domain.QueueTarget;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -227,27 +231,43 @@ public class QueueStatusStore {
             return;
         }
 
+        // Read phase: 상태가 WAITING인 토큰만 추려 admitToken 사전 생성
+        record Admission(String queueToken, String admitToken, Map<String, String> fields) {}
+        List<Admission> admissions = new ArrayList<>();
         for (String queueToken : queueTokens) {
             QueueStatusSnapshot snapshot = findSnapshot(queueToken).orElse(null);
             if (snapshot == null || snapshot.status() != QueueRequestStatus.WAITING) {
                 continue;
             }
-
             String admitToken = java.util.UUID.randomUUID().toString();
-
-            // WAITING -> ADMITTED 전이 시점에만 admitToken과 admission history를 함께 기록한다.
-            stringRedisTemplate.opsForHash().putAll(
-                    statusKey(queueToken),
-                    queueStatusHashMapper.toAdmittedFields(admitToken, admittedAt)
-            );
-            // admitToken은 좌석/결제 단계에서 유효성 확인에 쓸 수 있도록 별도 TTL 키로도 보관한다.
-            stringRedisTemplate.opsForValue().set(admitTokenKey(admitToken), queueToken, QueueConstants.ADMIT_TOKEN_TTL);
-            stringRedisTemplate.opsForZSet().remove(waitingKey(scope, eventId), queueToken);
-            stringRedisTemplate.opsForZSet().add(admittedKey(scope, eventId), queueToken, admittedAt.toEpochMilli());
-            stringRedisTemplate.opsForZSet().add(admissionHistoryKey(scope, eventId), queueToken, admittedAt.toEpochMilli());
-            // KEYS * 없이 admitted event 목록을 추적하기 위해 별도 Set에 등록한다.
-            stringRedisTemplate.opsForSet().add(QueueConstants.ADMITTED_EVENTS_KEY, toEventKey(scope, eventId));
+            admissions.add(new Admission(queueToken, admitToken, queueStatusHashMapper.toAdmittedFields(admitToken, admittedAt)));
         }
+
+        if (admissions.isEmpty()) {
+            return;
+        }
+
+        // Write phase: 모든 상태 전이를 단일 파이프라인으로 처리해 Redis 왕복 횟수를 최소화한다.
+        String wKey = waitingKey(scope, eventId);
+        String aKey = admittedKey(scope, eventId);
+        String ahKey = admissionHistoryKey(scope, eventId);
+        double score = admittedAt.toEpochMilli();
+
+        stringRedisTemplate.executePipelined(new SessionCallback<>() {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Object execute(org.springframework.data.redis.core.RedisOperations ops) {
+                for (Admission admission : admissions) {
+                    ops.opsForHash().putAll(statusKey(admission.queueToken()), admission.fields());
+                    ops.opsForValue().set(admitTokenKey(admission.admitToken()), admission.queueToken(), QueueConstants.ADMIT_TOKEN_TTL);
+                    ops.opsForZSet().remove(wKey, admission.queueToken());
+                    ops.opsForZSet().add(aKey, admission.queueToken(), score);
+                    ops.opsForZSet().add(ahKey, admission.queueToken(), score);
+                }
+                ops.opsForSet().add(QueueConstants.ADMITTED_EVENTS_KEY, toEventKey(scope, eventId));
+                return null;
+            }
+        });
     }
 
     /**
