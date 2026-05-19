@@ -3,6 +3,12 @@ spring:
   application:
     name: tickle
 
+  # Virtual Thread (Java 21 Loom) — SSE thread pool 고갈 해결
+  # 기본 true: 운영/로컬 모두 VT 활성화. 비활성화 필요 시 VIRTUAL_THREADS_ENABLED=false
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS_ENABLED:true}
+
   # MySQL 연결 정보
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
