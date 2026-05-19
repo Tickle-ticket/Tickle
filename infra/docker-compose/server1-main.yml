@@ -43,10 +43,11 @@ services:
       dockerfile: Dockerfile
     container_name: tickle-be
     restart: always
-    mem_limit: 1024m
+    mem_limit: 2048m
     environment:
       SPRING_PROFILES_ACTIVE: local
       SPRING_THREADS_VIRTUAL_ENABLED: "true"
+      JAVA_TOOL_OPTIONS: "-Xms512m -Xmx1792m"
       DB_HOST: tickle-mysql
       DB_PORT: 3306
       DB_NAME: tickle_core
