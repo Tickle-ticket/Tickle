@@ -40,6 +40,9 @@ public class SeatService {
 
     private static final String LOCK_KEY_PREFIX = "seat-hold:";
     private static final int HOLD_MINUTES = 15;
+    // holdBatch(DB UPDATE) + registerHeld(Redis SET) 합산 예상 소요: ~50ms
+    // 직전 요청이 락을 해제하는 시점까지 짧게 대기해 UX 개선 (즉시 실패 방지)
+    private static final long LOCK_WAIT_MILLIS = 300L;
 
     private final EventSessionRepository eventSessionRepository;
     private final SessionSeatRepository sessionSeatRepository;
@@ -104,7 +107,7 @@ public class SeatService {
         List<Long> seatIds = request.sessionSeatIds();
 
         String lockKey = LOCK_KEY_PREFIX + scheduleId;
-        if (!redisLockManager.tryLock(lockKey)) {
+        if (!redisLockManager.tryLock(lockKey, LOCK_WAIT_MILLIS)) {
             throw new BaseException(SeatErrorCode.SEAT_LOCK_FAILED);
         }
 
