@@ -3,24 +3,24 @@
 //
 // 시나리오 목적:
 //   "동일한 좌석 ID 집합을 N명이 동시에 요청하면 정확히 1명만 성공해야 한다"는
-//   분산락 정합성을 검증하고 P99 latency를 측정한다.
+//   DB 레벨 정합성을 검증하고 P99 latency를 측정한다.
 //
-//   - 락 grain은 scheduleId 단위 → 동일 schedule 동시 요청은 1명씩 직렬 처리됨
-//   - RedisLockManager.tryLock(key)은 wait=0 즉시 실패 정책
-//   - 따라서 첫 1명만 201, 나머지는 SEAT_LOCK_FAILED 또는 SEAT_ALREADY_HELD
+//   - 분산락(scheduleId 단위)을 제거했으며, holdBatch의
+//     WHERE sale_status = 'AVAILABLE' + MySQL InnoDB row lock으로 정합성을 보장한다.
+//   - 100명이 동시에 같은 좌석을 요청하면:
+//     첫 번째 커밋이 AVAILABLE → HELD로 전환
+//     나머지는 WHERE AVAILABLE 조건 불충족 → updated=0 → SEAT_ALREADY_HELD
+//   - 정상: seat_hold_success=1, seat_hold_already_held=99
 //
 // 측정 지표:
-//   - http_req_duration{endpoint:seat_hold}
-//   - seat_hold_success (Counter) : 201 응답 수 (이상적으로 1)
-//   - seat_hold_lock_failed (Counter) : 락 실패 응답 수
-//   - seat_hold_already_held (Counter) : 이미 hold된 응답 수
+//   - http_req_duration{endpoint:seat_hold}  : P99 latency
+//   - seat_hold_success (Counter)            : 성공 수 (정확히 1이어야 함 — 정합성 ★)
+//   - seat_hold_already_held (Counter)       : DB row lock 경합 후 실패 수
+//   - seat_hold_lock_failed (Counter)        : 분산락 실패 (제거 후 항상 0)
 //
 // 사전 준비:
-//   - admitToken이 필요. 일반적으로 enter→token→ADMITTED 받은 후 admitToken을 얻지만,
-//     k6 부하 환경에서 대기열 admission을 통과하는 건 비현실적이라
-//     SEAT_HOLD_REQUIRE_ADMIT=false 일 경우 401 응답만 분포로 확인하는 모드를 제공한다.
-//   - 실 운영 환경에서 의미 있는 동시성 측정이 필요하면 admitToken을 주입할 수 있도록
-//     별도 백도어 endpoint 또는 사전 발급된 토큰을 PRE_ADMIT_TOKEN 환경변수로 전달.
+//   - admitToken이 필요하거나 SEAT_HOLD_REQUIRE_ADMIT=false로 비활성화
+//   - OPENED 상태 event_session + AVAILABLE 상태 session_seats 필요
 // =============================================================
 
 import http from "k6/http";
