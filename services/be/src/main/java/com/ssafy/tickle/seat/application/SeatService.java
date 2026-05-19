@@ -2,7 +2,6 @@ package com.ssafy.tickle.seat.application;
 
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
-import com.ssafy.tickle.common.util.RedisLockManager;
 import com.ssafy.tickle.event.domain.EventSession;
 import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
 import com.ssafy.tickle.seat.domain.EventSection;
@@ -38,15 +37,10 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class SeatService {
 
-    private static final String LOCK_KEY_PREFIX = "seat-hold:";
     private static final int HOLD_MINUTES = 15;
-    // holdBatch(DB UPDATE) + registerHeld(Redis SET) 합산 예상 소요: ~50ms
-    // 직전 요청이 락을 해제하는 시점까지 짧게 대기해 UX 개선 (즉시 실패 방지)
-    private static final long LOCK_WAIT_MILLIS = 300L;
 
     private final EventSessionRepository eventSessionRepository;
     private final SessionSeatRepository sessionSeatRepository;
-    private final RedisLockManager redisLockManager;
     private final SeatHoldKeyStore seatHoldKeyStore;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -85,16 +79,17 @@ public class SeatService {
      *
      * <h3>처리 흐름</h3>
      * <ol>
-     *   <li>세션 단위 분산 락 획득 — 동시 "선택완료" 요청 직렬화 (밀리초 단위)</li>
-     *   <li>요청 좌석 전체를 단일 쿼리로 조회</li>
-     *   <li>하나라도 AVAILABLE이 아니면 전체 실패 (All-or-Nothing)</li>
+     *   <li>요청 좌석 전체를 단일 배치 UPDATE — WHERE sale_status = 'AVAILABLE' 조건으로 정합성 보장</li>
+     *   <li>업데이트 건수가 요청 수와 다르면 전체 실패 (All-or-Nothing)</li>
      *   <li>전체 HELD 전환 후 Redis TTL 키 등록 (15분)</li>
      *   <li>트랜잭션 커밋 후 WebSocket 브로드캐스트</li>
      * </ol>
      *
-     * <p>락은 "선택완료" 클릭 시 밀리초 단위로만 보유합니다.
-     * FE에서 좌석을 클릭하는 동안(선택 단계)은 서버 락이 없으므로
-     * 수천 명이 동시에 배치도를 보고 자유롭게 선택할 수 있습니다.</p>
+     * <p>세션 단위 분산 락을 제거했습니다.
+     * holdBatch의 {@code WHERE sale_status = 'AVAILABLE'} 조건과 MySQL InnoDB row lock이
+     * 같은 좌석의 동시 이중 선점을 DB 레벨에서 보장하므로, 분산 락 없이도 정합성이 유지됩니다.
+     * 분산 락은 오히려 다른 좌석을 선점하려는 사용자들까지 직렬화해 "이미 선점된 좌석입니다"
+     * 오류를 불필요하게 발생시키는 원인이었습니다.</p>
      *
      * @param eventId    공연 식별자
      * @param scheduleId 회차 식별자
@@ -106,30 +101,21 @@ public class SeatService {
     public SeatHoldResponse holdSeats(Long eventId, Long scheduleId, Long userId, SeatHoldRequest request) {
         List<Long> seatIds = request.sessionSeatIds();
 
-        String lockKey = LOCK_KEY_PREFIX + scheduleId;
-        if (!redisLockManager.tryLock(lockKey, LOCK_WAIT_MILLIS)) {
-            throw new BaseException(SeatErrorCode.SEAT_LOCK_FAILED);
+        // holdBatch: WHERE sale_status = 'AVAILABLE' 조건 + MySQL row lock으로 이중 선점 방지
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        int updated = sessionSeatRepository.holdBatch(seatIds, userId, now);
+        if (updated != seatIds.size()) {
+            throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
         }
 
-        try {
-            // 단일 batch UPDATE — SELECT + N×UPDATE → UPDATE 1회로 단축 (All-or-Nothing)
-            LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
-            int updated = sessionSeatRepository.holdBatch(seatIds, userId, now);
-            if (updated != seatIds.size()) {
-                throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
-            }
+        Instant expiresAt = Instant.now().plus(HOLD_MINUTES, ChronoUnit.MINUTES);
+        seatHoldKeyStore.registerHeld(scheduleId, userId, seatIds);
 
-            Instant expiresAt = Instant.now().plus(HOLD_MINUTES, ChronoUnit.MINUTES);
-            seatHoldKeyStore.registerHeld(scheduleId, userId, seatIds);
+        eventPublisher.publishEvent(
+                new SeatStatusChangedEvent(this, scheduleId, seatIds, SessionSeat.SaleStatus.HELD)
+        );
 
-            eventPublisher.publishEvent(
-                    new SeatStatusChangedEvent(this, scheduleId, seatIds, SessionSeat.SaleStatus.HELD)
-            );
-
-            return new SeatHoldResponse(seatIds, expiresAt);
-        } finally {
-            redisLockManager.unlock(lockKey);
-        }
+        return new SeatHoldResponse(seatIds, expiresAt);
     }
 
     /**
