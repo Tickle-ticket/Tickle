@@ -4,9 +4,9 @@ import { AdminSidebar } from './AdminSidebar';
 import type { AdminSidebarItem, AdminSidebarProps } from './AdminSidebar';
 
 export const agencySidebarItems: AdminSidebarItem[] = [
-  { label: '홈으로', href: '/' },
   { label: '공연 등록', href: '/agency' },
   { label: '등록한 공연 목록', href: '/agency/performances' },
+  { label: '홈으로', href: '/' },
 ];
 
 export interface AgencySidebarProps extends Pick<AdminSidebarProps, 'className' | 'badgeLabel'> {

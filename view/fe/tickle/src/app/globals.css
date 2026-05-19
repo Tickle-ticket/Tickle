@@ -245,6 +245,33 @@ body {
   animation: flashRed 1s ease-in-out forwards;
 }
 
+@keyframes registrationBlockError {
+  0% {
+    background-color: rgba(254, 226, 226, 0);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+  20% {
+    background-color: rgba(254, 226, 226, 0.9);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+  42% {
+    background-color: rgba(254, 226, 226, 0);
+    border-color: rgba(239, 68, 68, 0.35);
+  }
+  64% {
+    background-color: rgba(254, 226, 226, 0.8);
+    border-color: rgba(239, 68, 68, 0.75);
+  }
+  100% {
+    background-color: rgba(254, 226, 226, 0);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+}
+
+.animate-registration-block-error {
+  animation: registrationBlockError 1.35s ease-in-out;
+}
+
 /* Seat Grade Badge Utilities */
 .grade-badge-vip {
   background-color: var(--badge-vip-bg);

@@ -16,6 +16,7 @@ import type {
   BlacklistPageResponse,
   BlacklistReason,
 } from '@/src/shared/api/types/admin.types';
+import { AdminRefreshButton } from '@/src/shared/components/AdminRefreshButton';
 
 const reasonOptions: { value: BlacklistReason; label: string }[] = [
   { value: 'BOT_DETECTED', label: '봇 자동 탐지' },
@@ -66,10 +67,10 @@ export default function AdminBlacklistPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [adminUserId, setAdminUserId] = useState('');
   const [targetUserId, setTargetUserId] = useState('');
   const [reason, setReason] = useState<BlacklistReason>('MANUAL_BLOCK');
   const [detail, setDetail] = useState('');
+  const [removedBlacklistIds, setRemovedBlacklistIds] = useState<Set<number>>(() => new Set());
 
   const dashboardStreamUrl = useMemo(() => getAdminBlacklistDashboardStreamUrl(), []);
   const blacklistStreamUrl = useMemo(() => getAdminBlacklistStreamUrl(page, size), [page, size]);
@@ -85,7 +86,15 @@ export default function AdminBlacklistPage() {
   const streamedPageData = useMemo(() => unwrapSseData<BlacklistPageResponse>(blacklistStreamData), [blacklistStreamData]);
   const visibleDashboard = streamedDashboard ?? dashboard;
   const visiblePageData = streamedPageData ?? pageData;
-  const items = useMemo(() => visiblePageData?.items ?? [], [visiblePageData]);
+  const items = useMemo(() => {
+    const currentItems = visiblePageData?.items ?? [];
+
+    if (removedBlacklistIds.size === 0) {
+      return currentItems;
+    }
+
+    return currentItems.filter((item) => !removedBlacklistIds.has(item.blacklistId));
+  }, [removedBlacklistIds, visiblePageData]);
   const totalPages = visiblePageData?.totalPages ?? 0;
 
   const summary = useMemo(() => {
@@ -157,21 +166,15 @@ export default function AdminBlacklistPage() {
 
     try {
       const parsedUserId = Number(targetUserId);
-      const parsedAdminUserId = adminUserId ? Number(adminUserId) : undefined;
 
       if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
         throw new Error('차단할 사용자 ID를 숫자로 입력해 주세요.');
-      }
-
-      if (parsedAdminUserId !== undefined && (!Number.isInteger(parsedAdminUserId) || parsedAdminUserId <= 0)) {
-        throw new Error('관리자 ID를 숫자로 입력해 주세요.');
       }
 
       await addAdminBlacklist({
         userId: parsedUserId,
         reason,
         detail: detail.trim() || undefined,
-        adminUserId: parsedAdminUserId,
       });
 
       setTargetUserId('');
@@ -186,7 +189,8 @@ export default function AdminBlacklistPage() {
   };
 
   const handleRemove = async (item: BlacklistItem) => {
-    const confirmed = window.confirm(`사용자 ${item.userId}의 차단을 해제할까요?`);
+    const userLabel = item.userName || `사용자 ${item.userId}`;
+    const confirmed = window.confirm(`${userLabel}의 차단을 해제할까요?`);
 
     if (!confirmed) {
       return;
@@ -197,6 +201,18 @@ export default function AdminBlacklistPage() {
 
     try {
       await removeAdminBlacklist(item.blacklistId);
+      setRemovedBlacklistIds((current) => new Set(current).add(item.blacklistId));
+      setPageData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          items: current.items.filter((currentItem) => currentItem.blacklistId !== item.blacklistId),
+          totalElements: Math.max(0, current.totalElements - 1),
+        };
+      });
       setSuccessMessage('블랙리스트 항목을 삭제했습니다.');
       await loadBlacklist();
     } catch (error) {
@@ -222,7 +238,7 @@ export default function AdminBlacklistPage() {
 
       <section className="rounded-lg border border-line bg-surface p-5 shadow-sm">
         <h2 className="text-lg font-black text-slate-950">수동 차단 등록</h2>
-        <form className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1fr_2fr_auto]" onSubmit={handleSubmit}>
+        <form className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_2fr_auto]" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2">
             <span className="text-xs font-bold text-content-tertiary">사용자 ID</span>
             <input
@@ -247,17 +263,6 @@ export default function AdminBlacklistPage() {
                 </option>
               ))}
             </select>
-          </label>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-content-tertiary">관리자 ID</span>
-            <input
-              className="h-11 rounded-lg border border-line-strong px-3 text-sm font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary-light"
-              inputMode="numeric"
-              onChange={(event) => setAdminUserId(event.target.value)}
-              placeholder="토큰에서 자동 추출"
-              value={adminUserId}
-            />
           </label>
 
           <label className="flex flex-col gap-2">
@@ -293,21 +298,15 @@ export default function AdminBlacklistPage() {
             <h2 className="text-lg font-black text-slate-950">차단 목록</h2>
             <p className="mt-1 text-sm font-medium text-content-tertiary">페이지 크기 {size}건</p>
           </div>
-          <button
-            className="h-10 rounded-lg border border-line-strong px-4 text-sm font-black text-content-secondary hover:bg-surface-subtle"
-            onClick={() => void loadBlacklist()}
-            type="button"
-          >
-            새로고침
-          </button>
+          <AdminRefreshButton onClick={() => void loadBlacklist()} />
         </header>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-surface-subtle text-content-tertiary">
               <tr>
-                <th className="px-5 py-3 font-black">ID</th>
-                <th className="px-5 py-3 font-black">사용자</th>
+                <th className="px-5 py-3 font-black">사용자 이름</th>
+                <th className="px-5 py-3 font-black">사용자 ID</th>
                 <th className="px-5 py-3 font-black">사유</th>
                 <th className="px-5 py-3 font-black">등록 관리자</th>
                 <th className="px-5 py-3 font-black">등록일</th>
@@ -318,7 +317,7 @@ export default function AdminBlacklistPage() {
             <tbody className="divide-y divide-line-subtle">
               {items.map((item) => (
                 <tr key={item.blacklistId} className="align-top">
-                  <td className="px-5 py-4 font-black text-content">{item.blacklistId}</td>
+                  <td className="px-5 py-4 font-black text-content">{item.userName || '-'}</td>
                   <td className="px-5 py-4 font-bold text-content-secondary">{item.userId}</td>
                   <td className="px-5 py-4">
                     <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-black text-content-secondary">

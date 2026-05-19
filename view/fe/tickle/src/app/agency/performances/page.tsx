@@ -110,6 +110,18 @@ const formatSchedule = (startAt: string, endAt: string) => {
   return startDate === endDate ? startDate : `${startDate} - ${endDate}`;
 };
 
+const formatSalesRate = (value: number | null | undefined) => {
+  const rate = Number(value ?? 0);
+
+  if (!Number.isFinite(rate)) {
+    return '-';
+  }
+
+  const formattedRate = `${rate.toFixed(2)}%`;
+
+  return formattedRate === '0.00%' ? '-' : formattedRate;
+};
+
 const getPerformanceStatus = (salesStartAt: string | null, eventEndAt: string): PerformanceStatusKey => {
   const now = Date.now();
   const salesStartTime = salesStartAt ? new Date(salesStartAt).getTime() : Number.NEGATIVE_INFINITY;
@@ -201,7 +213,7 @@ export default function AgencyPerformancesPage() {
         schedule: formatSchedule(item.eventStartAt, item.eventEndAt),
         ticketOpenAt: formatDateTime(item.salesStartAt),
         status: getPerformanceStatus(item.salesStartAt, item.eventEndAt),
-        salesRate: `${Number(item.reservationRate ?? 0).toFixed(2)}%`,
+        salesRate: formatSalesRate(item.reservationRate),
       })),
     [performanceList],
   );

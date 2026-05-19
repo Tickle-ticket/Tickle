@@ -8,6 +8,7 @@ export type BlacklistReason =
 export interface BlacklistItem {
   blacklistId: number;
   userId: number;
+  userName: string;
   reason: BlacklistReason;
   detail: string | null;
   blockedBy: number | null;

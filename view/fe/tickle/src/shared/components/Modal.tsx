@@ -71,9 +71,9 @@ export const Modal = ({
       {/* 모달 콘텐츠 */}
       <Box 
         variant="shadow" 
-        className={`relative w-full max-w-[320px] bg-surface rounded-[20px] p-6 flex flex-col z-10 shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${className}`}
+        className={`relative z-10 flex max-h-[calc(100vh-2rem)] w-full max-w-[320px] flex-col overflow-hidden rounded-[20px] bg-surface p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${className}`}
       >
-        <div className="flex flex-col items-center mb-6 gap-2 text-center">
+        <div className="mb-6 flex min-h-0 flex-col items-center gap-2 overflow-y-auto pr-1 text-center">
           {title && (
              // Title 컴포넌트 활용 지시사항 반영
             <Title 
@@ -91,7 +91,7 @@ export const Modal = ({
           {children}
         </div>
         
-        <div className="flex gap-2 w-full mt-auto">
+        <div className="mt-auto flex w-full shrink-0 gap-2">
           {showCancelButton && cancelText && (
             // Button 컴포넌트 활용 지시사항 반영 (weak / dark 조합이 회색 배경의 회색 글씨)
             <Button 

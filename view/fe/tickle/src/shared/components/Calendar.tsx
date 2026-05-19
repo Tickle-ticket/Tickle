@@ -13,15 +13,37 @@ const formatDate = (date: Date | string) => {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+const getMonthStart = (value?: Date | string | null) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
 export const Calendar = ({
   enabledDates = [],
   selectedDate = null,
   onSelect,
   isLoading = false,
   className = '',
+  density = 'default',
 }: CalendarProps) => {
+  const isCompact = density === 'compact';
   // 표시 중인 달(기준 연월)의 1일
   const [currentMonth, setCurrentMonth] = useState(() => {
+    const selectedMonth = getMonthStart(selectedDate);
+
+    if (selectedMonth) {
+      return selectedMonth;
+    }
+
     // 만약 최초 렌더링 시점에 이미 enabledDates가 있다면 최적화를 위해 여기서 바로 초기화 가능
     if (enabledDates && enabledDates.length > 0) {
       const timestamps = enabledDates.map(d => new Date(d).getTime()).filter(t => !isNaN(t));
@@ -36,7 +58,7 @@ export const Calendar = ({
   });
 
   // 서버 통신 등 비동기로 늦게 enabledDates가 들어올 경우를 대비해, 값이 채워지는 순간 딱 한 번 화면을 이동시키는 효과
-  const [hasAutoNavigated, setHasAutoNavigated] = useState(() => (enabledDates && enabledDates.length > 0));
+  const [hasAutoNavigated, setHasAutoNavigated] = useState(() => Boolean(getMonthStart(selectedDate) || (enabledDates && enabledDates.length > 0)));
 
   React.useEffect(() => {
     if (!hasAutoNavigated && enabledDates && enabledDates.length > 0) {
@@ -44,8 +66,12 @@ export const Calendar = ({
       if (timestamps.length > 0) {
         const minTimestamp = Math.min(...timestamps);
         const earliestDate = new Date(minTimestamp);
-        setCurrentMonth(new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1));
-        setHasAutoNavigated(true);
+        const timeoutId = setTimeout(() => {
+          setCurrentMonth(new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1));
+          setHasAutoNavigated(true);
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
       }
     }
   }, [enabledDates, hasAutoNavigated]);
@@ -57,9 +83,9 @@ export const Calendar = ({
   // 로딩 상태 (스켈레톤 UI)
   if (isLoading) {
     return (
-      <div className={`w-full max-w-[340px] bg-surface rounded-[16px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
+      <div className={`w-full max-w-[340px] bg-surface rounded-[16px] ${isCompact ? 'p-3' : 'p-5'} shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
         {/* 헤더 스켈레톤 */}
-        <div className="flex justify-center items-center mb-6">
+        <div className={`flex justify-center items-center ${isCompact ? 'mb-3' : 'mb-6'}`}>
           <div className="w-24 h-6 bg-surface-active rounded-md animate-pulse" />
         </div>
         {/* 요일 스켈레톤 */}
@@ -73,8 +99,8 @@ export const Calendar = ({
         {/* 날짜 그리드 스켈레톤 */}
         <div className="grid grid-cols-7 gap-y-2 gap-x-1">
           {Array.from({ length: 35 }).map((_, i) => (
-            <div key={i} className="flex justify-center items-center h-10 w-full">
-              <div className="w-8 h-8 bg-surface-muted rounded-full animate-pulse" />
+            <div key={i} className={`flex justify-center items-center ${isCompact ? 'h-8' : 'h-10'} w-full`}>
+              <div className={`${isCompact ? 'h-7 w-7' : 'h-8 w-8'} bg-surface-muted rounded-full animate-pulse`} />
             </div>
           ))}
         </div>
@@ -107,9 +133,9 @@ export const Calendar = ({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <div className={`w-full max-w-[340px] bg-surface rounded-[16px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
+    <div className={`w-full max-w-[340px] bg-surface rounded-[16px] ${isCompact ? 'p-3' : 'p-5'} shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
       {/* 헤더: < 연월 > */}
-      <div className="flex justify-between items-center mb-6 px-1">
+      <div className={`flex justify-between items-center ${isCompact ? 'mb-3' : 'mb-6'} px-1`}>
         <button 
           onClick={handlePrevMonth}
           className="w-8 h-8 flex items-center justify-center text-content-muted hover:bg-surface-muted hover:text-content-secondary rounded-full transition-colors"
@@ -145,7 +171,7 @@ export const Calendar = ({
       {/* 날짜 그리드 */}
       <div className="grid grid-cols-7 gap-y-1 gap-x-1">
         {blanks.map((blank) => (
-          <div key={`blank-${blank}`} className="h-10 w-full" />
+          <div key={`blank-${blank}`} className={`${isCompact ? 'h-8' : 'h-10'} w-full`} />
         ))}
         {days.map((day) => {
           const dateObj = new Date(year, month, day);
@@ -164,6 +190,7 @@ export const Calendar = ({
               isEnabled={isEnabled}
               isSelected={isSelected}
               isToday={isToday}
+              isCompact={isCompact}
               onSelect={onSelect}
             />
           );
@@ -180,6 +207,7 @@ interface CalendarDateButtonProps {
   isEnabled: boolean;
   isSelected: boolean;
   isToday: boolean;
+  isCompact: boolean;
   onSelect?: (date: Date, e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
@@ -190,12 +218,13 @@ const CalendarDateButton = ({
   isEnabled,
   isSelected,
   isToday,
+  isCompact,
   onSelect,
 }: CalendarDateButtonProps) => {
   const tracker = useTargetTracker({ trackId: `calendar-date-${formatted}`, isClickable: isEnabled });
 
   return (
-    <div className="flex justify-center items-center h-10 w-full">
+    <div className={`flex justify-center items-center ${isCompact ? 'h-8' : 'h-10'} w-full`}>
       <button
         {...tracker}
         disabled={!isEnabled}
@@ -205,7 +234,7 @@ const CalendarDateButton = ({
           }
         }}
         className={`
-          w-9 h-9 rounded-full flex items-center justify-center text-[15px] transition-all
+          ${isCompact ? 'h-8 w-8 text-[14px]' : 'w-9 h-9 text-[15px]'} rounded-full flex items-center justify-center transition-all
           ${!isEnabled ? 'text-[#cbd5e1] font-normal cursor-not-allowed' : ''}
           ${isEnabled && !isSelected ? 'text-content font-bold hover:bg-surface-muted cursor-pointer' : ''}
           ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}

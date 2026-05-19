@@ -11,6 +11,7 @@ import type {
   BlacklistDashboardResponse,
   BotDetectionStatsResponse,
 } from '@/src/shared/api/types/admin.types';
+import { AdminRefreshButton } from '@/src/shared/components/AdminRefreshButton';
 import { BotDetectionChart } from '@/src/shared/components/BotDetectionChart';
 import type { BotDetectionPoint } from '@/src/shared/components/BotDetectionChart';
 import { useSSE } from '@/src/shared/hooks/useSSE';
@@ -65,14 +66,14 @@ export default function BotDetectionPage() {
   const [stats, setStats] = useState<BotDetectionStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const dashboardStreamUrl = useMemo(() => getAdminBlacklistDashboardStreamUrl(), []);
   const statsStreamUrl = useMemo(() => getAdminBotStatsStreamUrl(), []);
-  const { data: dashboardStreamData } = useSSE<BlacklistDashboardResponse | { data: BlacklistDashboardResponse }>(
+  const { data: dashboardStreamData, lastEventAt: dashboardStreamLastEventAt } = useSSE<BlacklistDashboardResponse | { data: BlacklistDashboardResponse }>(
     dashboardStreamUrl,
     { eventNames: ['blacklist.dashboard'] },
   );
-  const { data: statsStreamData } = useSSE<BotDetectionStatsResponse | { data: BotDetectionStatsResponse }>(
+  const { data: statsStreamData, lastEventAt: statsStreamLastEventAt } = useSSE<BotDetectionStatsResponse | { data: BotDetectionStatsResponse }>(
     statsStreamUrl,
     { eventNames: ['bot.stats'] },
   );
@@ -80,7 +81,10 @@ export default function BotDetectionPage() {
   const streamedStats = useMemo(() => unwrapSseData<BotDetectionStatsResponse>(statsStreamData), [statsStreamData]);
   const visibleDashboard = streamedDashboard ?? dashboard;
   const visibleStats = streamedStats ?? stats;
-  const visibleLastUpdatedAt = streamedDashboard || streamedStats ? 'SSE 수신 중' : lastUpdatedAt;
+  const latestUpdateAt = Math.max(lastUpdatedAt ?? 0, dashboardStreamLastEventAt ?? 0, statsStreamLastEventAt ?? 0);
+  const visibleLastUpdatedAt = latestUpdateAt > 0
+    ? new Date(latestUpdateAt).toLocaleString('ko-KR')
+    : null;
 
   const loadStats = useCallback(async () => {
     setIsLoading(true);
@@ -94,7 +98,7 @@ export default function BotDetectionPage() {
 
       setDashboard(dashboardResponse.data);
       setStats(statsResponse.data);
-      setLastUpdatedAt(new Date().toLocaleString('ko-KR'));
+      setLastUpdatedAt(Date.now());
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -149,14 +153,7 @@ export default function BotDetectionPage() {
           </h1>
         </div>
 
-        <button
-          className="h-11 rounded-lg border border-line-strong bg-surface px-5 text-sm font-black text-content-secondary hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-content-muted"
-          disabled={isLoading}
-          onClick={() => void loadStats()}
-          type="button"
-        >
-          {isLoading ? '갱신 중' : '새로고침'}
-        </button>
+        <AdminRefreshButton isLoading={isLoading} onClick={() => void loadStats()} />
       </header>
 
       {errorMessage ? (
@@ -179,7 +176,7 @@ export default function BotDetectionPage() {
         subtitle={visibleLastUpdatedAt ? `오늘 시간대별 탐지 유형과 누적 탐지 건수 / 마지막 갱신: ${visibleLastUpdatedAt}` : '오늘 시간대별 탐지 유형과 누적 탐지 건수'}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-[0_18px_46px_rgba(15,23,42,0.08)]">
           <header className="border-b border-line px-5 py-4">
             <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
@@ -188,30 +185,30 @@ export default function BotDetectionPage() {
           </header>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-surface-subtle text-content-tertiary">
                 <tr>
-                  <th className="px-5 py-3 font-black">블랙리스트 ID</th>
-                  <th className="px-5 py-3 font-black">사용자 ID</th>
-                  <th className="px-5 py-3 font-black">사유</th>
-                  <th className="px-5 py-3 font-black">등록 관리자</th>
-                  <th className="px-5 py-3 font-black">등록일</th>
-                  <th className="px-5 py-3 font-black">상세</th>
+                  <th className="px-4 py-3 font-black">사용자 이름</th>
+                  <th className="px-4 py-3 font-black">사용자 ID</th>
+                  <th className="px-4 py-3 font-black">사유</th>
+                  <th className="px-4 py-3 font-black">등록 관리자</th>
+                  <th className="px-4 py-3 font-black">등록일</th>
+                  <th className="px-4 py-3 font-black">상세</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle">
                 {(visibleStats?.recentItems ?? []).map((item) => (
                   <tr key={item.blacklistId} className="align-top">
-                    <td className="px-5 py-4 font-black text-content">{item.blacklistId}</td>
-                    <td className="px-5 py-4 font-bold text-content-secondary">{item.userId}</td>
-                    <td className="px-5 py-4">
-                      <span className="rounded-full bg-danger-subtle px-2.5 py-1 text-xs font-black text-danger">
+                    <td className="whitespace-nowrap px-4 py-4 font-black text-content">{item.userName || '-'}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-bold text-content-secondary">{item.userId}</td>
+                    <td className="px-4 py-4">
+                      <span className="inline-flex h-6 items-center whitespace-nowrap rounded-md bg-danger-subtle px-2 text-[11px] font-black leading-none text-danger">
                         {reasonLabels[item.reason] ?? item.reason}
                       </span>
                     </td>
-                    <td className="px-5 py-4 font-semibold text-content-tertiary">{item.blockedBy ?? '-'}</td>
-                    <td className="px-5 py-4 font-semibold text-content-tertiary">{formatDateTime(item.createdAt)}</td>
-                    <td className="max-w-[360px] px-5 py-4 font-medium leading-6 text-content-secondary">
+                    <td className="whitespace-nowrap px-4 py-4 font-semibold text-content-tertiary">{item.blockedBy ?? '-'}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-semibold text-content-tertiary">{formatDateTime(item.createdAt)}</td>
+                    <td className="max-w-[300px] px-4 py-4 font-medium leading-6 text-content-secondary">
                       {item.detail || '-'}
                     </td>
                   </tr>

@@ -14,6 +14,7 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Event | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [lastEventAt, setLastEventAt] = useState<number | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -40,6 +41,8 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
           // JSON 형식이 아닌 순수 텍스트인 경우
           setData(event.data as unknown as T);
         }
+
+        setLastEventAt(Date.now());
       };
 
       eventSource.onmessage = handleMessage;
@@ -75,5 +78,5 @@ export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
     };
   }, [url, autoReconnect, reconnectInterval, eventNamesKey]);
 
-  return { data, isConnected, error };
+  return { data, isConnected, error, lastEventAt };
 };

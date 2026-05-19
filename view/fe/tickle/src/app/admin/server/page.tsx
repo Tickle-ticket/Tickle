@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { getAdminUserStats, getAdminUserStatsStreamUrl } from '@/src/shared/api/adminApi';
 import type { ActiveUserStatsResponse } from '@/src/shared/api/types/admin.types';
+import { AdminRefreshButton } from '@/src/shared/components/AdminRefreshButton';
 import { useSSE } from '@/src/shared/hooks/useSSE';
 
 type ActiveUserPoint = ActiveUserStatsResponse & {
@@ -63,26 +64,21 @@ function getStatusLabel(stats: ActiveUserStatsResponse | null) {
   return { label: '정상', className: 'bg-success-subtle text-success' };
 }
 
-function toMetricCards(stats: ActiveUserStatsResponse | null, previous: ActiveUserStatsResponse | null) {
-  const currentDiff = stats && previous ? stats.currentCount - previous.currentCount : 0;
-
+function toMetricCards(stats: ActiveUserStatsResponse | null) {
   return [
     {
       label: '현재 접속',
       value: stats ? `${formatNumber(stats.currentCount)}명` : '-',
-      caption: stats ? `${currentDiff >= 0 ? '+' : ''}${formatNumber(currentDiff)}명` : 'SSE 수신 대기',
-      tone: currentDiff >= 0 ? 'text-primary' : 'text-success',
+      tone: 'text-primary',
     },
     {
       label: '오늘 피크',
       value: stats ? `${formatNumber(stats.peakCount)}명` : '-',
-      caption: '일간 최고 동시 접속',
       tone: 'text-slate-950',
     },
     {
       label: '오늘 평균',
       value: stats ? `${formatNumber(stats.averageCount)}명` : '-',
-      caption: '5분 스냅샷 평균',
       tone: 'text-success',
     },
   ];
@@ -166,17 +162,13 @@ export default function AdminServerMonitoringPage() {
   }, [appendStatsPoint, streamedStats]);
 
   const latestStats = stats;
-  const previousStats = history.length >= 2 ? history[history.length - 2] : null;
-  const metricCards = useMemo(() => toMetricCards(latestStats, previousStats), [latestStats, previousStats]);
+  const metricCards = useMemo(() => toMetricCards(latestStats), [latestStats]);
   const status = getStatusLabel(latestStats);
   return (
     <div className="space-y-6 p-5 sm:p-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-normal text-slate-950">서버 모니터링 대시보드</h1>
-          <p className="mt-2 text-sm font-semibold text-content-tertiary">
-            일반 사용자 접속 통계를 SSE로 수신합니다.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -184,14 +176,7 @@ export default function AdminServerMonitoringPage() {
           <span className={`rounded-full px-3 py-1.5 text-xs font-black ${isConnected ? 'bg-success-subtle text-success' : 'bg-surface-subtle text-content-tertiary'}`}>
             {isConnected ? 'SSE 연결됨' : 'SSE 대기'}
           </span>
-          <button
-            className="h-10 rounded-lg border border-line-strong px-4 text-sm font-black text-content-secondary hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-content-muted"
-            disabled={isLoading}
-            onClick={() => void loadStats()}
-            type="button"
-          >
-            {isLoading ? '갱신 중' : '새로고침'}
-          </button>
+          <AdminRefreshButton isLoading={isLoading} onClick={() => void loadStats()} />
         </div>
       </header>
 
@@ -204,7 +189,6 @@ export default function AdminServerMonitoringPage() {
           <article key={item.label} className="rounded-lg border border-line bg-surface p-5">
             <p className="text-sm font-bold text-content-tertiary">{item.label}</p>
             <p className={`mt-3 text-3xl font-black ${item.tone}`}>{item.value}</p>
-            <p className="mt-2 text-xs font-bold text-content-tertiary">{item.caption}</p>
           </article>
         ))}
       </section>

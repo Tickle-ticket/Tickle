@@ -1,0 +1,10 @@
+
+> tikkle@0.1.0 dev
+> next dev --port 3001
+
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://70.12.246.163:3001
+- Environments: .env
+✓ Ready in 531ms
+[?25h

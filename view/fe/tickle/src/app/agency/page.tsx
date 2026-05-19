@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type RefObject } from 'react';
 import {
   AgencySeatPolicyModal,
   type AgencySeatPolicy,
@@ -28,7 +28,6 @@ import { Modal } from '@/src/shared/components/Modal';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 
-const DEFAULT_PERFORMANCE_TITLE = '뮤지컬 Tikkle Original2';
 const DEFAULT_SESSION_DURATION_MINUTES = 60;
 
 type VenueOption = {
@@ -57,6 +56,31 @@ const registrationStepItems = [
 ];
 
 const maxPerformanceHashtagCount = 3;
+
+type RegistrationErrorTarget =
+  | 'poster'
+  | 'performanceTitle'
+  | 'performanceDate'
+  | 'venue'
+  | 'category'
+  | 'ticketRule'
+  | 'schedule'
+  | 'seatPolicy'
+  | 'seatPrice'
+  | 'discount';
+
+type RegistrationValidationResult = {
+  message: string;
+  target: RegistrationErrorTarget;
+  stepIndex: number;
+};
+
+const basicInfoErrorTargets = new Set<RegistrationErrorTarget>([
+  'performanceTitle',
+  'performanceDate',
+  'venue',
+  'category',
+]);
 
 type SeatGradeKey = 'vip' | 'r' | 's' | 'a';
 type SupportedAgencySeatGrade = Exclude<AgencySeatGrade, 'B' | 'RESTRICTED_VIEW'>;
@@ -144,19 +168,6 @@ const buildSeatTemplateState = (template: AgencyVenueTemplate): VenueTemplateSea
     seatPolicy: assignedSeatCount > 0 ? nextSeatPolicy : null,
     seatIdByLabel,
   };
-};
-
-const resolveDefaultCategoryId = (categories: Category[]) => {
-  if (categories.length === 0) {
-    return '';
-  }
-
-  const preferredCategory = categories.find((category) => {
-    const normalizedName = category.categoryName.trim().toLowerCase();
-    return normalizedName === '뮤지컬' || normalizedName === 'musical';
-  });
-
-  return String(preferredCategory?.categoryId ?? categories[0]?.categoryId ?? '');
 };
 
 const formatDateKey = (value: Date) => {
@@ -317,7 +328,7 @@ type IntroImageItem = {
 type PerformanceScheduleMap = Record<string, string[]>;
 
 type TicketScheduleRule = {
-  days: number;
+  days: string;
 };
 
 type TicketSchedulePreview = {
@@ -365,7 +376,7 @@ const createIntroImageKey = (file: File) => `${file.name}-${file.size}-${file.la
 const normalizeHashtag = (value: string) => value.trim().replace(/^#+/, '').replace(/\s+/g, '');
 const parseOffsetDayValue = (value: string) => {
   const digits = value.replace(/[^\d]/g, '');
-  return digits ? Number(digits) : 0;
+  return digits;
 };
 
 const withTimeFromDate = (sourceDate: Date, timeSourceDate: Date) => {
@@ -376,7 +387,7 @@ const withTimeFromDate = (sourceDate: Date, timeSourceDate: Date) => {
 
 const buildTicketScheduleDate = (referenceAt: Date, rule: TicketScheduleRule) => {
   const nextDate = new Date(referenceAt);
-  nextDate.setDate(nextDate.getDate() - rule.days);
+  nextDate.setDate(nextDate.getDate() - Number(rule.days || 0));
   return nextDate;
 };
 
@@ -390,6 +401,20 @@ const buildSessionEndAt = (scheduleAt: Date, fallbackEndTimeSource: Date) => {
   const fallbackEndAt = new Date(scheduleAt);
   fallbackEndAt.setMinutes(fallbackEndAt.getMinutes() + DEFAULT_SESSION_DURATION_MINUTES);
   return fallbackEndAt;
+};
+
+const createDefaultPerformanceStartAt = () => {
+  const nextStartAt = new Date();
+  nextStartAt.setDate(nextStartAt.getDate() + 1);
+  nextStartAt.setHours(19, 30, 0, 0);
+  return nextStartAt;
+};
+
+const createDefaultPerformanceEndAt = (startAt: Date) => {
+  const nextEndAt = new Date(startAt);
+  nextEndAt.setDate(nextEndAt.getDate() + 30);
+  nextEndAt.setHours(18, 0, 0, 0);
+  return nextEndAt;
 };
 
 const formatFileSize = (bytes: number) => {
@@ -698,12 +723,16 @@ function DateTimeTriggerField({
   onChange,
   onBlur,
   onOpen,
+  placeholder = 'YYYY-MM-DD HH:mm',
+  hasError = false,
 }: {
   label: string;
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onBlur: () => void;
   onOpen: () => void;
+  placeholder?: string;
+  hasError?: boolean;
 }) {
   const inputId = useId();
 
@@ -718,11 +747,11 @@ function DateTimeTriggerField({
           value={value}
           onChange={onChange}
           onBlur={onBlur}
-          placeholder="YYYY-MM-DD HH:mm"
+          placeholder={placeholder}
           className={`
             w-full border-b-[2px] bg-transparent py-1 pr-11 text-[20px] text-content outline-none
-            transition-colors tracking-[0.08em] placeholder:text-content-muted border-line-strong sm:text-[22px]
-            hover:border-line-strong focus:border-primary
+            transition-colors tracking-[0.08em] placeholder:text-content-muted sm:text-[22px]
+            ${hasError ? 'border-danger hover:border-danger focus:border-danger' : 'border-line-strong hover:border-line-strong focus:border-primary'}
           `}
         />
         <button
@@ -745,25 +774,26 @@ function DateTimeTriggerField({
 
 function TicketScheduleRuleField({
   label,
-  description,
   rule,
   onDaysChange,
+  hasError = false,
 }: {
   label: string;
-  description: string;
   rule: TicketScheduleRule;
-  onDaysChange: (days: number) => void;
+  onDaysChange: (days: string) => void;
+  hasError?: boolean;
 }) {
   return (
     <div className="rounded-3xl border border-line bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-base font-black text-slate-950">{label}</p>
-          <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">{description}</p>
         </div>
-        <Badge color="blue" variant="outline">
-          공연일 {rule.days}일 전
-        </Badge>
+        {rule.days ? (
+          <Badge color="blue" variant="outline">
+            공연일 {rule.days}일 전
+          </Badge>
+        ) : null}
       </div>
 
       <div className="mt-4">
@@ -775,7 +805,12 @@ function TicketScheduleRuleField({
             step={1}
             value={rule.days}
             onChange={(event) => onDaysChange(parseOffsetDayValue(event.target.value))}
-            className="rounded-2xl border border-line bg-surface-subtle px-4 py-3 text-sm font-semibold text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
+            placeholder="예: 14"
+            className={`rounded-2xl border bg-surface-subtle px-4 py-3 text-sm font-semibold text-content outline-none transition focus:ring-4 ${
+              hasError
+                ? 'border-danger focus:border-danger focus:ring-danger-light'
+                : 'border-line focus:border-primary focus:ring-primary-light'
+            }`}
           />
         </label>
       </div>
@@ -900,10 +935,15 @@ function DateRangeModal({
   const [draftEndAt, setDraftEndAt] = useState(() => new Date(initialEndAt));
   const [startDateText, setStartDateText] = useState(() => formatDateKey(initialStartAt));
   const [endDateText, setEndDateText] = useState(() => formatDateKey(initialEndAt));
+  const startCalendarRangeStartYear = Math.min(
+    new Date().getFullYear(),
+    initialStartAt.getFullYear(),
+    draftStartAt.getFullYear(),
+  ) - 1;
 
   const startEnabledDates = useMemo(
-    () => buildEnabledDateRange(new Date(draftStartAt.getFullYear(), draftStartAt.getMonth(), 1), 540),
-    [draftStartAt],
+    () => buildEnabledDateRange(new Date(startCalendarRangeStartYear, 0, 1), 366 * 6),
+    [startCalendarRangeStartYear],
   );
 
   const endEnabledDates = useMemo(
@@ -989,19 +1029,20 @@ function DateRangeModal({
       confirmText="적용하기"
       onCancel={onClose}
       onConfirm={() => onConfirm(draftStartAt, draftEndAt)}
-      className="!max-w-[960px] !rounded-[32px] !p-6"
+      className="!max-w-[960px] !rounded-[28px] !p-4 sm:!p-5"
     >
       <div className="w-full text-left">
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-3xl border border-line bg-surface-subtle p-5">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-line bg-surface-subtle p-4">
             <div className="flex items-center justify-between gap-3">
               <Badge color="blue" variant="outline">좌측</Badge>
               <span className="text-sm font-bold text-content-tertiary">{startLabel}</span>
             </div>
-            <p className="mt-3 text-lg font-black text-slate-950">{formatDateTimeLabel(draftStartAt)}</p>
+            <p className="mt-2 text-base font-black text-slate-950">{formatDateTimeLabel(draftStartAt)}</p>
 
-            <div className="mt-4">
+            <div className="mt-3">
               <Calendar
+                density="compact"
                 enabledDates={startEnabledDates}
                 selectedDate={draftStartAt}
                 onSelect={handleStartDateSelect}
@@ -1009,7 +1050,7 @@ function DateRangeModal({
               />
             </div>
 
-            <label className="mt-4 flex flex-col gap-2">
+            <label className="mt-3 flex flex-col gap-2">
               <span className="text-sm font-bold text-content-tertiary">시작 날짜</span>
               <input
                 type="text"
@@ -1022,7 +1063,7 @@ function DateRangeModal({
               />
             </label>
 
-            <label className="mt-4 flex flex-col gap-2">
+            <label className="mt-3 flex flex-col gap-2">
               <span className="text-sm font-bold text-content-tertiary">시작 시간</span>
               <input
                 type="time"
@@ -1034,15 +1075,16 @@ function DateRangeModal({
             </label>
           </div>
 
-          <div className="rounded-3xl border border-line bg-surface-subtle p-5">
+          <div className="rounded-2xl border border-line bg-surface-subtle p-4">
             <div className="flex items-center justify-between gap-3">
               <Badge color="grey" variant="outline">우측</Badge>
               <span className="text-sm font-bold text-content-tertiary">{endLabel}</span>
             </div>
-            <p className="mt-3 text-lg font-black text-slate-950">{formatDateTimeLabel(draftEndAt)}</p>
+            <p className="mt-2 text-base font-black text-slate-950">{formatDateTimeLabel(draftEndAt)}</p>
 
-            <div className="mt-4">
+            <div className="mt-3">
               <Calendar
+                density="compact"
                 enabledDates={endEnabledDates}
                 selectedDate={draftEndAt}
                 onSelect={handleEndDateSelect}
@@ -1050,7 +1092,7 @@ function DateRangeModal({
               />
             </div>
 
-            <label className="mt-4 flex flex-col gap-2">
+            <label className="mt-3 flex flex-col gap-2">
               <span className="text-sm font-bold text-content-tertiary">종료 날짜</span>
               <input
                 type="text"
@@ -1063,7 +1105,7 @@ function DateRangeModal({
               />
             </label>
 
-            <label className="mt-4 flex flex-col gap-2">
+            <label className="mt-3 flex flex-col gap-2">
               <span className="text-sm font-bold text-content-tertiary">종료 시간</span>
               <input
                 type="time"
@@ -1083,7 +1125,7 @@ function DateRangeModal({
 export default function AgencyRegistrationPage() {
   const { data: venueList = [], isLoading: isVenueListLoading } = useVenues();
   const [activeRegistrationStep, setActiveRegistrationStep] = useState(0);
-  const [performanceTitle, setPerformanceTitle] = useState(DEFAULT_PERFORMANCE_TITLE);
+  const [performanceTitle, setPerformanceTitle] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [isCategoryListLoading, setIsCategoryListLoading] = useState(true);
@@ -1091,35 +1133,35 @@ export default function AgencyRegistrationPage() {
   const [selectedVenue, setSelectedVenue] = useState<number | null>(null);
   const [isVenueOpen, setIsVenueOpen] = useState(false);
   const [ticketOpenRule, setTicketOpenRule] = useState<TicketScheduleRule>({
-    days: 14,
+    days: '',
   });
   const [ticketCloseRule, setTicketCloseRule] = useState<TicketScheduleRule>({
-    days: 0,
+    days: '',
   });
-  const [performanceOpenAt, setPerformanceOpenAt] = useState(() => new Date('2026-05-08T19:30:00'));
-  const [performanceCloseAt, setPerformanceCloseAt] = useState(() => new Date('2026-06-21T18:00:00'));
-  const [performanceOpenInputValue, setPerformanceOpenInputValue] = useState(() => formatDateTimeLabel(new Date('2026-05-08T19:30:00')));
-  const [performanceCloseInputValue, setPerformanceCloseInputValue] = useState(() => formatDateTimeLabel(new Date('2026-06-21T18:00:00')));
+  const [performanceOpenAt, setPerformanceOpenAt] = useState<Date | null>(null);
+  const [performanceCloseAt, setPerformanceCloseAt] = useState<Date | null>(null);
+  const [performanceOpenInputValue, setPerformanceOpenInputValue] = useState('');
+  const [performanceCloseInputValue, setPerformanceCloseInputValue] = useState('');
+  const [performanceOpenPlaceholder] = useState(() => formatDateTimeLabel(new Date()));
+  const [performanceClosePlaceholder] = useState(() => formatDateTimeLabel(new Date()));
   const [posterImage, setPosterImage] = useState<IntroImageItem | null>(null);
   const [isPosterImageDragActive, setIsPosterImageDragActive] = useState(false);
   const [introImages, setIntroImages] = useState<IntroImageItem[]>([]);
   const [isIntroImageDragActive, setIsIntroImageDragActive] = useState(false);
-  const [noticeText, setNoticeText] = useState(
-    '예매 오픈 전 최종 검수 후 노출되는 운영 공지사항을 입력합니다.',
-  );
+  const [noticeText, setNoticeText] = useState('');
   const [performanceHashtags, setPerformanceHashtags] = useState<string[]>([]);
   const [hashtagInputValue, setHashtagInputValue] = useState('');
   const [seatPrices, setSeatPrices] = useState<Record<SeatGradeKey, string>>({
-    vip: '180000',
-    r: '140000',
-    s: '110000',
-    a: '80000',
+    vip: '',
+    r: '',
+    s: '',
+    a: '',
   });
   const [seatDiscounts, setSeatDiscounts] = useState<SeatDiscountDraft[]>([]);
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null);
   const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
   const [performanceSchedules, setPerformanceSchedules] = useState<PerformanceScheduleMap>({});
-  const [scheduleTimeInputValue, setScheduleTimeInputValue] = useState('19:30');
+  const [scheduleTimeInputValue, setScheduleTimeInputValue] = useState('');
   const [scheduleTimePeriod, setScheduleTimePeriod] = useState<ScheduleTimePeriod>('pm');
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
@@ -1133,6 +1175,8 @@ export default function AgencyRegistrationPage() {
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [registrationErrorMessage, setRegistrationErrorMessage] = useState<string | null>(null);
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
+  const [highlightedRegistrationBlock, setHighlightedRegistrationBlock] = useState<RegistrationErrorTarget | null>(null);
+  const [registrationFieldErrorTarget, setRegistrationFieldErrorTarget] = useState<RegistrationErrorTarget | null>(null);
   const venueDropdownRef = useRef<HTMLDivElement | null>(null);
   const posterImageInputRef = useRef<HTMLInputElement | null>(null);
   const posterImageRegistryRef = useRef<IntroImageItem | null>(null);
@@ -1141,6 +1185,33 @@ export default function AgencyRegistrationPage() {
   const introImageRegistryRef = useRef<IntroImageItem[]>([]);
   const introImageDragDepthRef = useRef(0);
   const registrationPageTopRef = useRef<HTMLDivElement | null>(null);
+  const exposureContentBlockRef = useRef<HTMLDivElement | null>(null);
+  const basicInfoBlockRef = useRef<HTMLDivElement | null>(null);
+  const posterBlockRef = useRef<HTMLDivElement | null>(null);
+  const performanceTitleBlockRef = useRef<HTMLDivElement | null>(null);
+  const performanceDateBlockRef = useRef<HTMLDivElement | null>(null);
+  const venueBlockRef = useRef<HTMLDivElement | null>(null);
+  const categoryBlockRef = useRef<HTMLDivElement | null>(null);
+  const ticketRuleBlockRef = useRef<HTMLDivElement | null>(null);
+  const scheduleSectionRef = useRef<HTMLDivElement | null>(null);
+  const scheduleBlockRef = useRef<HTMLDivElement | null>(null);
+  const seatPriceSectionRef = useRef<HTMLDivElement | null>(null);
+  const seatPolicySectionRef = useRef<HTMLDivElement | null>(null);
+  const seatPolicyBlockRef = useRef<HTMLDivElement | null>(null);
+  const seatPriceBlockRef = useRef<HTMLDivElement | null>(null);
+  const discountBlockRef = useRef<HTMLDivElement | null>(null);
+  const registrationBlockRefs: Record<RegistrationErrorTarget, RefObject<HTMLDivElement | null>> = {
+    poster: exposureContentBlockRef,
+    performanceTitle: basicInfoBlockRef,
+    performanceDate: basicInfoBlockRef,
+    venue: basicInfoBlockRef,
+    category: basicInfoBlockRef,
+    ticketRule: ticketRuleBlockRef,
+    schedule: scheduleSectionRef,
+    seatPolicy: seatPolicySectionRef,
+    seatPrice: seatPriceSectionRef,
+    discount: discountBlockRef,
+  };
   const categoryOptions = useMemo(
     () =>
       categories.map((category) => ({
@@ -1170,7 +1241,7 @@ export default function AgencyRegistrationPage() {
             return current;
           }
 
-          return resolveDefaultCategoryId(nextCategories);
+          return '';
         });
 
         if (nextCategories.length === 0) {
@@ -1211,7 +1282,7 @@ export default function AgencyRegistrationPage() {
       return selectedVenue;
     }
 
-    return venueOptions[0]?.value ?? null;
+    return null;
   }, [selectedVenue, venueOptions]);
 
   const selectedDateLabel = useMemo(() => {
@@ -1228,7 +1299,10 @@ export default function AgencyRegistrationPage() {
   }, [selectedScheduleDate]);
 
   const performanceScheduleDateKeys = useMemo(
-    () => buildDateKeysBetween(performanceOpenAt, performanceCloseAt),
+    () =>
+      performanceOpenAt && performanceCloseAt
+        ? buildDateKeysBetween(performanceOpenAt, performanceCloseAt)
+        : [],
     [performanceOpenAt, performanceCloseAt],
   );
 
@@ -1260,13 +1334,20 @@ export default function AgencyRegistrationPage() {
   const selectedVenueInfo = useMemo(
     () =>
       venueOptions.find((venue) => venue.value === resolvedSelectedVenue) ??
-      venueOptions[0] ??
       fallbackVenueOption,
     [resolvedSelectedVenue, venueOptions],
   );
   const selectedCategoryInfo = useMemo(
     () => categories.find((category) => String(category.categoryId) === selectedCategoryId) ?? null,
     [categories, selectedCategoryId],
+  );
+  const performanceDateModalInitialStartAt = useMemo(
+    () => performanceOpenAt ?? createDefaultPerformanceStartAt(),
+    [performanceOpenAt],
+  );
+  const performanceDateModalInitialEndAt = useMemo(
+    () => performanceCloseAt ?? createDefaultPerformanceEndAt(performanceDateModalInitialStartAt),
+    [performanceCloseAt, performanceDateModalInitialStartAt],
   );
   const loadSeatTemplate = async (venueId: number) => {
     setIsSeatTemplateLoading(true);
@@ -1301,8 +1382,12 @@ export default function AgencyRegistrationPage() {
   };
 
   const registeredTicketSchedulePreviews = useMemo<TicketSchedulePreview[]>(
-    () =>
-      Object.entries(performanceSchedules)
+    () => {
+      if (!performanceCloseAt) {
+        return [];
+      }
+
+      return Object.entries(performanceSchedules)
         .flatMap(([dateKey, times]) => {
           const scheduleDate = parseDateKey(dateKey);
 
@@ -1327,7 +1412,8 @@ export default function AgencyRegistrationPage() {
               };
             });
         })
-        .sort((left, right) => left.scheduleAt.getTime() - right.scheduleAt.getTime()),
+        .sort((left, right) => left.scheduleAt.getTime() - right.scheduleAt.getTime());
+    },
     [performanceCloseAt, performanceSchedules, ticketCloseRule, ticketOpenRule],
   );
   const activeTicketSchedulePreviews = useMemo(
@@ -1340,10 +1426,11 @@ export default function AgencyRegistrationPage() {
     [registeredTicketSchedulePreviews, selectedScheduleDateKeys],
   );
   const ticketSchedulePreviewItems = activeTicketSchedulePreviews.slice(0, 1);
-  const hiddenTicketSchedulePreviewCount = Math.max(0, activeTicketSchedulePreviews.length - ticketSchedulePreviewItems.length);
   const hasInvalidTicketWindow = registeredTicketSchedulePreviews.some(
     (preview) => preview.ticketOpenAt.getTime() >= preview.ticketCloseAt.getTime(),
   );
+  const areTicketScheduleRulesComplete =
+    ticketOpenRule.days.trim().length > 0 && ticketCloseRule.days.trim().length > 0;
   const hasTicketWindowAfterScheduleStart = registeredTicketSchedulePreviews.some(
     (preview) =>
       preview.ticketOpenAt.getTime() >= preview.scheduleAt.getTime() ||
@@ -1417,19 +1504,20 @@ export default function AgencyRegistrationPage() {
       `${resolvedSelectedVenue ?? 'none'}:${STAGE_4001_SEAT_IDS.map((seatId) => seatPolicy[seatId] ?? 'disabled').join('|')}`,
     [resolvedSelectedVenue, seatPolicy],
   );
-  const introImageCountLabel =
-    introImages.length > 0 ? `등록된 이미지 ${introImages.length}장` : '아직 등록된 이미지가 없습니다.';
-  const posterImageLabel = posterImage ? '포스터 이미지가 등록되었습니다.' : '아직 등록된 포스터가 없습니다.';
+  const introImageCountLabel = `${introImages.length}장`;
   const normalizedHashtagInput = normalizeHashtag(hashtagInputValue);
   const formattedHashtagInput = normalizedHashtagInput ? `#${normalizedHashtagInput}` : '';
   const isFirstRegistrationStep = activeRegistrationStep === 0;
   const isLastRegistrationStep = activeRegistrationStep === registrationStepItems.length - 1;
   const canSubmitRegistration =
     performanceTitle.trim().length > 0 &&
+    performanceOpenAt !== null &&
+    performanceCloseAt !== null &&
     selectedCategoryId.length > 0 &&
     resolvedSelectedVenue !== null &&
     posterImage !== null &&
     registeredTicketSchedulePreviews.length > 0 &&
+    areTicketScheduleRulesComplete &&
     !hasInvalidTicketWindow &&
     !isVenueListLoading &&
     !isCategoryListLoading;
@@ -1461,6 +1549,7 @@ export default function AgencyRegistrationPage() {
       return;
     }
 
+    clearRegistrationFieldError('poster');
     setPosterImage(createImagePreviewItem(nextPosterFile));
   };
 
@@ -1594,6 +1683,7 @@ export default function AgencyRegistrationPage() {
         ...current,
         [priceGrade]: digitsOnly,
       }));
+      clearRegistrationFieldError('seatPrice');
     };
 
   const handleSeatDiscountAdd = () => {
@@ -1683,6 +1773,7 @@ export default function AgencyRegistrationPage() {
       ? selectedScheduleDateKeys.filter((entryDateKey) => entryDateKey !== dateKey)
       : [...selectedScheduleDateKeys, dateKey].sort();
 
+    clearRegistrationFieldError('schedule');
     setSelectedScheduleDateKeys(nextSelectedDateKeys);
 
     if (!isSelected) {
@@ -1716,6 +1807,7 @@ export default function AgencyRegistrationPage() {
     }
 
     const nextSelectedDateKeys = Array.from(selectedDateKeySet).sort();
+    clearRegistrationFieldError('schedule');
     setSelectedScheduleDateKeys(nextSelectedDateKeys);
 
     if (!isEveryTargetSelected) {
@@ -1734,6 +1826,15 @@ export default function AgencyRegistrationPage() {
     const parsed = parseDateTimeLabel(nextValue);
 
     setPerformanceOpenInputValue(nextValue);
+    clearRegistrationFieldError('performanceDate');
+
+    if (nextValue.trim().length === 0) {
+      setPerformanceOpenAt(null);
+      setSelectedScheduleDate(null);
+      setSelectedScheduleDateKeys([]);
+      setPerformanceSchedules({});
+      return;
+    }
 
     if (!parsed) {
       return;
@@ -1741,14 +1842,18 @@ export default function AgencyRegistrationPage() {
 
     setPerformanceOpenAt(parsed);
     const nextPerformanceCloseAt =
-      performanceCloseAt.getTime() < parsed.getTime() ? parsed : performanceCloseAt;
+      performanceCloseAt && performanceCloseAt.getTime() >= parsed.getTime()
+        ? performanceCloseAt
+        : null;
 
-    if (performanceCloseAt.getTime() < parsed.getTime()) {
-      setPerformanceCloseAt(parsed);
-      setPerformanceCloseInputValue(formatDateTimeLabel(parsed));
+    if (performanceCloseAt && performanceCloseAt.getTime() < parsed.getTime()) {
+      setPerformanceCloseAt(null);
+      setPerformanceCloseInputValue('');
     }
 
-    syncSchedulesToPerformanceRange(parsed, nextPerformanceCloseAt);
+    if (nextPerformanceCloseAt) {
+      syncSchedulesToPerformanceRange(parsed, nextPerformanceCloseAt);
+    }
   };
 
   const handlePerformanceCloseInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -1756,13 +1861,24 @@ export default function AgencyRegistrationPage() {
     const parsed = parseDateTimeLabel(nextValue);
 
     setPerformanceCloseInputValue(nextValue);
+    clearRegistrationFieldError('performanceDate');
 
-    if (!parsed || parsed.getTime() < performanceOpenAt.getTime()) {
+    if (nextValue.trim().length === 0) {
+      setPerformanceCloseAt(null);
+      setSelectedScheduleDate(null);
+      setSelectedScheduleDateKeys([]);
+      setPerformanceSchedules({});
+      return;
+    }
+
+    if (!parsed || (performanceOpenAt && parsed.getTime() < performanceOpenAt.getTime())) {
       return;
     }
 
     setPerformanceCloseAt(parsed);
-    syncSchedulesToPerformanceRange(performanceOpenAt, parsed);
+    if (performanceOpenAt) {
+      syncSchedulesToPerformanceRange(performanceOpenAt, parsed);
+    }
   };
 
   const handleHashtagAdd = (rawValue = hashtagInputValue) => {
@@ -1803,6 +1919,7 @@ export default function AgencyRegistrationPage() {
     }
 
     const nextSchedules = { ...performanceSchedules };
+    clearRegistrationFieldError('schedule');
     targetDateKeys.forEach((dateKey) => {
       const currentTimes = nextSchedules[dateKey] ?? [];
 
@@ -1819,6 +1936,7 @@ export default function AgencyRegistrationPage() {
   const handleScheduleQuickTimeSelect = (timeValue: string) => {
     setScheduleTimeInputValue(timeValue);
     setScheduleTimePeriod(getScheduleTimePeriod(timeValue));
+    clearRegistrationFieldError('schedule');
 
     if (selectedScheduleDateKeys.length === 0) {
       return;
@@ -1893,46 +2011,139 @@ export default function AgencyRegistrationPage() {
     });
   };
 
+  const getRegistrationBlockHighlightClass = (target: RegistrationErrorTarget) =>
+    highlightedRegistrationBlock === target && !basicInfoErrorTargets.has(target)
+      ? 'animate-registration-block-error ring-2 ring-danger ring-offset-2 ring-offset-white'
+      : '';
+
+  const getBasicInfoSectionHighlightClass = () =>
+    highlightedRegistrationBlock && basicInfoErrorTargets.has(highlightedRegistrationBlock)
+      ? 'animate-registration-block-error ring-2 ring-danger ring-offset-2 ring-offset-white'
+      : '';
+
+  const getRegistrationSectionHighlightClass = (target: RegistrationErrorTarget) =>
+    highlightedRegistrationBlock === target
+      ? 'animate-registration-block-error ring-2 ring-danger ring-offset-2 ring-offset-white'
+      : '';
+
+  const getRegistrationFieldErrorClass = (target: RegistrationErrorTarget) =>
+    registrationFieldErrorTarget === target ? '[&_input]:border-danger [&_input]:focus:border-danger' : '';
+
+  const clearRegistrationFieldError = (target: RegistrationErrorTarget) => {
+    setRegistrationFieldErrorTarget((current) => (current === target ? null : current));
+  };
+
+  const showRegistrationError = ({
+    message,
+    target,
+    stepIndex,
+  }: RegistrationValidationResult) => {
+    setRegistrationSuccessMessage(null);
+    setRegistrationErrorMessage(message);
+    setHighlightedRegistrationBlock(null);
+    setRegistrationFieldErrorTarget(target);
+
+    if (activeRegistrationStep !== stepIndex) {
+      setActiveRegistrationStep(stepIndex);
+    }
+
+    window.setTimeout(() => {
+      setHighlightedRegistrationBlock(target);
+      window.requestAnimationFrame(() => {
+        registrationBlockRefs[target].current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    }, activeRegistrationStep === stepIndex ? 0 : 100);
+
+    window.setTimeout(() => {
+      setHighlightedRegistrationBlock((current) => (current === target ? null : current));
+    }, 1600);
+  };
+
   const goToPreviousRegistrationStep = () => {
     moveToRegistrationStep(Math.max(0, activeRegistrationStep - 1));
   };
 
-  const getRegistrationStepValidationMessage = (stepIndex: number) => {
+  const getRegistrationStepValidationResult = (
+    stepIndex: number,
+  ): RegistrationValidationResult | null => {
     if (stepIndex === 0) {
       if (isCategoryListLoading || isVenueListLoading) {
-        return '데이터를 아직 불러오는 중입니다. 잠시 후 다시 진행해 주세요.';
+        return {
+          message: '데이터를 아직 불러오는 중입니다. 잠시 후 다시 진행해 주세요.',
+          target: isCategoryListLoading ? 'category' : 'venue',
+          stepIndex,
+        };
       }
 
-      const missingFields: string[] = [];
-
       if (performanceTitle.trim().length === 0) {
-        missingFields.push('공연명');
+        return {
+          message: '공연명을 입력해 주세요.',
+          target: 'performanceTitle',
+          stepIndex,
+        };
+      }
+
+      if (!performanceOpenAt || !performanceCloseAt) {
+        return {
+          message: '공연 오픈일과 공연 종료일을 입력해 주세요.',
+          target: 'performanceDate',
+          stepIndex,
+        };
       }
 
       if (selectedCategoryId.length === 0) {
-        missingFields.push('카테고리');
+        return {
+          message: '카테고리를 선택해 주세요.',
+          target: 'category',
+          stepIndex,
+        };
       }
 
       if (resolvedSelectedVenue === null) {
-        missingFields.push('공연장');
+        return {
+          message: '공연장을 선택해 주세요.',
+          target: 'venue',
+          stepIndex,
+        };
       }
 
       if (posterImage === null) {
-        missingFields.push('포스터 이미지');
+        return {
+          message: '포스터 이미지를 등록해 주세요.',
+          target: 'poster',
+          stepIndex,
+        };
       }
 
-      return missingFields.length > 0
-        ? `다음 항목을 입력하거나 설정해 주세요: ${missingFields.join(', ')}.`
-        : null;
+      return null;
     }
 
     if (stepIndex === 1) {
       if (registeredTicketSchedulePreviews.length === 0) {
-        return '공연 일정 등록 전에 최소 1개 이상의 회차를 먼저 추가해 주세요.';
+        return {
+          message: '공연 일정 등록 전에 최소 1개 이상의 회차를 먼저 추가해 주세요.',
+          target: 'schedule',
+          stepIndex,
+        };
+      }
+
+      if (!areTicketScheduleRulesComplete) {
+        return {
+          message: '티켓 오픈 기준과 종료 기준을 입력해 주세요.',
+          target: 'ticketRule',
+          stepIndex,
+        };
       }
 
       if (hasInvalidTicketWindow) {
-        return '티켓 오픈일과 종료일 기준이 올바르지 않습니다. 먼저 일정 기준을 다시 조정해 주세요.';
+        return {
+          message: '티켓 오픈일과 종료일 기준이 올바르지 않습니다. 먼저 일정 기준을 다시 조정해 주세요.',
+          target: 'ticketRule',
+          stepIndex,
+        };
       }
     }
 
@@ -1943,23 +2154,24 @@ export default function AgencyRegistrationPage() {
     if (targetStep <= activeRegistrationStep) {
       setRegistrationErrorMessage(null);
       setRegistrationSuccessMessage(null);
+      setRegistrationFieldErrorTarget(null);
       setActiveRegistrationStep(targetStep);
       scrollRegistrationPageToTop();
       return;
     }
 
     for (let stepIndex = activeRegistrationStep; stepIndex < targetStep; stepIndex += 1) {
-      const validationMessage = getRegistrationStepValidationMessage(stepIndex);
+      const validationResult = getRegistrationStepValidationResult(stepIndex);
 
-      if (validationMessage) {
-        setRegistrationSuccessMessage(null);
-        setRegistrationErrorMessage(validationMessage);
+      if (validationResult) {
+        showRegistrationError(validationResult);
         return;
       }
     }
 
     setRegistrationErrorMessage(null);
     setRegistrationSuccessMessage(null);
+    setRegistrationFieldErrorTarget(null);
     setActiveRegistrationStep(targetStep);
     scrollRegistrationPageToTop();
   };
@@ -1969,17 +2181,17 @@ export default function AgencyRegistrationPage() {
   };
 
   const handlePerformancePreviewOpen = () => {
-    const validationMessage =
-      getRegistrationStepValidationMessage(0) ?? getRegistrationStepValidationMessage(1);
+    const validationResult =
+      getRegistrationStepValidationResult(0) ?? getRegistrationStepValidationResult(1);
 
-    if (validationMessage) {
-      setRegistrationSuccessMessage(null);
-      setRegistrationErrorMessage(validationMessage);
+    if (validationResult) {
+      showRegistrationError(validationResult);
       return;
     }
 
     setRegistrationErrorMessage(null);
     setRegistrationSuccessMessage(null);
+    setRegistrationFieldErrorTarget(null);
     setIsPerformancePreviewOpen(true);
   };
 
@@ -1989,34 +2201,77 @@ export default function AgencyRegistrationPage() {
 
     setRegistrationErrorMessage(null);
     setRegistrationSuccessMessage(null);
+    setRegistrationFieldErrorTarget(null);
 
     if (!normalizedPerformanceTitle) {
-      setRegistrationErrorMessage('공연명을 입력해 주세요.');
+      showRegistrationError({
+        message: '공연명을 입력해 주세요.',
+        target: 'performanceTitle',
+        stepIndex: 0,
+      });
+      return;
+    }
+
+    if (!performanceOpenAt || !performanceCloseAt) {
+      showRegistrationError({
+        message: '공연 오픈일과 공연 종료일을 입력해 주세요.',
+        target: 'performanceDate',
+        stepIndex: 0,
+      });
       return;
     }
 
     if (registeredTicketSchedulePreviews.length === 0) {
-      setRegistrationErrorMessage('등록할 회차를 먼저 추가해 주세요.');
+      showRegistrationError({
+        message: '등록할 회차를 먼저 추가해 주세요.',
+        target: 'schedule',
+        stepIndex: 1,
+      });
+      return;
+    }
+
+    if (!areTicketScheduleRulesComplete) {
+      showRegistrationError({
+        message: '티켓 오픈 기준과 종료 기준을 입력해 주세요.',
+        target: 'ticketRule',
+        stepIndex: 1,
+      });
       return;
     }
 
     if (hasInvalidTicketWindow) {
-      setRegistrationErrorMessage('티켓 오픈일과 종료일 기준을 먼저 조정해 주세요.');
+      showRegistrationError({
+        message: '티켓 오픈일과 종료일 기준을 먼저 조정해 주세요.',
+        target: 'ticketRule',
+        stepIndex: 1,
+      });
       return;
     }
 
     if (!Number.isInteger(resolvedSelectedCategoryId) || resolvedSelectedCategoryId <= 0) {
-      setRegistrationErrorMessage('카테고리를 선택해 주세요.');
+      showRegistrationError({
+        message: '카테고리를 선택해 주세요.',
+        target: 'category',
+        stepIndex: 0,
+      });
       return;
     }
 
     if (resolvedSelectedVenue === null) {
-      setRegistrationErrorMessage('공연장을 선택해 주세요.');
+      showRegistrationError({
+        message: '공연장을 선택해 주세요.',
+        target: 'venue',
+        stepIndex: 0,
+      });
       return;
     }
 
     if (!posterImage) {
-      setRegistrationErrorMessage('포스터 이미지를 등록해 주세요.');
+      showRegistrationError({
+        message: '포스터 이미지를 등록해 주세요.',
+        target: 'poster',
+        stepIndex: 0,
+      });
       return;
     }
 
@@ -2040,9 +2295,11 @@ export default function AgencyRegistrationPage() {
       const previewLabels = missingSeatLabels.slice(0, 5).join(', ');
       const suffix = missingSeatLabels.length > 5 ? ' ...' : '';
 
-      setRegistrationErrorMessage(
-        `좌석 등급이 지정된 좌석 중 공연장 좌석 정보와 연결되지 않은 항목이 있습니다. ${previewLabels}${suffix}`,
-      );
+      showRegistrationError({
+        message: `좌석 등급이 지정된 좌석 중 공연장 좌석 정보와 연결되지 않은 항목이 있습니다. ${previewLabels}${suffix}`,
+        target: 'seatPolicy',
+        stepIndex: 2,
+      });
       return;
     }
 
@@ -2068,7 +2325,11 @@ export default function AgencyRegistrationPage() {
       .filter((seatGroup) => seatGroup.seatIds.length > 0);
 
     if (seatGroups.length === 0) {
-      setRegistrationErrorMessage('좌석 등급이 지정된 좌석이 없습니다. 먼저 좌석 등급을 설정해 주세요.');
+      showRegistrationError({
+        message: '좌석 등급이 지정된 좌석이 없습니다. 먼저 좌석 등급을 설정해 주세요.',
+        target: 'seatPolicy',
+        stepIndex: 2,
+      });
       return;
     }
 
@@ -2080,7 +2341,11 @@ export default function AgencyRegistrationPage() {
     );
 
     if (missingPriceField) {
-      setRegistrationErrorMessage(`${missingPriceField.label} 금액을 입력해 주세요.`);
+      showRegistrationError({
+        message: `${missingPriceField.label} 금액을 입력해 주세요.`,
+        target: 'seatPrice',
+        stepIndex: 2,
+      });
       return;
     }
 
@@ -2100,27 +2365,41 @@ export default function AgencyRegistrationPage() {
       }
 
       if (discountName.length === 0) {
-        setRegistrationErrorMessage(`할인 ${index + 1}의 이름을 입력해 주세요.`);
+        showRegistrationError({
+          message: `할인 ${index + 1}의 이름을 입력해 주세요.`,
+          target: 'discount',
+          stepIndex: 2,
+        });
         return;
       }
 
       if (discountRateText.length === 0) {
-        setRegistrationErrorMessage(`할인 ${index + 1}의 할인율을 입력해 주세요.`);
+        showRegistrationError({
+          message: `할인 ${index + 1}의 할인율을 입력해 주세요.`,
+          target: 'discount',
+          stepIndex: 2,
+        });
         return;
       }
 
       const discountRate = Number(discountRateText);
       if (!Number.isFinite(discountRate) || discountRate < 1 || discountRate > 100) {
-        setRegistrationErrorMessage(
-          `할인 ${index + 1}의 할인율은 1부터 100 사이여야 합니다.`,
-        );
+        showRegistrationError({
+          message: `할인 ${index + 1}의 할인율은 1부터 100 사이여야 합니다.`,
+          target: 'discount',
+          stepIndex: 2,
+        });
         return;
       }
 
       const normalizedDiscountName = discountName.toLowerCase();
 
       if (seenDiscountNames.has(normalizedDiscountName)) {
-        setRegistrationErrorMessage(`할인 ${index + 1}의 이름이 중복되었습니다.`);
+        showRegistrationError({
+          message: `할인 ${index + 1}의 이름이 중복되었습니다.`,
+          target: 'discount',
+          stepIndex: 2,
+        });
         return;
       }
 
@@ -2226,10 +2505,10 @@ export default function AgencyRegistrationPage() {
         >
           추가
         </Button>
-      </div>
+          </div>
 
-      {performanceHashtags.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+          {performanceHashtags.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
           {performanceHashtags.map((hashtag) => (
             <button
               key={hashtag}
@@ -2242,15 +2521,7 @@ export default function AgencyRegistrationPage() {
             </button>
           ))}
         </div>
-      ) : (
-        <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-4 text-sm font-medium text-content-muted">
-          아직 등록된 해시태그가 없습니다.
-        </div>
-      )}
-
-      <p className="mt-3 text-xs font-medium text-content-muted">
-        공백은 자동으로 제거되고, 같은 해시태그는 한 번만 등록됩니다.
-      </p>
+      ) : null}
     </div>
   );
 
@@ -2292,8 +2563,6 @@ export default function AgencyRegistrationPage() {
                 />
               </div>
               <p className="mt-3 text-base font-black text-slate-950">{step.title}</p>
-              <p className="mt-1 text-sm font-semibold text-content-tertiary">{step.sections}</p>
-              <p className="mt-2 text-xs font-semibold leading-5 text-content-muted">{step.detail}</p>
             </button>
           );
         })}
@@ -2301,23 +2570,27 @@ export default function AgencyRegistrationPage() {
 
       <section className="grid gap-5 items-start xl:grid-cols-[minmax(0,1.6fr)_340px]">
         <div className="flex flex-col gap-5">
-          <Box
-            variant="shadow"
-            className="space-y-5"
+          <div
+            ref={exposureContentBlockRef}
+            className={`rounded-[20px] ${getRegistrationSectionHighlightClass('poster')}`}
             style={{
               display: activeRegistrationStep === 0 ? undefined : 'none',
               order: activeRegistrationStep === 0 ? 2 : undefined,
             }}
           >
+            <Box
+              variant="shadow"
+              className="space-y-5"
+            >
             <div>
               <h2 className="text-[18px] font-black text-slate-950">노출 콘텐츠</h2>
-              <p className="mt-1 text-sm font-medium text-content-tertiary">
-                공연 포스터, 공연 소개 이미지, 공지사항을 등록해서 상세 노출 콘텐츠를 먼저 구성합니다.
-              </p>
             </div>
 
             <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-              <div className="flex flex-col gap-2">
+              <div
+                ref={posterBlockRef}
+                className="flex flex-col gap-2 rounded-3xl"
+              >
                 <span className="text-sm font-bold text-content-tertiary">공연 포스터</span>
                 <input
                   ref={posterImageInputRef}
@@ -2341,13 +2614,16 @@ export default function AgencyRegistrationPage() {
                   onDragLeave={handlePosterImageDragLeave}
                   onDrop={handlePosterImageDrop}
                   className={`rounded-3xl border border-dashed p-4 transition ${
-                    isPosterImageDragActive
+                    registrationFieldErrorTarget === 'poster'
+                      ? 'border-danger bg-danger-subtle'
+                      : isPosterImageDragActive
                       ? 'border-primary bg-primary-subtle'
                       : 'border-line-strong bg-surface-subtle hover:border-line-strong hover:bg-surface'
                   }`}
                 >
                   {posterImage ? (
                     <div className="space-y-4">
+                      <p className="text-xs font-bold text-content-muted">드래그 하거나 파일 선택</p>
                       <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-surface-muted">
                         <Image
                           src={posterImage.previewUrl}
@@ -2380,10 +2656,7 @@ export default function AgencyRegistrationPage() {
                     <div className="flex min-h-[420px] flex-col justify-between gap-4">
                       <div>
                         <p className="text-base font-black text-slate-950">포스터 이미지 업로드</p>
-                        <p className="mt-2 text-sm font-medium leading-6 text-content-tertiary">
-                          포스터 이미지를 드래그 앤 드랍하거나 클릭해서 파일 탐색기에서 선택합니다.
-                          세로형 비율 이미지를 권장합니다.
-                        </p>
+                        <p className="mt-2 text-sm font-bold text-content-muted">드래그 하거나 파일 선택</p>
                       </div>
                       <div className="inline-flex w-fit items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">
                         포스터 선택
@@ -2391,7 +2664,6 @@ export default function AgencyRegistrationPage() {
                     </div>
                   )}
                 </div>
-                <span className="text-xs font-medium text-content-muted">{posterImageLabel}</span>
               </div>
 
               <div className="space-y-5">
@@ -2415,75 +2687,71 @@ export default function AgencyRegistrationPage() {
                         openIntroImagePicker();
                       }
                     }}
-                    onDragEnter={handleIntroImageDragEnter}
-                    onDragOver={handleIntroImageDragOver}
-                    onDragLeave={handleIntroImageDragLeave}
-                    onDrop={handleIntroImageDrop}
-                    className={`min-h-[220px] rounded-3xl border border-dashed p-4 transition sm:p-5 ${
+                  onDragEnter={handleIntroImageDragEnter}
+                  onDragOver={handleIntroImageDragOver}
+                  onDragLeave={handleIntroImageDragLeave}
+                  onDrop={handleIntroImageDrop}
+                    className={`min-h-[220px] max-h-[460px] overflow-hidden rounded-3xl border border-dashed p-4 transition sm:p-5 ${
                       isIntroImageDragActive
                         ? 'border-primary bg-primary-subtle'
                         : 'border-line-strong bg-surface-subtle hover:border-line-strong hover:bg-surface'
                     }`}
                   >
-                    <div className="flex h-full flex-col justify-between gap-6">
+                    <div className="flex h-full flex-col gap-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <p className="text-base font-black text-slate-950">소개 이미지 업로드</p>
-                          <p className="mt-2 text-sm font-medium leading-6 text-content-tertiary">
-                            공연 소개 이미지를 여러 장 등록할 수 있습니다. 상세 페이지에 들어갈 소개용 이미지를 올립니다.
-                          </p>
+                          <p className="mt-2 text-sm font-bold text-content-muted">드래그 하거나 파일 선택</p>
                         </div>
                         <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white sm:px-4 sm:py-2 sm:text-sm">
                           이미지 선택
                         </div>
                       </div>
 
-                      <div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-content-muted">
-                          <span>{introImageCountLabel}</span>
-                          <span className="h-1 w-1 rounded-full bg-surface-active" />
-                          <span>공연 소개 이미지는 여러 장 등록할 수 있습니다.</span>
+                      {introImages.length > 0 ? (
+                        <div className="max-h-[330px] overflow-y-auto pr-1">
+                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            {introImages.map((image, index) => (
+                              <div
+                                key={image.id}
+                                className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_12px_28px_rgba(15,23,42,0.05)]"
+                              >
+                                <div className="relative aspect-[4/3] bg-surface-muted">
+                                  <Image
+                                    src={image.previewUrl}
+                                    alt={`공연 소개 이미지 ${index + 1}`}
+                                    fill
+                                    unoptimized
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between gap-2 px-3 py-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-bold text-content-secondary">{image.file.name}</p>
+                                    <p className="mt-0.5 text-[11px] font-medium text-content-muted">{formatFileSize(image.file.size)}</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleIntroImageRemove(image.id);
+                                    }}
+                                    className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] font-bold text-content-tertiary transition hover:border-line-strong hover:bg-surface-subtle hover:text-content-secondary"
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="mt-auto flex flex-wrap items-center gap-3 text-xs font-bold text-content-muted">
+                          <span>{introImageCountLabel}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {introImages.length > 0 ? (
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                      {introImages.map((image, index) => (
-                        <div
-                          key={image.id}
-                          className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
-                        >
-                          <div className="relative aspect-[4/3] bg-surface-muted">
-                            <Image
-                              src={image.previewUrl}
-                              alt={`공연 소개 이미지 ${index + 1}`}
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between gap-3 px-4 py-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-content-secondary">{image.file.name}</p>
-                              <p className="mt-1 text-xs font-medium text-content-muted">{formatFileSize(image.file.size)}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleIntroImageRemove(image.id);
-                              }}
-                              className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-content-tertiary transition hover:border-line-strong hover:bg-surface-subtle hover:text-content-secondary"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
 
                 <label className="flex flex-col gap-2">
@@ -2491,18 +2759,19 @@ export default function AgencyRegistrationPage() {
                   <textarea
                     value={noticeText}
                     onChange={(event) => setNoticeText(event.target.value)}
-                    placeholder="예매 전 유의사항, 운영 공지, 입장 관련 안내를 입력합니다."
-                    className="min-h-[180px] rounded-3xl border border-line bg-surface-subtle px-4 py-4 text-sm font-medium leading-6 text-content-secondary outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
+                    placeholder="공지사항 입력"
+                    className="min-h-[180px] rounded-3xl border border-line bg-white px-4 py-4 text-sm font-medium leading-6 text-content-secondary outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
                   />
                 </label>
 
               </div>
             </div>
-          </Box>
+            </Box>
+          </div>
 
-          <Box
-            variant="shadow"
-            className="space-y-4"
+          <div
+            ref={basicInfoBlockRef}
+            className={`rounded-[20px] ${getBasicInfoSectionHighlightClass()}`}
             style={{
               display:
                 activeRegistrationStep === 0 || activeRegistrationStep === 1
@@ -2511,37 +2780,54 @@ export default function AgencyRegistrationPage() {
               order: activeRegistrationStep === 0 ? 1 : activeRegistrationStep === 1 ? 2 : undefined,
             }}
           >
-            <div
-              className="flex flex-wrap items-center justify-between gap-3"
-              style={{ display: activeRegistrationStep === 0 ? undefined : 'none' }}
+            <Box
+              variant="shadow"
+              className="space-y-4"
             >
-              <div>
-                <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
-                <p className="mt-1 text-sm font-medium text-content-tertiary">
-                  공연명, 공연장, 카테고리와 운영 기간을 입력합니다.
-                </p>
+              <div
+                className="flex flex-wrap items-center justify-between gap-3"
+                style={{ display: activeRegistrationStep === 0 ? undefined : 'none' }}
+              >
+                <div>
+                  <h2 className="text-[18px] font-black text-slate-950">기본 정보</h2>
+                </div>
               </div>
-            </div>
 
-            <div
-              className="grid gap-5 md:grid-cols-2"
-              style={{ display: activeRegistrationStep === 0 ? undefined : 'none' }}
-            >
-              <Input
-                label="공연명"
-                value={performanceTitle}
-                onChange={(event) => setPerformanceTitle(event.target.value)}
-                fullWidth
-                className="[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px]"
-              />
+              <div
+                className="grid gap-5 md:grid-cols-2"
+                style={{ display: activeRegistrationStep === 0 ? undefined : 'none' }}
+              >
+              <div
+                ref={performanceTitleBlockRef}
+                className={`rounded-2xl ${getRegistrationBlockHighlightClass('performanceTitle')}`}
+              >
+                <Input
+                  label="공연명"
+                  value={performanceTitle}
+                  onChange={(event) => {
+                    setPerformanceTitle(event.target.value);
+                    clearRegistrationFieldError('performanceTitle');
+                  }}
+                  placeholder="공연 제목을 입력해 주세요"
+                  fullWidth
+                  className={`[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px] ${getRegistrationFieldErrorClass('performanceTitle')}`}
+                />
+              </div>
 
-              <div className="flex flex-col gap-1">
+              <div
+                ref={venueBlockRef}
+                className={`flex flex-col gap-1 rounded-2xl ${getRegistrationBlockHighlightClass('venue')}`}
+              >
                 <span className="mb-1 text-[13px] font-medium text-content-tertiary">공연장</span>
                 <div className="relative" ref={venueDropdownRef}>
                   <button
                     type="button"
                     className={`flex w-full items-center justify-between border-b-[2px] bg-transparent py-1 text-[20px] text-content outline-none transition-colors sm:text-[22px] ${
-                      isVenueOpen ? 'border-primary' : 'border-line-strong'
+                      registrationFieldErrorTarget === 'venue'
+                        ? 'border-danger'
+                        : isVenueOpen
+                          ? 'border-primary'
+                          : 'border-line-strong'
                     }`}
                     disabled={isVenueListLoading || venueOptions.length === 0}
                     aria-expanded={isVenueOpen}
@@ -2592,6 +2878,7 @@ export default function AgencyRegistrationPage() {
                                 setSeatPolicyVenueId(null);
                                 setIsSeatPolicyDirty(false);
                                 setIsVenueOpen(false);
+                                clearRegistrationFieldError('venue');
                               }}
                             >
                               <p className="text-sm font-black">{venue.label}</p>
@@ -2607,37 +2894,43 @@ export default function AgencyRegistrationPage() {
                     </div>
                   ) : null}
                 </div>
-                <span className="text-xs font-medium text-content-muted">
-                  등록된 공연장만 선택할 수 있습니다.
-                </span>
               </div>
 
-              <div className="md:col-span-2 grid gap-5 md:grid-cols-2">
+              <div
+                ref={performanceDateBlockRef}
+                className={`md:col-span-2 grid gap-5 rounded-3xl md:grid-cols-2 ${getRegistrationBlockHighlightClass('performanceDate')}`}
+              >
                 <div className="space-y-5">
                   <DateTimeTriggerField
                     label="공연 오픈일"
                     value={performanceOpenInputValue}
                     onChange={handlePerformanceOpenInputChange}
-                    onBlur={() => setPerformanceOpenInputValue(formatDateTimeLabel(performanceOpenAt))}
+                    onBlur={() =>
+                      setPerformanceOpenInputValue(performanceOpenAt ? formatDateTimeLabel(performanceOpenAt) : '')
+                    }
                     onOpen={() => setIsPerformanceDateModalOpen(true)}
+                    placeholder={performanceOpenPlaceholder}
+                    hasError={registrationFieldErrorTarget === 'performanceDate'}
                   />
 
-                  <div className="flex min-h-[268px] flex-col rounded-3xl border border-line bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+                  <div
+                    ref={categoryBlockRef}
+                    className={`flex min-h-[268px] flex-col rounded-3xl border bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] ${
+                      registrationFieldErrorTarget === 'category' ? 'border-danger' : 'border-line'
+                    } ${getRegistrationBlockHighlightClass('category')}`}
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold text-content-tertiary">카테고리</p>
-                        <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
-                          공연 등록에 사용할 카테고리를 먼저 선택합니다.
-                        </p>
                       </div>
-                      <Badge color="blue" variant="outline">
-                        {selectedCategoryInfo?.categoryName ?? (isCategoryListLoading ? '불러오는 중' : '미선택')}
-                      </Badge>
                     </div>
                     <SegmentedControl
                       options={categoryOptions}
                       value={selectedCategoryId}
-                      onChange={setSelectedCategoryId}
+                      onChange={(nextCategoryId) => {
+                        setSelectedCategoryId(nextCategoryId);
+                        clearRegistrationFieldError('category');
+                      }}
                       columns={Math.min(Math.max(categoryOptions.length, 1), 3)}
                       rows={Math.max(1, Math.ceil(categoryOptions.length / 3))}
                       size="large"
@@ -2655,8 +2948,12 @@ export default function AgencyRegistrationPage() {
                     label="공연 종료일"
                     value={performanceCloseInputValue}
                     onChange={handlePerformanceCloseInputChange}
-                    onBlur={() => setPerformanceCloseInputValue(formatDateTimeLabel(performanceCloseAt))}
+                    onBlur={() =>
+                      setPerformanceCloseInputValue(performanceCloseAt ? formatDateTimeLabel(performanceCloseAt) : '')
+                    }
                     onOpen={() => setIsPerformanceDateModalOpen(true)}
+                    placeholder={performanceClosePlaceholder}
+                    hasError={registrationFieldErrorTarget === 'performanceDate'}
                   />
 
                   {hashtagSection}
@@ -2671,29 +2968,35 @@ export default function AgencyRegistrationPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-[18px] font-black text-slate-950">티켓 일정 기준</p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
-                    등록된 각 회차 날짜와 공연 오픈/종료 시각을 기준으로 예매 오픈일과 종료일을 자동 계산합니다.
-                  </p>
                 </div>
               </div>
 
-                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                <div
+                  ref={ticketRuleBlockRef}
+                  className={`mt-5 grid gap-4 rounded-3xl xl:grid-cols-2 ${getRegistrationBlockHighlightClass('ticketRule')}`}
+                >
                   <TicketScheduleRuleField
                     label="티켓 오픈 기준"
-                    description="각 회차의 공연일을 기준으로 며칠 전에 예매를 열지 설정합니다."
                     rule={ticketOpenRule}
                     onDaysChange={(days) =>
-                      setTicketOpenRule((current) => ({ ...current, days }))
+                      {
+                        setTicketOpenRule((current) => ({ ...current, days }));
+                        clearRegistrationFieldError('ticketRule');
+                      }
                     }
+                    hasError={registrationFieldErrorTarget === 'ticketRule' && ticketOpenRule.days.trim().length === 0}
                   />
 
                   <TicketScheduleRuleField
                     label="티켓 종료 기준"
-                    description="각 회차의 공연 시작 시각을 기준으로 며칠 전에 예매를 닫을지 설정합니다."
                     rule={ticketCloseRule}
                     onDaysChange={(days) =>
-                      setTicketCloseRule((current) => ({ ...current, days }))
+                      {
+                        setTicketCloseRule((current) => ({ ...current, days }));
+                        clearRegistrationFieldError('ticketRule');
+                      }
                     }
+                    hasError={registrationFieldErrorTarget === 'ticketRule' && ticketCloseRule.days.trim().length === 0}
                   />
                 </div>
 
@@ -2702,9 +3005,6 @@ export default function AgencyRegistrationPage() {
                     <div>
                       <p className="text-sm font-bold text-content-tertiary">
                         {selectedScheduleDateKeys.length > 0 ? '선택한 회차 미리보기' : '등록 회차 미리보기'}
-                      </p>
-                      <p className="mt-1 text-sm font-medium leading-6 text-content-tertiary">
-                        회차를 추가하면 아래에서 실제 예매 오픈일과 종료일이 어떻게 계산되는지 바로 확인할 수 있습니다.
                       </p>
                     </div>
                     <Badge color="grey" variant="outline">
@@ -2750,15 +3050,10 @@ export default function AgencyRegistrationPage() {
                         </div>
                       ))}
 
-                      {hiddenTicketSchedulePreviewCount > 0 ? (
-                        <p className="text-sm font-medium text-content-muted">
-                          나머지 {hiddenTicketSchedulePreviewCount}개 회차도 같은 기준으로 자동 계산됩니다.
-                        </p>
-                      ) : null}
                     </div>
                   ) : (
                     <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-5 text-sm font-medium leading-6 text-content-muted">
-                      아직 등록된 회차가 없습니다. 공연 일정 등록에서 회차를 추가하면 회차별 티켓 오픈일과 종료일이 자동 계산됩니다.
+                      회차 없음
                     </div>
                   )}
 
@@ -2775,19 +3070,21 @@ export default function AgencyRegistrationPage() {
                   ) : null}
                 </div>
               </div>
-          </Box>
+            </Box>
+          </div>
 
 
-          <Box
-            variant="shadow"
-            className="space-y-5"
+          <div
+            ref={seatPriceSectionRef}
+            className={`rounded-[20px] ${getRegistrationSectionHighlightClass('seatPrice')}`}
             style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
           >
-            <div>
+            <Box
+              variant="shadow"
+              className="space-y-5"
+            >
+            <div ref={seatPriceBlockRef} className="rounded-3xl">
               <h2 className="text-[18px] font-black text-slate-950">판매 정책</h2>
-              <p className="mt-1 text-sm font-medium text-content-tertiary">
-                VIP / R / S / A 좌석별 금액을 직접 입력합니다.
-              </p>
             </div>
 
             <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -2807,18 +3104,16 @@ export default function AgencyRegistrationPage() {
                         value={formatSeatPriceInput(seatPrices[field.key])}
                         onChange={handleSeatPriceChange(field.key)}
                         placeholder="금액 입력"
-                        className="[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px]"
+                        className={`[&_input]:text-[20px] [&_input]:tracking-[0.08em] sm:[&_input]:text-[22px] ${
+                          registrationFieldErrorTarget === 'seatPrice' && seatPrices[field.key].trim().length === 0
+                            ? '[&_input]:border-danger [&_input]:focus:border-danger'
+                            : ''
+                        }`}
                       />
                     ))}
                   </div>
                 </div>
 
-                <div className="mt-auto rounded-2xl border border-line bg-surface-subtle px-4 py-3">
-                  <p className="text-xs font-bold tracking-[0.08em] text-content-muted">가격 가이드</p>
-                  <p className="mt-1 text-sm font-medium leading-6 text-content-secondary">
-                    상위 등급과 하위 등급 간 간격이 너무 크면 운영 검수에서 조정 요청이 들어올 수 있습니다.
-                  </p>
-                </div>
               </div>
 
               <div className="rounded-3xl border border-line bg-surface-subtle p-4">
@@ -2835,34 +3130,30 @@ export default function AgencyRegistrationPage() {
                           {field.label}
                         </Badge>
                         <span className="text-sm font-black text-slate-950">
-                          ₩{field.formattedValue}
+                          {seatPrices[field.key].trim().length > 0 ? `₩${field.formattedValue}` : '미입력'}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs font-medium leading-5 text-content-tertiary">
-                        {field.description}
-                      </p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-          </Box>
+            </Box>
+          </div>
 
           <Box
             variant="shadow"
             className="space-y-5 !overflow-visible"
             style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div
+              ref={discountBlockRef}
+              className={`flex flex-col gap-4 rounded-3xl lg:flex-row lg:items-end lg:justify-between ${getRegistrationBlockHighlightClass('discount')}`}
+            >
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">
                   {'할인 정보'}
                 </h2>
-                <p className="mt-1 text-sm font-medium text-content-tertiary">
-                  {
-                    '할인 유형과 할인율을 한 번만 입력하면 모든 좌석 등급에 같게 적용됩니다.'
-                  }
-                </p>
               </div>
               <Button
                 color="primary"
@@ -2934,24 +3225,26 @@ export default function AgencyRegistrationPage() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-5 text-sm font-medium leading-6 text-content-tertiary">
-                {
-                  '추가할 할인 정보가 없으면 빈 상태로 두셔도 됩니다. 할인을 운영할 경우 위 버튼으로 행을 추가해 주세요.'
-                }
+                할인 없음
               </div>
             )}
           </Box>
 
-          <Box
-            variant="shadow"
-            className="space-y-5"
+          <div
+            ref={seatPolicySectionRef}
+            className={`rounded-[20px] ${getRegistrationSectionHighlightClass('seatPolicy')}`}
             style={{ display: activeRegistrationStep === 2 ? undefined : 'none' }}
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <Box
+              variant="shadow"
+              className="space-y-5"
+            >
+            <div
+              ref={seatPolicyBlockRef}
+              className="flex flex-col gap-4 rounded-3xl lg:flex-row lg:items-end lg:justify-between"
+            >
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">좌석 등급/비활성 설정</h2>
-                <p className="mt-1 text-sm font-medium text-content-tertiary">
-                  좌석도에서 어떤 좌석을 VIP, R, S, A로 운영할지와 판매 제외 좌석을 직접 지정합니다.
-                </p>
                 {seatTemplateErrorMessage ? (
                   <p className="mt-2 text-xs font-semibold text-danger">
                     {seatTemplateErrorMessage}
@@ -2962,6 +3255,7 @@ export default function AgencyRegistrationPage() {
                 color="primary"
                 variant="weak"
                 size="medium"
+                className={registrationFieldErrorTarget === 'seatPolicy' ? 'border border-danger' : ''}
                 isLoading={isSeatTemplateLoading}
                 onClick={async () => {
                   setIsSeatPolicyModalOpen(true);
@@ -2988,7 +3282,6 @@ export default function AgencyRegistrationPage() {
                   {seatPolicySummary.vip}
                   <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-content-tertiary">프리미엄 운영 좌석</p>
               </div>
 
               <div className="rounded-3xl border border-primary-light bg-primary-subtle/70 p-5">
@@ -2999,7 +3292,6 @@ export default function AgencyRegistrationPage() {
                   {seatPolicySummary.r}
                   <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-content-tertiary">무대 중심 시야 좌석</p>
               </div>
 
               <div className="rounded-3xl border border-success-light bg-success-subtle/70 p-5">
@@ -3010,7 +3302,6 @@ export default function AgencyRegistrationPage() {
                   {seatPolicySummary.s}
                   <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-content-tertiary">일반 판매 핵심 좌석</p>
               </div>
 
               <div className="rounded-3xl border border-line bg-surface-subtle p-5">
@@ -3021,7 +3312,6 @@ export default function AgencyRegistrationPage() {
                   {seatPolicySummary.a}
                   <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-content-tertiary">입문형 가격대 좌석</p>
               </div>
 
               <div className="rounded-3xl border border-line-strong bg-surface p-5">
@@ -3032,25 +3322,29 @@ export default function AgencyRegistrationPage() {
                   {seatPolicySummary.disabled}
                   <span className="ml-1 text-lg font-bold text-content-tertiary">석</span>
                 </p>
-                <p className="mt-2 text-sm font-medium text-content-tertiary">예매에서 제외되는 좌석</p>
               </div>
             </div>
-          </Box>
+            </Box>
+          </div>
 
-          <Box
-            variant="shadow"
-            className="space-y-5"
+          <div
+            ref={scheduleSectionRef}
+            className={`rounded-[20px] ${getRegistrationSectionHighlightClass('schedule')}`}
             style={{
               display: activeRegistrationStep === 1 ? undefined : 'none',
               order: activeRegistrationStep === 1 ? 1 : undefined,
             }}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <Box
+              variant="shadow"
+              className="space-y-5"
+            >
+            <div
+              ref={scheduleBlockRef}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-3xl"
+            >
               <div>
                 <h2 className="text-[18px] font-black text-slate-950">공연 일정 등록</h2>
-                <p className="mt-1 text-sm font-medium text-content-tertiary">
-                  공연 오픈일과 종료일을 기준으로 날짜가 자동 생성됩니다. 날짜를 고른 뒤 회차 시간을 빠르게 추가하세요.
-                </p>
               </div>
               <Badge color="blue" variant="outline">
                 총 {registeredPerformanceCount}회차 등록
@@ -3059,24 +3353,23 @@ export default function AgencyRegistrationPage() {
 
             <div className="space-y-4">
               <div className="grid gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-                <div className="rounded-3xl border border-line bg-surface-subtle p-4">
+                <div className={`rounded-3xl border bg-surface-subtle p-4 ${
+                  registrationFieldErrorTarget === 'schedule' && selectedScheduleDateKeys.length === 0
+                    ? 'border-danger'
+                    : 'border-line'
+                }`}>
                   <div>
                     <p className="text-sm font-bold text-content-tertiary">운영 날짜</p>
                     <p className="mt-2 text-sm font-medium text-content-secondary">
-                      {formatDateKey(performanceOpenAt)} ~ {formatDateKey(performanceCloseAt)}
+                      {performanceOpenAt && performanceCloseAt
+                        ? `${formatDateKey(performanceOpenAt)} ~ ${formatDateKey(performanceCloseAt)}`
+                        : '공연 오픈일과 종료일을 먼저 입력해 주세요.'}
                     </p>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-content-secondary">
-                    날짜 카드를 눌러 여러 날짜를 선택한 뒤 같은 회차를 한 번에 추가할 수 있습니다.
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-content-muted">
-                    총 {performanceScheduleDateKeys.length}일 범위에서 회차를 등록합니다.
-                  </p>
 
                   <div className="mt-4 rounded-2xl border border-line bg-surface p-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-black text-content-tertiary">요일 선택</p>
-                      <span className="text-xs font-semibold text-content-muted">선택/해제</span>
                     </div>
                     <div className="mt-3 grid grid-cols-7 gap-1.5">
                       {scheduleWeekdayOptions.map((option) => {
@@ -3179,12 +3472,6 @@ export default function AgencyRegistrationPage() {
                     </button>
                   </div>
 
-                  <p className="mt-4 text-sm font-medium leading-6 text-content-secondary">
-                    {selectedScheduleDateCount > 0
-                      ? `입력한 시간은 현재 선택한 ${selectedScheduleDateCount}일에 한 번에 추가됩니다.`
-                      : '운영 날짜에서 날짜를 선택하면 입력한 시간을 여러 날짜에 한 번에 추가할 수 있습니다.'}
-                  </p>
-
                   {selectedScheduleDateLabels.length > 0 ? (
                     <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
                       {selectedScheduleDateLabels.map((label) => (
@@ -3198,7 +3485,7 @@ export default function AgencyRegistrationPage() {
                     </div>
                   ) : (
                     <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface px-4 py-3 text-sm font-medium text-content-muted">
-                      아직 선택된 날짜가 없습니다.
+                      날짜 미선택
                     </div>
                   )}
 
@@ -3206,9 +3493,6 @@ export default function AgencyRegistrationPage() {
                     <div>
                       <div>
                         <p className="text-sm font-black text-content-secondary">30분 단위 선택</p>
-                        <p className="mt-1 text-xs font-medium text-content-muted">
-                          시간을 누르면 선택된 날짜에 바로 회차가 추가됩니다.
-                        </p>
                       </div>
                     </div>
 
@@ -3262,7 +3546,7 @@ export default function AgencyRegistrationPage() {
 
                     {selectedScheduleDateCount === 0 ? (
                       <p className="mt-3 text-xs font-semibold text-warning">
-                        운영 날짜를 먼저 선택하면 시간 버튼으로 회차를 바로 추가할 수 있습니다.
+                        날짜 선택 필요
                       </p>
                     ) : null}
                   </div>
@@ -3277,12 +3561,17 @@ export default function AgencyRegistrationPage() {
                         onChange={(event) => {
                           const nextValue = event.target.value;
                           setScheduleTimeInputValue(nextValue);
+                          clearRegistrationFieldError('schedule');
 
                           if (isValidScheduleTime(nextValue)) {
                             setScheduleTimePeriod(getScheduleTimePeriod(nextValue));
                           }
                         }}
-                        className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-content outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-light"
+                        className={`rounded-2xl border bg-surface px-4 py-3 text-sm font-semibold text-content outline-none transition focus:ring-4 ${
+                          registrationFieldErrorTarget === 'schedule'
+                            ? 'border-danger focus:border-danger focus:ring-danger-light'
+                            : 'border-line focus:border-primary focus:ring-primary-light'
+                        }`}
                       />
                     </label>
                     <Button
@@ -3301,9 +3590,6 @@ export default function AgencyRegistrationPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-content-tertiary">등록된 공연 시간</p>
-                    <p className="mt-1 text-sm font-medium text-content-muted">
-                      같은 날짜에 등록된 회차를 바로 확인하고 삭제할 수 있습니다.
-                    </p>
                   </div>
                   {selectedScheduleTimes.length > 0 ? (
                     <button
@@ -3340,12 +3626,13 @@ export default function AgencyRegistrationPage() {
                   </div>
                 ) : (
                   <div className="mt-4 rounded-2xl border border-dashed border-line bg-surface-subtle px-4 py-6 text-sm font-medium text-content-tertiary">
-                    아직 등록된 회차가 없습니다. 시간을 입력해서 추가하세요.
+                    회차 없음
                   </div>
                 )}
               </div>
             </div>
-          </Box>
+            </Box>
+          </div>
         </div>
 
         <div className="space-y-5 xl:fixed xl:right-8 xl:top-6 xl:z-20 xl:max-h-[calc(100vh-3rem)] xl:w-[340px] xl:overflow-y-auto xl:pr-1">
@@ -3376,9 +3663,6 @@ export default function AgencyRegistrationPage() {
                     </span>
                     <span>
                       <span className="block text-sm font-black text-content">{item.title}</span>
-                      <span className="mt-1 block text-xs font-semibold leading-5 text-content-tertiary">
-                        {item.sections}
-                      </span>
                     </span>
                   </button>
                 );
@@ -3389,9 +3673,6 @@ export default function AgencyRegistrationPage() {
           <Box variant="outline" className="space-y-4">
             <div>
               <h2 className="text-[18px] font-black text-slate-950">다음 액션</h2>
-              <p className="mt-1 text-sm font-medium text-content-tertiary">
-                현재 단계는 {activeRegistrationStep + 1}단계입니다.
-              </p>
             </div>
 
             {isLastRegistrationStep ? (
@@ -3450,22 +3731,24 @@ export default function AgencyRegistrationPage() {
         </div>
       </section>
 
-      <AgencyPerformancePreviewModal
-        isOpen={isPerformancePreviewOpen}
-        onClose={() => setIsPerformancePreviewOpen(false)}
-        title={performanceTitle.trim()}
-        categoryName={selectedCategoryInfo?.categoryName ?? ''}
-        venueName={selectedVenueInfo.label}
-        startAt={performanceOpenAt}
-        endAt={performanceCloseAt}
-        posterImage={posterImage}
-        introImages={introImages}
-        notice={noticeText}
-        hashtags={performanceHashtags}
-        seatPrices={seatPrices}
-        seatDiscounts={seatDiscounts}
-        schedules={registeredTicketSchedulePreviews}
-      />
+      {performanceOpenAt && performanceCloseAt ? (
+        <AgencyPerformancePreviewModal
+          isOpen={isPerformancePreviewOpen}
+          onClose={() => setIsPerformancePreviewOpen(false)}
+          title={performanceTitle.trim()}
+          categoryName={selectedCategoryInfo?.categoryName ?? ''}
+          venueName={selectedVenueInfo.label}
+          startAt={performanceOpenAt}
+          endAt={performanceCloseAt}
+          posterImage={posterImage}
+          introImages={introImages}
+          notice={noticeText}
+          hashtags={performanceHashtags}
+          seatPrices={seatPrices}
+          seatDiscounts={seatDiscounts}
+          schedules={registeredTicketSchedulePreviews}
+        />
+      ) : null}
 
       {isSeatPolicyModalOpen ? (
         <AgencySeatPolicyModal
@@ -3477,6 +3760,7 @@ export default function AgencyRegistrationPage() {
             setSeatPolicy(nextSeatPolicy);
             setSeatPolicyVenueId(resolvedSelectedVenue);
             setIsSeatPolicyDirty(true);
+            clearRegistrationFieldError('seatPolicy');
           }}
         />
       ) : null}
@@ -3488,8 +3772,8 @@ export default function AgencyRegistrationPage() {
           description="공연 시작일과 종료일을 한 번에 확인하면서 날짜와 시간을 함께 설정합니다."
           startLabel="공연 시작일"
           endLabel="공연 종료일"
-          initialStartAt={performanceOpenAt}
-          initialEndAt={performanceCloseAt}
+          initialStartAt={performanceDateModalInitialStartAt}
+          initialEndAt={performanceDateModalInitialEndAt}
           onClose={() => setIsPerformanceDateModalOpen(false)}
           onConfirm={(nextStartAt, nextEndAt) => {
             setPerformanceOpenAt(nextStartAt);
@@ -3497,6 +3781,7 @@ export default function AgencyRegistrationPage() {
             setPerformanceOpenInputValue(formatDateTimeLabel(nextStartAt));
             setPerformanceCloseInputValue(formatDateTimeLabel(nextEndAt));
             syncSchedulesToPerformanceRange(nextStartAt, nextEndAt);
+            clearRegistrationFieldError('performanceDate');
             setIsPerformanceDateModalOpen(false);
           }}
         />

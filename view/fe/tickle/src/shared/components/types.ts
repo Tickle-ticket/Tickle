@@ -302,6 +302,7 @@ export interface CalendarProps {
   onSelect?: (date: Date, e?: React.MouseEvent<HTMLButtonElement>) => void;
   isLoading?: boolean;
   className?: string;
+  density?: 'default' | 'compact';
 }
 
 export type SeatStatus = 'selectable' | 'disabled';

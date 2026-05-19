@@ -14,6 +14,7 @@ import type {
   QueueEventRankResponse,
 } from '@/src/shared/api/types/admin.types';
 import type { EventItem } from '@/src/shared/api/types/event.types';
+import { AdminRefreshButton } from '@/src/shared/components/AdminRefreshButton';
 import { Dropdown } from '@/src/shared/components/Dropdown';
 import { QueueStatusChart } from '@/src/shared/components/QueueStatusChart';
 import type { QueueStatusPoint } from '@/src/shared/components/QueueStatusChart';
@@ -174,17 +175,17 @@ export default function QueueMonitoringPage() {
   const [isEventLoading, setIsEventLoading] = useState(false);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const dashboardStreamUrl = useMemo(
     () => eventId ? getAdminQueueEventDashboardStreamUrl(eventId) : '',
     [eventId],
   );
   const topEventsStreamUrl = useMemo(() => getAdminTopWaitingEventsStreamUrl(), []);
-  const { data: dashboardStreamData } = useSSE<QueueDashboardResponse | { data: QueueDashboardResponse }>(
+  const { data: dashboardStreamData, lastEventAt: dashboardStreamLastEventAt } = useSSE<QueueDashboardResponse | { data: QueueDashboardResponse }>(
     dashboardStreamUrl,
     { eventNames: ['queue.dashboard'] },
   );
-  const { data: topEventsStreamData } = useSSE<QueueEventRankResponse[] | { data: QueueEventRankResponse[] }>(
+  const { data: topEventsStreamData, lastEventAt: topEventsStreamLastEventAt } = useSSE<QueueEventRankResponse[] | { data: QueueEventRankResponse[] }>(
     topEventsStreamUrl,
     { eventNames: ['queue.top'] },
   );
@@ -192,7 +193,10 @@ export default function QueueMonitoringPage() {
   const streamedTopEvents = useMemo(() => unwrapSseData<QueueEventRankResponse[]>(topEventsStreamData), [topEventsStreamData]);
   const visibleDashboard = streamedDashboard ?? dashboard;
   const visibleTopEvents = streamedTopEvents ?? topEvents;
-  const visibleLastUpdatedAt = streamedDashboard || streamedTopEvents ? 'SSE 수신 중' : lastUpdatedAt;
+  const latestUpdateAt = Math.max(lastUpdatedAt ?? 0, dashboardStreamLastEventAt ?? 0, topEventsStreamLastEventAt ?? 0);
+  const visibleLastUpdatedAt = latestUpdateAt > 0
+    ? new Date(latestUpdateAt).toLocaleString('ko-KR')
+    : null;
 
   const loadRegisteredEvents = useCallback(async () => {
     setIsEventLoading(true);
@@ -229,7 +233,7 @@ export default function QueueMonitoringPage() {
 
       setDashboard(dashboardResponse?.data ?? null);
       setTopEvents(topEventsResponse.data);
-      setLastUpdatedAt(new Date().toLocaleString('ko-KR'));
+      setLastUpdatedAt(Date.now());
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -348,14 +352,7 @@ export default function QueueMonitoringPage() {
             <h2 className="text-[16px] font-black leading-6 tracking-normal text-slate-950">
               실시간 대기열 많은 공연 리스트
             </h2>
-            <button
-              className="h-10 rounded-lg border border-line-strong px-4 text-sm font-black text-content-secondary hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-content-muted"
-              disabled={isDashboardLoading}
-              onClick={() => void loadQueueDashboard()}
-              type="button"
-            >
-              {isDashboardLoading ? '갱신 중' : '새로고침'}
-            </button>
+            <AdminRefreshButton isLoading={isDashboardLoading} onClick={() => void loadQueueDashboard()} />
           </header>
 
           <div className="overflow-x-auto">
