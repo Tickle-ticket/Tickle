@@ -130,7 +130,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   // 현재 선점 중인 상태를 ref로 추적하여, 렌더링마다 불필요하게 해제되지 않도록 함
   const isHoldingSeatRef = React.useRef(false);
-  
+
   useEffect(() => {
     isHoldingSeatRef.current = bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId;
   }, [bookingStep, mode, eventDetail?.eventId, scheduleId]);
@@ -197,7 +197,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     const releaseHeldSeat = () => {
       // 결제 성공/카카오페이 리다이렉트 등으로 인한 정상적인 이탈인 경우 방지
       const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
-      
+
       if (!isNormalNavigation) {
         if (preorderBookingIdRef.current) {
           reservationApi.cancelReservation(preorderBookingIdRef.current).catch(err => {
@@ -302,7 +302,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       } catch (err: any) {
         console.error('Failed to cancel draft reservation on exit', err);
       }
-    } 
+    }
     // 예약 초안 생성 전 좌석 선점만 된 경우
     else if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
       try {
@@ -400,7 +400,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           <p className="text-content-tertiary">
             예매 정보가 만료되었거나 비정상적인 접근입니다.
           </p>
-          <button 
+          <button
             onClick={() => { window.location.href = '/'; }}
             className="px-6 py-2.5 bg-content text-white rounded-xl font-bold hover:bg-surface-inverse:bg-surface-muted transition-colors"
           >
@@ -589,12 +589,11 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         {/* Desktop: always side-by-side panel */}
         <div className={`${(!confirmedSchedule || isModifyingSchedule)
           ? 'relative w-full h-full lg:absolute lg:right-0 lg:top-0 lg:w-[40%] lg:h-full bg-surface-subtle overflow-y-auto'
-          : `absolute inset-0 lg:right-0 lg:top-0 lg:left-auto lg:w-[40%] lg:bg-surface-subtle:bg-zinc-950 lg:overflow-y-auto lg:pointer-events-auto ${
-              bookingStep === 'SEAT'
-                ? 'pointer-events-none'
-                : 'pointer-events-auto bg-surface-subtle overflow-y-auto z-30'
-            }`
-        } flex flex-col`}>
+          : `absolute inset-0 lg:right-0 lg:top-0 lg:left-auto lg:w-[40%] lg:bg-surface-subtle:bg-zinc-950 lg:overflow-y-auto lg:pointer-events-auto ${bookingStep === 'SEAT'
+            ? 'pointer-events-none'
+            : 'pointer-events-auto bg-surface-subtle overflow-y-auto z-30'
+          }`
+          } flex flex-col`}>
           {bookingStep === 'SEAT' && (
             <SeatSelectionPanel
               eventDetail={eventDetail}

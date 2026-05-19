@@ -16,6 +16,8 @@ interface UseBotDetectionSSEOptions {
   onSuccessClose?: () => void;
   /** DENY_CLOSE 수신 시 콜백 */
   onDenyClose?: () => void;
+  /** BOT_BLOCKED 수신 시 콜백 (즉시 강제 차단) */
+  onBotBlocked?: (recordId?: string) => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export const useBotDetectionSSE = ({
   onRetryCaptcha,
   onSuccessClose,
   onDenyClose,
+  onBotBlocked,
 }: UseBotDetectionSSEOptions) => {
   const [status, setStatus] = useState<BotDetectionSSEStatus>('idle');
   const [lastResult, setLastResult] = useState<CaptchaResult | null>(null);
@@ -42,10 +45,12 @@ export const useBotDetectionSSE = ({
   const onRetryCaptchaRef = useRef(onRetryCaptcha);
   const onSuccessCloseRef = useRef(onSuccessClose);
   const onDenyCloseRef = useRef(onDenyClose);
+  const onBotBlockedRef = useRef(onBotBlocked);
 
   useEffect(() => { onRetryCaptchaRef.current = onRetryCaptcha; }, [onRetryCaptcha]);
   useEffect(() => { onSuccessCloseRef.current = onSuccessClose; }, [onSuccessClose]);
   useEffect(() => { onDenyCloseRef.current = onDenyClose; }, [onDenyClose]);
+  useEffect(() => { onBotBlockedRef.current = onBotBlocked; }, [onBotBlocked]);
 
   /** SSE 연결 해제 */
   const disconnect = useCallback(() => {
@@ -100,6 +105,14 @@ export const useBotDetectionSSE = ({
             break;
           case 'DENY_CLOSE':
             onDenyCloseRef.current?.();
+            break;
+          case 'BOT_BLOCKED':
+            console.warn('[BotDetection SSE] 🚫 BOT_BLOCKED 수신 — 즉시 강제 차단');
+            onBotBlockedRef.current?.(data.recordId);
+            // 차단 후 SSE 연결 즉시 종료
+            es.close();
+            eventSourceRef.current = null;
+            setStatus('disconnected');
             break;
           default:
             console.warn('[BotDetection SSE] 알 수 없는 result:', data.result);

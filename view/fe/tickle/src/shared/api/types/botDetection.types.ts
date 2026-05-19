@@ -1,7 +1,7 @@
 import type { ApiResponse } from '../types';
 
 /** SSE captcha 이벤트의 result 값 */
-export type CaptchaResult = 'RETRY_CAPTCHA' | 'SUCCESS_CLOSE' | 'DENY_CLOSE';
+export type CaptchaResult = 'RETRY_CAPTCHA' | 'SUCCESS_CLOSE' | 'DENY_CLOSE' | 'BOT_BLOCKED';
 
 /** SSE captcha 이벤트 data 페이로드 */
 export interface CaptchaEventData {

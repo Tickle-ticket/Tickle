@@ -10,7 +10,7 @@ function BlockedContent() {
 
   const title = "비정상적인 접근 차단";
   const description = reason === "blacklist"
-    ? "차단된 사용자입니다."
+    ? "비정상적인 접근이 감지되어 서비스 이용이 제한됩니다."
     : "자동화된 도구(Bot, Macro)를 통한 비정상적인 클릭이나 접근이 감지되었습니다. 보안 정책에 따라 해당 기기의 접근이 일시적으로 차단되었습니다.";
 
   return (

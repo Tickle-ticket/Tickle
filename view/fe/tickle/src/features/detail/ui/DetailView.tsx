@@ -29,7 +29,7 @@ import { Footer } from '@/src/shared/components/Footer';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
-import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { getAccessToken, clearTokens } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
@@ -125,6 +125,11 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     onDenyClose: () => {
       setShowCaptchaOverlay(false);
       setCaptchaDenied(true);
+    },
+    onBotBlocked: () => {
+      // 즉시 강제 로그아웃 (토큰 삭제) 후 차단 안내 페이지로 이동
+      clearTokens();
+      window.location.href = '/blocked?reason=blacklist';
     },
   });
 
