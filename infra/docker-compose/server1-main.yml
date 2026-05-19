@@ -46,6 +46,7 @@ services:
     mem_limit: 1024m
     environment:
       SPRING_PROFILES_ACTIVE: local
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
       DB_HOST: tickle-mysql
       DB_PORT: 3306
       DB_NAME: tickle_core
