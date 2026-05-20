@@ -80,7 +80,8 @@ public class AdminLoadTestController {
                 log.info("[LoadTest] 시연 부하 테스트 시작");
                 Process process = pb.start();
                 process.waitFor();
-                log.info("[LoadTest] 시연 부하 테스트 완료");
+                log.info("[LoadTest] 시연 부하 테스트 완료 — demo 계정 자동 정리 시작");
+                cleanupDemoUsers();
             } catch (Exception e) {
                 log.error("[LoadTest] 실행 실패: {}", e.getMessage(), e);
             } finally {
@@ -103,5 +104,25 @@ public class AdminLoadTestController {
         return ResponseEntity.ok(BaseResponse.success(
                 Map.of("running", running.get())
         ));
+    }
+
+    /**
+     * k6 테스트 종료 후 demo 계정들을 active_users_zset에서 제거합니다.
+     *
+     * <p>버튼을 다시 누를 때 0명부터 시작하기 위한 자동 정리입니다.
+     * 실제 접속자(비 demo 계정)는 영향 없습니다.</p>
+     */
+    private void cleanupDemoUsers() {
+        try {
+            List<Long> demoIds = userRepository.findIdsByEmailEndingWith("@k6test.com");
+            if (!demoIds.isEmpty()) {
+                Object[] members = demoIds.stream().map(String::valueOf).toArray();
+                stringRedisTemplate.opsForZSet().remove(
+                        UserAccessLogInterceptor.ACTIVE_USERS_ZSET_KEY, members);
+                log.info("[LoadTest] demo 계정 {}개 자동 정리 완료", demoIds.size());
+            }
+        } catch (Exception e) {
+            log.warn("[LoadTest] demo 계정 자동 정리 실패 (무시): {}", e.getMessage());
+        }
     }
 }
