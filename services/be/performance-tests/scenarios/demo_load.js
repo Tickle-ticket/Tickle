@@ -23,13 +23,11 @@ export const options = {
   scenarios: {
     demo: {
       executor: "ramping-vus",
-      startVUs: 0,
+      startVUs: 1,
       stages: [
-        { duration: "1m",   target: 100 },  // 서서히 100명
-        { duration: "1m",   target: 300 },  // 300명으로 증가
-        { duration: "1m",   target: 500 },  // 최대 500명
-        { duration: "30s",  target: 500 },  // 500명 유지
-        { duration: "30s",  target: 0 },    // 종료
+        { duration: "30s", target: 100 },  // 30초 동안 1→100명
+        { duration: "1m",  target: 500 },  // 1분 동안 100→500명
+        { duration: "1m",  target: 1 },    // 1분 동안 500→1명
       ],
     },
   },
