@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar } from '@/src/shared/components/Calendar';
+import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 
 interface SeatSelectionPanelProps {
   eventDetail: any;
@@ -104,7 +105,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
                   selectedDate={selectedDate ? selectedDate.replace(/\./g, '-') : null}
                   onSelect={(date: Date, e?: React.MouseEvent) => {
                     if (e && !e.isTrusted) {
-                      window.location.href = '/blocked';
+                      navigateToBlocked();
                       return;
                     }
                     const year = date.getFullYear();
@@ -441,7 +442,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
               <button
                 onClick={async (e) => {
                   if (!e.isTrusted) {
-                    window.location.href = '/blocked';
+                    navigateToBlocked();
                     return;
                   }
                   if (selectedSeats.size > 0) {
@@ -476,7 +477,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
               <button
                 onClick={(e) => {
                   if (!e.isTrusted) {
-                    window.location.href = '/blocked';
+                    navigateToBlocked();
                     return;
                   }
                   handleNextStep(e);

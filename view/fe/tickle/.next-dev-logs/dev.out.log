@@ -601,3 +601,5 @@
  GET /blocked 200 in 175ms (next.js: 7ms, application-code: 168ms)
  GET /blocked 200 in 155ms (next.js: 10ms, application-code: 145ms)
  GET /agency 200 in 44ms (next.js: 4ms, application-code: 40ms)
+ GET /agency 200 in 188ms (next.js: 11ms, application-code: 177ms)
+ GET / 200 in 4.4s (next.js: 433ms, application-code: 4.0s)

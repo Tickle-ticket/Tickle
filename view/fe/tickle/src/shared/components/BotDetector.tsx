@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useUserProfile } from '../api/useUserProfile';
 import { apiClient } from '../api/client';
+import { navigateToBlocked } from '../utils/blockedNavigation';
 
 export const BotDetector = ({ children }: { children: React.ReactNode }) => {
   const [isBot, setIsBot] = useState(false);
@@ -48,7 +49,7 @@ export const BotDetector = ({ children }: { children: React.ReactNode }) => {
           console.error('[BotDetector] 블랙리스트 API 전송 실패:', error);
         } finally {
           // 전송 성공 여부와 상관없이 무조건 차단 화면으로 이동
-          window.location.href = '/blocked';
+          navigateToBlocked();
         }
       };
 

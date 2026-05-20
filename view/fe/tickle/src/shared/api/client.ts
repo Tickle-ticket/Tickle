@@ -10,6 +10,7 @@ import {
   getAccessToken,
   clearTokens,
 } from './tokenManager';
+import { navigateToBlocked } from '../utils/blockedNavigation';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const AUTH_ENDPOINT_PATTERNS = [
@@ -85,7 +86,7 @@ export const apiClient = async <T>(
       // 403 Forbidden (블랙리스트 등) 처리
       if (response.status === 403 && !path.includes('/api/v1/admin/')) {
         if (typeof window !== 'undefined') {
-          window.location.href = '/blocked?reason=blacklist';
+          navigateToBlocked('blacklist');
         }
       }
       

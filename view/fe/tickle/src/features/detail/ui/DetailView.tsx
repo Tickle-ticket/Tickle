@@ -35,6 +35,7 @@ import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { isBlockedNavigation, navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 import { leaveQueue } from '@/src/shared/api/queueApi';
 import dynamic from 'next/dynamic';
 import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
@@ -129,7 +130,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     onBotBlocked: () => {
       // 즉시 강제 로그아웃 (토큰 삭제) 후 차단 안내 페이지로 이동
       clearTokens();
-      window.location.href = '/blocked?reason=blacklist';
+      navigateToBlocked('blacklist');
     },
   });
 
@@ -382,8 +383,8 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   useEffect(() => {
     if (flowState === 'NONE') return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // @ts-ignore
-      if (window.__isNavigatingToPayment__) return;
+      if (isBlockedNavigation()) return;
+      if ((window as any).__isNavigatingToPayment__) return;
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);

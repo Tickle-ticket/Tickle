@@ -22,9 +22,6 @@ const defaultItems: AdminSidebarItem[] = [
   { label: '대기열 상태', href: '/admin/queue' },
   { label: '봇 탐지 현황', href: '/admin/bot-detection' },
   { label: '블랙리스트 관리', href: '/admin' },
-  { label: '서버 모니터링 (목업)', href: '/admin/examples/server' },
-  { label: '대기열 상태 (목업)', href: '/admin/examples/queue' },
-  { label: '봇 탐지 현황 (목업)', href: '/admin/examples/bot-detection' },
   { label: '홈으로', href: '/' },
 ];
 

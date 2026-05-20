@@ -12,6 +12,7 @@ import { isShadowMode } from '@/src/shared/utils/shadowMode';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
 import { useSeatStep } from '../api/useSeatStep';
+import { isBlockedNavigation } from '@/src/shared/utils/blockedNavigation';
 import { CaptchaStep } from './components/CaptchaStep';
 import { TicketTypeStep } from './components/TicketTypeStep';
 import { PaymentStep } from './components/PaymentStep';
@@ -213,8 +214,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
+      const isForceBlockedNavigation = isBlockedNavigation();
       if (isHoldingSeatRef.current && !isNormalNavigation) {
         releaseHeldSeat();
+        if (isForceBlockedNavigation) return;
         e.preventDefault();
         e.returnValue = ''; // 표준 브라우저 경고창 표시
       }

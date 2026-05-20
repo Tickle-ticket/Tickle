@@ -122,6 +122,12 @@ export const getAdminUserStats = () => {
   });
 };
 
+export const startAdminLoadTest = () => {
+  return apiClient<ApiResponse<null>>('/api/v1/admin/load-test/start', {
+    method: 'POST',
+  });
+};
+
 export const getAdminBlacklistStreamUrl = (page = 0, size = 20) =>
   buildAdminStreamUrl('/api/v1/admin/blacklist', { page, size });
 

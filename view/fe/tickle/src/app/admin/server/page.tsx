@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAdminUserStats, getAdminUserStatsStreamUrl } from '@/src/shared/api/adminApi';
+import { getAdminUserStats, getAdminUserStatsStreamUrl, startAdminLoadTest } from '@/src/shared/api/adminApi';
 import type { ActiveUserStatsResponse } from '@/src/shared/api/types/admin.types';
 import { AdminRefreshButton } from '@/src/shared/components/AdminRefreshButton';
 import { useSSE } from '@/src/shared/hooks/useSSE';
@@ -88,7 +88,9 @@ export default function AdminServerMonitoringPage() {
   const [stats, setStats] = useState<ActiveUserStatsResponse | null>(null);
   const [history, setHistory] = useState<ActiveUserPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadTestStarting, setIsLoadTestStarting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadTestErrorMessage, setLoadTestErrorMessage] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const streamUrl = useMemo(() => getAdminUserStatsStreamUrl(), []);
   const { data: streamData, isConnected } = useSSE<ActiveUserStatsResponse | { data: ActiveUserStatsResponse }>(
@@ -141,6 +143,19 @@ export default function AdminServerMonitoringPage() {
     }
   }, [appendStatsPoint]);
 
+  const handleStartLoadTest = useCallback(async () => {
+    setIsLoadTestStarting(true);
+    setLoadTestErrorMessage(null);
+
+    try {
+      await startAdminLoadTest();
+    } catch (error) {
+      setLoadTestErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsLoadTestStarting(false);
+    }
+  }, []);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadStats();
@@ -171,17 +186,31 @@ export default function AdminServerMonitoringPage() {
           <h1 className="text-2xl font-black tracking-normal text-slate-950">서버 모니터링 대시보드</h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <span className={`rounded-full px-3 py-1.5 text-xs font-black ${status.className}`}>{status.label}</span>
           <span className={`rounded-full px-3 py-1.5 text-xs font-black ${isConnected ? 'bg-success-subtle text-success' : 'bg-surface-subtle text-content-tertiary'}`}>
             {isConnected ? 'SSE 연결됨' : 'SSE 대기'}
           </span>
+          <button
+            className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg bg-danger px-4 text-sm font-black text-white shadow-sm transition hover:bg-danger-hover disabled:cursor-not-allowed disabled:bg-surface-active disabled:text-white"
+            disabled={isLoadTestStarting}
+            onClick={() => void handleStartLoadTest()}
+            type="button"
+          >
+            {isLoadTestStarting ? '시작 중...' : '부하테스트 시작'}
+          </button>
           <AdminRefreshButton isLoading={isLoading} onClick={() => void loadStats()} />
         </div>
       </header>
 
       {errorMessage ? (
         <p className="rounded-lg bg-danger-subtle px-4 py-3 text-sm font-bold text-danger">{errorMessage}</p>
+      ) : null}
+
+      {loadTestErrorMessage ? (
+        <p className="rounded-lg bg-danger-subtle px-4 py-3 text-sm font-bold text-danger">
+          {loadTestErrorMessage}
+        </p>
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3">

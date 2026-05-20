@@ -7,6 +7,7 @@ import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationA
 import { useQuery } from '@tanstack/react-query';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 import { useBookStore } from '../store/useBookStore';
 import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
 
@@ -128,7 +129,7 @@ export function useSeatStep({
 
   const handleSeatClick = useCallback(async (id: string, e?: React.MouseEvent) => {
     if (e && !e.isTrusted) {
-      window.location.href = '/blocked';
+      navigateToBlocked();
       return;
     }
     const isMyInitialSeat = initialSeats.includes(id);
