@@ -33,7 +33,7 @@ const tokenCache = {};
 function getToken(vuId) {
   if (tokenCache[vuId]) return tokenCache[vuId];
 
-  const idx = ((vuId - 1) % 500) + 1;
+  const idx = ((vuId - 1) % 1000) + 1;
   const res = http.post(
     `${BASE_URL}/api/v1/auth/login`,
     JSON.stringify({ email: `demo${idx}@k6test.com`, password: "Demo1234!" }),
