@@ -44,7 +44,7 @@ public class AdminLoadTestController {
         String scriptPath = System.getProperty("user.dir") +
                 "/performance-tests/scenarios/demo_load.js";
         String baseUrl = "https://tickle-ticket.co.kr";
-        String eventId = "6038";
+        String eventId = "6062";
         String email = "k6-perf-test@tickle.com";
         String password = "PerfTest1!";
 

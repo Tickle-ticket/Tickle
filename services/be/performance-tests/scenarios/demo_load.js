@@ -12,7 +12,7 @@
 //   BASE_URL=https://tickle-ticket.co.kr \
 //   TEST_USER_EMAIL=k6-perf-test@tickle.com \
 //   TEST_USER_PASSWORD=PerfTest1! \
-//   TEST_EVENT_ID=6038 \
+//   TEST_EVENT_ID=6062 \
 //   k6 run scenarios/demo_load.js
 // =============================================================
 
@@ -53,7 +53,7 @@ export function setup() {
 
 export default function (data) {
   const baseUrl = __ENV.BASE_URL || "https://tickle-ticket.co.kr";
-  const eventId = __ENV.TEST_EVENT_ID || "6038";
+  const eventId = __ENV.TEST_EVENT_ID || "6062";
   const headers = {
     Authorization: `Bearer ${data.accessToken}`,
     "Content-Type": "application/json",
