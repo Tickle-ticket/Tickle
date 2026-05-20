@@ -10,6 +10,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -73,6 +74,15 @@ public class GlobalExceptionHandler {
                         GlobalErrorCode.METHOD_NOT_ALLOWED.getStatus(),
                         GlobalErrorCode.METHOD_NOT_ALLOWED.getMessage()
                 ));
+    }
+
+    /**
+     * SSE/비동기 연결이 클라이언트 측에서 먼저 끊길 때 발생하는 예외를 처리합니다.
+     * 클라이언트가 이미 없으므로 응답 없이 WARN 로그만 남깁니다.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    protected void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException exception) {
+        log.warn("SSE/비동기 클라이언트 연결 끊김: {}", exception.getMessage());
     }
 
     /**

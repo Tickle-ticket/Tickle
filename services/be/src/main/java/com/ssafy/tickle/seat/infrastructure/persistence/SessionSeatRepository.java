@@ -149,6 +149,23 @@ public interface SessionSeatRepository extends JpaRepository<SessionSeat, Long> 
     void deleteByEventId(@Param("eventId") Long eventId);
 
     /**
+     * HELD 상태이면서 {@code expiredBefore} 이전에 마지막으로 업데이트된 좌석을 조회합니다.
+     *
+     * <p>Redis Keyspace Notification이 유실된 경우 폴백으로 DB에서 직접 만료된 선점을 탐지합니다.
+     * updatedAt은 hold() 호출 시 갱신되므로, 이 값이 HOLD_MINUTES를 초과하면 만료된 것으로 간주합니다.</p>
+     *
+     * @param expiredBefore 이 시각 이전에 업데이트된 HELD 좌석은 만료된 것으로 처리
+     * @return 만료된 HELD 좌석 목록
+     */
+    @Query("""
+            SELECT ss FROM SessionSeat ss
+            JOIN FETCH ss.session s
+            WHERE ss.saleStatus = com.ssafy.tickle.seat.domain.SessionSeat.SaleStatus.HELD
+              AND ss.updatedAt < :expiredBefore
+            """)
+    List<SessionSeat> findExpiredHeldSeats(@Param("expiredBefore") java.time.Instant expiredBefore);
+
+    /**
      * 공연별 예매 확정 좌석 수 조회 결과입니다.
      */
     interface EventConfirmedSeatCountProjection {

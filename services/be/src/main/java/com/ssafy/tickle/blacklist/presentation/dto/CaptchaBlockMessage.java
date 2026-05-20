@@ -42,11 +42,26 @@ public record CaptchaBlockMessage(
     }
 
     /**
+     * AI 봇 탐지 즉시 차단 SSE 메시지를 생성합니다.
+     *
+     * <p>캡차 없이 바로 차단할 때 사용합니다.
+     * FE는 이 이벤트 수신 즉시 강제 로그아웃 처리해야 합니다.</p>
+     *
+     * @param recordId AI 서버의 봇 판별 결과 식별자
+     * @return 봇 차단 메시지
+     */
+    public static CaptchaBlockMessage botBlocked(String recordId) {
+        return new CaptchaBlockMessage(CaptchaResult.BOT_BLOCKED, recordId);
+    }
+
+    /**
      * FE CAPTCHA UI를 제어하기 위한 SSE 상태입니다.
      */
     public enum CaptchaResult {
         RETRY_CAPTCHA,
         SUCCESS_CLOSE,
-        DENY_CLOSE
+        DENY_CLOSE,
+        /** AI 봇 탐지 즉시 차단 — 캡차 없음, FE 즉시 강제 로그아웃 */
+        BOT_BLOCKED
     }
 }

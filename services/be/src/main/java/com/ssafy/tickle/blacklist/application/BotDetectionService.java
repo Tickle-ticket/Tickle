@@ -6,6 +6,8 @@ import com.ssafy.tickle.blacklist.presentation.dto.BlacklistResponse;
 import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse;
 import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse.ReasonStat;
 import com.ssafy.tickle.blacklist.presentation.dto.BotDetectionStatsResponse.ScoreBucket;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,6 +19,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.springframework.data.domain.Sort.Direction.DESC;
@@ -30,6 +33,7 @@ import static org.springframework.data.domain.Sort.Direction.DESC;
 public class BotDetectionService {
 
     private final BlacklistRepository blacklistRepository;
+    private final UserRepository userRepository;
 
     /**
      * 봇 탐지 현황 통계를 조회합니다.
@@ -64,11 +68,15 @@ public class BotDetectionService {
                 .map(row -> new ScoreBucket((String) row[0], (Long) row[1]))
                 .toList();
 
-        List<BlacklistResponse> recent = blacklistRepository
+        List<Blacklist> recentBlacklists = blacklistRepository
                 .findAll(PageRequest.of(0, 10, Sort.by(DESC, "createdAt")))
-                .getContent()
-                .stream()
-                .map(BlacklistResponse::from)
+                .getContent();
+        Set<Long> recentUserIds = recentBlacklists.stream()
+                .map(Blacklist::getUserId).collect(Collectors.toSet());
+        Map<Long, String> recentUserNameById = userRepository.findAllByIdIn(recentUserIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
+        List<BlacklistResponse> recent = recentBlacklists.stream()
+                .map(b -> BlacklistResponse.of(b, recentUserNameById.get(b.getUserId())))
                 .toList();
 
         return BotDetectionStatsResponse.from(total, recentOneHourCount, blockedIpCount, byReason, scoreDistribution, recent);

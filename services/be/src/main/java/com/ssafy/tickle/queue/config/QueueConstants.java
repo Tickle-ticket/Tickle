@@ -8,7 +8,9 @@ import java.time.Duration;
 public final class QueueConstants {
 
     public static final long SLOT_LIMIT = 100L;
-    public static final long SSE_TIMEOUT_MILLIS = 30L * 60L * 1000L;
+    // 30분에서 3분으로 단축: SSE 연결이 해제될 때까지 Virtual Thread가 메모리를 점유하므로
+    // timeout을 줄여 메모리 회수 주기를 단축한다. 클라이언트(EventSource)가 자동 재연결한다.
+    public static final long SSE_TIMEOUT_MILLIS = 3L * 60L * 1000L;
     public static final long DEFAULT_ADMISSION_RATE_PER_MINUTE = 30L;
     public static final long SCHEDULER_INTERVAL_MILLIS = 500L;
 
