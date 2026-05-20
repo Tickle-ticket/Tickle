@@ -10,6 +10,8 @@ import com.ssafy.tickle.blacklist.presentation.dto.InternalAddBlacklistRequest;
 import com.ssafy.tickle.blacklist.presentation.dto.InternalBatchAddBlacklistRequest;
 import com.ssafy.tickle.common.exception.BaseException;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 블랙리스트 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
@@ -28,6 +33,7 @@ import java.util.List;
 public class BlacklistService {
 
     private final BlacklistRepository blacklistRepository;
+    private final UserRepository userRepository;
 
     /**
      * 블랙리스트 전체 목록을 페이지네이션하여 조회합니다.
@@ -40,8 +46,16 @@ public class BlacklistService {
         Page<Blacklist> blacklistPage = blacklistRepository.findAll(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
+
+        // userId 목록으로 User를 한 번에 조회해 N+1 방지
+        Set<Long> userIds = blacklistPage.getContent().stream()
+                .map(Blacklist::getUserId)
+                .collect(Collectors.toSet());
+        Map<Long, String> userNameById = userRepository.findAllByIdIn(userIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
+
         List<BlacklistResponse> items = blacklistPage.getContent().stream()
-                .map(BlacklistResponse::from)
+                .map(b -> BlacklistResponse.of(b, userNameById.get(b.getUserId())))
                 .toList();
         return BlacklistPageResponse.from(blacklistPage, items);
     }

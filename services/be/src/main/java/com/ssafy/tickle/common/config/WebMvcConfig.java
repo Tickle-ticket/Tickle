@@ -52,23 +52,21 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/v1/cancellations/*/notify"
                 );
 
+        // [성능 테스트 임시] seats/** 경로 인터셉터 제외 — 테스트 완료 후 원복 필요
         registry.addInterceptor(blacklistInterceptor)
                 .addPathPatterns(
-                        "/api/v1/events/**/seats/**",
                         "/api/v1/queue/**",
                         "/api/v1/reservations/**"
                 );
 
         registry.addInterceptor(ipRateLimitInterceptor)
                 .addPathPatterns(
-                        "/api/v1/events/**/seats/**",
                         "/api/v1/queue/**",
                         "/api/v1/reservations/**"
                 );
 
         registry.addInterceptor(suspiciousPatternInterceptor)
                 .addPathPatterns(
-                        "/api/v1/events/**/seats/**",
                         "/api/v1/queue/**",
                         "/api/v1/reservations/**"
                 );

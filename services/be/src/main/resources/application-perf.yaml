@@ -1,0 +1,51 @@
+# ===================================================================
+# 성능 테스트 전용 Spring 프로파일 (profile: perf)
+#
+# 역할:
+#   - Redis Sentinel → localhost:6379 standalone 전환
+#   - Tomcat thread pool 설정 가시화
+#   - Tempo tracing 비활성화 (server3 IP 없음)
+#   - Virtual Thread: 환경변수 VIRTUAL_THREADS_ENABLED로 제어
+#     Before: VIRTUAL_THREADS_ENABLED=false
+#     After:  VIRTUAL_THREADS_ENABLED=true
+#
+# 사용법:
+#   SPRING_PROFILES_ACTIVE=local,perf ./gradlew bootRun
+# ===================================================================
+
+spring:
+  # Redis Sentinel 비활성화 → standalone localhost:6379 전환
+  # sentinel.master를 null(빈 키)로 override해 Spring Boot가 standalone 모드 선택
+  # RedissonConfig.java도 masterName.isBlank() → SingleServer 모드로 전환
+  data:
+    redis:
+      sentinel:
+        master:      # null → standalone 전환
+        nodes:       # null
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ""
+      timeout: 3s
+
+  # Virtual Thread (Java 21 Loom)
+  # Before: false, After: true
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS_ENABLED:false}
+
+# Tempo tracing 비활성화 (server3 접근 불가)
+management:
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  tracing:
+    sampling:
+      probability: 0.0
+
+# Tomcat thread pool: Before/After 대비를 위해 30으로 제한
+# Virtual Thread 활성화 시 이 설정은 carrier thread pool로 작동 (실질적 제한 없어짐)
+server:
+  tomcat:
+    threads:
+      max: 30
+      min-spare: 5

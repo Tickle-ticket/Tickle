@@ -48,11 +48,15 @@ public class JwtProvider {
      */
     public String issueAccessToken(Long userId, AuthUser.Role role) {
         Instant now = Instant.now();
+        // ADMIN은 30일, 일반 사용자는 기본 설정값 사용
+        long expiryMs = (role == AuthUser.Role.ADMIN)
+                ? 30L * 24 * 60 * 60 * 1000
+                : accessTokenExpiryMs;
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("role", role.name())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusMillis(accessTokenExpiryMs)))
+                .expiration(Date.from(now.plusMillis(expiryMs)))
                 .signWith(secretKey)
                 .compact();
     }
