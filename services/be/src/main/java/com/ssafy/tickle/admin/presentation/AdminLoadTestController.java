@@ -1,8 +1,10 @@
 package com.ssafy.tickle.admin.presentation;
 
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.user.presentation.interceptor.UserAccessLogInterceptor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,13 +22,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/load-test")
 public class AdminLoadTestController {
 
     private static final AtomicBoolean running = new AtomicBoolean(false);
-
-    @Value("${spring.application.name:tickle}")
-    private String appName;
+    private final StringRedisTemplate stringRedisTemplate;
 
     /**
      * 시연용 부하 테스트를 시작합니다.
@@ -39,6 +40,14 @@ public class AdminLoadTestController {
         if (running.getAndSet(true)) {
             return ResponseEntity.status(409)
                     .body(BaseResponse.error(409, "이미 부하 테스트가 실행 중입니다."));
+        }
+
+        // 이전 테스트의 접속자 ZSet 초기화 — 버튼을 누를 때마다 0명부터 시작
+        try {
+            stringRedisTemplate.delete(UserAccessLogInterceptor.ACTIVE_USERS_ZSET_KEY);
+            log.info("[LoadTest] active_users_zset 초기화 완료");
+        } catch (Exception e) {
+            log.warn("[LoadTest] active_users_zset 초기화 실패 (무시): {}", e.getMessage());
         }
 
         String scriptPath = System.getProperty("user.dir") +
