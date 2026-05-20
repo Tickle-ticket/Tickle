@@ -75,8 +75,9 @@ export default function () {
   check(tokenRes, { "token 200": (r) => r.status === 200 });
   const queueToken = tokenRes.json("data.queueToken");
 
-  // 3) 5초 대기 (대시보드에서 트래픽 증가 확인할 시간)
-  sleep(5);
+  // 3) 1초 대기 — 스케줄러(0.5초 주기) 처리 전에 leave해서
+  //    ADMITTED 슬롯을 팀원에게 양보한다.
+  sleep(1);
 
   // 4) 대기열 나가기 — ADMITTED 슬롯 반납 → 다음 사람 입장 가능
   if (queueToken) {
