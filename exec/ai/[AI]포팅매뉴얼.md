@@ -224,8 +224,6 @@ docker compose --env-file .env up -d --build
 ## 7. 배포 시 특이사항
 
 - AI Worker는 시작 시 모델 artifact를 로드합니다. `USE_TYPE_ENSEMBLE=true`이면 `MODELS_ROOT/<DETAIL|CAPTCHA|BOOKING>/<classifier_dir>/model.joblib`와 `input_features.json`이 최소 1세트 이상 존재해야 합니다.
-- 현재 저장소에는 type별 ensemble 디렉터리에 `.gitkeep`만 있을 수 있습니다. 운영 배포 전 실제 모델 파일과 `thresholds.json`을 배치하거나 `USE_TYPE_ENSEMBLE=false`로 단일 모델 fallback을 사용해야 합니다.
-- `thresholds.json`이 없으면 `ALLOW_MAX_SCORE`, `BLOCK_MIN_SCORE` 환경 변수 기본값으로 동작합니다. 예시는 `services/ai/models/thresholds.example.json`에 있습니다.
 - Kafka topic은 `kafka-init` 컨테이너가 생성합니다. `KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`이므로 topic 이름 변경 시 init 설정과 producer/consumer 설정을 함께 변경해야 합니다.
 - PostgreSQL 초기화 SQL은 `services/ai/docker/postgres/init/001_init.sql`이 컨테이너 최초 생성 시 실행됩니다. 기존 volume이 있으면 자동 재실행되지 않습니다.
 - Docker Compose 내부 통신은 `kafka:9092`, `postgres:5432`를 사용합니다. Host에서 접근할 때만 `KAFKA_PORT`, `POSTGRES_PORT`를 사용합니다.
@@ -254,8 +252,19 @@ docker compose --env-file .env up -d --build
 | `exec/.env.example` | 포팅 매뉴얼용 통합 환경 변수 예시와 주석 설명 |
 | `services/ai/docker/.env.example` | AI Docker Compose 실행 환경 변수 예시 |
 | `services/ai/docker/.env` | AI 운영/로컬 실제 환경 변수. Git 커밋 금지 |
-| `services/ai/docker/docker-compose.yml` | AI Kafka/PostgreSQL/Worker/API/Ingest 컨테이너 환경 변수 및 배포 구성 |
+| `services/ai/docker/docker-compose.yml` | AI Kafka/PostgreSQL/Worker/API/Ingest 컨테이너 구성 |
 | `services/ai/docker/postgres/init/001_init.sql` | AI PostgreSQL 초기 테이블/인덱스 생성 SQL |
+| `services/ai/Dockerfile` | Python AI Worker/API 이미지 정의 |
+| `services/ai/requirements_linux.txt` | 운영 컨테이너 Python dependency 고정 버전 |
+| `services/ai/requirements.txt` | 개발/데모용 최소 Python dependency |
+| `services/ai/serving/repository.py` | PostgreSQL 접속 환경 변수와 저장 로직 |
+| `services/ai/serving/kafka_consumer.py` | Kafka bootstrap/group 환경 변수와 consumer 설정 |
+| `services/ai/serving/macro_predictor.py` | 모델 artifact, ensemble, threshold 환경 변수 처리 |
+| `services/ai/serving/be_callback_client.py` | BE callback URL, timeout, 내부 인증 환경 변수 처리 |
+| `services/ai/serving/api.py` | AI Internal API endpoint 정의 |
 | `services/ai/ingest/src/main/resources/application.yaml` | Ingest server/Kafka/CORS/Actuator 설정 |
+| `services/ai/ingest/build.gradle` | Ingest Java/Spring dependency 및 Java 21 설정 |
+| `services/ai/ingest/Dockerfile` | Ingest Docker build/runtime 이미지 정의 |
 | `services/ai/models/thresholds.example.json` | type별 threshold 예시 |
-| `services/ai/models/**/model.joblib`, `input_features.json` | 운영 추론 모델과 입력 feature 정의 |
+| `services/ai/models/**/model.joblib` | 운영 추론 모델 artifact. 대용량/민감 파일이면 별도 배포 관리 |
+| `services/ai/models/**/input_features.json` | 모델 입력 feature 순서 정의 |

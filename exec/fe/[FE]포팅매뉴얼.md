@@ -26,7 +26,6 @@ Tickle 프론트엔드는 Next.js 기반 웹 애플리케이션입니다. 사용
 | State/Data | Zustand 5, TanStack React Query 5 | `view/fe/tickle/package.json` |
 | Chart | Recharts 3 | `view/fe/tickle/package.json` |
 | Animation | Framer Motion 12, Lottie React | `view/fe/tickle/package.json` |
-| Mock API | MSW 2 | `view/fe/tickle/package.json`, `view/fe/tickle/src/shared/api/mock/*` |
 | UI 문서 | Storybook 10 | `view/fe/tickle/package.json` |
 | E2E Test | Playwright 1.59 | `view/fe/tickle/playwright.config.ts` |
 | Unit/Browser Test | Vitest 4 | `view/fe/tickle/vitest.config.ts` |
@@ -195,23 +194,13 @@ Next.js의 `NEXT_PUBLIC_*` 환경 변수는 브라우저 번들에 포함됩니�
 
 ## 8. 배포 시 특이사항
 
-- `NEXT_PUBLIC_*` 값은 빌드 결과물에 포함되므로 운영 배포 전 Jenkins/빌드 환경 변수 값이 운영 도메인을 바라보는지 확인해야 합니다.
 - Dockerfile은 `.next/standalone` 산출물이 이미 존재한다는 전제로 동작합니다. Docker build 전에 반드시 `pnpm build`가 선행되어야 합니다.
-- `docker-compose.yml`에는 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `NEXT_PUBLIC_MOCK_LOGIN_EVENT_ID`, `NEXT_PUBLIC_MOCK_BOOKING_COMPLETE_EVENT_ID` build arg가 현재 명시되어 있지 않습니다. Jenkins 빌드 방식에서는 Jenkins 환경 변수로 빌드 시점에 주입됩니다.
 - Host Nginx가 외부 80/443 요청을 `tickle-fe:3000` 또는 `localhost:3000`으로 프록시해야 합니다.
 - `next.config.ts`의 `images.remotePatterns`에 허용된 이미지 도메인만 Next Image 최적화 대상으로 사용할 수 있습니다. 신규 이미지 CDN을 추가하면 해당 설정을 함께 수정해야 합니다.
 - Playwright 설정은 `pnpm start`로 production 서버를 띄우는 전제입니다. 테스트 전 `pnpm build`가 필요합니다.
 - `.env`, `.env.local`, 실제 API Key, Webhook URL, SSH key는 Git에 커밋하지 않습니다.
 
-## 9. DB 접속 정보 및 주요 프로퍼티 파일 목록
-
-FE는 DB에 직접 접속하지 않습니다. 모든 데이터 접근은 Core BE/Auth/AI API를 통해 수행합니다.
-
-| 구분 | 접속 방식 | 정의 위치 |
-|------|-----------|-----------|
-| Core DB | FE 직접 접속 없음. Core BE API 호출 | `NEXT_PUBLIC_API_URL` |
-| Auth DB | FE 직접 접속 없음. Auth API 호출 | `NEXT_PUBLIC_AUTH_API_URL` |
-| AI/행동 분석 저장소 | FE 직접 접속 없음. AI public API 호출 | `NEXT_PUBLIC_AI_PUBLIC_API_URL` |
+## 9. 주요 프로퍼티 파일 목록
 
 주요 설정 파일:
 
@@ -232,8 +221,6 @@ FE는 DB에 직접 접속하지 않습니다. 모든 데이터 접근은 Core BE
 | `view/fe/tickle/vitest.config.ts` | Vitest 테스트 설정 |
 | `view/fe/tickle/src/shared/api/*` | Core/Auth/AI API client 및 endpoint 설정 |
 | `view/fe/tickle/src/shared/lib/kakaoOAuth.ts` | 카카오 OAuth URL/state/redirect 설정 |
-| `view/fe/tickle/src/shared/providers/MSWProvider.tsx` | Mock API 활성화 설정 |
-| `view/fe/tickle/src/shared/config/mockEventConfig.ts` | Mock 이벤트 ID 설정 |
 
 ## 10. 포트 목록
 
