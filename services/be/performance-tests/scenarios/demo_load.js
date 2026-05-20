@@ -16,7 +16,7 @@ export const options = {
       executor: "ramping-vus",
       startVUs: 1,
       stages: [
-        { duration: "30s", target: 100  },
+        { duration: "30s", target: 200  },
         { duration: "1m",  target: 1000 },
         { duration: "1m",  target: 1   },
       ],
@@ -75,8 +75,8 @@ export default function () {
   check(tokenRes, { "token 200": (r) => r.status === 200 });
   const queueToken = tokenRes.json("data.queueToken");
 
-  // 3) 10초 대기 (대시보드에서 트래픽 증가 확인할 시간)
-  sleep(10);
+  // 3) 5초 대기 (대시보드에서 트래픽 증가 확인할 시간)
+  sleep(5);
 
   // 4) 대기열 나가기 — ADMITTED 슬롯 반납 → 다음 사람 입장 가능
   if (queueToken) {
