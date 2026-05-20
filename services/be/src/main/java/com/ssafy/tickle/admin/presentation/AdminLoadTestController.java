@@ -1,6 +1,7 @@
 package com.ssafy.tickle.admin.presentation;
 
 import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.user.presentation.interceptor.UserAccessLogInterceptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -28,6 +30,7 @@ public class AdminLoadTestController {
 
     private static final AtomicBoolean running = new AtomicBoolean(false);
     private final StringRedisTemplate stringRedisTemplate;
+    private final UserRepository userRepository;
 
     /**
      * 시연용 부하 테스트를 시작합니다.
@@ -42,12 +45,17 @@ public class AdminLoadTestController {
                     .body(BaseResponse.error(409, "이미 부하 테스트가 실행 중입니다."));
         }
 
-        // 이전 테스트의 접속자 ZSet 초기화 — 버튼을 누를 때마다 0명부터 시작
+        // demo 계정(k6test.com)의 userId만 ZSet에서 제거 — 실제 접속자는 유지
         try {
-            stringRedisTemplate.delete(UserAccessLogInterceptor.ACTIVE_USERS_ZSET_KEY);
-            log.info("[LoadTest] active_users_zset 초기화 완료");
+            List<Long> demoIds = userRepository.findIdsByEmailEndingWith("@k6test.com");
+            if (!demoIds.isEmpty()) {
+                Object[] members = demoIds.stream().map(String::valueOf).toArray();
+                stringRedisTemplate.opsForZSet().remove(
+                        UserAccessLogInterceptor.ACTIVE_USERS_ZSET_KEY, members);
+                log.info("[LoadTest] demo 계정 {}개 접속자 ZSet에서 제거 완료", demoIds.size());
+            }
         } catch (Exception e) {
-            log.warn("[LoadTest] active_users_zset 초기화 실패 (무시): {}", e.getMessage());
+            log.warn("[LoadTest] demo 계정 ZSet 정리 실패 (무시): {}", e.getMessage());
         }
 
         String scriptPath = System.getProperty("user.dir") +

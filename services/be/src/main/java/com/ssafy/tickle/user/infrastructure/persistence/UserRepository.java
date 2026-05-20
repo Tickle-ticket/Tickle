@@ -2,6 +2,8 @@ package com.ssafy.tickle.user.infrastructure.persistence;
 
 import com.ssafy.tickle.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,4 +29,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return 조회된 사용자 목록
      */
     List<User> findAllByIdIn(Collection<Long> ids);
+
+    /**
+     * 이메일 접미사로 사용자 식별자 목록을 조회합니다.
+     *
+     * <p>시연용 부하 테스트 계정(demo*@k6test.com) 정리 용도로 사용합니다.</p>
+     *
+     * @param emailSuffix 이메일 접미사 (예: "@k6test.com")
+     * @return 해당 이메일을 가진 사용자 식별자 목록
+     */
+    @Query("SELECT u.id FROM User u WHERE u.email LIKE %:emailSuffix")
+    List<Long> findIdsByEmailEndingWith(@Param("emailSuffix") String emailSuffix);
 }
