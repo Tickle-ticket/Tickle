@@ -1,10 +1,25 @@
-# IDE
-.idea/
-*.iml
+node_modules/
+services/ai/train/model_joblib/
 
 # 환경변수
 .env
 
+# Local working notes (per-developer)
+tasks/
+
+# IDE / local tool artifacts
+.vscode/
+.jupyter-config/
+
+# IDE
+.idea/
+*.iml
+
 # Claude Code 개인 설정 (토큰, 권한 등 로컬 오버라이드)
 .claude/settings.local.json
+
+# Local data
 mock_data.sql
+
+# OS
+.DS_Store
