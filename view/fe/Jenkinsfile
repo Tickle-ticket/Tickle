@@ -1,0 +1,168 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'node20'
+    }
+
+    environment {
+        PROJECT_PATH = 'view/fe/tickle'
+
+        EC2_USER = 'ubuntu'
+        EC2_IP = '13.124.218.77'
+
+        // docker-compose.yml 이 있는 EC2 루트 경로
+        TARGET_DIR = '/home/ubuntu/S14P31A203'
+
+        // FE 소스, 빌드 산출물을 배치할 EC2 경로
+        FE_TARGET_DIR = '/home/ubuntu/S14P31A203/view/fe/tickle'
+
+        SSH_CREDENTIAL_ID = 'fe-ec2-key'
+        MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
+
+        NEXT_PUBLIC_API_URL = 'https://tickle-ticket.co.kr'
+        NEXT_PUBLIC_AUTH_API_URL = 'https://tickle-ticket.co.kr'
+        NEXT_PUBLIC_AI_PUBLIC_API_URL = 'https://www.tickle-ticket.co.kr'
+        NEXT_PUBLIC_API_MOCKING = 'disabled'
+        NEXT_PUBLIC_INTERNAL_SECRET = 'tickle-internal'
+        NEXT_PUBLIC_KAKAO_REST_API_KEY = '484f24406bdcf9b3bcd0a34c773cde99'
+        NEXT_PUBLIC_KAKAO_REDIRECT_URI = 'https://tickle-ticket.co.kr/oauth/callback'
+        NEXT_PUBLIC_PAYMENT_BASE_URL = 'https://tickle-ticket.co.kr'
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAADOcVYSwitvl9qep'
+        NEXT_PUBLIC_MOCK_LOGIN_EVENT_ID='6061'
+        NEXT_PUBLIC_MOCK_BOOKING_COMPLETE_EVENT_ID='6061'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '===== [1/4] 코드 체크아웃 시작 ====='
+                checkout scm
+                echo "브랜치: ${env.GIT_BRANCH}"
+                echo "커밋: ${env.GIT_COMMIT}"
+            }
+        }
+
+        stage('FE Build') {
+            steps {
+                dir("${env.PROJECT_PATH}") {
+                    echo '===== [2/4] pnpm 환경 구축 및 Next.js 빌드 ====='
+                    sh 'npm install -g pnpm'
+                    sh '''
+                        pnpm install --frozen-lockfile --shamefully-hoist
+                        pnpm approve-builds || true
+                        pnpm build
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sshagent([SSH_CREDENTIAL_ID]) {
+                    echo '===== [3/4] 파일 압축 및 서버 전송 ====='
+
+                    // 1. FE 빌드 산출물 압축
+                    // Dockerfile이 EC2에 이미 있다면 포함하지 않아도 되지만,
+                    // 배포 재현성을 위해 포함하는 것을 권장
+                    sh """
+                        cd ${env.PROJECT_PATH}
+                        tar -czf deploy.tar.gz \
+                            .next/standalone \
+                            .next/static \
+                            public \
+                            Dockerfile \
+                            .dockerignore
+                    """
+
+                    // 2. 서버 폴더 준비 및 소유권 설정
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} '
+                            set -e
+                            mkdir -p ${FE_TARGET_DIR}
+                            sudo chown -R ${EC2_USER}:${EC2_USER} ${TARGET_DIR}
+                        '
+                    """
+
+                    // 3. FE 산출물 전송
+                    sh """
+                        scp -o StrictHostKeyChecking=no \
+                            ${env.PROJECT_PATH}/deploy.tar.gz \
+                            ${EC2_USER}@${EC2_IP}:${FE_TARGET_DIR}/deploy.tar.gz
+                    """
+
+                    // 4. FE 산출물은 FE 경로에서 압축 해제
+                    // 5. docker compose는 docker-compose.yml이 있는 루트에서 실행
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} '
+                            set -e
+
+                            cd ${FE_TARGET_DIR}
+                            rm -rf .next
+                            tar -xzf deploy.tar.gz
+                            rm deploy.tar.gz
+
+                            cd ${TARGET_DIR}
+                            docker compose build tickle-fe
+                            docker compose up -d tickle-fe
+
+                            sudo systemctl reload nginx
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                echo '===== [4/4] 배포 완료 확인 ====='
+                sshagent([SSH_CREDENTIAL_ID]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} '
+                            set -e
+
+                            cd ${TARGET_DIR}
+
+                            echo "===== docker compose ps ====="
+                            docker compose ps
+
+                            echo "===== docker ps ====="
+                            docker ps --format "table {{.Names}}\\t{{.Ports}}\\t{{.Status}}"
+
+                            echo "===== FE container check ====="
+                            sleep 10
+                            curl -I http://localhost:3000
+
+                            echo "===== Host Nginx proxy check ====="
+                            curl -I http://localhost
+                        '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "🚀 FE 배포 성공!", "fields": [{"short": true, "title": "👤 작업자", "value": "${author}"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 접속", "value": "https://k14a203.p.ssafy.io"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
+        }
+
+        failure {
+            script {
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def failMsg = ["아 ${author}야 프론트 배포 터졌어 빨리 봐 🚨", "${author} FE CD 나갔는데 ㅋㅋ 확인해", "${author} 프론트 서버 죽었다 살려줘 😭", "${author}!! FE 배포 빨간불 ㅠ 고쳐줘"][new Random().nextInt(4)]
+                def msg = """{"text": "> ${failMsg}", "attachments": [{"color": "#ff4444", "title": "💥 FE 배포 실패!", "fields": [{"short": true, "title": "👤 담당자", "value": "**${author}**"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
+        }
+    }
+}

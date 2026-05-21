@@ -1,0 +1,171 @@
+'use client';
+
+import React, { useRef, useState, useEffect } from 'react';
+
+interface InteractiveMapViewerProps {
+  children: React.ReactNode;
+  showZoomControls?: boolean;
+}
+
+export const InteractiveMapViewer = ({ children, showZoomControls = true }: InteractiveMapViewerProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  
+  const [scale, setScale] = useState(1); 
+  const [minScale, setMinScale] = useState(0.1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  
+  const isDragging = useRef(false);
+  const lastPosition = useRef({ x: 0, y: 0 });
+
+  const fitContent = () => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
+    const contentWidth = content.scrollWidth;
+    const contentHeight = content.scrollHeight;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    if (contentWidth === 0 || contentHeight === 0) return;
+
+    const scaleX = containerWidth / contentWidth;
+    const scaleY = containerHeight / contentHeight;
+    const fitScale = Math.min(scaleX, scaleY) * 0.95;
+    
+    setScale(fitScale);
+    setMinScale(fitScale);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  // 컴포넌트 마운트 및 리사이즈 시 화면에 딱 맞게(최대로) 초기 배율 계산
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+    if (!container || !content) return;
+
+    fitContent();
+
+    const resizeObserver = new ResizeObserver(() => fitContent());
+    resizeObserver.observe(container);
+    resizeObserver.observe(content);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // 줌인/줌아웃 로직 (마우스 위치 기준)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault(); // 기본 스크롤 방지
+      
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const zoomFactor = -e.deltaY * 0.002;
+      const scaleMultiplier = Math.exp(zoomFactor);
+
+      setScale(prevScale => {
+        let newScale = prevScale * scaleMultiplier;
+        newScale = Math.max(minScale, Math.min(newScale, 3)); // minScale 이하로 안 줄어들게
+
+        const actualMultiplier = newScale / prevScale;
+
+        setPosition(prevPos => {
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          
+          const mouseRelativeX = mouseX - cx;
+          const mouseRelativeY = mouseY - cy;
+
+          return {
+            x: (prevPos.x - mouseRelativeX) * actualMultiplier + mouseRelativeX,
+            y: (prevPos.y - mouseRelativeY) * actualMultiplier + mouseRelativeY
+          };
+        });
+
+        return newScale;
+      });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [minScale]);
+
+  const handleZoomIn = () => setScale(prev => Math.min(prev * 1.3, 3));
+  const handleZoomOut = () => setScale(prev => Math.max(prev / 1.3, minScale));
+  const handleResetZoom = () => fitContent();
+
+  const hasDragged = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // 확대/축소 버튼 위에서 발생한 이벤트 무시
+    if ((e.target as HTMLElement).closest('.zoom-controls')) return;
+
+    isDragging.current = true;
+    hasDragged.current = false;
+    lastPosition.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return;
+    
+    const dx = e.clientX - lastPosition.current.x;
+    const dy = e.clientY - lastPosition.current.y;
+    
+    // 일정 거리 이상 움직이면 드래그로 판정
+    if (!hasDragged.current && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      hasDragged.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    
+    if (hasDragged.current) {
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      lastPosition.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDragging.current = false;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (hasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      hasDragged.current = false;
+    }
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      className="w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing touch-none select-none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClickCapture={handleClickCapture}
+    >
+      <div 
+        ref={contentRef}
+        className="absolute top-1/2 left-1/2 origin-center"
+        style={{ 
+          transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
+          willChange: 'transform'
+        }}
+      >
+        {children}
+      </div>
+
+
+    </div>
+  );
+};
