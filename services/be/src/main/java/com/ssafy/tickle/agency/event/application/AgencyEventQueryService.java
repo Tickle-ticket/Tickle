@@ -1,0 +1,172 @@
+package com.ssafy.tickle.agency.event.application;
+
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventDetailResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventListItemResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventListResponse;
+import com.ssafy.tickle.agency.event.presentation.dto.response.AgencyEventSeatResponse;
+import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.event.domain.Event;
+import com.ssafy.tickle.event.domain.EventImage;
+import com.ssafy.tickle.event.domain.EventPricePolicy;
+import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.persistence.EventImageRepository;
+import com.ssafy.tickle.event.infrastructure.persistence.EventRepository;
+import com.ssafy.tickle.event.infrastructure.persistence.EventPricePolicyRepository;
+import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
+import com.ssafy.tickle.organizer.infrastructure.persistence.OrganizerRepository;
+import com.ssafy.tickle.seat.domain.EventSeat;
+import com.ssafy.tickle.seat.domain.SessionSeat;
+import com.ssafy.tickle.seat.infrastructure.persistence.EventSeatRepository;
+import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
+import com.ssafy.tickle.user.domain.User;
+import com.ssafy.tickle.user.domain.UserRole;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 기획사 공연 조회를 담당합니다.
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class AgencyEventQueryService {
+
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+
+    private final EventRepository eventRepository;
+    private final EventImageRepository eventImageRepository;
+    private final EventPricePolicyRepository eventPricePolicyRepository;
+    private final EventSessionRepository eventSessionRepository;
+    private final OrganizerRepository organizerRepository;
+    private final EventSeatRepository eventSeatRepository;
+    private final SessionSeatRepository sessionSeatRepository;
+    private final UserRepository userRepository;
+    private final AgencyAuthorizationService agencyAuthorizationService;
+
+    /**
+     * 기획사 공연 목록을 조회합니다.
+     *
+     * @param userId JWT에서 추출한 사용자 식별자
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 공연 목록 응답
+     */
+    public AgencyEventListResponse getEvents(Long userId, int page, int size) {
+        Long organizerId = getOrganizerIdByUserId(userId);
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
+
+        Page<Event> eventPage = eventRepository.findByOrganizerId(organizerId, pageable);
+        Map<Long, Long> confirmedSeatCounts = getConfirmedSeatCountMap(eventPage.getContent());
+
+        List<AgencyEventListItemResponse> items = eventPage.getContent().stream()
+                .map(event -> AgencyEventListItemResponse.from(
+                        event,
+                        calculateReservationRate(event, confirmedSeatCounts.getOrDefault(event.getId(), 0L))
+                ))
+                .toList();
+
+        return AgencyEventListResponse.from(eventPage, items);
+    }
+
+    /**
+     * 기획사 공연 상세를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 상세 응답
+     */
+    public AgencyEventDetailResponse getEventDetail(Long userId, Long eventId) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
+        List<EventImage> images = eventImageRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
+        List<EventPricePolicy> pricePolicies = eventPricePolicyRepository.findByEventIdOrderByDisplayOrderAsc(eventId);
+        List<EventSession> sessions = eventSessionRepository.findByEventIdOrderByStartAtAsc(eventId);
+        return AgencyEventDetailResponse.from(event, images, pricePolicies, sessions);
+    }
+
+    /**
+     * 공연의 가격 등급별 좌석 정보를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @return 공연 좌석 응답
+     */
+    public AgencyEventSeatResponse getEventSeats(Long userId, Long eventId) {
+        Event event = agencyAuthorizationService.getOwnedEvent(userId, eventId);
+        List<EventSeat> seats = eventSeatRepository.findByEventSection_Event_IdOrderByEventSection_DisplayOrderAscRowLabelAscSeatNumberAsc(eventId);
+        return AgencyEventSeatResponse.from(event, seats);
+    }
+
+    /**
+     * 유저 식별자를 통해 소속 기획사 식별자를 조회합니다.
+     */
+    private Long getOrganizerIdByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "사용자를 찾을 수 없습니다."));
+
+        if (user.getRole() != UserRole.ORGANIZER || user.getOrganizerId() == null) {
+            throw new BaseException(GlobalErrorCode.ACCESS_DENIED, "기획사 권한이 없는 사용자입니다.");
+        }
+
+        if (!organizerRepository.existsById(user.getOrganizerId())) {
+            throw new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "소속 기획사를 찾을 수 없습니다.");
+        }
+
+        return user.getOrganizerId();
+    }
+
+    /**
+     * 공연 목록의 예매 확정 좌석 수를 공연별로 집계합니다.
+     *
+     * @param events 공연 목록
+     * @return 공연별 예매 확정 좌석 수 맵
+     */
+    private Map<Long, Long> getConfirmedSeatCountMap(List<Event> events) {
+        if (events.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return sessionSeatRepository.countConfirmedSeatsByEventIds(
+                        events.stream().map(Event::getId).toList(),
+                        SessionSeat.SaleStatus.CONFIRMED
+                ).stream()
+                .collect(Collectors.toMap(
+                        SessionSeatRepository.EventConfirmedSeatCountProjection::getEventId,
+                        SessionSeatRepository.EventConfirmedSeatCountProjection::getConfirmedSeatCount
+                ));
+    }
+
+    /**
+     * 공연 예매율을 계산합니다.
+     *
+     * @param event 공연 엔티티
+     * @param confirmedSeatCount 예매 확정 좌석 수
+     * @return 예매율 퍼센트
+     */
+    private BigDecimal calculateReservationRate(Event event, long confirmedSeatCount) {
+        Integer capacity = event.getVenue().getCapacity();
+        if (capacity == null || capacity <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return BigDecimal.valueOf(confirmedSeatCount)
+                .multiply(HUNDRED)
+                .divide(BigDecimal.valueOf(capacity), 2, RoundingMode.HALF_UP);
+    }
+}

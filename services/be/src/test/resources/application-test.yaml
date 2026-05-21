@@ -1,0 +1,78 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:tickle-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        type:
+          preferred_enum_jdbc_type: VARCHAR
+        jdbc:
+          time_zone: Asia/Seoul
+    show-sql: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: tickle-test-group
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
+
+server:
+  port: 0
+
+internal:
+  secret: test-internal-secret
+  auth:
+    url: http://localhost:8081
+  ai:
+    url: http://localhost:6000
+
+jwt:
+  secret: test-jwt-secret-key-for-unit-test-minimum-32bytes!
+
+cors:
+  fe-origin: http://localhost:3000
+
+kakaopay:
+  base-url: https://open-api.kakaopay.com
+  secret-key: test-secret-key
+  cid: TC0ONETIME
+  approval-url: http://localhost:8080/api/v1/payments/kakaopay/approve
+  fail-url: http://localhost:8080/api/v1/payments/kakaopay/fail
+  cancel-url: http://localhost:8080/api/v1/payments/kakaopay/cancel
+  success-redirect-url: http://localhost:3000/payment/success
+  failed-redirect-url: http://localhost:3000/payment/fail
+  cancelled-redirect-url: http://localhost:3000/payment/cancel
+  method-selection-redirect-url: http://localhost:3000/payment
+
+cloud:
+  aws:
+    s3:
+      bucket: tickle-test-bucket
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
+
+coolsms:
+  api-key: test-key
+  api-secret: test-secret
+  sender-number: 01000000000
+
+cloudflare:
+  turnstile:
+    secret-key: test-turnstile-secret-key

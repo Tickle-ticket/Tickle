@@ -1,0 +1,96 @@
+// Jenkinsfile.ci
+pipeline {
+    agent any
+
+    environment {
+        BUILD_BE   = 'false'
+        BUILD_AUTH = 'false'
+        MATTERMOST_WEBHOOK = 'https://meeting.ssafy.com/hooks/riktjr5mz78g5xfot3p4pz4nnr'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo '===== [1/4] 코드 체크아웃 시작 ====='
+                checkout scm
+                echo "현재 브랜치: ${env.GIT_BRANCH}"
+                echo "커밋 해시: ${env.GIT_COMMIT}"
+            }
+        }
+
+        stage('Detect Changes') {
+            steps {
+                echo '===== [2/4] 변경된 서비스 감지 시작 ====='
+                script {
+                    def changes = sh(
+                        script: "git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "변경된 파일 목록:\n${changes}"
+
+                    env.BUILD_BE   = changes.contains('services/be/')   ? 'true' : 'false'
+                    env.BUILD_AUTH = changes.contains('services/auth/') ? 'true' : 'false'
+
+                    echo "BE 빌드 필요: ${env.BUILD_BE}"
+                    echo "Auth 빌드 필요: ${env.BUILD_AUTH}"
+                }
+            }
+        }
+
+        stage('Build BE') {
+            when {
+                environment name: 'BUILD_BE', value: 'true'
+            }
+            steps {
+                echo '===== [3/4] BE 빌드 시작 ====='
+                dir('services/be') {
+                    sh 'chmod +x ./gradlew'
+                    sh './gradlew clean build -x test --no-daemon'
+                    echo 'BE 빌드 성공!'
+                }
+            }
+        }
+
+        stage('Test BE') {
+            when {
+                environment name: 'BUILD_BE', value: 'true'
+            }
+            steps {
+                echo '===== [4/4] BE 테스트 시작 ====='
+                dir('services/be') {
+                    sh './gradlew test --no-daemon'
+                    echo 'BE 테스트 성공!'
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            script {
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def msg = """{"text": "", "attachments": [{"color": "#00c851", "title": "✅ CI 통과!", "fields": [{"short": true, "title": "👤 작업자", "value": "${env.GIT_AUTHOR_NAME ?: '누군가'}"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "📋 커밋", "value": "${shortCommit}"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}, {"short": false, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
+        }
+        failure {
+            script {
+                def shortCommit = env.GIT_COMMIT?.take(7) ?: '???????'
+                def branch = env.GIT_BRANCH ?: '?'
+                def jobUrl = env.BUILD_URL ?: '#'
+                def author = env.GIT_AUTHOR_NAME ?: '누군가'
+                def failMsg = ["아 ${author}야 CI 터졌어 빨리 봐 🚨", "${author} 빌드 나갔는데 ㅋㅋ 확인해", "${author} 아 왜 또 터져", "${author}!! 빨간불 ㅠ 고쳐줘"][new Random().nextInt(4)]
+                def msg = """{"text": "> ${failMsg}", "attachments": [{"color": "#ff4444", "title": "🚨 CI 실패!", "fields": [{"short": true, "title": "👤 담당자", "value": "**${author}**"}, {"short": true, "title": "🌲 브랜치", "value": "${branch}"}, {"short": true, "title": "📋 커밋", "value": "${shortCommit}"}, {"short": true, "title": "⏱️ 소요", "value": "${currentBuild.durationString.replace(' and counting', '')}"}, {"short": false, "title": "🔗 빌드", "value": "[Jenkins 확인하러 가기](${jobUrl})"}], "footer": "Tickle Jenkins"}]}"""
+                sh "curl -s -X POST -H 'Content-Type: application/json' -d '${msg}' ${env.MATTERMOST_WEBHOOK}"
+            }
+        }
+        always {
+            echo '===== CI 파이프라인 종료 ====='
+        }
+    }
+}

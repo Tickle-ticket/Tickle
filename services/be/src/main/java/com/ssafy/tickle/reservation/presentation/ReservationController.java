@@ -1,0 +1,105 @@
+package com.ssafy.tickle.reservation.presentation;
+
+import com.ssafy.tickle.common.auth.UserId;
+import com.ssafy.tickle.common.exception.code.SuccessCode;
+import com.ssafy.tickle.common.response.BaseResponse;
+import com.ssafy.tickle.reservation.application.ReservationOwnershipQueryService;
+import com.ssafy.tickle.reservation.application.ReservationService;
+import com.ssafy.tickle.reservation.presentation.dto.ReservationDetailResponse;
+import com.ssafy.tickle.reservation.presentation.dto.ReservationListResponse;
+import com.ssafy.tickle.reservation.presentation.dto.ReservationOwnershipCountResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 예매 API를 제공하는 컨트롤러입니다.
+ */
+@RestController
+@RequestMapping("/api/v1/reservations")
+@RequiredArgsConstructor
+public class ReservationController implements ReservationApiDoc {
+
+    private final ReservationService reservationService;
+    private final ReservationOwnershipQueryService reservationOwnershipQueryService;
+
+    /**
+     * 사용자의 예매 내역 목록을 조회합니다.
+     *
+     * @param userId JWT에서 추출한 사용자 식별자
+     * @return 예매 요약 목록
+     */
+    @Override
+    @GetMapping
+    public ResponseEntity<BaseResponse<ReservationListResponse>> getReservationList(
+            @UserId Long userId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(reservationService.getReservationList(userId)));
+    }
+
+    /**
+     * 사용자가 특정 회차에서 보유 중인 티켓 수와 취소표 대기 좌석 수를 조회합니다.
+     *
+     * @param eventId 공연 식별자
+     * @param scheduleId 회차 식별자
+     * @param userId JWT에서 추출한 사용자 식별자
+     * @return 보유/대기 좌석 수 응답
+     */
+    @Override
+    @GetMapping("/ownership-count")
+    public ResponseEntity<BaseResponse<ReservationOwnershipCountResponse>> getOwnershipCount(
+            @RequestParam Long eventId,
+            @RequestParam Long scheduleId,
+            @UserId Long userId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(
+                        reservationOwnershipQueryService.getOwnershipCount(eventId, scheduleId, userId)
+                ));
+    }
+
+    /**
+     * 특정 예매의 상세 정보를 조회합니다.
+     *
+     * @param reservationId 예매 식별자
+     * @param userId        JWT에서 추출한 사용자 식별자
+     * @return 예매 상세 응답
+     */
+    @Override
+    @GetMapping("/{reservationId}")
+    public ResponseEntity<BaseResponse<ReservationDetailResponse>> getReservationDetail(
+            @PathVariable Long reservationId,
+            @UserId Long userId
+    ) {
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(reservationService.getReservationDetail(reservationId, userId)));
+    }
+
+    /**
+     * 예매를 취소합니다.
+     *
+     * @param reservationId 예매 식별자
+     * @param userId        JWT에서 추출한 사용자 식별자
+     * @return 빈 응답
+     */
+    @Override
+    @DeleteMapping("/{reservationId}")
+    public ResponseEntity<BaseResponse<Void>> cancelReservation(
+            @PathVariable Long reservationId,
+            @UserId Long userId
+    ) {
+        reservationService.cancelReservation(reservationId, userId);
+        return ResponseEntity
+                .ok()
+                .body(BaseResponse.success(SuccessCode.OK, null));
+    }
+}
