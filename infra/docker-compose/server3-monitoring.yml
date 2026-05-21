@@ -1,0 +1,125 @@
+# infra/docker-compose/server3-monitoring.yml
+services:
+
+  # ─── Prometheus ───────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tickle-prometheus
+    restart: always
+    mem_limit: 200m
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=2d'
+    volumes:
+      - ../../infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+
+  # ─── Grafana ──────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tickle-grafana
+    restart: always
+    mem_limit: 200m
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # ─── Grafana Tempo ────────────────────────────────
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tickle-tempo
+    restart: always
+    mem_limit: 200m
+    user: root
+    command: [ "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ../../infra/tempo/tempo.yml:/etc/tempo.yml
+      - /tmp/tempo:/tmp/tempo
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+  # ─── Grafana Loki ─────────────────────────────────
+  loki:
+    image: grafana/loki:latest
+    container_name: tickle-loki
+    restart: always
+    mem_limit: 100m
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
+  # ─── Promtail (서버 3 로그 수집) ──────────────────
+  promtail:
+    image: grafana/promtail:latest
+    container_name: tickle-promtail
+    restart: always
+    mem_limit: 60m
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ../../infra/promtail/promtail-server3.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+
+  # ─── Redis Replica 1 ──────────────────────────────
+  redis-replica1:
+    image: redis:7
+    container_name: tickle-redis-replica1
+    restart: always
+    mem_limit: 400m
+    command: >
+      redis-server
+      --replicaof ${SERVER1_PRIVATE_IP} 6379
+      --appendonly yes
+    volumes:
+      - redis-replica1-data:/data
+    ports:
+      - "6379:6379"
+
+  # ─── Redis Sentinel 2 ─────────────────────────────
+  redis-sentinel2:
+    image: redis:7
+    container_name: tickle-sentinel2
+    restart: always
+    mem_limit: 80m
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - sentinel2-data:/etc/redis
+    ports:
+      - "26379:26379"
+
+  # ─── Node Exporter ────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: tickle-node-exporter
+    restart: always
+    mem_limit: 50m
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  tempo-data:
+  loki-data:
+  redis-replica1-data:
+  sentinel2-data:

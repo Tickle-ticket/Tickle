@@ -1,0 +1,10 @@
+{
+  "use_gpu": "auto",
+  "lang": "en",
+  "use_angle_cls": false,
+  "det_limit_side_len": 640,
+  "drop_score": 0.5,
+  "keypad_grid_first": false,
+  "keypad_grid_rows": 4,
+  "keypad_grid_cols": 3
+}

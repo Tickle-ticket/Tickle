@@ -1,0 +1,147 @@
+groups:
+  click:
+    - time_to_first_click_ms
+    - time_from_element_visible_to_click_ms
+    - time_from_element_clickable_to_click_ms
+    - click_sequence_consistency_score
+    - click_position_repeat_rate
+    - double_click_rate
+    - misclick_rate
+    - reclick_rate
+    - pre_click_mousemove_count
+    - pre_click_hover_time_ms
+    - pre_click_scroll_flag
+    - immediate_post_render_click_rate
+
+  mouse:
+    - mouse_total_travel_distance_px
+    - mouse_avg_speed_px_per_ms
+    - mouse_max_speed_px_per_ms
+    - mouse_speed_change_mean
+    - mouse_acceleration_mean
+    - mouse_jerk_mean
+    - mouse_path_straightness_score
+    - mouse_path_curvature_mean
+    - mouse_direction_change_count
+    - mouse_overshoot_flag
+    - mouse_hover_dwell_time_ms
+    - mouse_stop_segment_count
+    - mousemove_event_rate
+    - edge_or_fixed_point_visit_rate
+    - pre_click_path_300ms_total_distance_px
+    - pre_click_path_300ms_straightness
+    - pre_click_path_500ms_total_distance_px
+    - pre_click_path_500ms_straightness
+
+names_ko:
+  time_to_first_click_ms: 첫 클릭 시간
+  time_from_element_visible_to_click_ms: 노출 후 클릭
+  time_from_element_clickable_to_click_ms: 활성 후 클릭
+  click_sequence_consistency_score: 순서 일관성
+  click_position_repeat_rate: 좌표 반복률
+  double_click_rate: 더블클릭 비율
+  misclick_rate: 오클릭 비율
+  reclick_rate: 재클릭 비율
+  pre_click_mousemove_count: 클릭 전 이동 수
+  pre_click_hover_time_ms: 클릭 전 hover
+  pre_click_scroll_flag: 클릭 전 스크롤
+  immediate_post_render_click_rate: 즉시 클릭 비율
+
+  mouse_total_travel_distance_px: 총 이동 거리
+  mouse_avg_speed_px_per_ms: 평균 속도
+  mouse_max_speed_px_per_ms: 최대 속도
+  mouse_speed_change_mean: 속도 변화
+  mouse_acceleration_mean: 가속도 변화
+  mouse_jerk_mean: 저크 평균
+  mouse_path_straightness_score: 경로 직선성
+  mouse_path_curvature_mean: 경로 곡률
+  mouse_direction_change_count: 방향 전환 수
+  mouse_overshoot_flag: 오버슈트 여부
+  mouse_hover_dwell_time_ms: 평균 dwell
+  mouse_stop_segment_count: 정지 구간 수
+  mousemove_event_rate: mousemove 빈도
+  edge_or_fixed_point_visit_rate: 고정점 방문률
+  pre_click_path_300ms_total_distance_px: 300ms 경로 총거리
+  pre_click_path_300ms_straightness: 300ms 경로 직선성
+  pre_click_path_500ms_total_distance_px: 500ms 경로 총거리
+  pre_click_path_500ms_straightness: 500ms 경로 직선성
+
+  durationMs: 페이지 체류 시간
+  clickCount: 클릭 수
+  eventCount: 전체 이벤트 수
+  windowCount: 이벤트 집계 구간 수
+
+exclude:
+  - trial_id
+  - label
+  - stage
+  - selectedSeats
+  - collection_pipeline
+  - session_id
+  - source
+  - metrics_compatibility
+
+
+
+raw:
+ - pre_click_mouse_path_pattern_300ms
+ - pre_click_mouse_path_pattern_500ms
+
+input_features_chan_10:
+  - mousemove_event_rate
+  - pre_click_mousemove_count
+  - mouse_direction_change_count
+  - pre_click_path_300ms_total_distance_px
+  - mouse_stop_segment_count
+  - pre_click_path_500ms_total_distance_px
+  - time_from_element_visible_to_click_ms
+  - time_from_element_clickable_to_click_ms
+  - click_offset_from_element_center_px
+  - inter_click_interval_ms
+
+input_features_chan:
+  - time_to_first_click_ms
+  - time_from_element_visible_to_click_ms
+  - time_from_element_clickable_to_click_ms
+  - click_sequence_consistency_score
+  - click_position_repeat_rate
+  - double_click_rate
+  - misclick_rate
+  - reclick_rate
+  - pre_click_mousemove_count
+  - pre_click_hover_time_ms
+  - pre_click_scroll_flag
+  - immediate_post_render_click_rate
+  - mouse_total_travel_distance_px
+  - mouse_avg_speed_px_per_ms
+  - mouse_max_speed_px_per_ms
+  - mouse_speed_change_mean
+  - mouse_acceleration_mean
+  - mouse_jerk_mean
+  - mouse_path_straightness_score
+  - mouse_path_curvature_mean
+  - mouse_direction_change_count
+  - mouse_overshoot_flag
+  - mouse_hover_dwell_time_ms
+  - mouse_stop_segment_count
+  - mousemove_event_rate
+  - edge_or_fixed_point_visit_rate
+  - pre_click_path_300ms_total_distance_px
+  - pre_click_path_300ms_straightness
+  - pre_click_path_500ms_total_distance_px
+  - pre_click_path_500ms_straightness
+
+
+input_features_gyeom:
+  - inter_click_interval_ms
+  - mouse_speed_change_mean
+  - mouse_total_travel_distance_px
+  - mouse_path_curvature_mean
+  - mouse_avg_speed_px_per_ms
+  - mouse_acceleration_mean
+  - mouse_max_speed_px_per_ms
+
+# 319 final pool: 320 평가 결과 robust(jerk) + borderline(max_speed) 채택
+input_features_gyeom_final_pool:
+  - mouse_jerk_mean
+  - mouse_max_speed_px_per_ms
