@@ -1,0 +1,9 @@
+[mcp_servers.notion]
+args = [
+    "-y",
+    "@notionhq/notion-mcp-server",
+]
+command = "npx"
+
+[mcp_servers.notion.env]
+OPENAPI_MCP_HEADERS = '{"Authorization":"Bearer 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","Notion-Version":"2022-06-28"}'
