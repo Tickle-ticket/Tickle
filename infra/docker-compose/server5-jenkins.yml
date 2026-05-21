@@ -1,0 +1,48 @@
+# infra/docker-compose/server5-jenkins.yml
+services:
+
+  # ─── Jenkins ──────────────────────────────────────
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: tickle-jenkins
+    restart: always
+    mem_limit: 1500m
+    environment:
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    user: root
+
+  # ─── Promtail ─────────────────────────────────────
+  promtail:
+    image: grafana/promtail:latest
+    container_name: tickle-promtail
+    restart: always
+    mem_limit: 60m
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+    volumes:
+      - ../../infra/promtail/promtail-server5.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # ─── Node Exporter ────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: tickle-node-exporter
+    restart: always
+    mem_limit: 50m
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+
+volumes:
+  jenkins-data:

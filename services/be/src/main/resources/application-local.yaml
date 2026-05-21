@@ -1,0 +1,157 @@
+spring:
+  # 스프링 애플리케이션 이름
+  application:
+    name: tickle
+
+  # Virtual Thread (Java 21 Loom) — SSE thread pool 고갈 해결
+  # 기본 true: 운영/로컬 모두 VT 활성화. 비활성화 필요 시 VIRTUAL_THREADS_ENABLED=false
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS_ENABLED:true}
+
+  # MySQL 연결 정보
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA 및 Hibernate 동작 설정
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO}  # 스키마 자동 반영 전략
+    open-in-view: false # View 렌더링 시점까지 영속성 컨텍스트를 열어두지 않음
+    properties:
+      hibernate:
+        format_sql: true
+        type:
+          preferred_enum_jdbc_type: VARCHAR
+        jdbc:
+          time_zone: Asia/Seoul
+    # 실행 SQL 로그 출력 여부
+    show-sql: ${JPA_SHOW_SQL}
+
+  data:
+    # Redis 연결 정보 (Sentinel 모드 — master는 Sentinel이 자동으로 찾음)
+    redis:
+      sentinel:
+        master: mymaster
+        nodes: 172.31.52.183:26379,172.31.57.10:26379,172.31.62.10:26379
+      password: ${REDIS_PASSWORD}
+      # Redis 명령 타임아웃
+      timeout: 3s
+
+  # Kafka 브로커 및 컨슈머/프로듀서 설정
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      # 기본 컨슈머 그룹 ID
+      group-id: ${KAFKA_CONSUMER_GROUP_ID}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    listener:
+      # 토픽이 아직 없어도 애플리케이션 시작을 막지 않음
+      missing-topics-fatal: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
+
+server:
+  # 애플리케이션 HTTP 포트
+  port: ${SERVER_PORT}
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://${SERVER3_PRIVATE_IP}:4318/v1/traces
+
+springdoc:
+  # 코드 변경 후 서버 재시작 시 Swagger 즉시 반영되도록 캐시 비활성화
+  cache:
+    disabled: true
+  # Swagger UI와 OpenAPI 문서 경로 설정
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    # Auth 서버 API 문서를 같은 Swagger UI에서 확인 가능
+    urls:
+      - name: BE API
+        url: /api-docs
+      - name: Auth API
+        url: /auth-api-docs
+  api-docs:
+    path: /api-docs
+
+internal:
+  # BE 서버 자체 내부 통신 시크릿 키
+  secret: ${INTERNAL_SECRET}
+  auth:
+    url: ${AUTH_INTERNAL_URL:http://localhost:8081}
+    secret: ${INTERNAL_SECRET}
+  ai:
+    url: ${AI_INTERNAL_URL}
+
+jwt:
+  # Auth 서버와 공유하는 JWT 서명 시크릿 키 (HS256, 32자 이상 권장)
+  secret: ${JWT_SECRET}
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+
+cors:
+  # 배포 FE Origin
+  fe-origin: ${CORS_FE_ORIGIN}
+  # 로컬 테스트용 모든 출처(*) 허용 여부 (운영에서는 반드시 false)
+  allow-all-origins: ${ALLOW_ALL_ORIGINS:false}
+
+kakaopay:
+  # 카카오페이 단건 결제 API 기본 주소
+  base-url: ${KAKAOPAY_BASE_URL}
+  # 카카오페이 Open API 시크릿 키
+  secret-key: ${KAKAOPAY_SECRET_KEY}
+  # 테스트용 기본 CID
+  cid: ${KAKAOPAY_CID:TC0ONETIME}
+  # 카카오페이 결제 성공 후 백엔드 approve 콜백 URL
+  approval-url: ${KAKAOPAY_APPROVAL_URL}
+  # 카카오페이 결제 실패 후 백엔드 fail 콜백 URL
+  fail-url: ${KAKAOPAY_FAIL_URL}
+  # 카카오페이 결제 취소 후 백엔드 cancel 콜백 URL
+  cancel-url: ${KAKAOPAY_CANCEL_URL}
+  # approve 완료 후 FE 예매 확정 페이지
+  success-redirect-url: ${KAKAOPAY_SUCCESS_REDIRECT_URL}
+  # fail 후 FE 결제 실패 페이지
+  failed-redirect-url: ${KAKAOPAY_FAILED_REDIRECT_URL}
+  # cancel 후 FE 결제 취소 페이지
+  cancelled-redirect-url: ${KAKAOPAY_CANCELLED_REDIRECT_URL}
+
+coolsms:
+  api-key: ${COOLSMS_API_KEY}
+  api-secret: ${COOLSMS_API_SECRET}
+  sender-number: ${COOLSMS_SENDER_NUMBER}
+
+cloudflare:
+  turnstile:
+    secret-key: ${CLOUDFLARE_TURNSTILE_SECRET_KEY}

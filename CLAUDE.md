@@ -1,220 +1,215 @@
-# CLAUDE.md — ai-macro-detection (AI 파트 전용)
+@docs/git-convention.md
+@docs/code-convention.md
 
-본 문서는 Claude Code 가 본 리포에서 작업할 때 따라야 할 컨벤션과 작업 규칙을 정의합니다. 매 세션 시작 시 자동 로딩됩니다.
+# Tickle - 티켓팅 서비스 백엔드
 
-본 리포는 SSAFY 14기 A203 팀 프로젝트 "tickle" 의 AI 파트 작업 리포지토리입니다. AI 파트 전용으로 사용되므로 본 문서는 AI 양식 중심으로 작성됩니다. 다른 파트 (BE/FE/INFRA/DOCS/ETC) 양식은 별도 리포 / 별도 컨벤션 문서를 참조하십시오.
+## 프로젝트 개요
+대용량 트래픽을 처리하는 티켓팅 플랫폼. 대기열(Kafka+SSE), 좌석 선점(Redis 분산락), 실시간 동기화(WebSocket), 취소표 재배분(CoolSMS) 기능을 포함한다.
 
----
+## 작업 디렉토리
+백엔드 작업은 항상 `services/be` 기준으로 진행한다.
 
-## Commit 양식
+## 기술 스택
+- **Spring Boot 3.4.5** / Java 21 / Gradle
+- **MySQL** — 메인 DB
+- **Redis (Redisson 3.49.0)** — 분산락, 캐시, 토큰 저장
+- **Kafka** — 비동기 메시징 (대기열, 취소 이벤트)
+- **WebSocket** — 실시간 좌석 동기화
+- **SSE** — 대기열 순번 실시간 Push
+- **Prometheus + Tempo** — 모니터링/트레이싱
 
-### 형식
+> **아직 build.gradle에 없는 의존성** (auth 작업 전 추가 필요):
+> - `spring-boot-starter-security`
+> - JWT 라이브러리 (`jjwt` 또는 `nimbus-jose-jwt`)
 
+## 패키지 구조
 ```
-[AI] {티켓번호} {타입}: {commit message}
-```
-
-노션 정본의 `[{BE/FE/INFRA/DOCS/ETC}] {티켓번호} {타입}: {commit message}` 양식에서 파트 표시 자리에 자기 파트명을 넣는 규칙. AI 파트이므로 `[AI]` 사용.
-
-### 예시
-
-```
-[AI] 294 feat: Phase B H1+H4 검증 + H1' 신규 가설 등록
-[AI] 294 docs: Phase B H3/H6 모순 정리 (curvature vs straightness)
-[AI] 294 chore: 산출물 PNG 를 이슈 번호 폴더로 분리
-[AI] 295 feat: XGBoost 베이스라인 학습 결과 기록
-```
-
-### 타입 (노션 정본 Commit Convention 기준)
-
-| 타입 | 의미 |
-| --- | --- |
-| `feat` | 새로운 기능 추가 (사용자 관점에서 새 기능이 생길 때) |
-| `fix` | 버그 수정 (의도와 다르게 동작하는 문제를 정상 동작으로 되돌릴 때) |
-| `docs` | 문서 수정 (코드가 아닌 문서 / 설명 / 가이드 변경) |
-| `refactor` | 기능 변화 없는 코드 구조 개선 |
-| `style` | 코드 포맷 / 스타일 또는 UI 스타일 변경 (동작에 영향 없음) |
-| `chore` | 기타 설정 / 빌드 / 환경 변경 (더미데이터 포함) |
-
-위 6개 타입만 사용합니다. 그 외 타입 사용 금지.
-
-### 작성 규칙
-
-- 타입은 영문 소문자
-- 본문은 영한 혼용 가능
-- 커밋 본문은 50자 이내
-- 하나의 커밋에는 한 가지 작업만 포함 (기능 단위)
-- 왜 이 변경이 필요한지 / 무엇을 변경했는지 / 필요 시 이슈 맥락
-
----
-
-## Branch 명명 양식
-
-### 형식
-
-```
-ai-{타입}-{이슈번호}
+com.ssafy.tickle
+├── common/
+│   ├── config/          # JacksonConfig, RedissonConfig, {Domain}CacheConfig 등
+│   ├── exception/       # BaseException, GlobalExceptionHandler
+│   │   └── code/        # ErrorCode(interface), GlobalErrorCode, SuccessCode
+│   ├── response/        # BaseResponse<T> (record)
+│   └── util/            # RedisLockManager
+├── {domain}/            # event, queue, user, seat, reservation, cancellation, payment, venue, favorite, auth(미생성)
+│   ├── domain/          # Entity (Inner Enum, Inner Record 포함)
+│   ├── infrastructure/
+│   │   ├── persistence/ # JpaRepository, CustomRepo, Impl
+│   │   ├── cache/       # model(Cached*), mapper, store
+│   │   └── messaging/   # model(*Message), mapper, producer
+│   ├── application/     # Service, Scheduler
+│   └── presentation/    # Controller, ApiDoc(interface), dto/
 ```
 
-### 예시
+## 코드 컨벤션 핵심 요약
+> 상세 규칙은 `docs/code-convention.md` 참고
 
+- **응답**: `ResponseEntity.ok().body(BaseResponse.success(data))`
+- **예외**: `throw new BaseException(DomainErrorCode.XXX)` — GlobalExceptionHandler가 처리
+- **시간**: `Instant` 사용 (LocalDateTime 금지)
+- **금액**: `BigDecimal` (precision=18, scale=2)
+- **Enum**: 엔티티 Inner Enum, DB는 `@Enumerated(EnumType.STRING)`
+- **JPA Cascade**: 사용 금지. DB 레벨 필요시 `@OnDelete(action = OnDeleteAction.CASCADE)`
+- **Fetch**: 모든 관계 `FetchType.LAZY`, N+1은 `@EntityGraph` 또는 QueryDSL로 해결
+- **Transaction**: 서비스 클래스 레벨 `@Transactional(readOnly = true)`, 쓰기는 메서드에 `@Transactional` 오버라이드
+- **Redis Cache**: CacheStore에서 SerializationException/DataAccessException 반드시 try-catch + warn 로그
+- **Kafka Producer**: 중요 경로는 `kafkaTemplate.send(...).get()`으로 ack 확인
+- **분산락**: `common/util/RedisLockManager` 사용
+
+## 도메인 현황
+| 도메인 | 상태 | 담당 |
+|--------|------|------|
+| event | ✅ 완료 | 양희령 |
+| queue | ✅ 완료 | 양희령 |
+| user | 🔧 기본 완료 | 양희령 |
+| favorite | 🔧 기본 완료 | 양희령 |
+| venue | 🏗 domain/repo만 | - |
+| seat | 🏗 domain/repo만 | 정정교 |
+| reservation | 🏗 domain/repo만 | 정정교 |
+| cancellation | 🏗 domain/repo만 | 정정교 |
+| payment | 🏗 domain/repo만 | 양희령 |
+| **auth** | ❌ 미생성 | **정정교** |
+
+## 정정교 스프린트 작업 (SP3 → SP4)
+
+### SP3 (현재 진행)
+1. **[auth]** 자체 회원가입 — `POST /api/v1/auth/signup`
+2. **[auth]** 자체 로그인 + JWT 발급 — `POST /api/v1/auth/login`
+3. **[auth]** 로그아웃 (Redis 토큰 폐기) — `POST /api/v1/auth/logout`
+4. **[auth]** 액세스 토큰 재발급 — `POST /api/v1/auth/reissue`
+5. **[seat]** 좌석 배치도 조회 — `GET /api/v1/events/{eventId}/schedules/{scheduleId}/seats`
+6. **[seat]** Redis 분산락 좌석 선점 (All-or-Nothing) — `POST .../seats/hold`
+7. **[seat]** 좌석 선점 해제 — `DELETE .../seats/hold`
+8. **[seat]** WebSocket 실시간 좌석 동기화 — `WS /ws/seats/{scheduleId}`
+9. **[reservation]** 예매 내역 목록 조회 — `GET /api/v1/reservations`
+10. **[reservation]** 예매 상세 조회 — `GET /api/v1/reservations/{reservationId}`
+11. **[reservation]** 예매 취소 + Kafka 이벤트 발행 — `DELETE /api/v1/reservations/{reservationId}`
+
+### SP4
+1. **[auth]** 카카오 OAuth 로그인/콜백 + JWT 발급
+2. **[cancellation]** 취소표 상세 조회
+3. **[cancellation]** 취소표 구매 (무통장 입금, 10분 타이머)
+4. **[cancellation]** CoolSMS 취소표 문자 알림 발송
+5. **[admin]** 봇 탐지 현황, 대기열 상태, 블랙리스트 CRUD
+
+## 환경 변수
+`application-local.yaml`은 환경변수로 구성된다. 로컬 실행 시 `.env.example` 참고해서 환경변수 세팅 필요.
+주요 변수: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `SERVER_PORT`
+
+## ERD 참고
+`docs/erd.md` — tickle_core 전체 테이블 구조 (2026-04-28 최신화)
+
+주요 특이사항:
+- `users`: oauth_provider 없음, nickname NOT NULL, profileImgUrl nullable, deleted_at 없음
+- `event_seats`: event_price_policy_id FK 추가됨 (session_seats에서 이동)
+- `bookings`: booked_at → created_at 변경
+- `booking_ticket_status_histories`: booking_id → booking_ticket_id FK 변경
+
+## 인프라 참고
+- `infra/docker-compose/` — 서버별 docker-compose 파일 (server1~5)
+- `infra/redis/` — Redis 설정
+- `Jenkinsfile` — CI/CD 파이프라인
+
+## Claude Code + Notion MCP 설정
+
+ADR 문서를 Claude Code에서 직접 Notion에 작성할 수 있다.
+
+### 최초 1회 설정 (팀원 각자)
+
+1. **Node.js 설치 확인** (npx 필요)
+   ```bash
+   node -v  # v18 이상 권장
+   ```
+
+2. **Claude Code CLI 설치**
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   ```
+
+3. **Notion 토큰을 쉘 환경변수로 등록** — 토큰은 팀 내부 채널에서 공유
+   ```bash
+   # ~/.zshrc 또는 ~/.bashrc에 추가
+   export OPENAPI_MCP_HEADERS='{"Authorization":"Bearer 여기에_토큰_입력","Notion-Version":"2022-06-28"}'
+   ```
+   저장 후 `source ~/.zshrc` 실행
+
+4. **프로젝트 루트에서 Claude Code 실행** — `.claude/settings.json`이 자동 로드되어 Notion MCP가 활성화됨
+   ```bash
+   claude
+   ```
+
+5. **Notion 페이지 권한 추가** — ADR 페이지 및 API 명세서 페이지에서 `···` → `Connect to` → `Claude Code` Integration 선택
+
+> ⚠️ 토큰을 코드에 직접 넣지 말 것. `settings.local.json`도 gitignore 처리되어 있으나 토큰은 환경변수로만 관리.
+
+### 사용법
+
+Claude Code 채팅에서 자연어로 요청:
 ```
-ai-feat-294
-ai-feat-295
-ai-chore-23
-ai-refactor-42
-```
-
-타입은 commit 양식의 타입과 동일한 6개 (feat / fix / docs / refactor / style / chore) 만 사용.
-
-### Git Flow
-
-```
-main
-  └ develop
-      └ develop-ai
-          ├ ai-feat-{이슈번호}
-          ├ ai-chore-{이슈번호}
-          └ ai-{타입}-{이슈번호}
-```
-
-- `main`: 배포 브랜치
-- `develop`: 개발 브랜치
-- `develop-ai`: AI 파트 개발 브랜치
-- `ai-{타입}-{이슈번호}`: AI 세부 작업 브랜치
-
----
-
-## Rebase 워크플로우
-
-`develop-ai` 기준 rebase 후 push.
-
-### 절차
-
-1. 자신의 feature 브랜치 작업 완료
-2. `git checkout develop-ai` — 업데이트된 develop-ai 로 이동
-3. `git pull` — develop-ai 최신화
-4. `git checkout ai-{타입}-{이슈번호}` — 자신의 feature 브랜치로 복귀
-5. `git rebase develop-ai` — develop-ai 위로 rebase
-6. `git push --force-with-lease` — feature 브랜치 원격 갱신
-7. GitLab MR 작성
-
-`develop-ai` 또는 `develop` 브랜치에서 `push --force` 금지.
-
----
-
-## Merge Request
-
-### 원칙
-
-- 모든 변경은 MR 을 통해 병합
-- 코드 리뷰는 기획 확정 이전에는 1인 Approve + merge 로 진행, 기획 확정 후 개발 단계에서 재논의
-- 병합 후 브랜치는 즉시 삭제
-
-### MR 제목
-
-```
-[{타입}] 내용
-```
-
-예시: `[feat] 로그인 구현`
-
-### MR 본문 양식
-
-```
-# 📄 Work Description
-- 설명
-
-# 📷 Screenshot
-- 동영상, 사진, 로그 등
-- ex) 학습 결과 캡처, 노트북 출력, metric 표
-
-# 💬 To Reviewers
-리뷰어들에게 하고 싶은 말
-
-# 🔗 Reference
-참고 자료, 코드 링크
-```
-
----
-
-## Code Review — Pn 룰
-
-| 등급 | 의미 | 작성자 의무 |
-| --- | --- | --- |
-| **P1** | 꼭 반영해주세요 (Request changes) | 반영 또는 합리적 의견으로 설득 |
-| **P2** | 적극적으로 고려해주세요 (Request changes) | 수용 또는 토론 |
-| **P3** | 웬만하면 반영해 주세요 (Comment) | 수용 또는 사유 / 다음 반영 계획 명시 |
-| **P4** | 반영해도 좋고 넘어가도 좋습니다 (Approve) | 무시 가능, 검토 권장 |
-| **P5** | 그냥 사소한 의견입니다 (Approve) | 무시 가능 |
-
----
-
-## Issue 양식
-
-```
-# ⚙️ ISSUE
-- 어떤 이슈인지 설명
-
-# 📄 To-Do
-- [ ] 세부 todo
-```
-
----
-
-## 작업 흐름 규칙
-
-### Plan-first
-
-- 자명하지 않은 작업은 plan 먼저 제시 후 사용자 승인받고 진행
-- `tasks/todo.md` 체크리스트 기반 작업
-- 동작 검증 없이 완료 표시 금지
-- 패턴 / 트러블슈팅은 `tasks/lessons.md` 에 누적
-
-### Working tree 규율
-
-- 브랜치 전환 전 working tree clean 필수
-- 임시 스크립트는 작업 후 즉시 삭제
-- 의도하지 않은 파일이 commit 에 섞이지 않도록 명시 staging (`git add <path>`) 사용
-
-### 작업 분리 / 단위
-
-- 새 작업 시작 시 적절한 브랜치로 이동
-- 한 commit 한 작업
-- 다른 작업이 섞일 가능성 있으면 stash 또는 별도 브랜치로 분리
-
----
-
-## 협업 컨텍스트
-
-### 디렉토리 구조 (전체 tickle 프로젝트)
-
-```
-tickle/
-├── view/
-│   ├── fe/
-│   └── admin/
-├── services/
-│   ├── be/      (Spring Boot BE)
-│   ├── auth/    (인증 Spring Boot)
-│   └── ai/      (FastAPI · 본 리포의 작업 영역)
-├── infra/
-│   └── docker-compose/
-├── .env.example
-├── Jenkinsfile
-└── README.md
+"auth 도메인 JWT 저장 방식 결정 ADR로 작성해줘"
+"오늘 Redis 분산락 트러블슈팅 ADR-036으로 기록해줘"
 ```
 
-본 리포 (ai-macro-detection) 의 작업은 `services/ai/` 하위에 집중됩니다.
+> `.claude/settings.local.json`은 gitignore 처리되어 있으니 개인 설정은 자유롭게 사용 가능.
 
-### 다른 파트 양식 (참고)
+## AI 행동 가이드라인
 
-다른 파트 (BE / FE / INFRA / DOCS / ETC) 양식이 필요한 경우 노션 팀 컨벤션 문서를 참조하십시오. 본 리포에서는 [AI] 양식만 사용합니다.
+Behavioral guidelines to reduce common LLM coding mistakes.
 
----
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-## 메모리 / 문서 분리
+### 1. Think Before Coding
 
-- **CLAUDE.md** (본 문서) = 컨벤션 / 규칙 (불변, "어떻게 해야 하는가") — git 추적, 팀 공유
-- **tasks/lessons.md** = 학습 누적 (가변, "이전에 무슨 일이 있었나") — 로컬 (gitignored), 개인 메모
-- **tasks/todo.md** = 현재 진행 작업 todo — 로컬 (gitignored), 개인 메모
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
