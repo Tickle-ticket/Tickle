@@ -59,22 +59,22 @@ Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴, 키보드 �
   </tr>
   <tr>
     <td align="center" width="150">
-      팀장 / BE
+      PM / BE<br/>Leader
     </td>
     <td align="center" width="150">
-      BE / Infra
+      Infra / BE<br/>Developer
     </td>
     <td align="center" width="150">
-      AI
+      AI<br/>Leader
     </td>
     <td align="center" width="150">
-      AI
+      AI<br/>
     </td>
     <td align="center" width="150">
-      Frontend
+      Frontend<br/>Developer
     </td>
     <td align="center" width="150">
-      Frontend
+      Frontend<br/>Developer
     </td>
   </tr>
 </table>
@@ -194,12 +194,6 @@ Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴, 키보드 �
 | **Container** | Docker, Docker Compose |
 | **Monitoring** | Prometheus (Node Exporter), Grafana (Promtail, Loki) |
 | **Notification** | Mattermost Webhook |
-
----
-
-## 🏗️ 시스템 아키텍처
-
-<img src="photo/artifacts/architecture.png">
 
 ---
 
@@ -414,13 +408,10 @@ src/main/java/
 
 ---
 
-## 🗺️ IA
-
-<img src="photo/artifacts/IA.png">
-
----
-
 ## 산출물
+
+### IA
+<img src="photo/artifacts/IA.png">
 
 ### ERD
 <img src="photo/artifacts/erd.png">
@@ -428,14 +419,16 @@ src/main/java/
 ### Infra Architecture
 <img src="photo/artifacts/architecture.png">
 
+### API 명세서
+[API 명세서](https://rowan-octopus-031.notion.site/API-33665a678df9816bb888f687c9c83690?source=copy_link)
+
 ### 기타 산출물
 | 산출물 | 링크 |
 | :---: | :--- |
-| **PRD (기획서)** | [Notion 바로가기](https://rowan-octopus-031.notion.site/PRD-33665a678df981febd51d647ea8300f1?source=copy_link) |
-| **API 명세서** | [Notion 바로가기](https://rowan-octopus-031.notion.site/API-33665a678df9816bb888f687c9c83690?source=copy_link) |
-| **포팅 매뉴얼** | [Notion 바로가기](https://www.notion.so/36765a678df98022ae32dd7d2faeaae3) |
-| **최종 발표** | [Canva 바로가기](https://canva.link/9zu4gaq7azwe6rg) |
-| **중간 발표** | [Canva 바로가기](https://canva.link/rt55423gscxmlzg) |
+| **PRD (기획서)** | [PRD 기획서](https://rowan-octopus-031.notion.site/PRD-33665a678df981febd51d647ea8300f1?source=copy_link) |
+| **포팅 매뉴얼** | [포팅 매뉴얼](https://www.notion.so/36765a678df98022ae32dd7d2faeaae3) |
+| **최종 발표** | [최종 발표자료](https://canva.link/9zu4gaq7azwe6rg) |
+| **중간 발표** | [중간 발표자료](https://canva.link/rt55423gscxmlzg) |
 
 ---
 
