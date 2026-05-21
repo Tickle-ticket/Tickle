@@ -1,0 +1,92 @@
+import { Schema } from 'effect';
+
+export const PaymentSeatSummarySchema = Schema.Struct({
+  sessionSeatId: Schema.Number,
+  seatLabel: Schema.String,
+  rowLabel: Schema.String,
+  seatNumber: Schema.String,
+  ticketPriceAmount: Schema.Number,
+  serviceFeeAmount: Schema.Number,
+  finalPriceAmount: Schema.Number,
+});
+
+export type PaymentSeatSummary = Schema.Schema.Type<typeof PaymentSeatSummarySchema>;
+
+export interface PaymentMethodSelectionRequest {
+  bookingId: number;
+  paymentMethod: 'BANK_TRANSFER' | 'KAKAOPAY';
+}
+
+export const PaymentMethodSelectionResponseSchema = Schema.Struct({
+  bookingId: Schema.optional(Schema.Number),
+  paymentMethod: Schema.String,
+  nextAction: Schema.optional(Schema.String),
+  bankTransfer: Schema.optional(Schema.Struct({
+    paymentId: Schema.Number,
+    bookingId: Schema.Number,
+    bookingNo: Schema.String,
+    paymentStatus: Schema.String,
+    bookingStatus: Schema.String,
+    orderAmount: Schema.Number,
+    currencyCode: Schema.String,
+    bankAccount: Schema.String,
+    accountHolder: Schema.String,
+    depositDeadline: Schema.String,
+    seats: Schema.Array(PaymentSeatSummarySchema),
+  })),
+  kakaoPay: Schema.optional(Schema.Any),
+});
+
+export type PaymentMethodSelectionResponse = Schema.Schema.Type<typeof PaymentMethodSelectionResponseSchema>;
+
+export interface KakaoPayReadyRequest {
+  bookingId: number;
+}
+
+export const KakaoPayReadyResponseSchema = Schema.Struct({
+  paymentId: Schema.Number,
+  tid: Schema.String,
+  nextRedirectPcUrl: Schema.optional(Schema.String),
+  nextRedirectMobileUrl: Schema.optional(Schema.String),
+  nextRedirectAppUrl: Schema.optional(Schema.String),
+  createdAt: Schema.String,
+});
+
+export type KakaoPayReadyResponse = Schema.Schema.Type<typeof KakaoPayReadyResponseSchema>;
+
+export interface BankTransferPrepareRequest {
+  bookingId: number;
+}
+
+export const BankTransferPrepareResponseSchema = Schema.Struct({
+  paymentId: Schema.Number,
+  bookingId: Schema.Number,
+  bookingNo: Schema.String,
+  paymentStatus: Schema.String,
+  bookingStatus: Schema.String,
+  orderAmount: Schema.Number,
+  currencyCode: Schema.String,
+  bankAccount: Schema.String,
+  accountHolder: Schema.String,
+  depositDeadline: Schema.String,
+  seats: Schema.Array(PaymentSeatSummarySchema),
+});
+
+export type BankTransferPrepareResponse = Schema.Schema.Type<typeof BankTransferPrepareResponseSchema>;
+
+export const PaymentStatusResponseSchema = Schema.Struct({
+  paymentId: Schema.Number,
+  bookingId: Schema.Number,
+  bookingNo: Schema.String,
+  paymentMethodType: Schema.String,
+  paymentStatus: Schema.String,
+  bookingStatus: Schema.String,
+  orderAmount: Schema.Number,
+  currencyCode: Schema.String,
+  depositDeadline: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
+  bankAccount: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
+  accountHolder: Schema.optional(Schema.Union(Schema.String, Schema.Null)),
+  seats: Schema.Array(PaymentSeatSummarySchema),
+});
+
+export type PaymentStatusResponse = Schema.Schema.Type<typeof PaymentStatusResponseSchema>;

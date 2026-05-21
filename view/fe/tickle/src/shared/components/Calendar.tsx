@@ -1,0 +1,250 @@
+import React, { useState, useMemo } from 'react';
+import type { CalendarProps } from './types';
+import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
+
+// 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 헬퍼 함수
+const formatDate = (date: Date | string) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+const getMonthStart = (value?: Date | string | null) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+export const Calendar = ({
+  enabledDates = [],
+  selectedDate = null,
+  onSelect,
+  isLoading = false,
+  className = '',
+  density = 'default',
+}: CalendarProps) => {
+  const isCompact = density === 'compact';
+  // 표시 중인 달(기준 연월)의 1일
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const selectedMonth = getMonthStart(selectedDate);
+
+    if (selectedMonth) {
+      return selectedMonth;
+    }
+
+    // 만약 최초 렌더링 시점에 이미 enabledDates가 있다면 최적화를 위해 여기서 바로 초기화 가능
+    if (enabledDates && enabledDates.length > 0) {
+      const timestamps = enabledDates.map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+      if (timestamps.length > 0) {
+        const minTimestamp = Math.min(...timestamps);
+        const earliestDate = new Date(minTimestamp);
+        return new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1);
+      }
+    }
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+
+  // 서버 통신 등 비동기로 늦게 enabledDates가 들어올 경우를 대비해, 값이 채워지는 순간 딱 한 번 화면을 이동시키는 효과
+  const [hasAutoNavigated, setHasAutoNavigated] = useState(() => Boolean(getMonthStart(selectedDate) || (enabledDates && enabledDates.length > 0)));
+
+  React.useEffect(() => {
+    if (!hasAutoNavigated && enabledDates && enabledDates.length > 0) {
+      const timestamps = enabledDates.map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+      if (timestamps.length > 0) {
+        const minTimestamp = Math.min(...timestamps);
+        const earliestDate = new Date(minTimestamp);
+        const timeoutId = setTimeout(() => {
+          setCurrentMonth(new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1));
+          setHasAutoNavigated(true);
+        }, 0);
+
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [enabledDates, hasAutoNavigated]);
+
+  const enabledDateSet = useMemo(() => {
+    return new Set(enabledDates.map(formatDate));
+  }, [enabledDates]);
+
+  // 로딩 상태 (스켈레톤 UI)
+  if (isLoading) {
+    return (
+      <div className={`w-full max-w-[340px] bg-surface rounded-[16px] ${isCompact ? 'p-3' : 'p-5'} shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
+        {/* 헤더 스켈레톤 */}
+        <div className={`flex justify-center items-center ${isCompact ? 'mb-3' : 'mb-6'}`}>
+          <div className="w-24 h-6 bg-surface-active rounded-md animate-pulse" />
+        </div>
+        {/* 요일 스켈레톤 */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex justify-center">
+              <div className="w-5 h-5 bg-surface-muted rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+        {/* 날짜 그리드 스켈레톤 */}
+        <div className="grid grid-cols-7 gap-y-2 gap-x-1">
+          {Array.from({ length: 35 }).map((_, i) => (
+            <div key={i} className={`flex justify-center items-center ${isCompact ? 'h-8' : 'h-10'} w-full`}>
+              <div className={`${isCompact ? 'h-7 w-7' : 'h-8 w-8'} bg-surface-muted rounded-full animate-pulse`} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+
+  const startingDayOfWeek = firstDayOfMonth.getDay(); // 0(일) ~ 6(토)
+  const daysInMonth = lastDayOfMonth.getDate();
+
+  const selectedFormatted = selectedDate ? formatDate(selectedDate) : null;
+
+  // 빈 칸 배열 (1일 이전)
+  const blanks = Array.from({ length: startingDayOfWeek }, (_, i) => i);
+  // 날짜 배열
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  return (
+    <div className={`w-full max-w-[340px] bg-surface rounded-[16px] ${isCompact ? 'p-3' : 'p-5'} shadow-[0_2px_10px_rgba(0,0,0,0.06)] ${className}`}>
+      {/* 헤더: < 연월 > */}
+      <div className={`flex justify-between items-center ${isCompact ? 'mb-3' : 'mb-6'} px-1`}>
+        <button 
+          onClick={handlePrevMonth}
+          className="w-8 h-8 flex items-center justify-center text-content-muted hover:bg-surface-muted hover:text-content-secondary rounded-full transition-colors"
+          aria-label="이전 달"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="text-[17px] font-bold text-content tracking-tight">
+          {year}년 {month + 1}월
+        </div>
+        <button 
+          onClick={handleNextMonth}
+          className="w-8 h-8 flex items-center justify-center text-content-muted hover:bg-surface-muted hover:text-content-secondary rounded-full transition-colors"
+          aria-label="다음 달"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {WEEKDAYS.map((day) => (
+          <div key={day} className="flex justify-center text-xs font-semibold text-content-muted">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* 날짜 그리드 */}
+      <div className="grid grid-cols-7 gap-y-1 gap-x-1">
+        {blanks.map((blank) => (
+          <div key={`blank-${blank}`} className={`${isCompact ? 'h-8' : 'h-10'} w-full`} />
+        ))}
+        {days.map((day) => {
+          const dateObj = new Date(year, month, day);
+          const formatted = formatDate(dateObj);
+          
+          const isEnabled = enabledDateSet.has(formatted);
+          const isSelected = selectedFormatted === formatted;
+          const isToday = formatDate(new Date()) === formatted;
+
+          return (
+            <CalendarDateButton
+              key={day}
+              day={day}
+              dateObj={dateObj}
+              formatted={formatted}
+              isEnabled={isEnabled}
+              isSelected={isSelected}
+              isToday={isToday}
+              isCompact={isCompact}
+              onSelect={onSelect}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+interface CalendarDateButtonProps {
+  day: number;
+  dateObj: Date;
+  formatted: string;
+  isEnabled: boolean;
+  isSelected: boolean;
+  isToday: boolean;
+  isCompact: boolean;
+  onSelect?: (date: Date, e: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+const CalendarDateButton = ({
+  day,
+  dateObj,
+  formatted,
+  isEnabled,
+  isSelected,
+  isToday,
+  isCompact,
+  onSelect,
+}: CalendarDateButtonProps) => {
+  const tracker = useTargetTracker({ trackId: `calendar-date-${formatted}`, isClickable: isEnabled });
+
+  return (
+    <div className={`flex justify-center items-center ${isCompact ? 'h-8' : 'h-10'} w-full`}>
+      <button
+        {...tracker}
+        disabled={!isEnabled}
+        onClick={(e) => {
+          if (isEnabled && onSelect) {
+            onSelect(dateObj, e);
+          }
+        }}
+        className={`
+          ${isCompact ? 'h-8 w-8 text-[14px]' : 'w-9 h-9 text-[15px]'} rounded-full flex items-center justify-center transition-all
+          ${!isEnabled ? 'text-[#cbd5e1] font-normal cursor-not-allowed' : ''}
+          ${isEnabled && !isSelected ? 'text-content font-bold hover:bg-surface-muted cursor-pointer' : ''}
+          ${isSelected ? 'bg-primary text-white font-bold shadow-sm' : ''}
+          ${isToday && !isSelected && isEnabled ? 'border-2 border-line-subtle' : ''}
+        `}
+        aria-pressed={isSelected}
+        aria-disabled={!isEnabled}
+      >
+        {day}
+      </button>
+    </div>
+  );
+};

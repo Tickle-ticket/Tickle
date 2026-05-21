@@ -1,0 +1,8 @@
+.next/cache
+node_modules
+.git
+.gitignore
+npm-debug.log
+pnpm-debug.log
+coverage
+storybook-static
