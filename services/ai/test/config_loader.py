@@ -16,11 +16,13 @@ class PerformanceTestConfig:
     jsonl_path: Path | None
     glob_pattern: str
     threshold: float
+    threshold_by_type: dict[str, float] | None
     missing_heavy_threshold: float
     include_unlabeled: bool
     output_json: Path | None
     predictions_jsonl: Path | None
     visualizations_dir: Path | None
+    minimal_axis_only: bool
 
 
 def _load_mapping(config_path: Path) -> dict[str, Any]:
@@ -61,12 +63,15 @@ def load_performance_test_config(config_path: str | Path) -> PerformanceTestConf
     paths = raw.get("paths") or {}
     evaluation = raw.get("evaluation") or {}
     outputs = raw.get("outputs") or {}
+    viz = raw.get("visualizations") or {}
     if not isinstance(paths, dict):
         raise ValueError("`paths` must be an object.")
     if not isinstance(evaluation, dict):
         raise ValueError("`evaluation` must be an object.")
     if not isinstance(outputs, dict):
         raise ValueError("`outputs` must be an object.")
+    if not isinstance(viz, dict):
+        raise ValueError("`visualizations` must be an object.")
 
     model_path = _resolve_path(paths.get("model_path"), ai_root)
     meta_path = _resolve_path(paths.get("meta_path"), ai_root)
@@ -88,9 +93,15 @@ def load_performance_test_config(config_path: str | Path) -> PerformanceTestConf
         jsonl_path=jsonl_path,
         glob_pattern=str(evaluation.get("glob", "**/trial_*.json")),
         threshold=float(evaluation.get("threshold", 0.5)),
+        threshold_by_type=(
+            {str(k).strip().upper(): float(v) for k, v in (evaluation.get("threshold_by_type") or {}).items()}
+            if isinstance(evaluation.get("threshold_by_type"), dict)
+            else None
+        ),
         missing_heavy_threshold=float(evaluation.get("missing_heavy_threshold", 0.2)),
         include_unlabeled=bool(evaluation.get("include_unlabeled", False)),
         output_json=_resolve_path(outputs.get("metrics_json"), ai_root),
         predictions_jsonl=_resolve_path(outputs.get("predictions_jsonl"), ai_root),
         visualizations_dir=_resolve_path(outputs.get("visualizations_dir"), ai_root),
+        minimal_axis_only=bool(viz.get("minimal_axis_only", False)),
     )

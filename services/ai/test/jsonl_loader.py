@@ -15,6 +15,7 @@ class JsonlSample:
     path: Path
     line_no: int
     trial_id: int | str | None
+    record_id: str | None
     sample_type: str | None
     label: str | None
     features: dict[str, float]
@@ -47,6 +48,20 @@ def _extract_type(obj: dict[str, Any]) -> str | None:
     summary = obj.get("summary")
     if isinstance(summary, dict) and summary.get("type") is not None:
         return str(summary.get("type"))
+    return None
+
+
+def _extract_record_id(obj: dict[str, Any]) -> str | None:
+    if obj.get("record_id") is not None:
+        return str(obj.get("record_id"))
+    if obj.get("recordId") is not None:
+        return str(obj.get("recordId"))
+    summary = obj.get("summary")
+    if isinstance(summary, dict):
+        if summary.get("record_id") is not None:
+            return str(summary.get("record_id"))
+        if summary.get("recordId") is not None:
+            return str(summary.get("recordId"))
     return None
 
 
@@ -178,6 +193,7 @@ def load_jsonl_dataset(
                         path=path,
                         line_no=line_no,
                         trial_id=_extract_trial_id(obj),
+                        record_id=_extract_record_id(obj),
                         sample_type=_extract_type(obj),
                         label=label,
                         features=features,

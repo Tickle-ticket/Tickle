@@ -3,8 +3,8 @@
 ai_root: .
 
 paths:
-  model_path: train/model_joblib/randomforest_30_v2/model.joblib
-  meta_path: train/model_joblib/randomforest_30_v2/meta.json
+  model_path: train/model_joblib/logistic_30_v3(whole)/model.joblib
+  meta_path: train/model_joblib/logistic_30_v3(whole)/meta.json
 
   # trial_*.json 기반 평가(run_performance_test.py)에서 사용
   data_dir: data/data_c1
@@ -12,12 +12,17 @@ paths:
   # JSONL 기반 평가(run_performance_test_jsonl.py)에서 사용
   # - 파일(.jsonl) 또는 폴더 경로 가능
   # - CLI에서 --data를 주면 그게 우선
-  jsonl_path: C:\Users\SSAFY\Desktop\ws\free\develop-ai\S14P31A203\services\ai\data\data_tickle_0515_human\tickle_0515_allow.jsonl
-
+  jsonl_path: C:\Users\SSAFY\Desktop\ws\free\develop-ai\S14P31A203\services\ai\data\test_final\test.final.jsonl
 evaluation:
   # run_performance_test.py에서 data_dir 아래 파일 glob
   glob: "**/trial_*.json"
-  threshold: 0.85
+  # threshold: 0.85
+  # Optional: per-type thresholds for score_by_type.png (type keys are case-insensitive).
+  # When set, the plot draws a threshold segment for each type instead of a single global line.
+  threshold_by_type:
+    BOOKING: 0.20
+    CAPTCHA: 0.60
+    DETAIL: 0.55
   include_unlabeled: false
 
   # score_by_type.png에서 결측치(=imputer로 채워진 비율)가 높은 샘플을 별도 색(보라색)으로 표시하는 기준
@@ -25,6 +30,12 @@ evaluation:
   missing_heavy_threshold: 0.2
 
 outputs:
-  metrics_json: test/outputs/randomforest_30_v2_85/metrics.json
-  predictions_jsonl: test/outputs/randomforest_30_v2_85/predictions.jsonl
-  visualizations_dir: test/outputs/randomforest_30_v2_85/plots
+  metrics_json: test/outputs/logistic_30_v3(whole)_macro_test_final/metrics.json
+  predictions_jsonl: test/outputs/logistic_30_v3(whole)_macro_test_final/predictions.jsonl
+  visualizations_dir: test/outputs/logistic_30_v3(whole)_macro_test_final/plots
+
+# Visualization style options
+visualizations:
+  # When true, additionally saves `score_by_type.minimal_axis_only.png`
+  # which hides title/axis labels/legend/y tick labels (keeps x-axis tick values only).
+  minimal_axis_only: true

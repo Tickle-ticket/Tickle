@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from config_loader import load_ensemble_test_config
-from data_loader import load_artifact
+from data_loader import load_artifact, load_isoforest_artifact
 from evaluator import evaluate_type_ensemble
 from trial_loader import load_trial_dataset, samples_to_frame
 from visualizer import save_evaluation_plots
@@ -62,11 +62,27 @@ def main() -> None:
     # Load all artifacts and union their features for dataset load.
     all_artifacts = []
     union_features: set[str] = set()
+    isoforest_by_type: dict[str, object] = {}
     for te in config.type_ensembles:
         for spec in te.models:
             art = load_artifact(spec.name, spec.model_path, spec.meta_path)
             all_artifacts.append((te.type_name, spec, art))
             union_features.update(art.feature_names)
+
+        # Optional 2-stage post-filter (e.g., BOOKING IsolationForest)
+        if te.post_filter and bool(te.post_filter.get("enabled", False)):
+            pf = te.post_filter
+            kind = str(pf.get("kind", "")).strip().lower()
+            if kind != "isoforest":
+                raise ValueError(f"Unsupported post_filter.kind for {te.type_name}: {pf.get('kind')}")
+            model_path = pf.get("model_path")
+            meta_path = pf.get("meta_path")
+            if model_path is None:
+                raise ValueError(f"post_filter.model_path is required for type={te.type_name}")
+            iso = load_isoforest_artifact(f"{te.type_name}_isoforest", model_path, meta_path)
+            key = str(te.type_name).strip().upper()
+            isoforest_by_type[key] = iso
+            union_features.update(iso.feature_names)
 
     union_feature_list = sorted(union_features)
     if config.data_dir is not None:
@@ -121,6 +137,22 @@ def main() -> None:
         threshold = te.threshold if te.threshold is not None else config.default_threshold
         threshold_by_type[str(te.type_name).strip().upper()] = float(threshold)
 
+        pf_payload = None
+        if te.post_filter and bool(te.post_filter.get("enabled", False)):
+            key = str(te.type_name).strip().upper()
+            iso = isoforest_by_type.get(key)
+            if iso is None:
+                raise RuntimeError(f"post_filter enabled but isoforest artifact not loaded for type={te.type_name}")
+            pf_payload = {
+                "enabled": True,
+                "kind": "isoforest",
+                "model": iso.model,
+                "feature_names": iso.feature_names,
+                "decision_function_threshold": iso.decision_function_threshold,
+                "review_low": te.post_filter.get("review_low"),
+                "review_high": te.post_filter.get("review_high"),
+            }
+
         res = evaluate_type_ensemble(
             type_name=te.type_name,
             artifacts=artifacts_for_type,
@@ -129,6 +161,8 @@ def main() -> None:
             label_mapping=label_mapping,
             threshold=float(threshold),
             aggregation=te.aggregation,
+            hard_voting=te.hard_voting,
+            post_filter=pf_payload,
         )
         per_type_results.append(res.metrics)
         all_predictions.extend(res.predictions)
@@ -170,6 +204,7 @@ def main() -> None:
             threshold=config.default_threshold,
             missing_heavy_threshold=config.missing_heavy_threshold,
             threshold_by_type=threshold_by_type,
+            minimal_axis_only=config.minimal_axis_only,
         )
         summary["visualizations"] = visualization_paths
 

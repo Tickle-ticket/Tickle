@@ -14,6 +14,7 @@ from feature_extractor import extract_feature_values
 class TrialSample:
     path: Path
     trial_id: int | str | None
+    record_id: str | None
     sample_type: str | None
     label: str | None
     features: dict[str, float]
@@ -49,6 +50,18 @@ def _extract_label(trial: dict[str, Any]) -> str | None:
     return None
 
 
+def _extract_record_id(trial: dict[str, Any]) -> str | None:
+    for key in ("record_id", "recordId"):
+        if trial.get(key) is not None:
+            return str(trial.get(key))
+    summary = trial.get("summary")
+    if isinstance(summary, dict):
+        for key in ("record_id", "recordId"):
+            if summary.get(key) is not None:
+                return str(summary.get(key))
+    return None
+
+
 def _extract_type(trial: dict[str, Any]) -> str | None:
     if trial.get("type") is not None:
         return str(trial.get("type"))
@@ -78,6 +91,7 @@ def load_trial_sample(path: str | Path, feature_names: list[str]) -> TrialSample
     return TrialSample(
         path=path,
         trial_id=_extract_trial_id(trial, path),
+        record_id=_extract_record_id(trial),
         sample_type=_extract_type(trial),
         label=_extract_label(trial),
         features=extract_feature_values(metrics, feature_names),
@@ -111,4 +125,3 @@ def load_trial_dataset(
 def samples_to_frame(samples: list[TrialSample], feature_names: list[str]) -> pd.DataFrame:
     rows = [sample.features for sample in samples]
     return pd.DataFrame(rows, columns=feature_names)
-

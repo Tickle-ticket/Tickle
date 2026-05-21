@@ -46,7 +46,97 @@ def _map_label_to_int(label: str | None, label_mapping: dict[str, int]) -> int |
     return None
 
 
+def _extract_expected_feature_names(model: object) -> list[str] | None:
+    """
+    Try to read the feature-name schema remembered at fit time.
+
+    sklearn Pipelines/transformers may validate feature names (e.g., SimpleImputer).
+    Some training code uses names like `metrics.<feature>` while evaluation builds
+    plain `<feature>` columns; this helper enables compatibility without modifying
+    the saved model.joblib.
+    """
+    names = getattr(model, "feature_names_in_", None)
+    if isinstance(names, (list, tuple, np.ndarray)):
+        return [str(x) for x in list(names)]
+
+    steps = getattr(model, "steps", None)
+    if isinstance(steps, list):
+        for _step_name, step in steps:
+            step_names = getattr(step, "feature_names_in_", None)
+            if isinstance(step_names, (list, tuple, np.ndarray)):
+                return [str(x) for x in list(step_names)]
+
+    named_steps = getattr(model, "named_steps", None)
+    if isinstance(named_steps, dict):
+        for step in named_steps.values():
+            step_names = getattr(step, "feature_names_in_", None)
+            if isinstance(step_names, (list, tuple, np.ndarray)):
+                return [str(x) for x in list(step_names)]
+
+    return None
+
+
+def _align_dataframe_features(model: object, x: Any) -> Any:
+    """
+    Align a pandas.DataFrame's columns to what the model expects.
+
+    - Renames `<f>` <-> `metrics.<f>` if that resolves the mismatch
+    - Adds missing expected columns as NaN
+    - Reorders columns to the expected order
+    """
+    if not hasattr(x, "columns") or not hasattr(x, "reindex"):
+        return x
+
+    expected = _extract_expected_feature_names(model)
+    if not expected:
+        return x
+
+    try:
+        cols = [str(c) for c in list(x.columns)]
+    except Exception:
+        return x
+
+    if cols == expected:
+        return x
+
+    expected_set = set(expected)
+    cols_set = set(cols)
+    expected_has_metrics = all(c.startswith("metrics.") for c in expected)
+    cols_has_metrics = all(c.startswith("metrics.") for c in cols)
+
+    x2 = x
+    if expected_has_metrics and not cols_has_metrics:
+        rename_map = {c: f"metrics.{c}" for c in cols if f"metrics.{c}" in expected_set}
+        if rename_map:
+            x2 = x2.rename(columns=rename_map)
+            cols_set = set([str(c) for c in list(x2.columns)])
+    elif (not expected_has_metrics) and cols_has_metrics:
+        rename_map: dict[str, str] = {}
+        for c in cols:
+            if c.startswith("metrics."):
+                base = c.split("metrics.", 1)[1]
+                if base in expected_set:
+                    rename_map[c] = base
+        if rename_map:
+            x2 = x2.rename(columns=rename_map)
+            cols_set = set([str(c) for c in list(x2.columns)])
+
+    missing = [c for c in expected if c not in cols_set]
+    if missing:
+        try:
+            import pandas as pd  # type: ignore
+
+            for c in missing:
+                x2[c] = pd.NA
+        except Exception:
+            for c in missing:
+                x2[c] = np.nan
+
+    return x2.reindex(columns=expected)
+
+
 def predict_macro_scores(model: object, x: Any) -> np.ndarray:
+    x = _align_dataframe_features(model, x)
     if hasattr(model, "predict_proba"):
         probs = np.asarray(model.predict_proba(x), dtype=np.float64)  # type: ignore[attr-defined]
         if probs.ndim != 2 or probs.shape[1] < 2:
@@ -160,6 +250,7 @@ def evaluate_binary_classifier(
         predictions.append(
             {
                 "trial_id": sample.trial_id,
+                "record_id": getattr(sample, "record_id", None),
                 "type": getattr(sample, "sample_type", None),
                 "label": sample.label,
                 "y_true": true,

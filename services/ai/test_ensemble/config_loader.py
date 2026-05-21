@@ -20,6 +20,8 @@ class TypeEnsembleSpec:
     models: list[EnsembleModelSpec]
     aggregation: str
     threshold: float | None
+    hard_voting: dict[str, Any] | None
+    post_filter: dict[str, Any] | None
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class EnsembleTestConfig:
     predictions_jsonl: Path | None
     visualizations_dir: Path | None
     type_ensembles: list[TypeEnsembleSpec]
+    minimal_axis_only: bool
 
 
 def _load_mapping(config_path: Path) -> dict[str, Any]:
@@ -84,6 +87,7 @@ def load_ensemble_test_config(config_path: str | Path) -> EnsembleTestConfig:
     paths = raw.get("paths") or {}
     evaluation = raw.get("evaluation") or {}
     outputs = raw.get("outputs") or {}
+    viz = raw.get("visualizations") or {}
     ensemble = raw.get("ensemble") or {}
     if not isinstance(paths, dict):
         raise ValueError("`paths` must be an object.")
@@ -93,6 +97,8 @@ def load_ensemble_test_config(config_path: str | Path) -> EnsembleTestConfig:
         raise ValueError("`outputs` must be an object.")
     if not isinstance(ensemble, dict):
         raise ValueError("`ensemble` must be an object.")
+    if not isinstance(viz, dict):
+        raise ValueError("`visualizations` must be an object.")
 
     data_dir = _resolve_path(paths.get("data_dir"), ai_root)
     jsonl_path = _resolve_path(paths.get("jsonl_path"), ai_root) or _resolve_path(paths.get("data_jsonl"), ai_root)
@@ -111,6 +117,18 @@ def load_ensemble_test_config(config_path: str | Path) -> EnsembleTestConfig:
         aggregation = str(entry.get("aggregation") or "weighted_mean").strip()
         threshold = entry.get("threshold", None)
         threshold_value = float(threshold) if threshold is not None else None
+        hard_voting = entry.get("hard_voting", None)
+        if hard_voting is not None and not isinstance(hard_voting, dict):
+            raise ValueError(f"ensemble.types[{type_name}].hard_voting must be an object when provided.")
+        post_filter = entry.get("post_filter", None)
+        if post_filter is not None and not isinstance(post_filter, dict):
+            raise ValueError(f"ensemble.types[{type_name}].post_filter must be an object when provided.")
+        if isinstance(post_filter, dict):
+            # Resolve any artifact paths inside post_filter.
+            if "model_path" in post_filter:
+                post_filter["model_path"] = _resolve_path(post_filter.get("model_path"), ai_root)
+            if "meta_path" in post_filter:
+                post_filter["meta_path"] = _resolve_path(post_filter.get("meta_path"), ai_root)
 
         models_raw = _ensure_list(entry.get("models"), name=f"ensemble.types[{type_name}].models")
         if not models_raw:
@@ -134,6 +152,8 @@ def load_ensemble_test_config(config_path: str | Path) -> EnsembleTestConfig:
                 models=models,
                 aggregation=aggregation,
                 threshold=threshold_value,
+                hard_voting=hard_voting,
+                post_filter=post_filter,
             )
         )
 
@@ -150,4 +170,5 @@ def load_ensemble_test_config(config_path: str | Path) -> EnsembleTestConfig:
         predictions_jsonl=_resolve_path(outputs.get("predictions_jsonl"), ai_root),
         visualizations_dir=_resolve_path(outputs.get("visualizations_dir"), ai_root),
         type_ensembles=type_ensembles,
+        minimal_axis_only=bool(viz.get("minimal_axis_only", False)),
     )

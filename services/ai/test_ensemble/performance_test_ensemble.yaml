@@ -10,9 +10,7 @@ paths:
   # JSONL input (use this instead of data_dir when evaluating jsonl)
   # - file:  C:\...\something.jsonl
   # - folder: C:\...\jsonl_dir  (then set evaluation.glob to "**/*.jsonl")
-  jsonl_path: C:\Users\SSAFY\Desktop\ws\free\develop-ai\S14P31A203\services\ai\data\tickle_0518\tickle_0518.jsonl
-evaluation:
-  # for data_dir: "**/trial_*.json"
+  jsonl_path: C:\Users\SSAFY\Desktop\ws\free\develop-ai\S14P31A203\services\ai\data\test_final\test.final.rekeyed.jsonl
   # for jsonl_path: "**/*.jsonl"
   glob: "**/*.jsonl"
   threshold: 0.5
@@ -24,49 +22,75 @@ ensemble:
   types:
     - type: BOOKING
       aggregation: weighted_mean
-      threshold: 0.75
+      threshold: 0.2
+      # Optional: 2-stage decision for BOOKING review band using IsolationForest.
+      # - Stage 1: compute p_macro from the ensemble (or hard_voting if enabled)
+      # - Review band: review_low < p_macro < review_high
+      # - Stage 2: run IsolationForest; anomaly => macro, else human
+      post_filter:
+        enabled: false
+        kind: isoforest
+        review_low: 0.6
+        review_high: 0.8
+        model_path: train/model_joblib/isoforest_booking_v1/booking/model.joblib
+        meta_path: train/model_joblib/isoforest_booking_v1/booking/meta.json
+      # Optional: BOOKING hard-voting policy with automatic vote-threshold selection.
+      # - Computes per-model P(macro), then "votes" per model: (p >= vote_threshold)
+      # - Picks vote_threshold that maximizes recall under an FP constraint on the evaluated dataset
+      #   (use a separate calibration set if you want an unbiased final metric).
+      # - If enabled, `aggregation` and `threshold` above are ignored for prediction.
+      hard_voting:
+        enabled: false
+        rule: majority          # all | majority
+        # k: 2             # used when rule=majority (default: floor(n/2)+1)
+        max_fp: 0          # FP constraint on this dataset
+        threshold_min: 0.0
+        threshold_max: 1.0
+        threshold_step: 0.01
       models:
         - name: booking_logistic
           model_path: train/model_joblib/logistic_30_v3/booking/model.joblib
-          weight: 1.0
-        - name: booking_random_forest
-          model_path: train/model_joblib/randomforest_30_v3/booking/model.joblib
-          weight: 1.0
-        - name: booking_light_gbm
-          model_path: train/model_joblib/lightgbm_30_v3/booking/model.joblib
-          weight: 1.0
-        # - name: booking_rf
-        #   model_path: train/model_joblib/randomforest_30_v2/model.joblib
-        #   meta_path: train/model_joblib/randomforest_30_v2/meta.json
+          weight: 0.17
+        # - name: booking_random_forest
+        #   model_path: train/model_joblib/randomforest_30_v3/booking/model.joblib
         #   weight: 1.0
+        - name: booking_light_gbm
+          model_path: train/model_joblib/xgboost_booking_v1/booking/model.joblib
+          weight: 1.0
     - type: CAPTCHA
       aggregation: weighted_mean
       threshold: 0.6
       models:
-        - name: booking_logistic
+        - name: captcha_logistic
           model_path: train/model_joblib/logistic_30_v3/captcha/model.joblib
           weight: 1.0
-        - name: booking_random_forest
+        - name: captcha_random_forest
           model_path: train/model_joblib/randomforest_30_v3/captcha/model.joblib
           weight: 1.0
-        - name: booking_light_gbm
+        - name: captcha_light_gbm
           model_path: train/model_joblib/lightgbm_30_v3/captcha/model.joblib
           weight: 1.0
     - type: DETAIL
       aggregation: weighted_mean
       threshold: 0.50
       models:
-        - name: booking_logistic
+        - name: detail_logistic
           model_path: train/model_joblib/logistic_30_v3/detail/model.joblib
           weight: 1.0
-        - name: booking_random_forest
+        - name: detail_random_forest
           model_path: train/model_joblib/randomforest_30_v3/detail/model.joblib
           weight: 1.0
-        - name: booking_light_gbm
+        - name: detail_light_gbm
           model_path: train/model_joblib/lightgbm_30_v3/detail/model.joblib
           weight: 1.0
 
 outputs:
-  metrics_json: test_ensemble/outputs/tickle_0518/metrics.json
-  predictions_jsonl: test_ensemble/outputs/tickle_0518/predictions.jsonl
-  visualizations_dir: test_ensemble/outputs/tickle_0518/plots
+  metrics_json: test_ensemble/outputs/final_v_test_final/metrics.json
+  predictions_jsonl: test_ensemble/outputs/final_v_test_final/predictions.jsonl
+  visualizations_dir: test_ensemble/outputs/final_v_test_final/plots
+
+# Visualization style options
+visualizations:
+  # When true, additionally saves `score_by_type.minimal_axis_only.png`
+  # which hides title/axis labels/legend/y tick labels (keeps x-axis tick values only).
+  minimal_axis_only: true

@@ -198,6 +198,8 @@ def main() -> None:
             output_dir=visualizations_dir,
             threshold=threshold,
             missing_heavy_threshold=config.missing_heavy_threshold,
+            threshold_by_type=config.threshold_by_type,
+            minimal_axis_only=config.minimal_axis_only,
         )
 
     summary = {
