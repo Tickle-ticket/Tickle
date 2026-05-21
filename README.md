@@ -33,27 +33,27 @@ Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴, 키보드 �
 <table>
   <tr>
     <td align="center" width="150">
-      <img src="PHOTO/Profile/양희령.png" width="100" height="100" style="border-radius: 50%;" /><br />
+      <img src="PHOTO/Profile/yang_huiryeong.png" width="100" height="100" style="border-radius: 50%;" /><br />
       <b>양희령</b>
     </td>
     <td align="center" width="150">
-      <img src="PHOTO/Profile/정정교.png" width="100" height="100" style="border-radius: 50%;" /><br />
+      <img src="PHOTO/Profile/jeong_jeonggyo.png" width="100" height="100" style="border-radius: 50%;" /><br />
       <b>정정교</b>
     </td>
     <td align="center" width="150">
-      <img src="PHOTO/Profile/임찬혁.png" width="100" height="100" style="border-radius: 50%;" /><br />
+      <img src="PHOTO/Profile/lim_chanhyeok.png" width="100" height="100" style="border-radius: 50%;" /><br />
       <b>임찬혁</b>
     </td>
     <td align="center" width="150">
-      <img src="PHOTO/Profile/김보겸.png" width="100" height="100" style="border-radius: 50%;" /><br />
+      <img src="PHOTO/Profile/kim_bogyeom.png" width="100" height="100" style="border-radius: 50%;" /><br />
       <b>김보겸</b>
     </td>
     <td align="center" width="150">
-      <img src="PHOTO/Profile/강영욱.png" width="100" height="100" style="border-radius: 50%;" /><br />
+      <img src="PHOTO/Profile/kang_youngwook.png" width="100" height="100" style="border-radius: 50%;" /><br />
       <b>강영욱</b>
     </td>
     <td align="center" width="150">
-      <img src="PHOTO/Profile/이민엽.png" width="100" height="100" style="border-radius: 50%;" /><br />
+      <img src="PHOTO/Profile/lee_minyeop.png" width="100" height="100" style="border-radius: 50%;" /><br />
       <b>이민엽</b>
     </td>
   </tr>
@@ -199,7 +199,7 @@ Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴, 키보드 �
 
 ## 🏗️ 시스템 아키텍처
 
-<img src="PHOTO/산출물/아키텍쳐.png">
+<img src="PHOTO/artifacts/architecture.png">
 
 ---
 
@@ -416,17 +416,17 @@ src/main/java/
 
 ## 🗺️ IA
 
-<img src="PHOTO/산출물/IA.png">
+<img src="PHOTO/artifacts/IA.png">
 
 ---
 
 ## 산출물
 
 ### ERD
-<img src="PHOTO/산출물/erd.png">
+<img src="PHOTO/artifacts/erd.png">
 
 ### Infra Architecture
-<img src="PHOTO/산출물/아키텍쳐.png">
+<img src="PHOTO/artifacts/architecture.png">
 
 ### 기타 산출물
 | 산출물 | 링크 |
@@ -448,22 +448,22 @@ src/main/java/
 - 코드 리뷰: Pn 룰 (P1~P5) 기반 리뷰 시스템
 
 #### Git Push 알림
-<img src="PHOTO/산출물/git_push.png" width="600">
+<img src="PHOTO/artifacts/git_push.png" width="600">
 
 #### Merge Request 생성
-<img src="PHOTO/산출물/git_mr.png" width="600">
+<img src="PHOTO/artifacts/git_mr.png" width="600">
 
 #### MR Approve
-<img src="PHOTO/산출물/git_approve.png" width="600">
+<img src="PHOTO/artifacts/git_approve.png" width="600">
 
 #### MR Merge
-<img src="PHOTO/산출물/git_merge.png" width="600">
+<img src="PHOTO/artifacts/git_merge.png" width="600">
 
 #### CI 통과 알림
-<img src="PHOTO/산출물/git_ci.png" width="600">
+<img src="PHOTO/artifacts/git_ci.png" width="600">
 
 #### CD 배포 성공 알림
-<img src="PHOTO/산출물/git_cd.png" width="600">
+<img src="PHOTO/artifacts/git_cd.png" width="600">
 
 ### 2. Jira
 - [Jira Convention](https://www.notion.so/Jira-Convention-33665a678df980c3b770cdbe4b5cfb6a?source=copy_link) 기반 작업 관리
@@ -471,13 +471,13 @@ src/main/java/
 - 매주 목표량을 설정하여 Sprint 진행
 - Story Point 기반 업무 할당 및 추적
 
-<img src="PHOTO/산출물/jira.png" width="800">
+<img src="PHOTO/artifacts/jira.png" width="800">
 
 ### 3. Notion
 - 회의록 기록 및 보관
 - 컨벤션, 트러블 슈팅, 개발 산출물 관리
 
-<img src="PHOTO/산출물/notion.png" width="300">
+<img src="PHOTO/artifacts/notion.png" width="300">
 
 ### 4. 코드 컨벤션
 - [Code Convention](https://www.notion.so/Code-Convention-33665a678df981b7ba71c640a4beeb42?source=copy_link) 기반 코딩 스타일 통일
@@ -535,7 +535,7 @@ main
 ### 1. 홈 · 검색
 | 메인 화면 | 공연 목록 & 검색 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/메인화면.gif" width="400"> | <img src="PHOTO/GIF/공연목록_검색.gif" width="400"> |
+| <img src="PHOTO/GIF/main_screen.gif" width="400"> | <img src="PHOTO/GIF/performance_search.gif" width="400"> |
 
 | 공연 상세 |
 | :---: |
@@ -544,49 +544,49 @@ main
 ### 2. 예매 프로세스
 | 대기열 진입 | CAPTCHA 검증 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/대기열진입.gif" width="400"> | <img src="PHOTO/GIF/캡챠.gif" width="400"> |
+| <img src="PHOTO/GIF/queue_entry.gif" width="400"> | <img src="PHOTO/GIF/captcha.gif" width="400"> |
 
 | 일자 선택 | 권종 선택 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/일자선택.gif" width="400"> | <img src="PHOTO/GIF/권종선택.gif" width="400"> |
+| <img src="PHOTO/GIF/date_select.gif" width="400"> | <img src="PHOTO/GIF/ticket_type.gif" width="400"> |
 
 | 좌석 선택 |
 | :---: |
-| <img src="PHOTO/GIF/좌석선택.gif" width="400"> |
+| <img src="PHOTO/GIF/seat_select.gif" width="400"> |
 
 ### 3. 결제
 | 약관 동의 | 카카오페이 결제 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/결제_약관.gif" width="400"> | <img src="PHOTO/GIF/결제_카카오페이.gif" width="400"> |
+| <img src="PHOTO/GIF/payment_terms.gif" width="400"> | <img src="PHOTO/GIF/payment_kakaopay.gif" width="400"> |
 
 | 무통장 입금 | 입금 대기 확인 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/결제_무통장.gif" width="400"> | <img src="PHOTO/GIF/입금대기확인.gif" width="400"> |
+| <img src="PHOTO/GIF/payment_bank_transfer.gif" width="400"> | <img src="PHOTO/GIF/deposit_confirm.gif" width="400"> |
 
 ### 4. 취소표 대기
 | 취소표 대기 신청 | 취소표 대기 확정 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/취소표대기.gif" width="400"> | <img src="PHOTO/GIF/취소표대기확정.gif" width="400"> |
+| <img src="PHOTO/GIF/cancel_waitlist.gif" width="400"> | <img src="PHOTO/GIF/cancel_waitlist_confirm.gif" width="400"> |
 
 | 취소표 대기 취소 |
 | :---: |
-| <img src="PHOTO/GIF/취소표대기취소.gif" width="400"> |
+| <img src="PHOTO/GIF/cancel_waitlist_cancel.gif" width="400"> |
 
 ### 5. 마이페이지
 | 내 예매 조회 | 예매 취소 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/내공연조회.gif" width="400"> | <img src="PHOTO/GIF/예매취소.gif" width="400"> |
+| <img src="PHOTO/GIF/my_bookings.gif" width="400"> | <img src="PHOTO/GIF/booking_cancel.gif" width="400"> |
 
 | 관심 공연 위시리스트 | 내 취소표 대기열 관리 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/관심공연.gif" width="400"> | <img src="PHOTO/GIF/내취소대기열.gif" width="400"> |
+| <img src="PHOTO/GIF/wishlist.gif" width="400"> | <img src="PHOTO/GIF/my_waitlist.gif" width="400"> |
 
 ### 6. 주최사 (Agency)
 | 공연 등록 |
 | :---: |
-| <img src="PHOTO/GIF/공연등록.gif" width="400"> |
+| <img src="PHOTO/GIF/register_performance.gif" width="400"> |
 
 ### 7. 관리자 (Admin)
 | 실시간 모니터링 대시보드 | 기타 관리 정보 |
 | :---: | :---: |
-| <img src="PHOTO/GIF/admin_모니터링.gif" width="400"> | <img src="PHOTO/GIF/admin_기타_정보.gif" width="400"> |
+| <img src="PHOTO/GIF/admin_monitoring.gif" width="400"> | <img src="PHOTO/GIF/admin_info.gif" width="400"> |
