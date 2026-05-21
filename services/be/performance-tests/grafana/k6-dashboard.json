@@ -1,0 +1,56 @@
+{
+  "_comment": "Tickle k6 성능 테스트 대시보드 설정 안내",
+  "_note": "k6 공식 Grafana 대시보드(ID: 2587)를 사용하므로 본 파일은 import용 placeholder입니다.",
+
+  "import_instruction": {
+    "1": "Grafana 좌측 메뉴 → Dashboards → New → Import",
+    "2": "Grafana.com Dashboard ID 입력란에 '2587' 입력 후 Load",
+    "3": "Prometheus 데이터소스 선택 (server3의 Prometheus)",
+    "4": "Import 클릭"
+  },
+
+  "prometheus_metrics_for_tickle_perf": {
+    "core_k6_metrics": [
+      "k6_http_reqs_total",
+      "k6_http_req_duration_seconds",
+      "k6_http_req_failed_rate",
+      "k6_vus",
+      "k6_iterations_total",
+      "k6_data_received_bytes",
+      "k6_data_sent_bytes"
+    ],
+    "custom_metrics_defined_in_scenarios": [
+      "k6_queue_enter_latency",
+      "k6_queue_token_latency",
+      "k6_sse_connect_latency",
+      "k6_sse_event_received_rate",
+      "k6_seat_hold_latency",
+      "k6_seat_hold_success_total",
+      "k6_seat_hold_lock_failed_total",
+      "k6_seat_hold_already_held_total",
+      "k6_seat_hold_unauthorized_total",
+      "k6_flow_completed_rate",
+      "k6_flow_admitted_rate",
+      "k6_full_flow_duration"
+    ],
+    "useful_labels": [
+      "stage    (smoke / load / stress / sse_200 / full_flow ...)",
+      "endpoint (queue_enter / queue_token / queue_sse / seat_hold ...)",
+      "scenario"
+    ]
+  },
+
+  "example_promql": {
+    "p95_per_endpoint": "histogram_quantile(0.95, sum(rate(k6_http_req_duration_seconds_bucket{endpoint=\"queue_enter\"}[1m])) by (le))",
+    "rps_per_endpoint": "sum(rate(k6_http_reqs_total[1m])) by (endpoint)",
+    "error_rate": "sum(rate(k6_http_req_failed_rate[1m])) / sum(rate(k6_http_reqs_total[1m]))",
+    "seat_hold_success_count": "sum(increase(k6_seat_hold_success_total[$__range]))"
+  },
+
+  "related_be_metrics_to_correlate": {
+    "tomcat_threads": "tomcat_threads_busy / tomcat_threads_config_max",
+    "redis_ops": "rate(redis_commands_processed_total[1m])",
+    "kafka_send_latency": "rate(kafka_producer_record_send_total[1m])",
+    "jvm_memory": "jvm_memory_used_bytes / jvm_memory_max_bytes"
+  }
+}

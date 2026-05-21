@@ -1,0 +1,165 @@
+package com.ssafy.tickle.seat.application;
+
+import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
+import com.ssafy.tickle.event.domain.EventSession;
+import com.ssafy.tickle.event.infrastructure.persistence.EventSessionRepository;
+import com.ssafy.tickle.seat.domain.EventSection;
+import com.ssafy.tickle.seat.domain.SeatErrorCode;
+import com.ssafy.tickle.seat.domain.SeatStatusChangedEvent;
+import com.ssafy.tickle.seat.domain.SessionSeat;
+import com.ssafy.tickle.seat.infrastructure.persistence.SessionSeatRepository;
+import com.ssafy.tickle.seat.infrastructure.redis.SeatHoldKeyStore;
+import com.ssafy.tickle.seat.presentation.dto.SeatHoldRequest;
+import com.ssafy.tickle.seat.presentation.dto.SeatHoldResponse;
+import com.ssafy.tickle.seat.presentation.dto.SeatItemResponse;
+import com.ssafy.tickle.seat.presentation.dto.SeatMapResponse;
+import com.ssafy.tickle.seat.presentation.dto.SeatSectionResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 좌석 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class SeatService {
+
+    private static final int HOLD_MINUTES = 15;
+
+    private final EventSessionRepository eventSessionRepository;
+    private final SessionSeatRepository sessionSeatRepository;
+    private final SeatHoldKeyStore seatHoldKeyStore;
+    private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * 공연 회차의 전체 좌석 배치도(상태)를 구역별로 조회합니다.
+     *
+     * <p>FE 하드코딩 배치도(좌표)와 합산하여 렌더링하기 위한 상태 정보만 반환합니다.
+     * 최초 1회 호출 후 이후 변경분은 WebSocket Push로 수신합니다.</p>
+     */
+    public SeatMapResponse getSeatMap(Long eventId, Long scheduleId) {
+        EventSession session = validateSession(eventId, scheduleId);
+
+        List<SessionSeat> sessionSeats = sessionSeatRepository.findBySessionIdWithDetails(scheduleId);
+
+        Map<EventSection, List<SeatItemResponse>> seatsBySection = sessionSeats.stream()
+                .collect(Collectors.groupingBy(
+                        ss -> ss.getEventSeat().getEventSection(),
+                        LinkedHashMap::new,
+                        Collectors.mapping(SeatItemResponse::from, Collectors.toList())
+                ));
+
+        List<SeatSectionResponse> sections = seatsBySection.entrySet().stream()
+                .map(entry -> SeatSectionResponse.of(entry.getKey(), entry.getValue()))
+                .toList();
+
+        Long venueId = seatsBySection.keySet().stream()
+                .findFirst()
+                .map(EventSection::getVenueId)
+                .orElseGet(() -> session.getEvent().getVenue().getId());
+
+        return new SeatMapResponse(venueId, sections);
+    }
+
+    /**
+     * FE에서 좌석 선택 후 "선택완료" 클릭 시 선택한 좌석 전체를 일괄 선점합니다 (All-or-Nothing).
+     *
+     * <h3>처리 흐름</h3>
+     * <ol>
+     *   <li>요청 좌석 전체를 단일 배치 UPDATE — WHERE sale_status = 'AVAILABLE' 조건으로 정합성 보장</li>
+     *   <li>업데이트 건수가 요청 수와 다르면 전체 실패 (All-or-Nothing)</li>
+     *   <li>전체 HELD 전환 후 Redis TTL 키 등록 (15분)</li>
+     *   <li>트랜잭션 커밋 후 WebSocket 브로드캐스트</li>
+     * </ol>
+     *
+     * <p>세션 단위 분산 락을 제거했습니다.
+     * holdBatch의 {@code WHERE sale_status = 'AVAILABLE'} 조건과 MySQL InnoDB row lock이
+     * 같은 좌석의 동시 이중 선점을 DB 레벨에서 보장하므로, 분산 락 없이도 정합성이 유지됩니다.
+     * 분산 락은 오히려 다른 좌석을 선점하려는 사용자들까지 직렬화해 "이미 선점된 좌석입니다"
+     * 오류를 불필요하게 발생시키는 원인이었습니다.</p>
+     *
+     * @param eventId    공연 식별자
+     * @param scheduleId 회차 식별자
+     * @param userId     선점 사용자 식별자
+     * @param request    선점 요청 (sessionSeatId 목록, 최대 4개)
+     * @return 선점 완료된 좌석 ID 목록과 만료 시각
+     */
+    @Transactional
+    public SeatHoldResponse holdSeats(Long eventId, Long scheduleId, Long userId, SeatHoldRequest request) {
+        List<Long> seatIds = request.sessionSeatIds();
+
+        // holdBatch: WHERE sale_status = 'AVAILABLE' 조건 + MySQL row lock으로 이중 선점 방지
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        int updated = sessionSeatRepository.holdBatch(seatIds, userId, now);
+        if (updated != seatIds.size()) {
+            throw new BaseException(SeatErrorCode.SEAT_ALREADY_HELD);
+        }
+
+        Instant expiresAt = Instant.now().plus(HOLD_MINUTES, ChronoUnit.MINUTES);
+        seatHoldKeyStore.registerHeld(scheduleId, userId, seatIds);
+
+        eventPublisher.publishEvent(
+                new SeatStatusChangedEvent(this, scheduleId, seatIds, SessionSeat.SaleStatus.HELD)
+        );
+
+        return new SeatHoldResponse(seatIds, expiresAt);
+    }
+
+    /**
+     * 사용자가 선점한 좌석 전체를 해제합니다.
+     *
+     * <p>Redis 키가 만료된 상태에서도 정확하게 동작하도록
+     * DB의 {@code heldByUserId} 컬럼을 기준으로 조회합니다.
+     * 이미 해제된 경우 멱등성을 보장하여 조용히 반환합니다.</p>
+     */
+    @Transactional
+    public void releaseSeats(Long eventId, Long scheduleId, Long userId) {
+        validateSession(eventId, scheduleId);
+
+        List<SessionSeat> seats = sessionSeatRepository.findAllBySessionIdAndHeldByUserIdAndSaleStatus(
+                scheduleId, userId, SessionSeat.SaleStatus.HELD
+        );
+
+        if (seats.isEmpty()) {
+            return;
+        }
+
+        seats.forEach(SessionSeat::release);
+        sessionSeatRepository.saveAll(seats);
+        seatHoldKeyStore.deleteHeld(scheduleId, userId);
+
+        List<Long> releasedIds = seats.stream().map(SessionSeat::getId).toList();
+        eventPublisher.publishEvent(
+                new SeatStatusChangedEvent(this, scheduleId, releasedIds, SessionSeat.SaleStatus.AVAILABLE)
+        );
+    }
+
+    private EventSession validateSession(Long eventId, Long scheduleId) {
+        return eventSessionRepository.findByIdAndEventId(scheduleId, eventId)
+                .orElseThrow(() -> new BaseException(
+                        GlobalErrorCode.RESOURCE_NOT_FOUND,
+                        "공연(%d)에 속하는 회차(%d)를 찾을 수 없습니다.".formatted(eventId, scheduleId)
+                ));
+    }
+
+    private List<SessionSeat> loadSeats(List<Long> seatIds) {
+        List<SessionSeat> seats = sessionSeatRepository.findAllByIdIn(seatIds);
+        if (seats.size() != seatIds.size()) {
+            throw new BaseException(SeatErrorCode.SEAT_NOT_FOUND);
+        }
+        return seats;
+    }
+}
