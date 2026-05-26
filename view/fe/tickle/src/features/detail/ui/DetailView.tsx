@@ -733,18 +733,18 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                     data={[
                       {
                         label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">카테고리</Text>,
-                        value: <Text typography="t5" color="primary" fontWeight="bold">{data?.subTitle || ''}</Text>
+                        value: <Text typography="t4" color="primary" fontWeight="bold">{data?.subTitle || ''}</Text>
                       },
                       {
                         label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">공연 기간</Text>,
-                        value: <Text typography="t5" color="primary" fontWeight="bold">{data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''}</Text>
+                        value: <Text typography="t4" color="primary" fontWeight="bold">{data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''}</Text>
                       },
                       {
                         label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">장소</Text>,
                         value: (
                           <div className="flex flex-col">
-                            <Text typography="t5" color="primary" fontWeight="bold">{data?.venue || ''}</Text>
-                            {data?.venueAddress && <Text typography="t6" color="secondary">{data?.venueAddress}</Text>}
+                            <Text typography="t4" color="primary" fontWeight="bold">{data?.venue || ''}</Text>
+                            {data?.venueAddress && <Text typography="t5" color="secondary">{data?.venueAddress}</Text>}
                           </div>
                         )
                       },
@@ -753,7 +753,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                         value: (
                           <div className="flex flex-col gap-0.5">
                             {data?.notice?.split('\n').map((desc, dIdx) => desc && (
-                              <Text key={dIdx} typography="t5" color="primary" fontWeight="bold">{desc}</Text>
+                              <Text key={dIdx} typography="t4" color="primary" fontWeight="bold">{desc}</Text>
                             ))}
                           </div>
                         )
