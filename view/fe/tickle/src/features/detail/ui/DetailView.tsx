@@ -749,11 +749,11 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
                         )
                       },
                       {
-                        label: <Text typography="t6" color="secondary" fontWeight="medium" className="whitespace-nowrap">공지사항</Text>,
+                        label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">공지사항</Text>,
                         value: (
                           <div className="flex flex-col gap-0.5">
                             {data?.notice?.split('\n').map((desc, dIdx) => desc && (
-                              <Text key={dIdx} typography="t6" color="primary" fontWeight="bold">{desc}</Text>
+                              <Text key={dIdx} typography="t5" color="primary" fontWeight="bold">{desc}</Text>
                             ))}
                           </div>
                         )
