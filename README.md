@@ -68,7 +68,7 @@ Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴, 키보드 �
       AI<br/>Leader
     </td>
     <td align="center" width="150">
-      AI<br/>
+      AI<br/>Developer
     </td>
     <td align="center" width="150">
       Frontend<br/>Developer
