@@ -103,5 +103,6 @@ public class UserAccessLog {
         this.countryIsoCode = countryIsoCode;
         this.cityName = cityName;
         this.isp = isp;
+        this.createdAt = Instant.now();
     }
 }
