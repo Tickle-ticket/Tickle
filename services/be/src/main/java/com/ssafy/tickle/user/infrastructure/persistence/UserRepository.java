@@ -40,4 +40,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT u.id FROM User u WHERE u.email LIKE %:emailSuffix")
     List<Long> findIdsByEmailEndingWith(@Param("emailSuffix") String emailSuffix);
+
+    /**
+     * 사용자 식별자와 이메일 prefix를 기준으로 존재 여부를 확인합니다.
+     *
+     * <p>시연용 부하 테스트 계정(demo*)의 JWT 만료 예외 처리 용도로 사용합니다.</p>
+     *
+     * @param id 사용자 식별자
+     * @param emailPrefix 이메일 prefix (예: "demo")
+     * @return 존재 여부
+     */
+    boolean existsByIdAndEmailStartingWith(Long id, String emailPrefix);
 }

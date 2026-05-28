@@ -2,6 +2,7 @@ package com.ssafy.tickle.common.util;
 
 import com.ssafy.tickle.auth.domain.AuthErrorCode;
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -28,11 +29,17 @@ import java.util.Optional;
 public class JwtProvider {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String DEMO_EMAIL_PREFIX = "demo";
 
     private final String secret;
+    private final UserRepository userRepository;
 
-    public JwtProvider(@Value("${jwt.secret}") String secret) {
+    public JwtProvider(
+            @Value("${jwt.secret}") String secret,
+            UserRepository userRepository
+    ) {
         this.secret = secret;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -112,10 +119,27 @@ public class JwtProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
+            if (isDemoUser(e.getClaims())) {
+                return e.getClaims();
+            }
             throw new BaseException(AuthErrorCode.EXPIRED_TOKEN);
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("JWT 파싱 실패: {}", e.getMessage());
             throw new BaseException(AuthErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    private boolean isDemoUser(Claims claims) {
+        if (claims == null || claims.getSubject() == null) {
+            return false;
+        }
+
+        try {
+            Long userId = Long.parseLong(claims.getSubject());
+            return userRepository.existsByIdAndEmailStartingWith(userId, DEMO_EMAIL_PREFIX);
+        } catch (Exception e) {
+            log.warn("demo JWT 만료 예외 확인 실패: {}", e.getMessage());
+            return false;
         }
     }
 }
