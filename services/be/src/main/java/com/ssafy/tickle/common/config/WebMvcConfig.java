@@ -45,7 +45,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(userAccessLogInterceptor)
-                .addPathPatterns("/api/**");
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/v1/queues/**");
         registry.addInterceptor(internalSecretInterceptor)
                 .addPathPatterns(
                         "/internal/**",
