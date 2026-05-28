@@ -5,12 +5,11 @@ import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueEnterRequestReferenceHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisOperations;
-import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -19,6 +18,20 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class QueueEnterRequestStore {
+
+    private static final RedisScript<Long> SAVE_IF_ABSENT_SCRIPT = RedisScript.of("""
+            local saved = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
+            if not saved then
+                return 0
+            end
+
+            redis.call('HSET', KEYS[2],
+                'scope', ARGV[3],
+                'eventId', ARGV[4],
+                'userId', ARGV[5])
+            redis.call('EXPIRE', KEYS[2], ARGV[2])
+            return 1
+            """, Long.class);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final QueueEnterRequestReferenceHashMapper queueEnterRequestReferenceHashMapper;
@@ -51,27 +64,17 @@ public class QueueEnterRequestStore {
     }
 
     public boolean saveIfAbsent(QueueScope scope, Long userId, Long eventId, String requestId) {
-        Boolean saved = stringRedisTemplate.opsForValue().setIfAbsent(
-                enterKey(scope, userId, eventId),
+        Long saved = stringRedisTemplate.execute(
+                SAVE_IF_ABSENT_SCRIPT,
+                List.of(enterKey(scope, userId, eventId), referenceKey(requestId)),
                 requestId,
-                QueueConstants.REQUEST_TTL
+                String.valueOf(QueueConstants.REQUEST_TTL.toSeconds()),
+                scope.name(),
+                String.valueOf(eventId),
+                String.valueOf(userId)
         );
 
-        if (Boolean.TRUE.equals(saved)) {
-            // requestId만으로 다시 사용자/공연를 복구할 수 있게 reference hash를 별도로 둔다.
-            String referenceKey = referenceKey(requestId);
-            Map<String, String> referenceHash = queueEnterRequestReferenceHashMapper.toHash(scope, eventId, userId);
-            stringRedisTemplate.executePipelined(new SessionCallback<>() {
-                @Override
-                public Object execute(RedisOperations operations) {
-                    operations.opsForHash().putAll(referenceKey, referenceHash);
-                    operations.expire(referenceKey, QueueConstants.REQUEST_TTL);
-                    return null;
-                }
-            });
-        }
-
-        return Boolean.TRUE.equals(saved);
+        return Long.valueOf(1L).equals(saved);
     }
 
     /**
