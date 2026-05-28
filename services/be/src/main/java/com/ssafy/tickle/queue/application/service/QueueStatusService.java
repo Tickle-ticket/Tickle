@@ -9,6 +9,7 @@ import com.ssafy.tickle.queue.infrastructure.cache.model.QueueStatusSnapshot;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueEnterRequestStore;
 import com.ssafy.tickle.queue.infrastructure.cache.store.QueueStatusStore;
+import com.ssafy.tickle.queue.infrastructure.messaging.model.QueueEnterMessage;
 import com.ssafy.tickle.queue.presentation.dto.QueueTokenResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatusResponse;
 import com.ssafy.tickle.queue.presentation.dto.QueueStatsResponse;
@@ -37,21 +38,21 @@ public class QueueStatusService {
      * @return queueToken과 현재 상태
      */
     public QueueTokenResponse getQueueToken(String requestId) {
-        QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(requestId)
+        queueEnterRequestStore.findReferenceByRequestId(requestId)
                 .orElseThrow(() -> new BaseException(GlobalErrorCode.RESOURCE_NOT_FOUND, "없는 대기열 진입 요청입니다."));
 
-        // requestId 기준으로 queueToken을 고정해두면 새로고침/재호출에도 같은 토큰을 재사용할 수 있다.
-        String queueToken = issueQueueToken(requestId);
-        queueStatusStore.registerWaitingIfAbsent(
-                queueToken,
-                requestId,
-                reference.userId(),
-                reference.scope(),
-                reference.eventId(),
-                Instant.now()
-        );
+        String queueToken = findIssuedQueueToken(requestId);
+        if (queueToken == null) {
+            return QueueTokenResponse.pending();
+        }
 
-        return QueueTokenResponse.waiting(queueToken);
+        QueueStatusSnapshot snapshot = queueStatusStore.findSnapshot(queueToken)
+                .orElse(null);
+        if (snapshot == null) {
+            return QueueTokenResponse.pending();
+        }
+
+        return new QueueTokenResponse(queueToken, snapshot.status());
     }
 
     public QueueTokenResponse getQueueToken(Long eventId, String requestId) {
@@ -141,6 +142,31 @@ public class QueueStatusService {
 
     public java.time.Duration admitTokenTtl() {
         return QueueConstants.ADMIT_TOKEN_TTL;
+    }
+
+    /**
+     * Kafka consumer가 대기열 진입 요청을 실제 WAITING 상태로 등록합니다.
+     */
+    public void registerWaiting(QueueEnterMessage message) {
+        QueueEnterRequestReference reference = queueEnterRequestStore.findReferenceByRequestId(message.requestId())
+                .orElse(null);
+        if (reference == null
+                || !reference.eventId().equals(message.eventId())
+                || !reference.userId().equals(message.userId())
+                || reference.scope() != message.scope()) {
+            return;
+        }
+
+        // requestId 기준으로 queueToken을 고정해두면 새로고침/재호출에도 같은 토큰을 재사용할 수 있다.
+        String queueToken = issueQueueToken(message.requestId());
+        queueStatusStore.registerWaitingIfAbsent(
+                queueToken,
+                message.requestId(),
+                message.userId(),
+                message.scope(),
+                message.eventId(),
+                message.requestedAt()
+        );
     }
 
     /**
@@ -249,7 +275,7 @@ public class QueueStatusService {
         String requestKey = QueueConstants.QUEUE_TOKEN_REQUEST_KEY_PREFIX + requestId;
 
         // 같은 requestId에 대해 최초 1회만 queueToken을 발급하고, 이후에는 기존 토큰을 재사용한다.
-        String existingQueueToken = stringRedisTemplate.opsForValue().get(requestKey);
+        String existingQueueToken = findIssuedQueueToken(requestId);
         if (existingQueueToken != null) {
             return existingQueueToken;
         }
@@ -268,6 +294,10 @@ public class QueueStatusService {
 
         // 동시에 여러 요청이 들어오면 이미 다른 스레드가 저장한 queueToken을 다시 읽어 반환.
         return stringRedisTemplate.opsForValue().get(requestKey);
+    }
+
+    private String findIssuedQueueToken(String requestId) {
+        return stringRedisTemplate.opsForValue().get(QueueConstants.QUEUE_TOKEN_REQUEST_KEY_PREFIX + requestId);
     }
 
     private void deleteRelatedTokens(QueueStatusSnapshot snapshot) {

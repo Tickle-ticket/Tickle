@@ -80,7 +80,7 @@ class QueueStatusServiceTest {
 
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
 
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
 
             assertThat(tokenResponse.queueToken()).isNotBlank();
             assertThat(tokenResponse.status()).isEqualTo(QueueRequestStatus.WAITING);
@@ -99,7 +99,7 @@ class QueueStatusServiceTest {
 
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
 
-            QueueTokenResponse first = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse first = awaitQueueToken(eventId, enterResponse.requestId());
             QueueTokenResponse second = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
 
             assertThat(first.queueToken()).isNotBlank();
@@ -133,7 +133,7 @@ class QueueStatusServiceTest {
             ));
 
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
 
             QueueStatusResponse statusResponse = queueStatusService.getStatusByQueueToken(eventId, tokenResponse.queueToken());
 
@@ -158,7 +158,7 @@ class QueueStatusServiceTest {
             ));
 
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
 
             queueAdmissionScheduler.admitWaitingUsers();
 
@@ -190,7 +190,7 @@ class QueueStatusServiceTest {
             ));
 
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
 
             queueStatusService.leave(eventId, tokenResponse.queueToken());
 
@@ -213,7 +213,7 @@ class QueueStatusServiceTest {
             ));
 
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
             queueAdmissionScheduler.admitWaitingUsers();
 
             queueStatusService.leave(eventId, tokenResponse.queueToken());
@@ -224,5 +224,23 @@ class QueueStatusServiceTest {
                     .extracting("errorCode")
                     .isEqualTo(GlobalErrorCode.RESOURCE_NOT_FOUND);
         }
+    }
+
+    private QueueTokenResponse awaitQueueToken(Long eventId, String requestId) {
+        for (int attempts = 0; attempts < 50; attempts++) {
+            QueueTokenResponse response = queueStatusService.getQueueToken(eventId, requestId);
+            if (response.queueToken() != null) {
+                return response;
+            }
+
+            try {
+                Thread.sleep(100L);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("queueToken 발급 대기 중 인터럽트되었습니다.", exception);
+            }
+        }
+
+        return queueStatusService.getQueueToken(eventId, requestId);
     }
 }

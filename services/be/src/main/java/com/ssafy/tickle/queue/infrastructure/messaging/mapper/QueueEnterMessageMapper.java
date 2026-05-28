@@ -22,4 +22,12 @@ public class QueueEnterMessageMapper {
             throw new IllegalStateException("대기열 진입 요청 직렬화에 실패했습니다.", exception);
         }
     }
+
+    public QueueEnterMessage fromPayload(String payload) {
+        try {
+            return objectMapper.readValue(payload, QueueEnterMessage.class);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("대기열 진입 요청 역직렬화에 실패했습니다.", exception);
+        }
+    }
 }

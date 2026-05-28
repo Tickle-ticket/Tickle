@@ -61,7 +61,7 @@ public interface QueueApiDoc {
      */
     @Operation(
             summary = "대기열 토큰 발급",
-            description = "requestId를 기반으로 최초 queueToken을 발급하고 현재 상태만 반환합니다."
+            description = "requestId를 기반으로 consumer 처리 완료 여부를 조회합니다. 처리 전이면 PENDING, 처리 완료 후에는 queueToken과 현재 상태를 반환합니다."
     )
     @ApiResponse(
             responseCode = "200",

@@ -71,7 +71,7 @@ class QueueStatusCleanupSchedulerTest {
         ));
 
         QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-        QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+        QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
 
         stringRedisTemplate.opsForHash().put(
                 QueueConstants.STATUS_KEY_PREFIX + tokenResponse.queueToken(),
@@ -98,7 +98,7 @@ class QueueStatusCleanupSchedulerTest {
         ));
 
         QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-        QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+        QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
         queueAdmissionScheduler.admitWaitingUsers();
 
         stringRedisTemplate.opsForHash().put(
@@ -112,5 +112,23 @@ class QueueStatusCleanupSchedulerTest {
         assertThat(queueStatusStore.countAdmitted(eventId)).isZero();
         assertThatThrownBy(() -> queueStatusService.getQueueToken(eventId, enterResponse.requestId()))
                 .isInstanceOf(com.ssafy.tickle.common.exception.BaseException.class);
+    }
+
+    private QueueTokenResponse awaitQueueToken(Long eventId, String requestId) {
+        for (int attempts = 0; attempts < 50; attempts++) {
+            QueueTokenResponse response = queueStatusService.getQueueToken(eventId, requestId);
+            if (response.queueToken() != null) {
+                return response;
+            }
+
+            try {
+                Thread.sleep(100L);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("queueToken 발급 대기 중 인터럽트되었습니다.", exception);
+            }
+        }
+
+        return queueStatusService.getQueueToken(eventId, requestId);
     }
 }

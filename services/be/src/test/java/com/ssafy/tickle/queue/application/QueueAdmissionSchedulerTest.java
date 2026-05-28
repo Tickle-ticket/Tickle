@@ -73,7 +73,7 @@ class QueueAdmissionSchedulerTest {
         List<String> queueTokens = new ArrayList<>();
         for (long userId = 1L; userId <= 101L; userId++) {
             QueueEnterResponse enterResponse = queueEnterService.enter(eventId, userId);
-            QueueTokenResponse tokenResponse = queueStatusService.getQueueToken(eventId, enterResponse.requestId());
+            QueueTokenResponse tokenResponse = awaitQueueToken(eventId, enterResponse.requestId());
             queueTokens.add(tokenResponse.queueToken());
 
             // waiting zset score를 등록 순서대로 분리해 admission 순서를 안정적으로 만든다.
@@ -109,5 +109,23 @@ class QueueAdmissionSchedulerTest {
                 .map(queueToken -> queueStatusService.getStatusByQueueToken(eventId, queueToken))
                 .filter(response -> response.status() == QueueRequestStatus.ADMITTED)
                 .forEach(response -> assertThat(response.admitToken()).isNotBlank());
+    }
+
+    private QueueTokenResponse awaitQueueToken(Long eventId, String requestId) {
+        for (int attempts = 0; attempts < 50; attempts++) {
+            QueueTokenResponse response = queueStatusService.getQueueToken(eventId, requestId);
+            if (response.queueToken() != null) {
+                return response;
+            }
+
+            try {
+                Thread.sleep(100L);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("queueToken 발급 대기 중 인터럽트되었습니다.", exception);
+            }
+        }
+
+        return queueStatusService.getQueueToken(eventId, requestId);
     }
 }
