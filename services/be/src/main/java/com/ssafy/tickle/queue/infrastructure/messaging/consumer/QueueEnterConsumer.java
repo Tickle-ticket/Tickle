@@ -20,7 +20,10 @@ public class QueueEnterConsumer {
     private final QueueEnterMessageMapper queueEnterMessageMapper;
     private final QueueStatusService queueStatusService;
 
-    @KafkaListener(topics = QueueConstants.ENTER_REQUEST_TOPIC)
+    @KafkaListener(
+            topics = QueueConstants.ENTER_REQUEST_TOPIC,
+            concurrency = "3"
+    )
     public void consume(String payload) {
         QueueEnterMessage message;
         try {
