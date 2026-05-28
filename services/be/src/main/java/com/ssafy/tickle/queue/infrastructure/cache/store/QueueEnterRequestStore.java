@@ -5,9 +5,12 @@ import com.ssafy.tickle.queue.domain.QueueScope;
 import com.ssafy.tickle.queue.infrastructure.cache.mapper.QueueEnterRequestReferenceHashMapper;
 import com.ssafy.tickle.queue.infrastructure.cache.model.QueueEnterRequestReference;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -57,11 +60,15 @@ public class QueueEnterRequestStore {
         if (Boolean.TRUE.equals(saved)) {
             // requestId만으로 다시 사용자/공연를 복구할 수 있게 reference hash를 별도로 둔다.
             String referenceKey = referenceKey(requestId);
-            stringRedisTemplate.opsForHash().putAll(
-                    referenceKey,
-                    queueEnterRequestReferenceHashMapper.toHash(scope, eventId, userId)
-            );
-            stringRedisTemplate.expire(referenceKey, QueueConstants.REQUEST_TTL);
+            Map<String, String> referenceHash = queueEnterRequestReferenceHashMapper.toHash(scope, eventId, userId);
+            stringRedisTemplate.executePipelined(new SessionCallback<>() {
+                @Override
+                public Object execute(RedisOperations operations) {
+                    operations.opsForHash().putAll(referenceKey, referenceHash);
+                    operations.expire(referenceKey, QueueConstants.REQUEST_TTL);
+                    return null;
+                }
+            });
         }
 
         return Boolean.TRUE.equals(saved);

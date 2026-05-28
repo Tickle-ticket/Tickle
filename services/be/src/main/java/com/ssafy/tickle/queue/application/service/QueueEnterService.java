@@ -46,16 +46,10 @@ public class QueueEnterService {
 
         validateQueueEntry(eventOpenInfo, Instant.now());
 
-        String existingRequestId = queueEnterRequestStore.findRequestId(scope, userId, eventId)
-                .orElse(null);
-        if (existingRequestId != null) {
-            return QueueEnterResponse.pending(existingRequestId);
-        }
-
         String requestId = UUID.randomUUID().toString();
         boolean saved = queueEnterRequestStore.saveIfAbsent(scope, userId, eventId, requestId);
         if (!saved) {
-            // setIfAbsent 경합에서 졌다면, 먼저 저장된 requestId를 그대로 재사용한다.
+            // 이미 진입한 사용자이거나 setIfAbsent 경합에서 졌다면, 먼저 저장된 requestId를 그대로 재사용한다.
             String duplicatedRequestId = queueEnterRequestStore.findRequestId(scope, userId, eventId)
                     .orElse(requestId);
             return QueueEnterResponse.pending(duplicatedRequestId);
