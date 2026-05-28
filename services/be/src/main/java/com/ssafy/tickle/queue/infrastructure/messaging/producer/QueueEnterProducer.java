@@ -30,7 +30,7 @@ public class QueueEnterProducer {
     public void publish(QueueEnterMessage message) {
         kafkaTemplate.send(
                 QueueConstants.ENTER_REQUEST_TOPIC,
-                message.scope().name() + ":" + message.eventId(),
+                message.requestId(),
                 queueEnterMessageMapper.toPayload(message)
         ).whenComplete((result, ex) -> {
             if (ex != null) {
