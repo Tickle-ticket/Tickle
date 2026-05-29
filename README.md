@@ -13,9 +13,9 @@
 ## 🎫 프로젝트 소개
 
 티켓팅 전쟁에서 매번 패배하셨나요? 눈 깜짝할 사이 매진되는 티켓, 그 뒤엔 항상 매크로가 있었습니다.
-Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴, 키보드 입력**을 AI가 실시간으로 분석하여 매크로를 탐지하고 차단하는 **공정한 티켓 예매 플랫폼**입니다.
+Tickle(티클)은 사용자의 **마우스 움직임, 클릭 패턴**을 AI가 실시간으로 분석하여 매크로를 탐지하고 차단하는 **공정한 티켓 예매 플랫폼**입니다.
 
-28개 이상의 행동 특성(Behavioral Feature)을 추출하고, **LightGBM · XGBoost · Random Forest 앙상블 모델**이 실시간으로 봇과 사람을 구분합니다.
+30개 행동 특성(Behavioral Feature)을 추출하고, **LogisticRegression, LightGBM,  XGBoost, RandomForest 앙상블 AI 모델**이 실시간으로 봇과 사람을 구분합니다.
 탐지 결과에 따라 ALLOW · REVIEW · BLOCK 3단계로 분류하여, 정상 사용자에게는 쾌적한 예매 경험을, 매크로에게는 단호한 차단을 제공합니다.
 
 **Cloudflare Turnstile CAPTCHA**, **대기열 시스템**, **카카오페이 결제**까지 —
