@@ -500,7 +500,7 @@ src/main/java/
 ```
 [FE] 364 fix: 전체 1차 QA 수정
 [BE] 273 feat: 예매 확정 API 구현
-[AI] 294 feat: Phase B H1+H4 검증 + H1' 신규 가설 등록
+[AI] 295 feat: Phase B H1+H4 검증 + H1' 신규 가설 등록
 ```
 
 ---
