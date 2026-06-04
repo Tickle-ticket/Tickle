@@ -1,6 +1,6 @@
 groups:
   click:
-    - time_to_first_click_ms
+    - time_to_first_click_ms 
     - time_from_element_visible_to_click_ms
     - time_from_element_clickable_to_click_ms
     - click_sequence_consistency_score
@@ -12,6 +12,12 @@ groups:
     - pre_click_hover_time_ms
     - pre_click_scroll_flag
     - immediate_post_render_click_rate
+
+    # final feature에서 제외
+    - inter_click_interval_ms
+    - click_offset_from_element_center_px
+    - click_offset_variance_px
+  
 
   mouse:
     - mouse_total_travel_distance_px
@@ -32,6 +38,22 @@ groups:
     - pre_click_path_300ms_straightness
     - pre_click_path_500ms_total_distance_px
     - pre_click_path_500ms_straightness
+
+    # final feature에서 제외
+    - inter_element_move_interval_std_ms
+
+  # final feature에서 제외
+  keyboard:
+    - time_to_first_keydown_ms
+    - inter_key_interval_ms_mean
+    - inter_key_interval_ms_std
+    - keydown_to_keyup_ms_mean
+    - typeing_total_duraion_ms
+    - typeing_speed_cps
+    - backspace_rate
+    - correction_count
+    - paste_flag
+    - focus_to_submit_ms
 
 names_ko:
   time_to_first_click_ms: 첫 클릭 시간
@@ -66,10 +88,24 @@ names_ko:
   pre_click_path_500ms_total_distance_px: 500ms 경로 총거리
   pre_click_path_500ms_straightness: 500ms 경로 직선성
 
-  durationMs: 페이지 체류 시간
-  clickCount: 클릭 수
-  eventCount: 전체 이벤트 수
-  windowCount: 이벤트 집계 구간 수
+  # final feature에서 제외
+  inter_click_interval_ms: 클릭 간격
+  click_offset_from_element_center_px: 요소 중심에서의 클릭 오프셋
+  click_offset_variance_px: 클릭 오프셋 분산
+
+  inter_element_move_interval_std_ms: 요소 간 이동 간격 표준편차
+
+  time_to_first_keydown_ms: 첫 키다운 시간
+  inter_key_interval_ms_mean: 키 간격 평균
+  inter_key_interval_ms_std: 키 간격 표준편차
+  keydown_to_keyup_ms_mean: 키다운에서 키업까지의 평균 시간
+  typeing_total_duraion_ms: 타이핑 총 소요 시간
+  typeing_speed_cps: 타이핑 속도 (문자/초)
+  backspace_rate: 백스페이스 비율
+  correction_count: 수정 횟수
+  paste_flag: 붙여넣기 여부
+  focus_to_submit_ms: 포커스에서 제출까지의 시간
+
 
 exclude:
   - trial_id
@@ -82,24 +118,7 @@ exclude:
   - metrics_compatibility
 
 
-
-raw:
- - pre_click_mouse_path_pattern_300ms
- - pre_click_mouse_path_pattern_500ms
-
-input_features_chan_10:
-  - mousemove_event_rate
-  - pre_click_mousemove_count
-  - mouse_direction_change_count
-  - pre_click_path_300ms_total_distance_px
-  - mouse_stop_segment_count
-  - pre_click_path_500ms_total_distance_px
-  - time_from_element_visible_to_click_ms
-  - time_from_element_clickable_to_click_ms
-  - click_offset_from_element_center_px
-  - inter_click_interval_ms
-
-input_features_chan:
+input_features_final:
   - time_to_first_click_ms
   - time_from_element_visible_to_click_ms
   - time_from_element_clickable_to_click_ms
@@ -132,16 +151,6 @@ input_features_chan:
   - pre_click_path_500ms_straightness
 
 
-input_features_gyeom:
-  - inter_click_interval_ms
-  - mouse_speed_change_mean
-  - mouse_total_travel_distance_px
-  - mouse_path_curvature_mean
-  - mouse_avg_speed_px_per_ms
-  - mouse_acceleration_mean
-  - mouse_max_speed_px_per_ms
 
-# 319 final pool: 320 평가 결과 robust(jerk) + borderline(max_speed) 채택
-input_features_gyeom_final_pool:
-  - mouse_jerk_mean
-  - mouse_max_speed_px_per_ms
+
+
