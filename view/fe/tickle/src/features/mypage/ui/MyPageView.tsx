@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/src/shared/components/Header';
 import { Title } from '@/src/shared/components/Title';
 import SidebarButton from '@/src/shared/components/SidebarButton';
@@ -9,7 +10,6 @@ import { ProfileEditView } from './ProfileEditView';
 import { UpcomingWishlistView } from './UpcomingWishlistView';
 import { MyBookingsView } from './MyBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
-import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { SearchContent } from '@/src/shared/components/SearchContent';
 
 type TabType = 'USER' | 'EDIT_PROFILE' | 'UPCOMING' | 'MY_TICKETS' | 'PAST_TICKETS' | 'WAITLIST' | 'PAYMENTS';
@@ -34,12 +34,22 @@ const getInitialTab = (): TabType => {
 
 export const MyPageView = () => {
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab);
-  const { searchValue, clearSearch } = useSearchStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawQ = searchParams.get('q');
+  const isSearchMode = rawQ !== null;
+  const searchValue = rawQ ?? '';
 
-  // 마이페이지 진입 시 검색 상태 초기화 — 검색 중에도 마이페이지가 바로 열리도록
+  // 마이페이지 진입 시 검색 상태 초기화 — q만 제거하고 view/tab은 유지
   React.useEffect(() => {
-    clearSearch();
-  }, [clearSearch]);
+    if (searchParams.get('q') !== null) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('q');
+      const qs = params.toString();
+      router.replace(qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex w-full h-screen bg-[#f8f8f8] font-sans overflow-hidden relative">
@@ -49,9 +59,9 @@ export const MyPageView = () => {
       <main className="flex-1 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative scrollbar-hide [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <Header />
         
-        {searchValue ? (
+        {isSearchMode ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <SearchContent query={searchValue} />
+            <SearchContent query={searchValue || ' '} />
           </div>
         ) : (
           <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
