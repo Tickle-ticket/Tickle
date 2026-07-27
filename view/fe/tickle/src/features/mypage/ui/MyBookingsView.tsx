@@ -61,17 +61,18 @@ export const MyBookingsView = () => {
     setSelectedPaymentId(null);
   };
 
+  // 403·404·5xx는 QueryProvider의 throwOnError가 Error Boundary로 올려보내므로
+  // 여기 도달하는 것은 400·409처럼 화면 맥락이 필요한 에러뿐이다.
+  // 목록은 정상이고 상세만 실패한 상황이라 페이지를 덮지 않고 모달로 알린다.
   useEffect(() => {
     if (detailError) {
       handleCloseDetailModal();
-      const err = detailError as any;
-      if (err.status === 403) {
-        setErrorModalConfig({ isOpen: true, title: '권한 없음', message: '해당 예매 상세 정보를 볼 권한이 없습니다.' });
-      } else if (err.status === 404) {
-        setErrorModalConfig({ isOpen: true, title: '예매 없음', message: '존재하지 않는 예매 내역입니다.' });
-      } else {
-        setErrorModalConfig({ isOpen: true, title: '조회 오류', message: err.message || '상세 정보를 불러오는 중 오류가 발생했습니다.' });
-      }
+      setErrorModalConfig({
+        isOpen: true,
+        title: '조회 오류',
+        message:
+          (detailError as Error).message || '상세 정보를 불러오는 중 오류가 발생했습니다.',
+      });
     }
   }, [detailError]);
 

@@ -40,6 +40,15 @@ const Icon401 = () => (
   </IllustrationBase>
 );
 
+const Icon403 = () => (
+  <IllustrationBase colorClass="bg-[#ffedd5] text-[#f97316]">
+    <svg width="46" height="46" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <line x1="9.5" y1="12" x2="14.5" y2="12" />
+    </svg>
+  </IllustrationBase>
+);
+
 const IconTimeout = () => (
   <IllustrationBase colorClass="bg-[#fef3c7] text-[#f59e0b]">
     <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -73,8 +82,14 @@ const CONFIG: Record<ErrorType, { title: string; description: string; actionText
     actionText: '새로고침',
     icon: <Icon500 />
   },
-  '401': {
+  '403': {
     title: '접근 권한이 없습니다',
+    description: '이 항목에 접근할 권한이 없습니다.',
+    actionText: '돌아가기',
+    icon: <Icon403 />
+  },
+  '401': {
+    title: '로그인이 필요합니다',
     description: '로그인이 필요하거나 잘못된 접근입니다.',
     actionText: '안전하게 로그인하기',
     icon: <Icon401 />
@@ -99,7 +114,8 @@ export const ErrorView = ({
   description,
   actionText,
   onAction,
-  className = ''
+  className = '',
+  compact = false
 }: ErrorViewProps) => {
   const defaults = CONFIG[type];
 
@@ -110,11 +126,11 @@ export const ErrorView = ({
   // 에러 타입에 따라 메인 버튼 색상 분기 (Toss-style)
   let buttonColor: 'primary' | 'danger' | 'dark' | 'light' = 'primary';
   if (type === '500') buttonColor = 'danger';
-  else if (type === '401') buttonColor = 'dark';
+  else if (type === '401' || type === '403') buttonColor = 'dark';
   // 404, timeout, soldout은 보통 primary로 유도
 
   return (
-    <div className={`flex flex-col items-center justify-center px-6 py-16 w-full ${className}`}>
+    <div className={`flex flex-col items-center justify-center px-6 w-full ${compact ? 'py-8' : 'py-16'} ${className}`}>
       {defaults.icon}
 
       <div className="flex flex-col items-center text-center gap-4 max-w-[420px]">
