@@ -11,6 +11,7 @@ import { Box } from '@/src/shared/components/Box';
 import { Table } from '@/src/shared/components/Table';
 import { Text } from '@/src/shared/components/Text';
 import { Badge } from '@/src/shared/components/Badge';
+import { ForbiddenView, isForbiddenError } from '@/src/shared/components/ForbiddenView';
 
 export interface BookingDetailViewProps {
   bookingId: string;
@@ -110,21 +111,28 @@ export const BookingDetailView = ({ bookingId, onBack, bookingData }: BookingDet
     );
   }
 
-  if (isLoading || !bookingDetail) {
-    return (
-      <div className="w-full min-h-screen bg-surface-subtle flex items-center justify-center">
-        <span className="text-content-muted font-bold">불러오는 중...</span>
-      </div>
-    );
-  }
-
+  // 에러를 로딩보다 먼저 판정한다.
+  // 실패 시 bookingDetail이 undefined라, 로딩 조건(!bookingDetail)이 앞서면
+  // 에러 분기에 영원히 도달하지 못해 "불러오는 중"이 고착된다.
   if (error) {
+    if (isForbiddenError(error)) {
+      return <ForbiddenView error={error} onBack={handleBack} />;
+    }
+
     return (
       <div className="w-full min-h-screen bg-surface-subtle flex flex-col items-center justify-center gap-4">
         <span className="text-content-secondary font-bold">상세 정보를 불러오지 못했습니다.</span>
         <button onClick={() => handleBack()} className="px-5 py-2.5 bg-surface-active hover:bg-surface-active rounded-xl font-bold text-content transition-colors">
           돌아가기
         </button>
+      </div>
+    );
+  }
+
+  if (isLoading || !bookingDetail) {
+    return (
+      <div className="w-full min-h-screen bg-surface-subtle flex items-center justify-center">
+        <span className="text-content-muted font-bold">불러오는 중...</span>
       </div>
     );
   }
