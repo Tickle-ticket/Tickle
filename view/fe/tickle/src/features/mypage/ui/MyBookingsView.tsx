@@ -11,6 +11,7 @@ import { MobileBookingCard } from '@/src/shared/components/MobileBookingCard';
 import { BookingDetailCard } from '@/src/shared/components/BookingDetailCard';
 import { Box } from '@/src/shared/components/Box';
 import { Badge } from '@/src/shared/components/Badge';
+import { ForbiddenView, isForbiddenError } from '@/src/shared/components/ForbiddenView';
 import { useRouter } from 'next/navigation';
 import { BookingDetailView } from './BookingDetailView';
 
@@ -295,6 +296,16 @@ export const MyBookingsView = () => {
                 </Badge>
               </div>
             </div>
+          ) : detailError ? (
+            // 에러를 로딩보다 먼저 판정한다. 실패 시 bookingDetail이 undefined라
+            // 로딩 조건(!bookingDetail)이 앞서면 "불러오는 중"이 고착된다.
+            isForbiddenError(detailError) ? (
+              <ForbiddenView error={detailError} compact />
+            ) : (
+              <div className="py-10 flex justify-center text-content-secondary font-bold">
+                상세 정보를 불러오지 못했습니다.
+              </div>
+            )
           ) : isDetailLoading || !bookingDetail ? (
             <div className="py-10 flex justify-center text-content-tertiary">불러오는 중...</div>
           ) : (
