@@ -9,6 +9,7 @@ import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { SearchListCard } from '@/src/shared/components/SearchListCard';
 import { Text } from '@/src/shared/components/Text';
+import { ApiErrorView } from '@/src/shared/components/ApiErrorView';
 
 import { Modal } from '@/src/shared/components/Modal';
 import Button from '@/src/shared/components/Button';
@@ -67,14 +68,13 @@ export const UpcomingWishlistView = () => {
   // 표시할 총 관심 공연 수 (현재 찜 상태인 것만 카운트)
   const activeWishlistCount = upcoming?.filter(item => wishlistMap[item.id] !== false).length || 0;
 
+  // 403·404·5xx는 QueryProvider의 throwOnError가 Error Boundary로 올려보낸다.
+  // 여기 도달하는 것은 400·409처럼 화면 맥락이 필요한 에러이며,
+  // 문구는 서버 message를 그대로 쓴다(ApiErrorView).
   if (isError) {
     return (
-      <div className="w-full flex flex-col items-center justify-center py-20 bg-surface-subtle rounded-2xl border border-line">
-        <Text typography="t5" fontWeight="bold" color="secondary" className="mb-2">목록을 불러오는 중 오류가 발생했습니다.</Text>
-        <Text typography="t6" color="tertiary">
-          {/* @ts-ignore */}
-          {(error as any)?.status === 400 ? '잘못된 요청입니다.' : (error as any)?.status === 404 ? '사용자 정보를 찾을 수 없거나 로그인이 만료되었습니다.' : '잠시 후 다시 시도해주세요.'}
-        </Text>
+      <div className="w-full bg-surface-subtle rounded-2xl border border-line">
+        <ApiErrorView error={error} compact />
       </div>
     );
   }

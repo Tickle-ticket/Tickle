@@ -319,7 +319,7 @@ export interface SeatProps extends Omit<React.CanvasHTMLAttributes<HTMLCanvasEle
   className?: string;
 }
 
-export type ErrorType = '404' | '500' | '401' | 'timeout' | 'soldout';
+export type ErrorType = '404' | '500' | '403' | '401' | 'timeout' | 'soldout';
 
 export interface ErrorViewProps {
   type: ErrorType;
@@ -328,6 +328,8 @@ export interface ErrorViewProps {
   actionText?: string;
   onAction?: () => void;
   className?: string;
+  /** 모달 등 좁은 영역에서 여백을 줄인다. */
+  compact?: boolean;
 }
 
 export interface TimelineNavItem {

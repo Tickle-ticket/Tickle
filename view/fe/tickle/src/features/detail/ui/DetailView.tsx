@@ -84,7 +84,9 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     window.scrollTo(0, 0); // 혹시 모를 window 레벨의 스크롤도 방어
   }, [activeEventId]);
 
-  const { data, isLoading, isError, error } = useDetailData(activeEventId);
+  // error 객체는 구독하지 않는다 — 403·404·5xx는 throwOnError로 Error Boundary가 처리하고,
+  // 여기서는 오버레이를 닫기 위한 isError 신호만 필요하다.
+  const { data, isLoading, isError } = useDetailData(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
@@ -531,17 +533,17 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
     }
   }, [isError, isOverlay]);
 
-  if (!activeEventId || isError) {
+  // 403·404·5xx는 QueryProvider의 throwOnError가 Error Boundary로 올려보내
+  // ApiErrorView가 상태 코드와 서버 메시지를 표시한다(여기서 개별 처리하지 않음).
+  // 아래는 eventId 자체가 없는 경우 — 쿼리가 실행되지 않아 에러도 발생하지 않는다.
+  if (!activeEventId) {
     if (isOverlay) return null;
     return (
       <div className="flex w-full h-screen items-center justify-center bg-[#f8f8f8] font-sans">
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold text-content">공연 정보를 찾을 수 없습니다</h1>
           <p className="text-content-tertiary">
-            {/* @ts-ignore */}
-            {isError && (error as any)?.status === 404
-              ? '존재하지 않거나 삭제된 공연입니다.'
-              : '올바르지 않은 접근이거나 존재하지 않는 공연입니다.'}
+            올바르지 않은 접근이거나 존재하지 않는 공연입니다.
           </p>
           <Button color="dark" size="medium" onClick={() => router.push('/')}>홈으로 돌아가기</Button>
         </div>
