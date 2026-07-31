@@ -47,12 +47,7 @@ export const sendBehaviorEvent = async ({
     return null;
   }
 
-  let accessToken = getAccessToken();
-  
-  const isTargetEvent = payload.eventId && (String(payload.eventId) === '404' || String(payload.eventId) === '405');
-  if (isTargetEvent) {
-    accessToken = '111';
-  }
+  const accessToken = getAccessToken();
 
   if (!accessToken) {
     // TODO: 인증 저장소가 localStorage 외 방식으로 변경되면 tokenManager 연동을 갱신합니다.
