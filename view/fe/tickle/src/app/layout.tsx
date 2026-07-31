@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { MSWProvider } from "@/src/shared/providers/MSWProvider";
 import { QueryProvider } from "@/src/shared/providers/QueryProvider";
+import { ToastProvider } from "@/src/shared/providers/ToastProvider";
 import { BotDetector } from "@/src/shared/components/BotDetector";
 import { TRIAL_CONFIG } from "../../trialConfig";
 
@@ -34,11 +35,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <MSWProvider>
           <QueryProvider>
-            {TRIAL_CONFIG.ENABLE_BOT_DETECTOR ? (
-              <BotDetector>{children}</BotDetector>
-            ) : (
-              children
-            )}
+            <ToastProvider>
+              {TRIAL_CONFIG.ENABLE_BOT_DETECTOR ? (
+                <BotDetector>{children}</BotDetector>
+              ) : (
+                children
+              )}
+            </ToastProvider>
           </QueryProvider>
         </MSWProvider>
       </body>

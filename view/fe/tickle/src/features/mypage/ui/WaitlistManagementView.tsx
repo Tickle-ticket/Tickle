@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Text } from '@/src/shared/components/Text';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Modal } from '@/src/shared/components/Modal';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 import { CancellationDetailView } from '@/src/features/cancellation/ui/CancellationDetailView';
 import { MobileWaitlistCard } from '@/src/shared/components/MobileWaitlistCard';
 import { WaitlistSeatCard } from '@/src/shared/components/WaitlistSeatCard';
@@ -15,6 +16,7 @@ import { WaitlistDetailView } from './WaitlistDetailView';
 export const WaitlistManagementView = () => {
   const queryClient = useQueryClient();
   const { data: waitlist, isLoading } = useWaitlistBookings();
+  const { showToast } = useToast();
 
   // Cancel Flow State (개별 좌석 단위)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -72,7 +74,8 @@ export const WaitlistManagementView = () => {
       setSelectedPassSeat(null);
     } catch (err) {
       console.error(err);
-      alert('취소 처리 중 오류가 발생했습니다.');
+      // 이 핸들러는 취소가 아니라 배정 기회를 넘기는(pass) 동작이다.
+      showToast('넘기기 처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -83,7 +86,7 @@ export const WaitlistManagementView = () => {
       handleCloseCancelModal();
     } catch (err) {
       console.error(err);
-      alert('취소 처리 중 오류가 발생했습니다.');
+      showToast('취소 처리 중 오류가 발생했습니다.');
     }
   };
 
