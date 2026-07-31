@@ -184,19 +184,24 @@ export type ApiFailure =
   | SchemaMismatchError;
 
 /**
- * 서버가 "요청이 몰려 처리하지 못했다"는 뜻으로 내려주는 에러코드.
+ * 분산락 획득에 실패했다는 뜻의 에러코드.
  *
- * 같은 409라도 성격이 다르다 — SEAT_ALREADY_HELD는 남이 가져갔으니 다른 좌석을
- * 골라야 하지만, 이 코드들은 분산락 획득에 실패한 것이라 **잠시 후 다시 시도하면
- * 성공할 수 있다**. status만으로는 구분할 수 없어 code를 본다.
+ * 같은 409라도 성격이 다르다 — CANDIDATE_DUPLICATE_SEAT는 이미 신청한 좌석이라
+ * 다시 보내도 같은 결과지만, 이 코드는 요청이 몰려 락을 못 잡은 것이라 **잠시 후
+ * 다시 시도하면 성공할 수 있다**. status만으로는 구분할 수 없어 code를 본다.
+ *
+ * 좌석 선점(SEAT_ALREADY_HELD)은 분산락을 쓰지 않아 여기 해당하지 않는다.
  */
-const RETRYABLE_CONFLICT_CODES = new Set(['SEAT_LOCK_FAILED', 'CANDIDATE_LOCK_FAILED']);
+const RETRYABLE_CONFLICT_CODES = new Set(['CANDIDATE_LOCK_FAILED']);
 
 /**
  * 재시도가 의미 있는 실패인지 판별한다.
  *
  * 네트워크·타임아웃·5xx는 일시적 장애이므로 항상 재시도할 가치가 있다.
- * 409는 대부분 재시도해도 같은 결과지만, 락 경합 실패만은 예외다.
+ * 4xx는 대부분 다시 보내도 결과가 같지만, 두 가지가 예외다 —
+ * 락 경합(409 CANDIDATE_LOCK_FAILED)과 요청 속도 제한(429).
+ *
+ * 다만 429는 서버가 이미 포화라는 신호이므로, 호출부가 간격을 충분히 두어야 한다.
  */
 export const isRetryable = (error: ApiFailure): boolean => {
   if (
@@ -205,6 +210,10 @@ export const isRetryable = (error: ApiFailure): boolean => {
     error._tag === 'ServerError'
   ) {
     return true;
+  }
+
+  if (error._tag === 'ClientError') {
+    return error.status === 429;
   }
 
   return error._tag === 'ConflictError' && !!error.code && RETRYABLE_CONFLICT_CODES.has(error.code);
