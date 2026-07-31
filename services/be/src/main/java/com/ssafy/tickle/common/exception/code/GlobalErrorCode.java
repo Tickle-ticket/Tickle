@@ -26,7 +26,10 @@ public enum GlobalErrorCode implements ErrorCode {
     INTERNAL_ACCESS_DENIED(403, "접근 권한이 없습니다."),
 
     /** IP별 요청 속도 제한 초과 (IpRateLimitInterceptor) */
-    TOO_MANY_REQUESTS(429, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
+    TOO_MANY_REQUESTS(429, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+
+    /** 이미 실행 중인 부하 테스트를 다시 시작 요청 (AdminLoadTestController) */
+    LOAD_TEST_ALREADY_RUNNING(409, "이미 부하 테스트가 실행 중입니다.");
 
     private final int status;
     private final String message;

@@ -1,5 +1,6 @@
 package com.ssafy.tickle.admin.presentation;
 
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.user.infrastructure.persistence.UserRepository;
 import com.ssafy.tickle.user.presentation.interceptor.UserAccessLogInterceptor;
@@ -41,8 +42,8 @@ public class AdminLoadTestController {
     @PostMapping("/start")
     public ResponseEntity<BaseResponse<Map<String, String>>> start() {
         if (running.getAndSet(true)) {
-            return ResponseEntity.status(409)
-                    .body(BaseResponse.error(409, "이미 부하 테스트가 실행 중입니다."));
+            return ResponseEntity.status(GlobalErrorCode.LOAD_TEST_ALREADY_RUNNING.getStatus())
+                    .body(BaseResponse.error(GlobalErrorCode.LOAD_TEST_ALREADY_RUNNING));
         }
 
         // demo 계정(k6test.com)의 userId만 ZSet에서 제거 — 실제 접속자는 유지
