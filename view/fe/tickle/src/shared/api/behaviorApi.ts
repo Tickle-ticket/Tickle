@@ -47,13 +47,12 @@ export const sendBehaviorEvent = async ({
     return null;
   }
 
-  let accessToken = getAccessToken();
-  
-  const isTargetEvent = payload.eventId && (String(payload.eventId) === '404' || String(payload.eventId) === '405');
-  if (isTargetEvent) {
-    accessToken = '111';
-  }
+  const accessToken = getAccessToken();
 
+  // 행동 데이터는 로그인한 사용자만 수집한다. 비회원 수집을 위해 가짜 토큰을
+  // 채워 보내면 AI 서버 입장에서는 누구나 쓸 수 있는 인증 우회 값이 되므로,
+  // 토큰이 없으면 전송하지 않는다. 익명 수집이 필요해지면 서버가 토큰 없는
+  // 요청을 받도록 먼저 합의해야 한다.
   if (!accessToken) {
     // TODO: 인증 저장소가 localStorage 외 방식으로 변경되면 tokenManager 연동을 갱신합니다.
     console.warn('[BehaviorEvent] skipped: access-token is missing');
