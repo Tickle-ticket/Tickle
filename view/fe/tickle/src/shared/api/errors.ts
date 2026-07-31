@@ -146,6 +146,14 @@ export class ServerError extends Data.TaggedError('ServerError')<{
   readonly status: number;
   readonly code?: string;
   readonly serverMessage?: string;
+  /**
+   * 서버가 실은 분산 추적 식별자. 5xx에만 붙는다.
+   *
+   * 사용자가 문의할 때 이 값을 전달하면 Tempo에서 해당 요청을 바로 찾을 수 있다.
+   * 서버 code는 미정의 예외를 전부 INTERNAL_SERVER_ERROR로 묶으므로, 어떤 요청이
+   * 어떻게 실패했는지는 이 값으로만 좁혀진다.
+   */
+  readonly traceId?: string;
 }> {
   get message() {
     return this.serverMessage ?? '일시적인 서버 오류입니다.';
@@ -195,6 +203,32 @@ export type ApiFailure =
 const RETRYABLE_CONFLICT_CODES = new Set(['CANDIDATE_LOCK_FAILED']);
 
 /**
+ * 실패지만 사용자가 원한 상태에 이미 도달했다는 뜻의 에러코드.
+ *
+ * 취소 버튼을 두 번 눌렀거나, 다른 탭에서 이미 취소한 뒤 다시 요청한 경우다.
+ * 서버는 "이미 취소됨"을 409로 알리지만 사용자 입장에서는 원하는 결과(취소됨)가
+ * 이뤄져 있으므로, 에러 화면을 띄우면 취소가 실패한 것처럼 보인다.
+ *
+ * 결제 관련 409(PAYMENT_ALREADY_PROCESSED)는 여기 넣지 않는다 — 결제가 이미
+ * 처리된 것은 취소 요청이 바란 결과가 아니라서 사용자가 상태를 확인해야 한다.
+ */
+const ALREADY_SETTLED_CONFLICT_CODES = new Set([
+  'BOOKING_ALREADY_CANCELLED',
+  'CANDIDATE_ALREADY_CANCELLED',
+]);
+
+/**
+ * 취소 요청이 "이미 취소된 상태"라서 실패한 것인지 판별한다.
+ *
+ * 참이면 호출부는 성공과 동일하게 처리하면 된다(목록 갱신 후 종료).
+ *
+ * apiClient는 태그드 에러가 아니라 `ApiError`를 던지므로 code만 받는다.
+ * 호출부는 `isAlreadyCancelled(error.code)` 형태로 쓴다.
+ */
+export const isAlreadyCancelled = (code: string | undefined): boolean =>
+  !!code && ALREADY_SETTLED_CONFLICT_CODES.has(code);
+
+/**
  * 재시도가 의미 있는 실패인지 판별한다.
  *
  * 네트워크·타임아웃·5xx는 일시적 장애이므로 항상 재시도할 가치가 있다.
@@ -237,6 +271,14 @@ export const getFailureCode = (error: ApiFailure): string | undefined =>
 export const isBlacklisted = (error: ApiFailure): boolean =>
   error._tag === 'BlacklistedError' ||
   (error._tag === 'ForbiddenError' && error.code === 'BLACKLISTED_USER');
+
+/**
+ * 문의·제보에 쓸 추적 식별자를 꺼낸다.
+ *
+ * 서버가 5xx에만 싣기 때문에 그 외의 실패에서는 undefined다.
+ */
+export const getTraceId = (error: ApiFailure): string | undefined =>
+  error._tag === 'ServerError' ? error.traceId : undefined;
 
 /**
  * 액세스 토큰이 만료됐을 뿐인지 판별한다.

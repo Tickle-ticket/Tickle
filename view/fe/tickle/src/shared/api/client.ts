@@ -12,7 +12,13 @@ import {
 } from "./tokenManager";
 import { navigateToBlocked } from "../utils/blockedNavigation";
 import { toApiFailure } from "./toApiFailure";
-import { NetworkError, SchemaMismatchError, UnauthorizedError, getFailureCode } from "./errors";
+import {
+  NetworkError,
+  SchemaMismatchError,
+  UnauthorizedError,
+  getFailureCode,
+  getTraceId,
+} from "./errors";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const AUTH_ENDPOINT_PATTERNS = [
@@ -124,7 +130,7 @@ export const apiClient = async <T>(
         failure.message || "API 요청 중 오류가 발생했습니다.",
         response.status,
         errorData,
-        { code: getFailureCode(failure), failure },
+        { code: getFailureCode(failure), traceId: getTraceId(failure), failure },
       );
     }
 

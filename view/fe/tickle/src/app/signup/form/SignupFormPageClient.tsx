@@ -32,6 +32,22 @@ type ErrorState = {
 
 type ErrorField = keyof ErrorState;
 
+/**
+ * 서버 에러코드를 입력 필드에 대응시킨다 (services/auth AuthErrorCode).
+ *
+ * 이 표에 없는 실패는 어느 칸을 고쳐야 할지 알 수 없으므로 폼 하단(submit)에
+ * 그대로 남긴다. status만으로는 나눌 수 없다 — 409 하나에 이메일 중복과 전화번호
+ * 중복이 함께 들어와 두 경우 모두 폼 하단에 뜨고 있었다.
+ */
+const SIGNUP_ERROR_FIELD_BY_CODE: Record<string, ErrorField> = {
+  DUPLICATE_EMAIL: 'email',
+  DUPLICATE_PHONE: 'phone',
+  PHONE_NOT_VERIFIED: 'phone',
+  PHONE_VERIFICATION_FAILED: 'verificationCode',
+  NICKNAME_REQUIRED: 'nickname',
+  ORGANIZER_NAME_REQUIRED: 'organization',
+};
+
 interface AgencyDropdownFieldProps {
   agencies: AgencyOption[];
   isLoading: boolean;
@@ -551,10 +567,18 @@ export function SignupFormPageClient({ initialAccountType }: SignupFormPageClien
       }
     } catch (error) {
       console.error('Signup failed', error);
-      setErrors((prev) => ({
-        ...prev,
-        submit: error instanceof ApiError ? error.message : '회원가입에 실패했습니다. 입력값을 확인한 뒤 다시 시도해 주세요.',
-      }));
+
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : '회원가입에 실패했습니다. 입력값을 확인한 뒤 다시 시도해 주세요.';
+      // 원인이 특정 입력값이면 그 칸에 붙여야 어디를 고칠지 알 수 있다.
+      const field =
+        error instanceof ApiError && error.code
+          ? SIGNUP_ERROR_FIELD_BY_CODE[error.code]
+          : undefined;
+
+      setErrors((prev) => ({ ...prev, [field ?? 'submit']: message }));
     } finally {
       setIsSubmitting(false);
     }
