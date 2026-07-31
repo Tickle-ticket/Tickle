@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
+import {
+  getReconnectDelay,
+  shouldRetry,
+  SEAT_MAX_RECONNECT_ATTEMPTS,
+} from '@/src/shared/lib/sseReconnect';
 
 export interface SeatStatusData {
   priceGrade: string;
@@ -24,6 +29,13 @@ export const useSeatData = (
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [venueId, setVenueId] = useState<number | null>(null);
+  /**
+   * 좌석 실시간 동기화가 끊긴 채 복구되지 않은 상태.
+   *
+   * 화면에 보이는 좌석 상태가 더 이상 갱신되지 않는다는 뜻이라, 호출부가
+   * 사용자에게 새로고침을 안내할 근거로 쓴다.
+   */
+  const [isStreamDisconnected, setIsStreamDisconnected] = useState(false);
 
   useEffect(() => {
     if (!eventId || !scheduleId) {
@@ -42,6 +54,9 @@ export const useSeatData = (
     let source: EventSource | null = null;
     let initialSeatsFetched = false;
     let sseBuffer: any[] = [];
+    /** 좌석 스트림 연속 실패 횟수. 연결에 성공하면 0으로 되돌린다. */
+    let reconnectAttempt = 0;
+    let reconnectTimer: NodeJS.Timeout | null = null;
 
     // sessionSeatId를 기반으로 seatLabel(맵의 키)을 찾기 위한 룩업 맵
     const sessionSeatIdToLabelMap: Record<number, string> = {};
@@ -105,6 +120,13 @@ export const useSeatData = (
 
       source = new EventSource(finalUrl);
 
+      source.onopen = () => {
+        // 붙었으면 이전 실패는 흘려보낸다. 좌석 선택은 오래 머무는 화면이라
+        // 누적해두면 띄엄띄엄 끊긴 것만으로 재연결을 포기하게 된다.
+        reconnectAttempt = 0;
+        setIsStreamDisconnected(false);
+      };
+
       const processEvent = (event: MessageEvent) => {
         try {
           const message = JSON.parse(event.data);
@@ -127,8 +149,27 @@ export const useSeatData = (
       // BOOKING 모드는 백엔드에서 'seat-update'라는 명시적 이벤트 이름으로 전송함
       source.addEventListener('seat-update', processEvent as EventListener);
 
-      source.onerror = (error) => {
-        console.warn('Seat SSE connection error, browser will attempt to auto-reconnect...', error);
+      source.onerror = () => {
+        // EventSource는 스스로도 재연결하지만, 몇 번을 시도했는지·결국 실패했는지를
+        // 알려주지 않는다. 그대로 두면 좌석 동기화가 끊긴 채 화면만 멀쩡해 보여서
+        // 남이 이미 잡은 자리를 계속 고르게 된다. 직접 관리해 상태를 노출한다.
+        source?.close();
+        source = null;
+
+        if (!isMounted) return;
+
+        if (!shouldRetry(reconnectAttempt, SEAT_MAX_RECONNECT_ATTEMPTS)) {
+          console.error(`[Seat SSE] 재연결 포기 (${reconnectAttempt}회 실패)`);
+          setIsStreamDisconnected(true);
+          return;
+        }
+
+        const delay = getReconnectDelay(reconnectAttempt);
+        reconnectAttempt += 1;
+        console.warn(
+          `[Seat SSE] 연결 끊김. ${delay}ms 후 재연결 (${reconnectAttempt}/${SEAT_MAX_RECONNECT_ATTEMPTS})`,
+        );
+        reconnectTimer = setTimeout(connectSSE, delay);
       };
     };
 
@@ -206,8 +247,11 @@ export const useSeatData = (
       if (source) {
         source.close();
       }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
     };
   }, [eventId, scheduleId, enableWs]);
 
-  return { data: seatAvailability, venueId, isLoading, error };
+  return { data: seatAvailability, venueId, isLoading, error, isStreamDisconnected };
 };
