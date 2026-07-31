@@ -15,12 +15,32 @@ import { toApiFailure } from "./toApiFailure";
 import {
   NetworkError,
   SchemaMismatchError,
+  TimeoutError,
   UnauthorizedError,
   getFailureCode,
   getTraceId,
 } from "./errors";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+/**
+ * 응답을 기다릴 기본 시간.
+ *
+ * fetch는 스스로 포기하지 않는다. 서버가 연결만 잡고 응답하지 않으면 프로미스가
+ * 영원히 pending이라 로딩 스피너가 그대로 멈춰 선다(에러조차 나지 않는다).
+ * 대기열 진입·좌석 선점처럼 초 단위 판단이 필요한 요청들이 이 경로를 지나므로
+ * 15초면 느린 회선도 감당하면서 무한 대기를 막는다.
+ */
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * abort 사유 식별자.
+ *
+ * 호출부의 취소와 우리가 건 타임아웃은 같은 AbortSignal로 도착한다. 사유를
+ * 심어두지 않으면 사용자가 화면을 떠난 것과 서버가 늦은 것을 구분할 수 없어,
+ * 정상적인 취소에도 에러 화면이 뜬다.
+ */
+const TIMEOUT_ABORT_REASON = "tickle:request-timeout";
 const AUTH_ENDPOINT_PATTERNS = [
   "/auth/login",
   "/auth/signup",
@@ -59,6 +79,8 @@ export const apiClient = async <T>(
     headers,
     credentials,
     auth = "required",
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    signal: callerSignal,
     ...restOptions
   } = options;
 
@@ -96,6 +118,28 @@ export const apiClient = async <T>(
   if (body) {
     config.body = body instanceof FormData ? body : JSON.stringify(body);
   }
+
+  // 타임아웃과 호출부의 취소를 함께 다룬다. 호출부가 signal을 넘겼다면 그쪽
+  // 취소도 살아 있어야 하므로(react-query의 쿼리 취소 등) 한쪽만 쓸 수 없다.
+  const timeoutController = new AbortController();
+  const timeoutId =
+    timeoutMs > 0
+      ? setTimeout(() => timeoutController.abort(TIMEOUT_ABORT_REASON), timeoutMs)
+      : null;
+
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      timeoutController.abort(callerSignal.reason);
+    } else {
+      callerSignal.addEventListener(
+        "abort",
+        () => timeoutController.abort(callerSignal.reason),
+        { once: true },
+      );
+    }
+  }
+
+  config.signal = timeoutController.signal;
 
   try {
     const response = await fetch(url, config);
@@ -164,10 +208,27 @@ export const apiClient = async <T>(
       throw error;
     }
 
+    // 우리가 건 타임아웃으로 끊긴 경우. 오프라인과 달리 서버에 닿기는 했으므로
+    // 재시도할 가치가 있고(isRetryable), 문구도 "네트워크 오류"가 아니어야 한다.
+    if (timeoutController.signal.reason === TIMEOUT_ABORT_REASON) {
+      const failure = new TimeoutError({ path, timeoutMs });
+      throw new ApiError(failure.message, 408, undefined, { failure });
+    }
+
+    // 호출부가 직접 취소했다면(화면 이탈로 react-query가 끊는 등) 실패가 아니다.
+    // 에러 화면·토스트를 띄우지 않도록 원래 취소 사유를 그대로 올려보낸다.
+    if (callerSignal?.aborted) {
+      throw error;
+    }
+
     // fetch 자체가 실패했다(오프라인·DNS·CORS·서버 다운). 응답이 없으므로 status가
     // 없지만, 호출부 대부분이 error.status로 분기하므로 0을 넣어 4xx/5xx와 구분한다.
     const failure = new NetworkError({ path, cause: error });
     throw new ApiError(failure.message, 0, undefined, { failure });
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 };
 

@@ -14,6 +14,14 @@ const UploadImageResponseSchema = Schema.Union(
 const DEFAULT_UPLOAD_API_PATH = '/api/v1/uploads';
 const uploadApiPath = process.env.NEXT_PUBLIC_UPLOAD_API_PATH || DEFAULT_UPLOAD_API_PATH;
 
+/**
+ * 업로드 타임아웃.
+ *
+ * 파일 전송은 조회와 달리 크기·회선에 따라 수십 초가 걸린다. apiClient의 기본
+ * 15초를 그대로 두면 느린 회선에서 정상 업로드가 끊긴다.
+ */
+const UPLOAD_TIMEOUT_MS = 120_000;
+
 const resolveUploadedImageUrl = (response: UploadImageResponse): string | null => {
   const payload = typeof response === 'object' && response !== null && 'data' in response ? response.data : response;
 
@@ -37,6 +45,7 @@ export const uploadImage = async (file: File): Promise<string> => {
     {
       method: 'POST',
       body: formData,
+      timeoutMs: UPLOAD_TIMEOUT_MS,
     },
     false,
     UploadImageResponseSchema
