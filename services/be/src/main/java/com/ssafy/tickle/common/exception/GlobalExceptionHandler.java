@@ -3,6 +3,7 @@ package com.ssafy.tickle.common.exception;
 import com.ssafy.tickle.common.exception.code.ErrorCode;
 import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final ExceptionDiagnostics diagnostics;
 
     /**
      * 커스텀 비즈니스 예외를 처리합니다.
@@ -28,12 +32,24 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BaseException.class)
     protected ResponseEntity<BaseResponse<Void>> handleBaseException(BaseException exception) {
-        log.error("handleBaseException", exception);
         ErrorCode errorCode = exception.getErrorCode();
+
+        // 4xx는 클라이언트가 code로 사유를 알 수 있고 서버가 의도한 흐름이므로
+        // traceId를 싣지 않는다. 5xx만 추적 대상이다.
+        if (errorCode.getStatus() < 500) {
+            log.warn("handleBaseException code={} message={}", errorCode.getCode(), exception.getMessage());
+            return ResponseEntity
+                    .status(errorCode.getStatus())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(BaseResponse.error(errorCode, exception.getMessage()));
+        }
+
+        String traceId = diagnostics.traceId();
+        log.error("handleBaseException code={} traceId={}", errorCode.getCode(), traceId, exception);
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(BaseResponse.error(errorCode, exception.getMessage()));
+                .body(BaseResponse.error(errorCode, exception.getMessage(), traceId, null));
     }
 
     /**
@@ -85,16 +101,26 @@ public class GlobalExceptionHandler {
     /**
      * 처리되지 않은 모든 예외를 처리합니다.
      *
+     * <p>비즈니스 로직 밖에서 터진 예외(NPE, 제약 위반 등)라 어떤 ErrorCode에도
+     * 해당하지 않습니다. 사용자에게는 일반화된 문구를 그대로 주되, 원인을 추적할 수
+     * 있도록 traceId와 (운영이 아닌 환경에 한해) 예외 원문을 함께 싣습니다.</p>
+     *
      * @param exception 예상하지 못한 예외
      * @return 공통 에러 응답
      */
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<BaseResponse<Void>> handleException(Exception exception) {
-        log.error("handleException", exception);
+        String traceId = diagnostics.traceId();
+        log.error("handleException traceId={}", traceId, exception);
         return ResponseEntity
                 .status(GlobalErrorCode.INTERNAL_SERVER_ERROR.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(BaseResponse.error(GlobalErrorCode.INTERNAL_SERVER_ERROR));
+                .body(BaseResponse.error(
+                        GlobalErrorCode.INTERNAL_SERVER_ERROR,
+                        GlobalErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
+                        traceId,
+                        diagnostics.debugMessage(exception)
+                ));
     }
 
 	/**

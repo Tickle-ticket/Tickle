@@ -155,3 +155,11 @@ coolsms:
 cloudflare:
   turnstile:
     secret-key: ${CLOUDFLARE_TURNSTILE_SECRET_KEY}
+
+tickle:
+  exception:
+    # 정의되지 않은 예외(NPE 등)의 원문을 응답 debugMessage에 실을지 여부.
+    # 예외 원문에는 클래스명/필드명/SQL 조각이 섞여 나오므로 배포 환경에서는 켜지 않는다.
+    # 배포 서버도 SPRING_PROFILES_ACTIVE=local로 뜨기 때문에 프로파일이 아니라
+    # 이 환경변수로 제어한다. traceId는 이 값과 무관하게 항상 내려간다.
+    expose-debug-message: ${EXPOSE_DEBUG_MESSAGE:false}
