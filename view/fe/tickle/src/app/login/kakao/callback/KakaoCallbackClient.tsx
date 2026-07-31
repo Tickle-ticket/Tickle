@@ -79,8 +79,9 @@ export function KakaoCallbackClient() {
 
         clearKakaoSignUpToken();
         setAccessToken(response.data.accessToken);
-        const targetUrl = state && state.startsWith('/') ? state : '/';
-        router.replace(targetUrl);
+        // state는 CSRF 방어용 난수라 경로가 아니다. 이동 경로는 로그인 시작 때
+        // 서버가 쿠키에 담아둔 값을 응답으로 돌려준다(api/v1/auth/kakao/login).
+        router.replace(response.data.redirectPath ?? '/');
       } catch (err) {
         clearKakaoSignUpToken();
         console.error('Kakao callback failed:', err);
