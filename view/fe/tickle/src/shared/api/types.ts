@@ -18,6 +18,13 @@ export class ApiError extends Error {
   /** 서버가 실은 에러코드 이름 (예: SEAT_LOCK_FAILED). 구버전 응답에는 없다. */
   public code?: string;
   /**
+   * 서버가 실은 분산 추적 식별자. 5xx에만 붙는다.
+   *
+   * 미정의 예외는 code가 INTERNAL_SERVER_ERROR로 뭉뚱그려지므로 이 값이 있어야
+   * 어떤 요청이 어떻게 실패했는지 Tempo에서 되짚을 수 있다.
+   */
+  public traceId?: string;
+  /**
    * 같은 실패를 태그로 표현한 것.
    *
    * ApiFailure를 직접 import하면 types.ts ↔ errors.ts가 순환 참조하므로
@@ -29,13 +36,18 @@ export class ApiError extends Error {
     message: string,
     status: number,
     data?: unknown,
-    options?: { code?: string; failure?: { readonly _tag: string; readonly code?: string } },
+    options?: {
+      code?: string;
+      traceId?: string;
+      failure?: { readonly _tag: string; readonly code?: string };
+    },
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.data = data;
     this.code = options?.code;
+    this.traceId = options?.traceId;
     this.failure = options?.failure;
   }
 }

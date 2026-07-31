@@ -146,6 +146,14 @@ export class ServerError extends Data.TaggedError('ServerError')<{
   readonly status: number;
   readonly code?: string;
   readonly serverMessage?: string;
+  /**
+   * 서버가 실은 분산 추적 식별자. 5xx에만 붙는다.
+   *
+   * 사용자가 문의할 때 이 값을 전달하면 Tempo에서 해당 요청을 바로 찾을 수 있다.
+   * 서버 code는 미정의 예외를 전부 INTERNAL_SERVER_ERROR로 묶으므로, 어떤 요청이
+   * 어떻게 실패했는지는 이 값으로만 좁혀진다.
+   */
+  readonly traceId?: string;
 }> {
   get message() {
     return this.serverMessage ?? '일시적인 서버 오류입니다.';
@@ -237,6 +245,14 @@ export const getFailureCode = (error: ApiFailure): string | undefined =>
 export const isBlacklisted = (error: ApiFailure): boolean =>
   error._tag === 'BlacklistedError' ||
   (error._tag === 'ForbiddenError' && error.code === 'BLACKLISTED_USER');
+
+/**
+ * 문의·제보에 쓸 추적 식별자를 꺼낸다.
+ *
+ * 서버가 5xx에만 싣기 때문에 그 외의 실패에서는 undefined다.
+ */
+export const getTraceId = (error: ApiFailure): string | undefined =>
+  error._tag === 'ServerError' ? error.traceId : undefined;
 
 /**
  * 액세스 토큰이 만료됐을 뿐인지 판별한다.
