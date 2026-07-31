@@ -38,6 +38,27 @@ const priceGradeDotColors: Record<string, string> = {
   'A': 'grade-dot-a',
 };
 
+/** 결제 상태 폴링 주기. */
+const PAYMENT_POLL_INTERVAL_MS = 2000;
+
+/**
+ * 폴링을 유지할 최대 시간.
+ *
+ * PG가 응답하지 않거나 사용자가 결제창을 열어둔 채 방치하면 PENDING이 계속 돌아온다.
+ * 상한이 없으면 오버레이가 영원히 걸린 채 서버를 계속 때린다. 카카오페이 결제창
+ * 자체가 10분 안팎에 만료되므로 그보다 넉넉하게 잡는다.
+ */
+const PAYMENT_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * 폴링 실패를 몇 번까지 견딜지.
+ *
+ * 일시적 네트워크 오류는 다음 주기에 회복되므로 즉시 중단하면 안 된다. 반대로
+ * 서버가 계속 5xx를 내는 상황에서 조용히 재시도만 반복하면 사용자는 아무 안내도
+ * 못 받고 갇힌다. 연속 실패만 세고, 한 번이라도 성공하면 0으로 되돌린다.
+ */
+const PAYMENT_POLL_MAX_CONSECUTIVE_FAILURES = 5;
+
 export const PaymentStep: React.FC<PaymentStepProps> = ({
   optionsData,
   preorderBookingId,
@@ -85,6 +106,18 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       setPrevStep(bookingStep);
     }
   }, [bookingStep, prevStep]);
+
+  // 결제 폴링은 컴포넌트가 사라져도 멈추지 않는다. 뒤로가기나 라우팅 이탈로
+  // 언마운트되면 setInterval만 남아 2초마다 서버를 계속 때린다(사용자는 이미
+  // 화면을 떠났고 setState는 아무 데도 반영되지 않는다). 언마운트 시 반드시 정리한다.
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const slideDirection = bookingStep === 'PAYMENT' && prevStep === 'PAY_METHOD' ? -1 : 1;
   const slideVariants = {
@@ -219,9 +252,26 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               
               const bookingId = result.bookingId;
               let paymentHandled = false;
+              const pollStartedAt = Date.now();
+              let consecutiveFailures = 0;
+
               const checkPopupInterval = setInterval(async () => {
                 if (!popup || paymentHandled) return;
-                
+
+                if (Date.now() - pollStartedAt > PAYMENT_POLL_TIMEOUT_MS) {
+                  paymentHandled = true;
+                  clearInterval(checkPopupInterval);
+                  try { popup.close(); } catch { /* 이미 닫힌 경우 무시 */ }
+                  setIsKakaoPopupOpen(false);
+                  setIsProcessing(false);
+                  onError(
+                    '결제 확인 지연',
+                    '결제 결과를 확인하지 못했습니다.\n마이페이지에서 예매 내역을 확인해 주세요.',
+                  );
+                  setBookingStep('PAY_METHOD');
+                  return;
+                }
+
                 if (popup.closed) {
                   clearInterval(checkPopupInterval);
                   if (!paymentHandled) {
@@ -249,19 +299,41 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 if (bookingId) {
                   try {
                     const statusRes = await reservationApi.getReservationDetail(bookingId.toString());
+                    consecutiveFailures = 0;
                     const bookingStatus = statusRes.data?.bookingStatus;
                     if (bookingStatus === 'CONFIRMED' || bookingStatus === 'BOOKED') {
                       paymentHandled = true;
                       clearInterval(checkPopupInterval);
-                      try { popup.close(); } catch (e) {}
+                      try { popup.close(); } catch { /* 이미 닫힌 경우 무시 */ }
                       setIsKakaoPopupOpen(false);
                       (window as any).__isNavigatingToPayment__ = true;
                       onPaymentComplete?.();
                       router.push(`/payment/success?bookingId=${bookingId}`);
                     }
-                  } catch (e) {}
+                  } catch (e) {
+                    consecutiveFailures += 1;
+                    console.error(
+                      `[Payment] 취소표 결제 상태 조회 실패 (${consecutiveFailures}/${PAYMENT_POLL_MAX_CONSECUTIVE_FAILURES})`,
+                      e,
+                    );
+
+                    if (consecutiveFailures >= PAYMENT_POLL_MAX_CONSECUTIVE_FAILURES) {
+                      paymentHandled = true;
+                      clearInterval(checkPopupInterval);
+                      try { popup.close(); } catch { /* 이미 닫힌 경우 무시 */ }
+                      setIsKakaoPopupOpen(false);
+                      setIsProcessing(false);
+                      onError(
+                        '결제 확인 실패',
+                        '결제 상태를 확인할 수 없습니다.\n마이페이지에서 예매 내역을 확인해 주세요.',
+                      );
+                      setBookingStep('PAY_METHOD');
+                    }
+                  }
                 }
-              }, 2000);
+              }, PAYMENT_POLL_INTERVAL_MS);
+              // 강제 취소 버튼과 언마운트 cleanup이 이 폴링도 멈출 수 있어야 한다.
+              pollingIntervalRef.current = checkPopupInterval;
             }
           }
           return;
@@ -323,9 +395,27 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             // (카카오페이 리다이렉트가 다른 도메인으로 가므로 팝업 URL을 직접 읽을 수 없음)
             const kakaoPaymentId = kakaoRes.data?.paymentId;
             let paymentHandled = false;
+            const pollStartedAt = Date.now();
+            let consecutiveFailures = 0;
 
             const checkPopupInterval = setInterval(async () => {
               if (!popup || paymentHandled) return;
+
+              // 상한을 넘기면 결과를 모른 채로 두지 말고 명시적으로 끊는다.
+              // 실제로 결제가 됐을 수도 있으므로 "실패"가 아니라 확인 안내를 준다.
+              if (Date.now() - pollStartedAt > PAYMENT_POLL_TIMEOUT_MS) {
+                paymentHandled = true;
+                clearInterval(checkPopupInterval);
+                try { popup.close(); } catch { /* 이미 닫힌 경우 무시 */ }
+                setIsKakaoPopupOpen(false);
+                setIsProcessing(false);
+                onError(
+                  '결제 확인 지연',
+                  '결제 결과를 확인하지 못했습니다.\n마이페이지에서 예매 내역을 확인해 주세요.',
+                );
+                setBookingStep('PAY_METHOD');
+                return;
+              }
 
               // 팝업이 닫힌 경우 (사용자가 직접 닫음)
               if (popup.closed) {
@@ -359,6 +449,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
               if (kakaoPaymentId) {
                 try {
                   const statusRes = await paymentApi.getPaymentStatus(kakaoPaymentId);
+                  consecutiveFailures = 0;
                   const paymentStatus = statusRes.data?.paymentStatus;
                   const bookingStatus = statusRes.data?.bookingStatus;
 
@@ -392,10 +483,30 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   }
                   // PENDING/READY 등 아직 결제 진행 중이면 계속 폴링
                 } catch (e) {
-                  // 폴링 실패 시 무시 (다음 interval에서 재시도)
+                  // 한 번의 실패는 다음 주기에 회복될 수 있어 바로 끊지 않는다.
+                  // 다만 조용히 재시도만 반복하면 서버 장애 시 사용자가 갇히므로
+                  // 연속 실패가 쌓이면 중단하고 안내한다.
+                  consecutiveFailures += 1;
+                  console.error(
+                    `[Payment] 결제 상태 조회 실패 (${consecutiveFailures}/${PAYMENT_POLL_MAX_CONSECUTIVE_FAILURES})`,
+                    e,
+                  );
+
+                  if (consecutiveFailures >= PAYMENT_POLL_MAX_CONSECUTIVE_FAILURES) {
+                    paymentHandled = true;
+                    clearInterval(checkPopupInterval);
+                    try { popup.close(); } catch { /* 이미 닫힌 경우 무시 */ }
+                    setIsKakaoPopupOpen(false);
+                    setIsProcessing(false);
+                    onError(
+                      '결제 확인 실패',
+                      '결제 상태를 확인할 수 없습니다.\n마이페이지에서 예매 내역을 확인해 주세요.',
+                    );
+                    setBookingStep('PAY_METHOD');
+                  }
                 }
               }
-            }, 2000);
+            }, PAYMENT_POLL_INTERVAL_MS);
             pollingIntervalRef.current = checkPopupInterval;
           }
         }
