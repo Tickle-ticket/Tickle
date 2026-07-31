@@ -42,7 +42,7 @@ const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') 
 
 export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, onLeaveQueue, onStepChange, onStepBack, onPaymentStart }: BookViewProps) => {
   // Storybook은 MSW 핸들러로 실제 예매 흐름을 그대로 태우므로 예외를 두지 않는다.
-  const flowPolicy = createBookFlowPolicy(mode, eventId, false);
+  const flowPolicy = createBookFlowPolicy(mode, eventId);
   const { isShadow: isShadowModeActive, isWaitlistMode } = flowPolicy;
   const isCancelMode = mode === 'CANCEL';
 

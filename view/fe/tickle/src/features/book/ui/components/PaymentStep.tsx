@@ -20,7 +20,6 @@ interface PaymentStepProps {
   onCancel: () => void;
   onConflictError: () => void;
   onError: (title: string, message: string) => void;
-  storyMode?: boolean;
   cancellationId?: number;
   cancellationTotalAmount?: number;
   onPaymentComplete?: () => void;
@@ -49,7 +48,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   onCancel,
   onConflictError,
   onError,
-  storyMode = false,
   cancellationId,
   cancellationTotalAmount,
   onPaymentComplete,
@@ -59,7 +57,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   submitPreorder,
   setPreorderBookingId,
 }) => {
-  const paymentPolicy = createBookFlowPolicy('BOOK', eventId, storyMode);
+  const paymentPolicy = createBookFlowPolicy('BOOK', eventId);
 
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
@@ -68,7 +66,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
   const router = useRouter();
   const [isKakaoPopupOpen, setIsKakaoPopupOpen] = useState(false);
-  const [isStorybookMockOpen, setIsStorybookMockOpen] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -188,13 +185,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
 
+      // shadow 공연은 서버에 결제 대상이 없다. 결제 수단과 무관하게 완료 화면으로
+      // 보내 시나리오를 끝맺는다(카카오페이 외부 팝업도 띄우지 않는다).
       if (isShadow) {
-        if (paymentMethod === 'KAKAOPAY') {
-          setIsStorybookMockOpen(true);
-        } else {
-          onPaymentComplete?.();
-          router.push(`/payment/success?paymentId=mock_vbank_123&method=vbank`);
-        }
+        onPaymentComplete?.();
+        router.push(
+          `/payment/success?paymentId=mock_${paymentMethod === 'KAKAOPAY' ? 'kakaopay' : 'vbank'}_123&method=${paymentMethod === 'KAKAOPAY' ? 'kakaopay' : 'vbank'}`,
+        );
         setIsProcessing(false);
         return;
       }
@@ -299,11 +296,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
         }
       } else if (nextAction === 'PREPARE_KAKAOPAY' || paymentMethod === 'KAKAOPAY') {
-        if (storyMode) {
-          setIsStorybookMockOpen(true);
-          return;
-        }
-
         const kakaoRes = await paymentApi.readyKakaoPay(
           eventId,
           scheduleId!,
