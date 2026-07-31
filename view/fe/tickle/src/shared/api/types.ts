@@ -56,4 +56,11 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean>;
   body?: unknown;
   auth?: 'required' | 'optional' | 'none';
+  /**
+   * 응답을 기다릴 최대 시간(ms).
+   *
+   * 지정하지 않으면 기본값이 적용된다. 업로드처럼 오래 걸리는 요청은 넉넉히
+   * 늘리고, 아예 끄려면 0을 넘긴다(무한 대기를 감수한다는 뜻이므로 신중히).
+   */
+  timeoutMs?: number;
 }
