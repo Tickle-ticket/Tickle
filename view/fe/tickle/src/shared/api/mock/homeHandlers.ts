@@ -102,6 +102,9 @@ const rankingDataExhibition = {
 // 오픈 예정 카드는 salesStartAt까지 남은 시간으로 카운트다운을 그린다. 고정 날짜를
 // 쓰면 그 시각이 지난 뒤부터 전부 00:00:00으로 죽으므로, 현재 시각 기준 상대값으로
 // 만든다. 카드마다 남은 시간을 다르게 두어 표시 분기를 한 화면에서 확인한다.
+const secondsFromNow = (seconds: number) =>
+  new Date(Date.now() + seconds * 1000).toISOString();
+
 const hoursFromNow = (hours: number) =>
   new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 
@@ -115,8 +118,9 @@ const buildOpeningSoonEvents = () => [
     venueName: '세종문화회관 대극장',
     eventStartAt: daysFromNowIso(40),
     eventEndAt: daysFromNowIso(130),
-    // 2분 뒤 — 타이머가 0에 닿아 카드가 전환되는 순간을 볼 수 있다.
-    salesStartAt: hoursFromNow(2 / 60),
+    // 15초 뒤 — 곧 오픈하는 공연. 화면을 열면 타이머가 0에 닿아 카드가 전환되는
+    // 순간을 바로 확인할 수 있다. 요청 시점 기준이라 새로고침하면 다시 15초가 된다.
+    salesStartAt: secondsFromNow(15),
     salesEndAt: daysFromNowIso(129),
     thumbnailUrl: 'https://picsum.photos/seed/poster36/800/1200',
     tags: ['뮤지컬', '곧오픈'],
