@@ -2,7 +2,9 @@ import React from 'react';
 import { useCancellationDetail } from '@/src/features/cancellation/api/useCancellationDetail';
 
 const OfferTimer = ({ cancellationId }: { cancellationId: number }) => {
-  const { data } = useCancellationDetail(cancellationId, { throwOnError: false });
+  // 만료된 오퍼(404)는 타이머만 표시하지 않으면 되므로 화면을 대체하지 않는다.
+  // useCancellationDetail의 기본값이 그렇게 동작한다.
+  const { data } = useCancellationDetail(cancellationId);
   const [timeLeft, setTimeLeft] = React.useState<number | null>(null);
 
   React.useEffect(() => {
