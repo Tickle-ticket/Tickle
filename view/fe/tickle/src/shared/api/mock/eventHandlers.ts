@@ -1,6 +1,50 @@
 import { http, HttpResponse, delay } from 'msw';
 import { getMockSeatsForSchedule } from './seatHandlers';
 
+/**
+ * 예매 오픈 상태별 시나리오.
+ *
+ * DetailView는 오픈 시각까지 남은 시간으로 버튼 표시를 네 갈래로 나눈다
+ * (isUpcoming · isMoreThanOneDayLeft 조합). eventId로 각 갈래를 바로 열 수 있게
+ * 해두면 백엔드 없이도 전부 확인할 수 있다.
+ *
+ * - `opensInMinutes: null` → 이미 오픈됨(예매 버튼 활성)
+ * - 1440분(24시간) 초과 → "N월 N일 오픈" 날짜만 표시
+ * - 1440분 이하        → 카운트다운 타이머 표시
+ */
+type OpenScenario = {
+  readonly label: string;
+  /** 예매 오픈까지 남은 분. null이면 이미 오픈. */
+  readonly opensInMinutes: number | null;
+  /** 취소표 대기 오픈까지 남은 분. null이면 이미 오픈. */
+  readonly waitlistOpensInMinutes: number | null;
+};
+
+const OPEN_SCENARIOS: Record<number, OpenScenario> = {
+  // 10 — 예매·대기 모두 12시간 뒤: 두 버튼 다 카운트다운
+  10: { label: '예매 대기 테스트 공연', opensInMinutes: 12 * 60, waitlistOpensInMinutes: 12 * 60 + 10 },
+  // 11 — 3일 뒤: 카운트다운 대신 날짜만 표시
+  11: { label: '오픈 예정 공연 (3일 뒤)', opensInMinutes: 3 * 24 * 60, waitlistOpensInMinutes: 3 * 24 * 60 + 10 },
+  // 12 — 2분 뒤: 타이머가 0에 도달해 버튼이 활성화되는 순간을 볼 수 있다
+  12: { label: '곧 오픈 공연 (2분 뒤)', opensInMinutes: 2, waitlistOpensInMinutes: 12 },
+  // 13 — 예매는 열렸고 대기만 30분 뒤: 두 버튼 상태가 엇갈리는 경우
+  13: { label: '예매 중 · 대기 오픈 예정', opensInMinutes: null, waitlistOpensInMinutes: 30 },
+  // 999 — 기존 테스트용 별칭(12시간 뒤)
+  999: { label: '예매 대기 테스트 공연', opensInMinutes: 12 * 60, waitlistOpensInMinutes: 12 * 60 + 10 },
+};
+
+/** 지정한 분만큼 뒤의 ISO 시각을 만든다. */
+const minutesFromNow = (now: Date, minutes: number) =>
+  new Date(now.getTime() + minutes * 60 * 1000).toISOString();
+
+/** eventId에 해당하는 오픈 시나리오를 고른다. 없으면 이미 오픈된 공연으로 본다. */
+const resolveOpenScenario = (eventId: number): OpenScenario =>
+  OPEN_SCENARIOS[eventId] ?? {
+    label: '오페라의 유령',
+    opensInMinutes: null,
+    waitlistOpensInMinutes: null,
+  };
+
 const buildRemainingSeats = (date: string, time: string) => {
   const scheduleId = `${date}-${time}`;
   const mockSeats = getMockSeatsForSchedule(scheduleId);
@@ -69,12 +113,9 @@ export const eventHandlers = [
     // 실제 서버 통신처럼 약간의 지연 시간 추가 (Skeleton 확인용)
     await delay(1000);
     const eventId = Number(params.eventId) || 1;
-    // id가 10이거나 999일 때 예매 대기 중 상태 (12시간 전 오픈)
-    const isWaitlistPending = eventId === 999 || eventId === 10;
-    
-    // 예매 오픈 대기 중 테스트: 예매는 12시간 뒤에 오픈됨
+    const scenario = resolveOpenScenario(eventId);
+
     const now = new Date();
-    const twelveHoursLater = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
 
     // 공연·판매 일정은 현재 시각 기준 상대값으로 만든다.
     // 고정 날짜를 쓰면 그 날이 지난 뒤부터 회차 버튼이 전부 비활성(isPast)이 되어
@@ -85,7 +126,18 @@ export const eventHandlers = [
       return d.toISOString();
     };
 
-    const salesOpenAt = daysFromNow(-30, 10, 0);   // 30일 전 판매 시작
+    // 예매 오픈 시각. 시나리오에 따라 과거(=오픈됨) 또는 미래(=대기 중)로 둔다.
+    const salesOpenAt =
+      scenario.opensInMinutes === null
+        ? daysFromNow(-30, 10, 0)
+        : minutesFromNow(now, scenario.opensInMinutes);
+
+    // 취소표 대기는 예매 오픈보다 늦게 열리는 것이 기본이다(DetailView가 별도 카운트다운을 띄운다).
+    const cancellationWaitOpenAt =
+      scenario.waitlistOpensInMinutes === null
+        ? daysFromNow(-30, 10, 0)
+        : minutesFromNow(now, scenario.waitlistOpensInMinutes);
+
     const salesCloseAt = daysFromNow(29, 17, 0);   // 공연 하루 전 판매 마감
     const session1StartAt = daysFromNow(30, 14, 0);
     const session1EndAt = daysFromNow(30, 16, 30);
@@ -98,19 +150,19 @@ export const eventHandlers = [
       message: 'success',
       data: {
         eventId: eventId,
-        title: isWaitlistPending ? '예매 대기 테스트 공연' : '오페라의 유령',
+        title: scenario.label,
         categoryName: '뮤지컬',
         organizerName: 'SSAFY 18기',
-        venueName: isWaitlistPending ? '테스트 공연장' : '샤롯데씨어터',
+        venueName: scenario.opensInMinutes === null ? '샤롯데씨어터' : '테스트 공연장',
         venueAddress: '서울특별시 송파구 올림픽로 240',
         cityName: '서울',
         timezoneCode: 'Asia/Seoul',
-        salesStartAt: isWaitlistPending ? twelveHoursLater : salesOpenAt,
+        salesStartAt: salesOpenAt,
         salesEndAt: salesCloseAt,
         eventStartAt: session1StartAt,
         eventEndAt: session2EndAt,
         metadata: {
-          tags: isWaitlistPending ? ['테스트', '대기중'] : ['뮤지컬', 'HOT']
+          tags: scenario.opensInMinutes === null ? ['뮤지컬', 'HOT'] : ['테스트', '오픈예정']
         },
         notice: '관람등급: 만 13세 이상 관람가\n러닝타임: 총 러닝타임 약 150분 (인터미션 15분 포함)\n취소정책: 관람일 1일 전 17시까지 취소 가능\n주차 및 발렛파킹 불가 (대중교통 이용 권장)\n공연 시작 후 입장 제한',
         status: 'OPEN',
@@ -138,7 +190,7 @@ export const eventHandlers = [
             salesOpenAt,
             // EventSessionSchema가 필수로 요구하는 필드. 빠지면 스키마 검증에서
             // 응답 전체가 거부되어 화면이 뜨지 않는다.
-            cancellationWaitOpenAt: salesOpenAt,
+            cancellationWaitOpenAt,
             salesCloseAt,
             status: 'OPEN'
           },
@@ -148,7 +200,7 @@ export const eventHandlers = [
             startAt: session2StartAt,
             endAt: session2EndAt,
             salesOpenAt,
-            cancellationWaitOpenAt: salesOpenAt,
+            cancellationWaitOpenAt,
             salesCloseAt,
             status: 'OPEN'
           }
