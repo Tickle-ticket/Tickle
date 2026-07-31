@@ -2,6 +2,7 @@ package com.ssafy.tickle.common.interceptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.tickle.common.exception.BaseException;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import com.ssafy.tickle.common.util.JwtProvider;
 import com.ssafy.tickle.user.domain.User;
@@ -98,7 +99,7 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(
                 objectMapper.writeValueAsString(
-                        BaseResponse.error(HttpStatus.FORBIDDEN.value(), message)
+                        BaseResponse.error(GlobalErrorCode.ADMIN_ACCESS_DENIED, message)
                 )
         );
         return false;

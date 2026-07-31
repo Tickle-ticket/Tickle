@@ -3,6 +3,7 @@ package com.ssafy.tickle.common.interceptor;
 import com.ssafy.tickle.blacklist.application.BlacklistService;
 import com.ssafy.tickle.blacklist.presentation.dto.InternalAddBlacklistRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -112,7 +113,7 @@ public class IpRateLimitInterceptor implements HandlerInterceptor {
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(
                 objectMapper.writeValueAsString(
-                        BaseResponse.error(HttpStatus.TOO_MANY_REQUESTS.value(), "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.")
+                        BaseResponse.error(GlobalErrorCode.TOO_MANY_REQUESTS)
                 )
         );
     }

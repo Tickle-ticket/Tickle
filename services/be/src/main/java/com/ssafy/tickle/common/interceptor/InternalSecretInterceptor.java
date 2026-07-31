@@ -1,6 +1,7 @@
 package com.ssafy.tickle.common.interceptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.tickle.common.exception.code.GlobalErrorCode;
 import com.ssafy.tickle.common.response.BaseResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,7 +53,7 @@ public class InternalSecretInterceptor implements HandlerInterceptor {
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write(
                     objectMapper.writeValueAsString(
-                            BaseResponse.error(403, "접근 권한이 없습니다.")
+                            BaseResponse.error(GlobalErrorCode.INTERNAL_ACCESS_DENIED)
                     )
             );
             return false;

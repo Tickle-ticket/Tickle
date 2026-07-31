@@ -17,7 +17,16 @@ public enum GlobalErrorCode implements ErrorCode {
     ENTITY_NOT_FOUND(404, "대상을 찾을 수 없습니다."),
     RESOURCE_NOT_FOUND(404, "해당 리소스를 찾을 수 없습니다."),
     ACCESS_DENIED(403, "접근 권한이 없습니다."),
-    CONFLICT(409, "이미 존재하는 리소스입니다.");
+    CONFLICT(409, "이미 존재하는 리소스입니다."),
+
+    /** 관리자 전용 API에 권한 없이 접근 (AdminAuthInterceptor) */
+    ADMIN_ACCESS_DENIED(403, "관리자 권한이 없습니다."),
+
+    /** 내부 전용 API에 시크릿 없이 접근 (InternalSecretInterceptor) */
+    INTERNAL_ACCESS_DENIED(403, "접근 권한이 없습니다."),
+
+    /** IP별 요청 속도 제한 초과 (IpRateLimitInterceptor) */
+    TOO_MANY_REQUESTS(429, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
 
     private final int status;
     private final String message;

@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(BaseResponse.error(errorCode.getStatus(), exception.getMessage()));
+                .body(BaseResponse.error(errorCode, exception.getMessage()));
     }
 
     /**
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
                 .status(GlobalErrorCode.INVALID_INPUT_VALUE.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BaseResponse.error(
-                        GlobalErrorCode.INVALID_INPUT_VALUE.getStatus(),
+                        GlobalErrorCode.INVALID_INPUT_VALUE,
                         exception.getBindingResult().getAllErrors().get(0).getDefaultMessage()
                 ));
     }
@@ -70,10 +70,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(GlobalErrorCode.METHOD_NOT_ALLOWED.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(BaseResponse.error(
-                        GlobalErrorCode.METHOD_NOT_ALLOWED.getStatus(),
-                        GlobalErrorCode.METHOD_NOT_ALLOWED.getMessage()
-                ));
+                .body(BaseResponse.error(GlobalErrorCode.METHOD_NOT_ALLOWED));
     }
 
     /**
@@ -97,10 +94,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(GlobalErrorCode.INTERNAL_SERVER_ERROR.getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(BaseResponse.error(
-                        GlobalErrorCode.INTERNAL_SERVER_ERROR.getStatus(),
-                        GlobalErrorCode.INTERNAL_SERVER_ERROR.getMessage()
-                ));
+                .body(BaseResponse.error(GlobalErrorCode.INTERNAL_SERVER_ERROR));
     }
 
 	/**
@@ -114,7 +108,7 @@ public class GlobalExceptionHandler {
 			.status(GlobalErrorCode.RESOURCE_NOT_FOUND.getStatus())
 			.contentType(MediaType.APPLICATION_JSON)
 			.body(BaseResponse.error(
-				GlobalErrorCode.RESOURCE_NOT_FOUND.getStatus(),
+				GlobalErrorCode.RESOURCE_NOT_FOUND,
 				exception.getMessage()
 			));
 	}
