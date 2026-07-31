@@ -211,6 +211,15 @@ export const isRetryable = (error: ApiFailure): boolean => {
 };
 
 /**
+ * 실패에 실린 서버 에러코드를 꺼낸다.
+ *
+ * NetworkError·TimeoutError·SchemaMismatchError는 서버 응답이 없거나 본문을
+ * 신뢰할 수 없어 code를 갖지 않는다. 그 경우 undefined다.
+ */
+export const getFailureCode = (error: ApiFailure): string | undefined =>
+  'code' in error ? error.code : undefined;
+
+/**
  * 블랙리스트 차단인지 판별한다.
  *
  * 서버가 code를 주기 전에는 경로와 메시지 문구로 추측해야 했다(문구가 바뀌면

@@ -11,12 +11,10 @@ import {
   clearTokens,
 } from "./tokenManager";
 import { navigateToBlocked } from "../utils/blockedNavigation";
+import { toApiFailure } from "./toApiFailure";
+import { NetworkError, SchemaMismatchError, UnauthorizedError, getFailureCode } from "./errors";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
-// 서버에서 BlacklistInterceptor가 적용된 경로 (services/be WebMvcConfig#addInterceptors).
-// 이 경로 밖의 403은 블랙리스트일 수 없다.
-const BLACKLIST_GUARDED_PATHS = ["/api/v1/queue/", "/api/v1/reservations/"];
-
 const AUTH_ENDPOINT_PATTERNS = [
   "/auth/login",
   "/auth/signup",
@@ -113,29 +111,20 @@ export const apiClient = async <T>(
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
 
-      // 403 Forbidden 처리 — 블랙리스트만 차단 화면으로 보낸다.
-      // 서버는 403을 블랙리스트(BLACKLISTED_USER) 외에도 권한 부족(ACCESS_DENIED,
-      // BOOKING_ACCESS_DENIED)·비활성 계정(USER_NOT_ACTIVE)에 사용하며,
-      // GlobalExceptionHandler가 에러코드 이름 없이 {status, message}만 내려준다.
-      // status만 보고 차단하면 남의 예매를 조회한 정상 사용자까지 차단 화면을 보게 되므로,
-      // 블랙리스트 인터셉터가 걸린 경로(WebMvcConfig)와 메시지를 함께 확인한다.
-      if (response.status === 403 && !path.includes("/api/v1/admin/")) {
-        const isBlacklistGuardedPath = BLACKLIST_GUARDED_PATHS.some((guardedPath) =>
-          path.includes(guardedPath),
-        );
-        const isBlacklistMessage =
-          typeof errorData?.message === "string" &&
-          errorData.message.includes("블랙리스트");
+      // 실패 사유를 태그드 에러로 확정한다. 블랙리스트/권한부족 판별(같은 403),
+      // 락 경합 여부(같은 409) 같은 구분이 여기서 이뤄진다.
+      const failure = toApiFailure(path, response.status, errorData);
 
-        if (isBlacklistGuardedPath && isBlacklistMessage && typeof window !== "undefined") {
-          navigateToBlocked("blacklist");
-        }
+      // 블랙리스트는 화면 선택의 여지가 없어 여기서 바로 차단 페이지로 보낸다.
+      if (failure._tag === "BlacklistedError" && typeof window !== "undefined") {
+        navigateToBlocked("blacklist");
       }
 
       throw new ApiError(
-        errorData?.message || "API 요청 중 오류가 발생했습니다.",
+        failure.message || "API 요청 중 오류가 발생했습니다.",
         response.status,
         errorData,
+        { code: getFailureCode(failure), failure },
       );
     }
 
@@ -154,11 +143,12 @@ export const apiClient = async <T>(
           `[API Schema Error] ${path} 응답 데이터가 스키마와 불일치합니다:`,
           parseError,
         );
-        throw new ApiError(
-          "서버 응답 형식이 올바르지 않습니다.",
-          response.status,
-          data,
-        );
+
+        // HTTP는 성공(2xx)했으므로 response.status를 그대로 쓰면 "200인데 에러"가
+        // 되어 재시도·에러 화면 정책이 모두 빗나간다. 5xx로 올려 서버 계약 문제로
+        // 다루고, 태그로 실제 원인을 남긴다.
+        const failure = new SchemaMismatchError({ path, cause: parseError, received: data });
+        throw new ApiError(failure.message, 500, data, { failure });
       }
     }
 
@@ -167,9 +157,11 @@ export const apiClient = async <T>(
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new Error(
-      `Network Error: ${error instanceof Error ? error.message : "Unknown"}`,
-    );
+
+    // fetch 자체가 실패했다(오프라인·DNS·CORS·서버 다운). 응답이 없으므로 status가
+    // 없지만, 호출부 대부분이 error.status로 분기하므로 0을 넣어 4xx/5xx와 구분한다.
+    const failure = new NetworkError({ path, cause: error });
+    throw new ApiError(failure.message, 0, undefined, { failure });
   }
 };
 
@@ -197,10 +189,9 @@ const handle401 = async <T>(
       );
       window.location.href = `/login?redirect=${currentPath}`;
     }
-    throw new ApiError(
-      "로그인 세션이 만료되었습니다. 다시 로그인해주세요.",
-      401,
-    );
+
+    const expired = new UnauthorizedError({ path });
+    throw new ApiError(expired.message, 401, undefined, { failure: expired });
   }
 
   // 누군가 이미 리프레시 중이라면 큐(대기열)에 넣고 프로미스를 리턴하여 대기
@@ -243,10 +234,8 @@ const handle401 = async <T>(
 
   // --- 여기부터 갱신 실패 처리 ---
   // 대기 중인 요청들에게 실패를 통보(abort)하며 큐를 비움
-  const failure = new ApiError(
-    "로그인 세션이 만료되었습니다. 다시 로그인해주세요.",
-    401,
-  );
+  const expired = new UnauthorizedError({ path });
+  const failure = new ApiError(expired.message, 401, undefined, { failure: expired });
   clearWaitQueue(failure);
   clearTokens();
 
