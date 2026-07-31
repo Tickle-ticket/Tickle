@@ -55,6 +55,8 @@ export const useSeatDataWithFixtures = (
       venueId: FIXTURE_VENUE_ID,
       isLoading: shadowSeats === null,
       error: null,
+      // shadow는 SSE를 쓰지 않고 setInterval로 좌석을 갱신하므로 끊길 일이 없다.
+      isStreamDisconnected: false,
     };
   }
 
