@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@ta
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, ReactNode } from 'react';
 import { ApiError } from '../api/types';
+import { isRetryable, isFatalByDefault, type ApiFailure } from '../api/errors';
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -37,18 +38,24 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           queries: {
             staleTime: 60 * 1000, // 1 minute
             refetchOnWindowFocus: false,
-            // 4xx는 재시도해도 결과가 같다(권한 없음·리소스 없음 등).
-            // 재시도는 네트워크 오류·5xx처럼 일시적 실패에만 의미가 있다.
+            // 재시도는 일시적 실패에만 의미가 있다 — 네트워크·타임아웃·5xx, 그리고
+            // 좌석 분산락 경합(409 SEAT_LOCK_FAILED)처럼 잠시 후면 풀리는 경우다.
+            // 권한 없음·리소스 없음 같은 4xx는 다시 보내도 결과가 같다.
             retry: (failureCount, error) => {
-              if (error instanceof ApiError && error.status < 500) return false;
-              return failureCount < 1;
+              if (!(error instanceof ApiError)) return false;
+              if (!error.failure) return error.status >= 500 && failureCount < 1;
+              return isRetryable(error.failure as ApiFailure) && failureCount < 1;
             },
-            // 403·404·5xx는 화면이 개별 처리하지 않아도 Error Boundary가 받도록 위로 던진다.
+            // 화면이 개별 처리하지 않은 실패는 Error Boundary가 받도록 위로 던진다.
             // 화면 안에서 인라인으로 다루고 싶으면 해당 쿼리에서 throwOnError: false로 끈다.
-            // 400·409는 입력값·상태 충돌이라 대응이 화면마다 달라 던지지 않는다.
-            throwOnError: (error) =>
-              error instanceof ApiError &&
-              (error.status >= 500 || error.status === 404 || error.status === 403),
+            // 입력값·상태 충돌(400·409)은 대응이 화면마다 달라 던지지 않는다.
+            throwOnError: (error) => {
+              if (!(error instanceof ApiError)) return false;
+              if (!error.failure) {
+                return error.status >= 500 || error.status === 404 || error.status === 403;
+              }
+              return isFatalByDefault(error.failure as ApiFailure);
+            },
           },
         },
       })

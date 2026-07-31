@@ -5,6 +5,7 @@ export const favoriteHandlers = [
     await delay(300);
     return HttpResponse.json({
       status: 201,
+      code: 'CREATED',
       message: 'success',
       data: {
         favoriteId: 100,
@@ -18,6 +19,7 @@ export const favoriteHandlers = [
     await delay(300);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: null
     });
@@ -26,6 +28,7 @@ export const favoriteHandlers = [
     await delay(300);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         items: [

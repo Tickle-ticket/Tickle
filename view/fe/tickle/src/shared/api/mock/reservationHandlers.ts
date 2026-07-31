@@ -42,6 +42,7 @@ export const reservationHandlers = [
     await delay(300);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         items: mockReservations,
@@ -59,13 +60,15 @@ export const reservationHandlers = [
     if (!reservation) {
       return HttpResponse.json({
         status: 404,
-        message: '예매 내역을 찾을 수 없습니다.',
+        code: 'BOOKING_NOT_FOUND',
+        message: '예매를 찾을 수 없습니다.',
         data: null,
       }, { status: 404 });
     }
 
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: reservation,
     });
@@ -79,6 +82,7 @@ export const reservationHandlers = [
 
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: null,
     });

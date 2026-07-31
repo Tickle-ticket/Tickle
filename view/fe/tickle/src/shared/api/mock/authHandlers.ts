@@ -15,12 +15,18 @@ export const authHandlers = [
     const body = (await request.json()) as { email?: string; password?: string };
 
     if (!body.email || !body.password) {
-      return HttpResponse.json({ status: 400, message: '이메일과 비밀번호를 모두 입력해주세요.' }, { status: 400 });
+      return HttpResponse.json(
+        { status: 400, code: 'INVALID_INPUT_VALUE', message: '이메일과 비밀번호를 모두 입력해주세요.' },
+        { status: 400 },
+      );
     }
 
     // 간단한 모의 로그인 체크 (비밀번호가 'error' 이면 에러 반환)
     if (body.password === 'error') {
-      return HttpResponse.json({ status: 401, message: '로그인 실패' }, { status: 401 });
+      return HttpResponse.json(
+        { status: 401, code: 'INVALID_PASSWORD', message: '비밀번호가 일치하지 않습니다.' },
+        { status: 401 },
+      );
     }
 
     return HttpResponse.json({
@@ -36,7 +42,7 @@ export const authHandlers = [
     const body = (await request.json()) as { name?: string; phoneNumber?: string };
 
     if (!body.name || !/^010\d{8}$/.test(body.phoneNumber || '')) {
-      return HttpResponse.json({ status: 400, message: '이름과 전화번호를 확인해주세요.' }, { status: 400 });
+      return HttpResponse.json({ status: 400, code: 'INVALID_INPUT_VALUE', message: '이름과 전화번호를 확인해주세요.' }, { status: 400 });
     }
 
     return HttpResponse.json({
@@ -88,7 +94,7 @@ export const authHandlers = [
   http.get(`${API_BASE_URL}/kakao`, async () => {
     await delay(200);
     // 실제로는 백엔드가 302 Found로 카카오 로그인 페이지를 넘겨주지만, 모킹에선 무시되거나 JSON 에러가 날 수 있음
-    return HttpResponse.json({ status: 200, message: '카카오 로그인 리다이렉트 URL 요청' });
+    return HttpResponse.json({ status: 200, code: 'OK', message: '카카오 로그인 리다이렉트 URL 요청' });
   }),
 
   // 카카오 로그인 콜백
@@ -98,7 +104,7 @@ export const authHandlers = [
     const code = url.searchParams.get('code');
 
     if (!code) {
-      return HttpResponse.json({ status: 400, message: 'Authorization code is required' }, { status: 400 });
+      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: '카카오 인가 코드가 필요합니다.' }, { status: 400 });
     }
 
     return HttpResponse.json({
@@ -126,7 +132,7 @@ export const authHandlers = [
     const body = (await request.json()) as { code?: string };
 
     if (body.code !== '123456') {
-      return HttpResponse.json({ status: 400, message: '인증번호가 일치하지 않습니다.' }, { status: 400 });
+      return HttpResponse.json({ status: 400, code: 'PHONE_VERIFICATION_FAILED', message: '인증 코드가 올바르지 않거나 만료되었습니다.' }, { status: 400 });
     }
 
     return HttpResponse.json({

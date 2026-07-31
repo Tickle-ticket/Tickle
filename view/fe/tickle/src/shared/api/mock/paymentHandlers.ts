@@ -10,7 +10,7 @@ export const paymentHandlers = [
     const requestBody = (await request.json()) as any;
     
     if (!userId) {
-      return HttpResponse.json({ status: 400, message: 'userId is required' }, { status: 400 });
+      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
     }
 
     const isKakao = requestBody.paymentMethod === 'KAKAOPAY';
@@ -34,7 +34,7 @@ export const paymentHandlers = [
     const requestBody = (await request.json()) as any;
 
     if (!userId) {
-      return HttpResponse.json({ status: 400, message: 'userId is required' }, { status: 400 });
+      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
     }
 
     return HttpResponse.json({
@@ -82,7 +82,7 @@ export const paymentHandlers = [
     const userId = url.searchParams.get('userId');
     
     if (!userId) {
-      return HttpResponse.json({ status: 400, message: 'userId is required' }, { status: 400 });
+      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
     }
 
     return HttpResponse.json({

@@ -41,6 +41,7 @@ export class TimeoutError extends Data.TaggedError('TimeoutError')<{
  */
 export class UnauthorizedError extends Data.TaggedError('UnauthorizedError')<{
   readonly path: string;
+  readonly code?: string;
   readonly serverMessage?: string;
 }> {
   get message() {
@@ -51,6 +52,7 @@ export class UnauthorizedError extends Data.TaggedError('UnauthorizedError')<{
 /** 로그인은 했으나 권한이 없다(403). 블랙리스트는 아니다. */
 export class ForbiddenError extends Data.TaggedError('ForbiddenError')<{
   readonly path: string;
+  readonly code?: string;
   readonly serverMessage?: string;
 }> {
   get message() {
@@ -66,6 +68,7 @@ export class ForbiddenError extends Data.TaggedError('ForbiddenError')<{
  */
 export class BlacklistedError extends Data.TaggedError('BlacklistedError')<{
   readonly path: string;
+  readonly code?: string;
   readonly serverMessage?: string;
 }> {
   get message() {
@@ -76,6 +79,7 @@ export class BlacklistedError extends Data.TaggedError('BlacklistedError')<{
 /** 리소스가 없다(404). */
 export class NotFoundError extends Data.TaggedError('NotFoundError')<{
   readonly path: string;
+  readonly code?: string;
   readonly serverMessage?: string;
 }> {
   get message() {
@@ -91,6 +95,7 @@ export class NotFoundError extends Data.TaggedError('NotFoundError')<{
  */
 export class ValidationError extends Data.TaggedError('ValidationError')<{
   readonly path: string;
+  readonly code?: string;
   readonly serverMessage?: string;
   readonly data?: unknown;
 }> {
@@ -108,6 +113,7 @@ export class ValidationError extends Data.TaggedError('ValidationError')<{
  */
 export class ConflictError extends Data.TaggedError('ConflictError')<{
   readonly path: string;
+  readonly code?: string;
   readonly serverMessage?: string;
   readonly data?: unknown;
 }> {
@@ -125,6 +131,7 @@ export class ConflictError extends Data.TaggedError('ConflictError')<{
 export class ClientError extends Data.TaggedError('ClientError')<{
   readonly path: string;
   readonly status: number;
+  readonly code?: string;
   readonly serverMessage?: string;
   readonly data?: unknown;
 }> {
@@ -137,6 +144,7 @@ export class ClientError extends Data.TaggedError('ClientError')<{
 export class ServerError extends Data.TaggedError('ServerError')<{
   readonly path: string;
   readonly status: number;
+  readonly code?: string;
   readonly serverMessage?: string;
 }> {
   get message() {
@@ -175,11 +183,69 @@ export type ApiFailure =
   | ServerError
   | SchemaMismatchError;
 
-/** 재시도가 의미 있는 실패인지 판별한다(네트워크·타임아웃·5xx만). */
-export const isRetryable = (error: ApiFailure): boolean =>
-  error._tag === 'NetworkError' ||
-  error._tag === 'TimeoutError' ||
-  error._tag === 'ServerError';
+/**
+ * 분산락 획득에 실패했다는 뜻의 에러코드.
+ *
+ * 같은 409라도 성격이 다르다 — CANDIDATE_DUPLICATE_SEAT는 이미 신청한 좌석이라
+ * 다시 보내도 같은 결과지만, 이 코드는 요청이 몰려 락을 못 잡은 것이라 **잠시 후
+ * 다시 시도하면 성공할 수 있다**. status만으로는 구분할 수 없어 code를 본다.
+ *
+ * 좌석 선점(SEAT_ALREADY_HELD)은 분산락을 쓰지 않아 여기 해당하지 않는다.
+ */
+const RETRYABLE_CONFLICT_CODES = new Set(['CANDIDATE_LOCK_FAILED']);
+
+/**
+ * 재시도가 의미 있는 실패인지 판별한다.
+ *
+ * 네트워크·타임아웃·5xx는 일시적 장애이므로 항상 재시도할 가치가 있다.
+ * 4xx는 대부분 다시 보내도 결과가 같지만, 두 가지가 예외다 —
+ * 락 경합(409 CANDIDATE_LOCK_FAILED)과 요청 속도 제한(429).
+ *
+ * 다만 429는 서버가 이미 포화라는 신호이므로, 호출부가 간격을 충분히 두어야 한다.
+ */
+export const isRetryable = (error: ApiFailure): boolean => {
+  if (
+    error._tag === 'NetworkError' ||
+    error._tag === 'TimeoutError' ||
+    error._tag === 'ServerError'
+  ) {
+    return true;
+  }
+
+  if (error._tag === 'ClientError') {
+    return error.status === 429;
+  }
+
+  return error._tag === 'ConflictError' && !!error.code && RETRYABLE_CONFLICT_CODES.has(error.code);
+};
+
+/**
+ * 실패에 실린 서버 에러코드를 꺼낸다.
+ *
+ * NetworkError·TimeoutError·SchemaMismatchError는 서버 응답이 없거나 본문을
+ * 신뢰할 수 없어 code를 갖지 않는다. 그 경우 undefined다.
+ */
+export const getFailureCode = (error: ApiFailure): string | undefined =>
+  'code' in error ? error.code : undefined;
+
+/**
+ * 블랙리스트 차단인지 판별한다.
+ *
+ * 서버가 code를 주기 전에는 경로와 메시지 문구로 추측해야 했다(문구가 바뀌면
+ * 조용히 깨지는 방식). 이제 code로 정확히 판별한다.
+ */
+export const isBlacklisted = (error: ApiFailure): boolean =>
+  error._tag === 'BlacklistedError' ||
+  (error._tag === 'ForbiddenError' && error.code === 'BLACKLISTED_USER');
+
+/**
+ * 액세스 토큰이 만료됐을 뿐인지 판별한다.
+ *
+ * 만료라면 리프레시로 복구되지만, 위조·로그아웃된 토큰이라면 재로그인이 필요하다.
+ * 둘 다 401이라 status로는 나눌 수 없다.
+ */
+export const isTokenExpired = (error: ApiFailure): boolean =>
+  error._tag === 'UnauthorizedError' && error.code === 'EXPIRED_TOKEN';
 
 /**
  * 화면을 에러 페이지로 대체할지에 대한 **기본값**을 판별한다.

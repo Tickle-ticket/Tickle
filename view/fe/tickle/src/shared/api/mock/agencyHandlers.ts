@@ -47,6 +47,7 @@ export const agencyHandlers = [
 
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         organizers: mockOrganizers,
@@ -58,6 +59,7 @@ export const agencyHandlers = [
 
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: mockVenueTemplate,
     });

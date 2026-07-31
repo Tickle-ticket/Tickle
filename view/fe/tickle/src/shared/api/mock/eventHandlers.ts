@@ -18,6 +18,7 @@ export const eventHandlers = [
   http.get('*/api/v1/venues', async () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         venues: [
@@ -36,6 +37,7 @@ export const eventHandlers = [
 
     return HttpResponse.json({
       status: 200, // or 0 based on backend success code, Swagger said 0
+      code: 'OK',
       message: 'success',
       data: {
         items: [
@@ -92,6 +94,7 @@ export const eventHandlers = [
 
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         eventId: eventId,

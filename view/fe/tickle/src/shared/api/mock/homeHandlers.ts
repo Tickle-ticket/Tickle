@@ -225,6 +225,7 @@ export const homeHandlers = [
     await delay(800);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: banners,
     });
@@ -245,6 +246,7 @@ export const homeHandlers = [
     await delay(600);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: data,
     });
@@ -255,6 +257,7 @@ export const homeHandlers = [
     await delay(700);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: openingSoonData,
     });
@@ -265,6 +268,7 @@ export const homeHandlers = [
   http.get('*/api/v1/mypage/bookings/past', () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: mockPastBookings,
     });
@@ -274,6 +278,7 @@ export const homeHandlers = [
   http.get('*/api/v1/mypage/waitlist', () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: mockWaitlistBookings,
     });
