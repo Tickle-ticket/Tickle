@@ -87,7 +87,7 @@ public class BlacklistInterceptor implements HandlerInterceptor {
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(
                 objectMapper.writeValueAsString(
-                        BaseResponse.error(errorCode.getStatus(), errorCode.getMessage())
+                        BaseResponse.error(errorCode)
                 )
         );
     }
