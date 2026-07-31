@@ -140,6 +140,7 @@ export const seatHandlers = [
   http.get('*/api/v1/events/:eventId/schedules/:scheduleId/seats', async ({ params }) => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: buildSeatMap(String(params.scheduleId), 'BOOKING'),
     });
@@ -197,6 +198,7 @@ export const seatHandlers = [
   http.get('*/api/v1/events/:eventId/schedules/:scheduleId/cancellation-wait/seats', async ({ params }) => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: buildSeatMap(String(params.scheduleId), 'WAITLIST'),
     });
@@ -248,6 +250,7 @@ export const seatHandlers = [
   http.post('*/api/v1/events/:eventId/schedules/:scheduleId/seats/hold', async () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         heldSeats: []
@@ -259,6 +262,7 @@ export const seatHandlers = [
   http.delete('*/api/v1/events/:eventId/schedules/:scheduleId/seats/hold', async () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: null
     });

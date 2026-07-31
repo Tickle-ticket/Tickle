@@ -23,6 +23,7 @@ export const searchHandlers = [
     if (!query) {
       return HttpResponse.json({
         status: 200,
+        code: 'OK',
         message: 'success',
         data: [],
       });
@@ -32,6 +33,7 @@ export const searchHandlers = [
     if (query === '전체') {
       return HttpResponse.json({
         status: 200,
+        code: 'OK',
         message: 'success',
         data: allPerformances,
       });
@@ -46,6 +48,7 @@ export const searchHandlers = [
 
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: filtered,
     });

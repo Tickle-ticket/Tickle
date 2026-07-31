@@ -22,6 +22,7 @@ export const categoryHandlers = [
   http.get('*/api/v1/categories', async () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'OK',
       data: { categories: CATEGORIES },
     });
