@@ -6,6 +6,7 @@ import { seatApi } from '@/src/shared/api/seatApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
 import { useQuery } from '@tanstack/react-query';
 import { reservationApi } from '@/src/shared/api/reservationApi';
+import { REALTIME } from '@/src/shared/api/cachePolicy';
 import { createSeatSelectionPolicy } from './seatSelectionPolicy';
 import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 import { useBookStore } from '../store/useBookStore';
@@ -62,7 +63,9 @@ export function useSeatStep({
     enabled:
       policy.needsOwnershipCount &&
       !!eventDetail?.eventId && !!scheduleId && !!userProfile?.userId,
-    staleTime: 0,
+    // 1인당 예매 가능 수량은 다른 기기·탭에서의 예매로도 줄어든다. 좌석을
+    // 고르는 시점의 값이 아니면 선점 단계에서 서버 거절로 이어진다.
+    staleTime: REALTIME,
     gcTime: 0,
   });
 
