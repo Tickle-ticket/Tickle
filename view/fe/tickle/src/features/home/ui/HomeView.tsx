@@ -16,11 +16,7 @@ import {
   useHomeCategories,
 } from "@/src/features/home/api/useHomeData";
 import { http } from "@/src/shared/api/http";
-import {
-  getFavoriteEvents,
-  createFavorite,
-  deleteFavorite,
-} from "@/src/shared/api/favoriteApi";
+import { getFavoriteEvents } from "@/src/shared/api/favoriteApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/src/shared/api/tokenManager";
 import { getAccessTokenRoles } from "@/src/shared/api/tokenClaims";
@@ -41,6 +37,7 @@ import { Box } from "@/src/shared/components/Box";
 import { SearchContent } from "@/src/shared/components/SearchContent";
 import { useMypageStore } from "@/src/shared/store/useMypageStore";
 import { useWishlistStore } from "@/src/shared/store/useWishlistStore";
+import { useFavoriteToggle } from "@/src/features/favorite/api/useFavoriteToggle";
 import { MyPageContent } from "@/src/features/mypage/ui/MyPageContent";
 import { Modal } from "@/src/shared/components/Modal";
 import { useDetailStore } from "@/src/shared/store/useDetailStore";
@@ -220,8 +217,24 @@ export const HomeView = () => {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
 
-  const { wishlistMap, initWishlist, addWishlist, removeWishlist } =
-    useWishlistStore();
+  const { wishlistMap, initWishlist } = useWishlistStore();
+
+  const { toggle: toggleFavorite } = useFavoriteToggle({
+    onRequireLogin: () =>
+      setModalConfig({
+        isOpen: true,
+        title: "로그인 필요",
+        content: "로그인이 필요한 서비스입니다.",
+        confirmText: "로그인 하기",
+        showCancelButton: true,
+        onConfirm: () => {
+          const currentPath = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/login?redirect=${currentPath}`;
+        },
+      }),
+  });
   const queryClient = useQueryClient();
 
   const [modalConfig, setModalConfig] = useState<{
@@ -352,57 +365,7 @@ export const HomeView = () => {
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
-
-    if (!getAccessToken()) {
-      setModalConfig({
-        isOpen: true,
-        title: "로그인 필요",
-        content: "로그인이 필요한 서비스입니다.",
-        confirmText: "로그인 하기",
-        showCancelButton: true,
-        onConfirm: () => {
-          const currentPath = encodeURIComponent(
-            window.location.pathname + window.location.search,
-          );
-          window.location.href = `/login?redirect=${currentPath}`;
-        },
-      });
-      return;
-    }
-
-    const isWishlisted = !!wishlistMap[eventId];
-
-    // Optimistic UI Update: 먼저 UI를 즉각적으로 변경하여 반응성을 높입니다.
-    if (isWishlisted) {
-      removeWishlist(eventId);
-    } else {
-      addWishlist(eventId);
-    }
-
-    try {
-      if (isWishlisted) {
-        await deleteFavorite(Number(eventId));
-      } else {
-        await createFavorite(Number(eventId));
-      }
-      queryClient.invalidateQueries({ queryKey: ["myUpcomingWishlist"] });
-    } catch (error: any) {
-      console.error("찜 등록/취소 실패:", error);
-
-      // 이미 백엔드에서 찜 해제되어 있는 경우 ('찾을 수 없습니다' 에러)
-      // 우리의 낙관적 업데이트(UI에서 해제)가 결과적으로 맞았으므로 롤백하지 않습니다.
-      const isAlreadyDeleted =
-        isWishlisted && error?.message?.includes("찾을 수 없습니다");
-
-      if (!isAlreadyDeleted) {
-        // 그 외의 진짜 에러 발생 시 원래 상태로 롤백 (Revert)
-        if (isWishlisted) {
-          addWishlist(eventId);
-        } else {
-          removeWishlist(eventId);
-        }
-      }
-    }
+    await toggleFavorite(eventId);
   };
 
   const handleRefresh = async () => {

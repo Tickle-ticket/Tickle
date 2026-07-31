@@ -7,7 +7,7 @@ import { SearchListCard } from "@/src/shared/components/SearchListCard";
 import { useSearchData } from "@/src/features/search/api/useSearchData";
 import { useDetailStore } from "@/src/shared/store/useDetailStore";
 import { useWishlistStore } from "@/src/shared/store/useWishlistStore";
-import { createFavorite, deleteFavorite } from "@/src/shared/api/favoriteApi";
+import { useFavoriteToggle } from "@/src/features/favorite/api/useFavoriteToggle";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/src/shared/api/tokenManager";
 import { Modal } from "@/src/shared/components/Modal";
@@ -25,7 +25,24 @@ export const SearchContent: React.FC<SearchContentProps> = ({
   const { data: searchResults, isLoading: isSearchLoading } =
     useSearchData(query);
   const { openDetail } = useDetailStore();
-  const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
+  const { wishlistMap } = useWishlistStore();
+
+  const { toggle: toggleFavorite } = useFavoriteToggle({
+    onRequireLogin: () =>
+      setModalConfig({
+        isOpen: true,
+        title: "로그인 필요",
+        content: "로그인이 필요한 서비스입니다.",
+        confirmText: "로그인 하기",
+        showCancelButton: true,
+        onConfirm: () => {
+          const currentPath = encodeURIComponent(
+            window.location.pathname + window.location.search,
+          );
+          window.location.href = `/login?redirect=${currentPath}`;
+        },
+      }),
+  });
   const queryClient = useQueryClient();
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
@@ -80,49 +97,7 @@ export const SearchContent: React.FC<SearchContentProps> = ({
 
   const handleWishlistToggle = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
-
-    if (!getAccessToken()) {
-      setModalConfig({
-        isOpen: true,
-        title: "로그인 필요",
-        content: "로그인이 필요한 서비스입니다.",
-        confirmText: "로그인 하기",
-        showCancelButton: true,
-        onConfirm: () => {
-          const currentPath = encodeURIComponent(
-            window.location.pathname + window.location.search,
-          );
-          window.location.href = `/login?redirect=${currentPath}`;
-        },
-      });
-      return;
-    }
-
-    const isWishlisted = !!wishlistMap[eventId];
-
-    // 낙관적 업데이트
-    if (isWishlisted) {
-      removeWishlist(eventId);
-    } else {
-      addWishlist(eventId);
-    }
-
-    try {
-      if (isWishlisted) {
-        await deleteFavorite(Number(eventId));
-      } else {
-        await createFavorite(Number(eventId));
-      }
-      queryClient.invalidateQueries({ queryKey: ["myUpcomingWishlist"] });
-    } catch (error) {
-      console.error("찜 등록/취소 실패:", error);
-      // 실패시 롤백
-      if (isWishlisted) {
-        addWishlist(eventId);
-      } else {
-        removeWishlist(eventId);
-      }
-    }
+    await toggleFavorite(eventId);
   };
 
   return (

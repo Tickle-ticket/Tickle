@@ -5,7 +5,7 @@ import { useMyUpcomingWishlist } from '@/src/features/mypage/api/useMyPageData';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
-import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
+import { useFavoriteToggle } from '@/src/features/favorite/api/useFavoriteToggle';
 import { InfoCard } from '@/src/shared/components/InfoCard';
 import { SearchListCard } from '@/src/shared/components/SearchListCard';
 import { Text } from '@/src/shared/components/Text';
@@ -16,8 +16,19 @@ import Button from '@/src/shared/components/Button';
 
 export const UpcomingWishlistView = () => {
   const { data: upcoming, isLoading, isError, error } = useMyUpcomingWishlist();
-  const { wishlistMap, addWishlist, removeWishlist, initWishlist } = useWishlistStore();
+  const { wishlistMap, initWishlist } = useWishlistStore();
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: '' });
+
+  // 마이페이지는 로그인 상태를 전제로 하므로 로그인 유도는 두지 않는다.
+  // 404·409(이미 원하는 상태)는 훅이 성공으로 처리하고, 그 밖의 실패만 알린다.
+  const { toggle: toggleFavorite } = useFavoriteToggle({
+    onError: () =>
+      setModalConfig({
+        isOpen: true,
+        title: '오류 발생',
+        content: '찜 상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      }),
+  });
 
   React.useEffect(() => {
     if (upcoming) {
@@ -27,42 +38,8 @@ export const UpcomingWishlistView = () => {
 
   const handleToggle = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    try {
-      const isCurrentlyWishlisted = wishlistMap[id] !== false; // undefined or true means wishlisted in this context
-      
-      // 낙관적 업데이트
-      if (isCurrentlyWishlisted) {
-        removeWishlist(id);
-      } else {
-        addWishlist(id);
-      }
-
-      // API 호출
-      if (isCurrentlyWishlisted) {
-        await deleteFavorite(Number(id));
-      } else {
-        await createFavorite(Number(id));
-      }
-
-    } catch (err: any) {
-      // 롤백
-      const isCurrentlyWishlisted = wishlistMap[id] !== false;
-      if (!isCurrentlyWishlisted) {
-        addWishlist(id);
-      } else {
-        removeWishlist(id);
-      }
-      console.error('찜 상태 변경 실패:', err);
-      if (err.status === 400) {
-        setModalConfig({ isOpen: true, title: '잘못된 요청', content: '요청이 올바르지 않습니다.' });
-      } else if (err.status === 404) {
-        setModalConfig({ isOpen: true, title: '정보 없음', content: '해당 공연이나 찜 내역을 찾을 수 없습니다.' });
-      } else if (err.status === 409) {
-        setModalConfig({ isOpen: true, title: '이미 등록됨', content: '이미 찜한 공연입니다.' });
-      } else {
-        setModalConfig({ isOpen: true, title: '오류 발생', content: '처리 중 알 수 없는 오류가 발생했습니다.' });
-      }
-    }
+    // 이 화면은 찜한 공연 목록이라 값이 없는 항목도 찜 상태로 본다.
+    await toggleFavorite(id, wishlistMap[id] !== false);
   };
 
   // 표시할 총 관심 공연 수 (현재 찜 상태인 것만 카운트)

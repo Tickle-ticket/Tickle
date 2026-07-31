@@ -26,9 +26,9 @@ import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { Header } from '@/src/shared/components/Header';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
 import { Footer } from '@/src/shared/components/Footer';
-import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
+import { useFavoriteToggle } from '@/src/features/favorite/api/useFavoriteToggle';
 import { getAccessToken, clearTokens } from '@/src/shared/api/tokenManager';
 import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
@@ -102,6 +102,18 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const flowScopeRef = useRef<'BOOKING' | 'CANCELLATION_WAIT'>('BOOKING');
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
+
+  const { toggle: toggleFavorite } = useFavoriteToggle({
+    // 상세 화면은 찜을 새로 누를 때 하트 애니메이션을 띄운다.
+    onAdded: (eventId) =>
+      window.dispatchEvent(new CustomEvent('play-love-animation', { detail: { eventId } })),
+    onError: () =>
+      setModalConfig({
+        isOpen: true,
+        title: '오류 발생',
+        content: '찜 상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      }),
+  });
   const isFavorite = activeEventId ? !!wishlistMap[activeEventId] : false;
   const [detailImageFailed, setDetailImageFailed] = useState(false);
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
@@ -348,40 +360,20 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       return;
     }
 
-    try {
+    // shadow 공연은 서버에 레코드가 없어 찜 API를 타지 않는다. 화면 상태만 뒤집는다.
+    if (detailPolicy.skipsServerCalls) {
       if (isFavorite) {
         removeWishlist(activeEventId);
       } else {
         addWishlist(activeEventId);
         window.dispatchEvent(new CustomEvent('play-love-animation', { detail: { eventId: activeEventId } }));
       }
-
-      if (!detailPolicy.skipsServerCalls) {
-        if (isFavorite) {
-          await deleteFavorite(activeEventId);
-        } else {
-          await createFavorite(activeEventId);
-        }
-        queryClient.invalidateQueries({ queryKey: ['myUpcomingWishlist'] });
-      }
-    } catch (error: any) {
-      console.error('찜 등록/취소 실패:', error);
-      if (isFavorite) {
-        addWishlist(activeEventId);
-      } else {
-        removeWishlist(activeEventId);
-      }
-      if (error.status === 400) {
-        setModalConfig({ isOpen: true, title: '잘못된 요청', content: '요청이 올바르지 않습니다.' });
-      } else if (error.status === 404) {
-        setModalConfig({ isOpen: true, title: '정보 없음', content: '해당 공연이나 찜 내역을 찾을 수 없습니다.' });
-      } else if (error.status === 409) {
-        setModalConfig({ isOpen: true, title: '이미 등록됨', content: '이미 찜한 공연입니다.' });
-      } else {
-        setModalConfig({ isOpen: true, title: '오류 발생', content: '처리 중 알 수 없는 오류가 발생했습니다.' });
-      }
+      return;
     }
+
+    await toggleFavorite(activeEventId, isFavorite);
   };
+
 
   // 예매 플로우 진행 중 새로고침/탭 닫기 방지
   useEffect(() => {
