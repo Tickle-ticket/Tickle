@@ -1,10 +1,11 @@
 import React from 'react';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import type { DetailFlowPolicy } from '../api/detailFlowPolicy';
 
 interface UseEventFlowStartParams {
   activeEventId: string | null;
-  storyMode: boolean;
+  /** 로그인 확인이 필요한 시나리오인지 판단하는 정책(DetailView가 만들어 넘긴다). */
+  policy: DetailFlowPolicy;
   continueFlowStart: (state: 'QUEUE' | 'WAITLIST_QUEUE') => void;
   setModalConfig: (config: {
     isOpen: boolean;
@@ -19,7 +20,7 @@ interface UseEventFlowStartParams {
 
 export const useEventFlowStart = ({
   activeEventId,
-  storyMode,
+  policy,
   continueFlowStart,
   setModalConfig,
   finalize
@@ -29,7 +30,7 @@ export const useEventFlowStart = ({
     // 예매/대기열 진입 직전에 DETAIL 행동 데이터를 전송합니다.
     finalize();
 
-    if (!storyMode && !getAccessToken() && !isShadowMode(activeEventId)) {
+    if (policy.requiresLogin && !getAccessToken()) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',

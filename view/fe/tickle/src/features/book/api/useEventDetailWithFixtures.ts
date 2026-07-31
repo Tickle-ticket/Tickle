@@ -1,0 +1,28 @@
+import { useEventDetail, EventDetailResponse } from './useEventDetail';
+import { isShadowMode, getShadowEventDetail } from '@/src/shared/utils/shadowMode';
+
+/**
+ * 예매 플로우용 공연 상세에 shadow 모드 대체 데이터를 얹는 래퍼 훅입니다.
+ *
+ * shadow 모드(eventId 404·405)는 봇 탐지 학습 데이터 수집용 가상 공연이라
+ * 서버에 실제 레코드가 없다. 실제 조회 로직(useEventDetail)은 서버 응답 변환만
+ * 담당하도록 두고, 가상 공연 판별은 이 바깥 층에서만 한다.
+ */
+export const useEventDetailWithFixtures = (eventId?: string) => {
+  const shadowActive = isShadowMode(eventId);
+
+  // shadow일 때는 존재하지 않는 eventId로 서버를 때리지 않도록 쿼리를 비활성화한다.
+  const real = useEventDetail(shadowActive ? undefined : eventId);
+
+  if (shadowActive && eventId) {
+    return {
+      ...real,
+      data: getShadowEventDetail(eventId) as EventDetailResponse,
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as ReturnType<typeof useEventDetail>;
+  }
+
+  return real;
+};
