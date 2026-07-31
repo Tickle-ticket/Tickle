@@ -74,7 +74,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const activeEventId = selectedDetailId || urlId;
 
   // Storybook은 MSW 핸들러로 실제 조회 흐름을 그대로 태우므로 예외를 두지 않는다.
-  const detailPolicy = createDetailFlowPolicy(activeEventId, false);
+  const detailPolicy = createDetailFlowPolicy(activeEventId);
 
   const scrollRef = useRef<HTMLElement>(null);
 

@@ -19,7 +19,7 @@ interface QueueViewProps {
 
 export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', onTokenFetched }: QueueViewProps) => {
   // Storybook은 MSW 핸들러로 실제 대기열 흐름을 그대로 태우므로 예외를 두지 않는다.
-  const queuePolicy = createBookFlowPolicy('BOOK', eventId, false);
+  const queuePolicy = createBookFlowPolicy('BOOK', eventId);
 
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);

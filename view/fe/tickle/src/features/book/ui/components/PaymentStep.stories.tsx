@@ -10,9 +10,8 @@ import { handlers } from '@/src/shared/api/mock/handlers';
  *
  * 결제 데이터는 props로 주입하고, 결제 요청 응답은 MSW로 공급한다.
  *
- * 다만 `storyMode`는 남겨둔다 — 카카오페이는 window.open으로 외부 팝업을 띄우는데
- * 이는 네트워크가 아니라서 MSW로 대체할 수 없다. storyMode일 때만 팝업 대신
- * 안내 모달을 보여준다(PaymentStep#handlePayment).
+ * 카카오페이는 window.open으로 외부 팝업을 띄우지만, mock이 내려주는 리다이렉트
+ * 주소가 앱 내부 경로(/payment/success)라 외부 사이트로 나가지 않는다.
  */
 
 const meta: Meta<typeof PaymentStep> = {
@@ -64,8 +63,6 @@ const meta: Meta<typeof PaymentStep> = {
     onCancel: () => {},
     onConflictError: () => {},
     onError: () => {},
-    // 카카오페이 외부 팝업 대신 안내 모달을 띄운다(위 주석 참고).
-    storyMode: true,
   },
   tags: ['autodocs'],
 };
