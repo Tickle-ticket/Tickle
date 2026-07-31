@@ -8,7 +8,7 @@ import { purchaseCancellation } from '@/src/shared/api/cancellationApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
 
 interface PaymentStepProps {
   optionsData?: BookingOptionsResponse;
@@ -59,6 +59,8 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   submitPreorder,
   setPreorderBookingId,
 }) => {
+  const paymentPolicy = createBookFlowPolicy('BOOK', eventId, storyMode);
+
   const bookingStep = useBookStore((s: any) => s.bookingStep);
   const setBookingStep = useBookStore((s: any) => s.setBookingStep);
   const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
@@ -139,7 +141,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
 
   const handlePayment = async () => {
-    const isShadow = storyMode || isShadowMode(eventId);
+    const isShadow = paymentPolicy.skipsServerCalls;
 
     if (!isShadow && !cancellationId && (!scheduleId || !selectedPayMethod)) {
       console.error('Missing required payment parameters:', { scheduleId, selectedPayMethod });

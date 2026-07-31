@@ -1,50 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { DetailView } from './DetailView';
 import { MobileBottomNav } from '@/src/shared/components/MobileBottomNav';
+import { handlers } from '@/src/shared/api/mock/handlers';
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
-
-const mockedDetailData = {
-  eventId: '1',
-  title: '[Mock] 임영웅 콘서트 IM HERO - 서울',
-  subTitle: '콘서트',
-  imageUrl: 'https://picsum.photos/400/600',
-  startDate: '2026.05.15',
-  endDate: '2026.05.17',
-  venue: 'KSPO DOME',
-  venueAddress: '서울특별시 송파구 올림픽로 424',
-  notice: '이것은 Storybook을 위한 목데이터입니다.',
-  zonePrices: [
-    { priceGrade: 'VIP', price: 150000 },
-    { priceGrade: 'R', price: 120000 },
-    { priceGrade: 'S', price: 90000 },
-  ],
-  schedules: [
-    {
-      date: '2026.05.15',
-      times: [{ time: '19:30', remainingSeats: [] }],
-    },
-  ],
-  detailImageUrl: 'https://picsum.photos/800/1200',
-  isFavorite: false,
-  tags: ['임영웅', '콘서트', '단독'],
-};
-
-const mockedUserProfile = {
-  userId: 1,
-  avatarUrl: 'https://picsum.photos/200',
-  name: '홍길동',
-  nickname: '길동이',
-  realName: '홍길동',
-  email: 'test@tickle.com',
-  phoneNumber: '010-1234-5678',
-};
-
-queryClient.setQueryData(['detailData', '1'], mockedDetailData);
-queryClient.setQueryData(['userProfile'], mockedUserProfile);
+/**
+ * 공연 상세 화면 스토리입니다.
+ *
+ * 데이터는 storyMode 분기가 아니라 MSW 핸들러로 공급한다. 그래야 DetailView가
+ * 실제 사용자와 같은 코드 경로(fetchEventDetail → 응답 변환 → 렌더)를 타므로,
+ * 스토리에서는 잘 보이는데 실제로는 깨지는 상황이 생기지 않는다.
+ *
+ * 기본 핸들러(preview.tsx에 등록한 앱 핸들러)가 상세·사용자 응답을 이미 제공하므로
+ * 여기서는 예외 상황만 덮어쓴다.
+ */
 
 const meta: Meta<typeof DetailView> = {
   title: 'user/DetailView',
@@ -60,10 +29,10 @@ const meta: Meta<typeof DetailView> = {
   },
   decorators: [
     (Story) => (
-      <QueryClientProvider client={queryClient}>
+      <>
         <Story />
         <MobileBottomNav />
-      </QueryClientProvider>
+      </>
     ),
   ],
   tags: ['autodocs'],
@@ -72,50 +41,46 @@ const meta: Meta<typeof DetailView> = {
 export default meta;
 type Story = StoryObj<typeof DetailView>;
 
-export const Default: Story = {
-  args: {
-    storyMode: true,
-  },
-};
+/** 기본 상세 화면. */
+export const Default: Story = {};
 
 export const Mobile: Story = {
-  args: {
-    storyMode: true,
-  },
   parameters: {
-    viewport: {
-      defaultViewport: 'iphone14',
-    },
+    viewport: { defaultViewport: 'iphone14' },
   },
 };
 
 export const Tablet: Story = {
-  args: {
-    storyMode: true,
-  },
   parameters: {
-    viewport: {
-      defaultViewport: 'ipad',
+    viewport: { defaultViewport: 'ipad' },
+  },
+};
+
+/** 예매 오픈 대기 중인 공연(eventHandlers가 eventId 10을 대기 상태로 응답한다). */
+export const WaitlistPending: Story = {
+  parameters: {
+    nextjs: {
+      navigation: { query: { id: '10' } },
     },
   },
 };
 
+/** 존재하지 않는 공연 — 서버가 404를 내려주는 상황. */
 export const NotFound: Story = {
   parameters: {
     nextjs: {
-      navigation: {
-        query: { id: 'invalid-id' },
-      },
+      navigation: { query: { id: '99999' } },
     },
-  },
-};
-
-export const InvalidAccess: Story = {
-  parameters: {
-    nextjs: {
-      navigation: {
-        query: { id: '1', step: 'seat' },
-      },
-    },
+    // parameters.msw는 기본 핸들러를 덮어쓴다. MSW는 먼저 등록된 핸들러가
+    // 우선하므로, 이 스토리의 예외를 앞에 두고 앱 핸들러를 뒤에 펼친다.
+    msw: [
+      http.get('*/api/v1/events/:eventId', () =>
+        HttpResponse.json(
+          { status: 404, message: '공연을 찾을 수 없습니다.', data: null },
+          { status: 404 },
+        ),
+      ),
+      ...handlers,
+    ],
   },
 };

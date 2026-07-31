@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { GradePrice } from '@/src/shared/components/PriceLegend';
 import { fetchEventDetail, getEventPriceAmount } from '@/src/shared/api/eventApi';
-import { isShadowMode, getShadowEventDetail } from '@/src/shared/utils/shadowMode';
 
 export interface EventSchedule {
   date: string;
@@ -45,10 +44,6 @@ export const useEventDetail = (eventId?: string) => {
     queryKey: ['eventDetail', eventId],
     queryFn: async () => {
       if (!eventId) throw new Error('No event ID');
-
-      if (isShadowMode(eventId)) {
-        return getShadowEventDetail(eventId);
-      }
 
       const response = await fetchEventDetail(eventId);
       const data = response.data;

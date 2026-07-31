@@ -6,7 +6,7 @@ import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
 import { Modal } from '@/src/shared/components/Modal';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
 
 interface QueueViewProps {
   eventId: string;
@@ -14,11 +14,13 @@ interface QueueViewProps {
   onClose: () => void;
   fastMode?: boolean;
   scope?: 'BOOKING' | 'CANCELLATION_WAIT';
-  storyMode?: boolean;
   onTokenFetched?: (queueToken: string) => void;
 }
 
-export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', storyMode, onTokenFetched }: QueueViewProps) => {
+export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', onTokenFetched }: QueueViewProps) => {
+  // Storybook은 MSW 핸들러로 실제 대기열 흐름을 그대로 태우므로 예외를 두지 않는다.
+  const queuePolicy = createBookFlowPolicy('BOOK', eventId, false);
+
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
@@ -42,7 +44,9 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     if (isUserProfileLoading) return;
 
     const userId = userProfile?.userId;
-    if (!userId && !isShadowMode(eventId)) {
+    // 가상 공연은 비회원으로도 대기열 시나리오를 진행한다.
+    // (Storybook은 아래 skipsServerCalls 분기에서 걸러지므로 여기서는 shadow만 본다)
+    if (!queuePolicy.isShadow && !userId) {
       setErrorModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -64,7 +68,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
       if (isCancelled) return;
       if (!eventId || eventId === 'undefined') return;
 
-      if (storyMode || isShadowMode(eventId)) {
+      if (queuePolicy.skipsServerCalls) {
         setStatus('WAITING');
         setRank(1);
         setWaitingCount(0);

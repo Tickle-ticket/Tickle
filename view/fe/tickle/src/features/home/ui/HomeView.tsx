@@ -44,7 +44,7 @@ import { useWishlistStore } from "@/src/shared/store/useWishlistStore";
 import { MyPageContent } from "@/src/features/mypage/ui/MyPageContent";
 import { Modal } from "@/src/shared/components/Modal";
 import { useDetailStore } from "@/src/shared/store/useDetailStore";
-import { useDetailData } from "@/src/features/detail/api/useDetailData";
+import { useDetailDataWithFixtures } from "@/src/features/detail/api/useDetailDataWithFixtures";
 import { DetailView } from "@/src/features/detail/ui/DetailView";
 import dynamic from "next/dynamic";
 import loveAnimation from "@/src/shared/lottle/Love.json";
@@ -257,7 +257,7 @@ export const HomeView = () => {
     clickedLayoutId,
   } = useDetailStore();
   const activeDetailId = selectedDetailId || urlDetailId;
-  const { data: detailData, isLoading: detailLoading } = useDetailData(
+  const { data: detailData, isLoading: detailLoading } = useDetailDataWithFixtures(
     activeDetailId || undefined,
   );
   const accessRoles = getAccessTokenRoles();

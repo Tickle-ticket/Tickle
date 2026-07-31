@@ -1,3 +1,4 @@
+import { categoryHandlers } from './categoryHandlers';
 import { eventHandlers } from './eventHandlers';
 import { userHandlers } from './userHandlers';
 import { seatHandlers } from './seatHandlers';
@@ -12,6 +13,7 @@ import { authHandlers } from './authHandlers';
 import { reservationHandlers } from './reservationHandlers';
 import { bookingHandlers } from './bookingHandlers';
 export const handlers = [
+  ...categoryHandlers,
   ...trialHandlers,
   ...homeHandlers,
   ...searchHandlers,

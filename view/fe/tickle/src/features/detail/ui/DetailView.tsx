@@ -17,7 +17,7 @@ import { SectionNav } from '@/src/shared/components/SectionNav';
 import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
 import { BookButton } from '@/src/shared/components/BookButton';
 import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
-import { useDetailData } from '@/src/features/detail/api/useDetailData';
+import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useBookStore } from '@/src/features/book/store/useBookStore';
 import { BookView } from '@/src/features/book/ui/BookView';
@@ -34,7 +34,7 @@ import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { createDetailFlowPolicy } from '../api/detailFlowPolicy';
 import { isBlockedNavigation, navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 import { leaveQueue } from '@/src/shared/api/queueApi';
 import dynamic from 'next/dynamic';
@@ -63,16 +63,18 @@ const formatDateToDot = (date: Date) => {
 
 interface DetailViewProps {
   isOverlay?: boolean;
-  storyMode?: boolean;
 }
 
-export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewProps) => {
+export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedDetailId, setDetailBannerOpen } = useDetailStore();
 
   const urlId = searchParams?.get('id');
   const activeEventId = selectedDetailId || urlId;
+
+  // Storybook은 MSW 핸들러로 실제 조회 흐름을 그대로 태우므로 예외를 두지 않는다.
+  const detailPolicy = createDetailFlowPolicy(activeEventId, false);
 
   const scrollRef = useRef<HTMLElement>(null);
 
@@ -86,7 +88,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
   // error 객체는 구독하지 않는다 — 403·404·5xx는 throwOnError로 Error Boundary가 처리하고,
   // 여기서는 오버레이를 닫기 위한 isError 신호만 필요하다.
-  const { data, isLoading, isError } = useDetailData(activeEventId);
+  const { data, isLoading, isError } = useDetailDataWithFixtures(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isUpcoming, setIsUpcoming] = useState(false);
@@ -231,7 +233,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
 
   const { handleFlowStart } = useEventFlowStart({
     activeEventId,
-    storyMode,
+    policy: detailPolicy,
     continueFlowStart,
     setModalConfig,
     finalize
@@ -331,7 +333,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
   const handleFavoriteToggle = async () => {
     if (!activeEventId) return;
 
-    if (!storyMode && !getAccessToken() && !isShadowMode(activeEventId)) {
+    if (detailPolicy.requiresLogin && !getAccessToken()) {
       setModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -354,7 +356,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         window.dispatchEvent(new CustomEvent('play-love-animation', { detail: { eventId: activeEventId } }));
       }
 
-      if (!storyMode && !isShadowMode(activeEventId)) {
+      if (!detailPolicy.skipsServerCalls) {
         if (isFavorite) {
           await deleteFavorite(activeEventId);
         } else {
@@ -900,7 +902,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
               queueTokenRef.current = token;
               setQueueToken(token);
             }}
-            storyMode={storyMode}
           />
         </div>
       )}
@@ -924,7 +925,6 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
             }}
             onStepChange={handleBookStepChange}
             onStepBack={handleBookStepBack}
-            storyMode={storyMode}
             onPaymentStart={disconnect}
           />
         </div>
@@ -1073,7 +1073,7 @@ export const DetailView = ({ isOverlay = false, storyMode = false }: DetailViewP
         ref={scrollRef}
         className="flex-1 min-w-0 h-full flex flex-col px-6 pt-0 pb-12 md:px-10 md:pb-16 overflow-y-auto transition-all duration-500 relative [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-surface-inverse [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-content"
       >
-        {!isMockLoginDetail && (
+        {detailPolicy.showsGlobalHeader && (
           <div className="hidden lg:block">
             <Header />
           </div>

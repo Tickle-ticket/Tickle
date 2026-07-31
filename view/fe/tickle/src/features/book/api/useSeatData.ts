@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
-import { isShadowMode, generateShadowMockSeats } from '@/src/shared/utils/shadowMode';
 
 export interface SeatStatusData {
   priceGrade: string;
@@ -19,8 +18,7 @@ export const useSeatData = (
   scheduleId: string | null,
   enableWs: boolean = true,
   mode: 'BOOKING' | 'WAITLIST' = 'BOOKING',
-  admitToken: string | null = null,
-  storyMode: boolean = false
+  admitToken: string | null = null
 ) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,23 +32,10 @@ export const useSeatData = (
       return;
     }
 
-    if (!enableWs && !isShadowMode(eventId)) {
+    if (!enableWs) {
       setSeatAvailability({});
       setIsLoading(false);
       return;
-    }
-
-    if (isShadowMode(eventId)) {
-      setVenueId(4001);
-
-      setSeatAvailability(generateShadowMockSeats());
-      setIsLoading(false);
-
-      const interval = setInterval(() => {
-        setSeatAvailability(generateShadowMockSeats());
-      }, 2500);
-
-      return () => clearInterval(interval);
     }
 
     let isMounted = true;
@@ -151,25 +136,6 @@ export const useSeatData = (
       setIsLoading(true);
       try {
         let response;
-
-        if (storyMode) {
-          const mockMap: SeatAvailabilityResponse = {
-            'A1': { priceGrade: 'VIP', isAvailable: mode !== 'WAITLIST', sessionSeatId: 1, detailedInfo: 'A구역 A열 1번', waitingCount: 12, waitable: true },
-            'B2': { priceGrade: 'R', isAvailable: mode !== 'WAITLIST', sessionSeatId: 2, detailedInfo: 'B구역 B열 2번', waitingCount: 5, waitable: true },
-            'D10': { priceGrade: 'S', isAvailable: true, sessionSeatId: 3, detailedInfo: 'C구역 D열 10번', waitingCount: 0, waitable: false },
-            'E15': { priceGrade: 'S', isAvailable: false, sessionSeatId: 4, detailedInfo: 'D구역 E열 15번', waitingCount: 3, waitable: true },
-            'J8': { priceGrade: 'A', isAvailable: mode !== 'WAITLIST', sessionSeatId: 5, detailedInfo: 'E구역 J열 8번', waitingCount: 20, waitable: true },
-          };
-          // 룩업 맵 채우기
-          Object.entries(mockMap).forEach(([label, info]) => {
-            if (info.sessionSeatId) sessionSeatIdToLabelMap[info.sessionSeatId] = label;
-          });
-          setVenueId(4001);
-          setSeatAvailability(mockMap);
-          initialSeatsFetched = true;
-          setIsLoading(false);
-          return;
-        }
 
         if (mode === 'WAITLIST') {
           if (!admitToken) {

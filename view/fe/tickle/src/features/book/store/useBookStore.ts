@@ -14,6 +14,13 @@ interface BookingState {
   bookingStep: BookingStep;
   setBookingStep: (step: BookingStep) => void;
 
+  // CAPTCHA
+  // 예매 진입 전 사람임을 증명했는지 여부. 컴포넌트 지역 상태로 두면 예매 단계를
+  // 밖에서 지정할 수 없어(Storybook·테스트) store로 올렸다. 실제 판정은 서버가
+  // 하며 이 값은 화면 전환용 플래그다.
+  isBotVerified: boolean;
+  setIsBotVerified: (verified: boolean) => void;
+
   // Schedule
   selectedDate: string | null;
   setSelectedDate: (date: string | null) => void;
@@ -69,6 +76,7 @@ interface BookingState {
 
 const initialState = {
   bookingStep: 'SEAT' as BookingStep,
+  isBotVerified: false,
   selectedDate: null,
   selectedTime: null,
   confirmedSchedule: null,
@@ -92,7 +100,9 @@ export const useBookStore = create<BookingState>((set, get) => ({
   ...initialState,
 
   setBookingStep: (step) => set({ bookingStep: step }),
-  
+  setIsBotVerified: (verified) => set({ isBotVerified: verified }),
+
+
   setSelectedDate: (date) => set({ selectedDate: date }),
   setSelectedTime: (time) => set({ selectedTime: time }),
   setConfirmedSchedule: (schedule) => set({ confirmedSchedule: schedule }),
