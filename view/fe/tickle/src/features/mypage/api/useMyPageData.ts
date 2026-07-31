@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { http } from '@/src/shared/api/http';
-import { ApiResponse } from '@/src/shared/api/types';
+import { ApiError, ApiResponse } from '@/src/shared/api/types';
+import { isAlreadyCancelled } from '@/src/shared/api/errors';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
@@ -210,11 +211,21 @@ export const useWaitlistBookings = () => {
 
 export const useCancelBooking = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ bookingId }: { bookingId: number | string }) => {
-      const response = await reservationApi.cancelReservation(bookingId);
-      return response.data;
+      try {
+        const response = await reservationApi.cancelReservation(bookingId);
+        return response.data;
+      } catch (error) {
+        // 이미 취소된 예매는 사용자가 원한 상태에 도달해 있다. 실패로 되던지면
+        // 취소가 안 된 것처럼 보이므로 성공과 같게 흘려보낸다(onSuccess가 목록을
+        // 갱신하면서 실제 상태가 화면에 반영된다).
+        if (error instanceof ApiError && isAlreadyCancelled(error.code)) {
+          return null;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
@@ -224,13 +235,20 @@ export const useCancelBooking = () => {
 
 export const useCancelWaitlist = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (candidateId: string) => {
       const token = getAccessToken();
       if (!token) throw new Error('로그인이 필요합니다.');
-      const response = await cancelCancellationWaitCandidate(candidateId);
-      return response.data;
+      try {
+        const response = await cancelCancellationWaitCandidate(candidateId);
+        return response.data;
+      } catch (error) {
+        if (error instanceof ApiError && isAlreadyCancelled(error.code)) {
+          return null;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['waitlistBookings'] });
