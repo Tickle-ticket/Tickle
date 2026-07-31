@@ -1,11 +1,13 @@
 import { http, HttpResponse, delay } from 'msw';
+import { createMockJwt, resolveMockRole } from './mockJwt';
 
 const API_BASE_URL = '*/api/v1/auth';
 
-const dummyTokenResponse = {
-  accessToken: 'mock-access-token-' + Date.now(),
-};
-
+/**
+ * mock에는 계정 저장소가 없다. 아무 이메일/비밀번호나 통과시키고 항상 같은
+ * 사용자로 로그인시킨다. 다만 토큰은 파싱 가능한 JWT 형태여야 하고(tokenClaims),
+ * 권한은 이메일 접두사로 고른다(mockJwt#resolveMockRole).
+ */
 export const authHandlers = [
   // 자체 로그인
   http.post(`${API_BASE_URL}/login`, async ({ request }) => {
@@ -25,7 +27,7 @@ export const authHandlers = [
       status: 200,
       code: 'OK',
       message: '성공',
-      data: dummyTokenResponse,
+      data: { accessToken: createMockJwt(resolveMockRole(body.email)) },
     });
   }),
 
@@ -41,20 +43,20 @@ export const authHandlers = [
       status: 200,
       code: 'OK',
       message: '성공',
-      data: {
-        accessToken: 'mock-test-access-token-' + Date.now(),
-      },
+      data: { accessToken: createMockJwt('USER') },
     });
   }),
 
   // 자체 회원가입
-  http.post(`${API_BASE_URL}/signup`, async () => {
+  http.post(`${API_BASE_URL}/signup`, async ({ request }) => {
     await delay(300);
+    const body = (await request.json().catch(() => null)) as { email?: string } | null;
+
     return HttpResponse.json({
       status: 201,
       code: 'CREATED',
       message: '성공',
-      data: dummyTokenResponse,
+      data: { accessToken: createMockJwt(resolveMockRole(body?.email)) },
     });
   }),
 
@@ -70,15 +72,15 @@ export const authHandlers = [
   }),
 
   // 토큰 재발급
+  // 실제 서버는 HttpOnly refreshToken 쿠키를 읽어 검증하지만(AuthController#reissue),
+  // mock에서는 쿠키를 발급하지 않으므로 항상 성공시킨다.
   http.post(`${API_BASE_URL}/reissue`, async () => {
     await delay(200);
     return HttpResponse.json({
       status: 200,
       code: 'OK',
       message: '성공',
-      data: {
-        accessToken: 'reissued-access-token-' + Date.now(),
-      },
+      data: { accessToken: createMockJwt('USER') },
     });
   }),
 
@@ -103,7 +105,7 @@ export const authHandlers = [
       status: 200,
       code: 'OK',
       message: '성공',
-      data: dummyTokenResponse,
+      data: { accessToken: createMockJwt('USER') },
     });
   }),
 

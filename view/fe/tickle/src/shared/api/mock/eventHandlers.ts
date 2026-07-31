@@ -74,6 +74,22 @@ export const eventHandlers = [
     const now = new Date();
     const twelveHoursLater = new Date(now.getTime() + 12 * 60 * 60 * 1000).toISOString();
 
+    // 공연·판매 일정은 현재 시각 기준 상대값으로 만든다.
+    // 고정 날짜를 쓰면 그 날이 지난 뒤부터 회차 버튼이 전부 비활성(isPast)이 되어
+    // 좌석 선택으로 넘어갈 수 없다(SeatSelectionPanel#isDisabled).
+    const daysFromNow = (days: number, hour = 19, minute = 30) => {
+      const d = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      d.setHours(hour, minute, 0, 0);
+      return d.toISOString();
+    };
+
+    const salesOpenAt = daysFromNow(-30, 10, 0);   // 30일 전 판매 시작
+    const salesCloseAt = daysFromNow(29, 17, 0);   // 공연 하루 전 판매 마감
+    const session1StartAt = daysFromNow(30, 14, 0);
+    const session1EndAt = daysFromNow(30, 16, 30);
+    const session2StartAt = daysFromNow(30, 19, 30);
+    const session2EndAt = daysFromNow(30, 22, 0);
+
     return HttpResponse.json({
       status: 200,
       message: 'success',
@@ -86,10 +102,10 @@ export const eventHandlers = [
         venueAddress: '서울특별시 송파구 올림픽로 240',
         cityName: '서울',
         timezoneCode: 'Asia/Seoul',
-        salesStartAt: isWaitlistPending ? twelveHoursLater : '2026-04-01T10:00:00Z',
-        salesEndAt: '2026-05-30T23:59:59Z',
-        eventStartAt: '2026-05-20T19:30:00Z',
-        eventEndAt: '2026-05-30T21:30:00Z',
+        salesStartAt: isWaitlistPending ? twelveHoursLater : salesOpenAt,
+        salesEndAt: salesCloseAt,
+        eventStartAt: session1StartAt,
+        eventEndAt: session2EndAt,
         metadata: {
           tags: isWaitlistPending ? ['테스트', '대기중'] : ['뮤지컬', 'HOT']
         },
@@ -114,19 +130,23 @@ export const eventHandlers = [
           {
             sessionId: 101,
             sessionNo: 1,
-            startAt: '2026-04-23T14:00:00Z',
-            endAt: '2026-04-23T16:30:00Z',
-            salesOpenAt: '2026-04-01T10:00:00Z',
-            salesCloseAt: '2026-04-22T17:00:00Z',
+            startAt: session1StartAt,
+            endAt: session1EndAt,
+            salesOpenAt,
+            // EventSessionSchema가 필수로 요구하는 필드. 빠지면 스키마 검증에서
+            // 응답 전체가 거부되어 화면이 뜨지 않는다.
+            cancellationWaitOpenAt: salesOpenAt,
+            salesCloseAt,
             status: 'OPEN'
           },
           {
             sessionId: 102,
             sessionNo: 2,
-            startAt: '2026-04-23T19:30:00Z',
-            endAt: '2026-04-23T22:00:00Z',
-            salesOpenAt: '2026-04-01T10:00:00Z',
-            salesCloseAt: '2026-04-22T17:00:00Z',
+            startAt: session2StartAt,
+            endAt: session2EndAt,
+            salesOpenAt,
+            cancellationWaitOpenAt: salesOpenAt,
+            salesCloseAt,
             status: 'OPEN'
           }
         ],
