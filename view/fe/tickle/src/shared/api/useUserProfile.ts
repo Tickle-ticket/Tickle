@@ -4,6 +4,7 @@ import { authApi } from '@/src/shared/api/authApi';
 import { clearTokens, getAccessToken } from '@/src/shared/api/tokenManager';
 import type { UpdateMyInfoRequest } from '@/src/shared/api/types/user.types';
 import { ApiError } from './types';
+import { LONG } from './cachePolicy';
 
 export interface UserProfileData {
   userId: number;
@@ -40,7 +41,10 @@ export const useUserProfile = () => {
         phoneNumber: data.phoneNumber ?? undefined,
       } as UserProfileData;
     },
-    staleTime: 0,
+    // 프로필은 사용자가 직접 수정할 때만 바뀐다(그때는 화면이 invalidate한다).
+    // 0으로 두면 이 훅을 쓰는 곳마다 재조회가 일어나고, data 참조가 계속 새로
+    // 만들어져 이 값을 의존성으로 쓰는 effect가 반복 실행된다.
+    staleTime: LONG,
     enabled: !!getAccessToken(),
   });
 };

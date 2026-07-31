@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCancellationDetail } from '@/src/shared/api/cancellationApi';
 import type { CancellationOfferDetail } from '@/src/shared/api/types/cancellation.types';
+import { REALTIME } from '@/src/shared/api/cachePolicy';
 
 /**
  * 취소표 상세를 조회합니다.
@@ -29,7 +30,8 @@ export const useCancellationDetail = (cancellationId: number | string | null, op
     },
     enabled: !!cancellationId,
     retry: false, // 403, 404 등에서 무한 재시도 방지
-    staleTime: 0, // 항상 최신 정보(타이머 등)를 위해 캐시 무효화
+    // 입금 마감 타이머가 걸려 있어 남은 시간이 매 조회마다 달라진다.
+    staleTime: REALTIME,
     // undefined면 react-query가 "미지정"으로 보고 전역 정책을 적용한다. 만료된
     // 취소표(404)에 화면이 통째로 대체되므로 기본값을 false로 둔다.
     throwOnError: options?.throwOnError ?? false,

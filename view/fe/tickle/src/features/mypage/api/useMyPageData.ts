@@ -7,6 +7,8 @@ import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { getCancellationWaitCandidates, cancelCancellationWaitCandidate, passCancellationOffer } from '@/src/shared/api/cancellationApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { REALTIME, SHORT, LONG } from '@/src/shared/api/cachePolicy';
+
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
@@ -30,7 +32,8 @@ export const useMyUpcomingWishlist = () => {
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
     },
-    staleTime: 0,
+    // 찜 토글이 이 목록을 직접 갱신한다(useFavoriteToggle).
+    staleTime: SHORT,
   });
 };
 export interface BookingData {
@@ -92,7 +95,8 @@ export const useMyBookings = () => {
         paymentId: (r as any).paymentId, // 백엔드에서 추가될 필드
       })) as BookingData[];
     },
-    staleTime: 0,
+    // 예매 취소가 이 목록을 invalidate한다(useCancelBooking).
+    staleTime: SHORT,
   });
 };
 
@@ -108,7 +112,8 @@ export const usePaymentStatus = (paymentId: number | null) => {
       return res.data;
     },
     enabled: !!paymentId,
-    staleTime: 0,
+    // PG 승인은 우리 앱 밖에서 확정되므로 언제 바뀌는지 알 수 없다. 매번 확인한다.
+    staleTime: REALTIME,
   });
 };
 
@@ -122,7 +127,8 @@ export const useBookingDetail = (bookingId: string | null) => {
     },
     enabled: !!bookingId,
     retry: false,
-    staleTime: 0,
+    // 결제 진행 중에 상태(입금 대기 → 확정)가 서버에서 바뀔 수 있다.
+    staleTime: REALTIME,
   });
 };
 
@@ -133,7 +139,8 @@ export const usePastBookings = () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
       return response.data;
     },
-    staleTime: 0,
+    // 이미 끝난 공연 목록이라 세션 중에 바뀌지 않는다.
+    staleTime: LONG,
   });
 };
 
@@ -205,7 +212,9 @@ export const useWaitlistBookings = () => {
 
       return groupedArray;
     },
-    staleTime: 0,
+    // 취소표 배정(OFFERED 전환)은 서버가 다른 사용자의 취소를 받아 일으키므로
+    // 우리 쪽 mutation과 무관하게 바뀐다. 대기 순번도 같은 이유로 움직인다.
+    staleTime: REALTIME,
   });
 };
 
