@@ -9,6 +9,7 @@ import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { type AuthNavigationItem, UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
 import { clearKakaoSignUpToken, getKakaoSignUpToken } from '@/src/shared/lib/kakaoSignupToken';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 
 type ErrorState = {
   name: string;
@@ -83,6 +84,7 @@ const authTabs: AuthNavigationItem[] = [
 
 export function KakaoSignupPageClient() {
   const router = useRouter();
+  const { showToast } = useToast();
   const todayDate = useMemo(() => getTodayDate(), []);
   const [signUpToken, setSignUpToken] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -113,7 +115,7 @@ export function KakaoSignupPageClient() {
 
   const handleExpiredSession = () => {
     clearKakaoSignUpToken();
-    alert('카카오 가입 세션이 만료되었습니다. 다시 로그인해 주세요.');
+    showToast('카카오 가입 세션이 만료되었습니다. 다시 로그인해 주세요.');
     router.replace('/login');
   };
 

@@ -8,6 +8,7 @@ import { authApi } from "@/src/shared/api/authApi";
 import { clearTokens, getAccessToken } from "@/src/shared/api/tokenManager";
 import { useMypageStore } from "@/src/shared/store/useMypageStore";
 import { useDetailStore } from "@/src/shared/store/useDetailStore";
+import { useToast } from "@/src/shared/providers/ToastProvider";
 import { InfoCard } from "@/src/shared/components/InfoCard";
 import { Title } from "@/src/shared/components/Title";
 
@@ -18,6 +19,7 @@ interface HeaderProps {
 export const Header = ({ className = "" }: HeaderProps) => {
   const router = useRouter();
   const { data, isLoading: isUserLoading } = useUserProfile();
+  const { showToast } = useToast();
 
   // Zustand 전역 상태로 검색어 연동 (URL 라우팅 안 함 -> 포커스 완벽 유지, IME 분리 문제 해결)
   const { isMypageOpen, activeTab, openMypage, closeMypage } = useMypageStore();
@@ -131,7 +133,7 @@ export const Header = ({ className = "" }: HeaderProps) => {
       window.location.href = "/login"; // 완전히 상태를 비우고 로그인 화면으로 이동
     } catch (error) {
       console.error("로그아웃 실패:", error);
-      alert("로그아웃 중 오류가 발생했습니다.");
+      showToast("로그아웃 중 오류가 발생했습니다.");
     }
   };
 

@@ -9,6 +9,7 @@ import { UpcomingWishlistView } from './UpcomingWishlistView';
 import { MyBookingsView } from './MyBookingsView';
 import { WaitlistManagementView } from './WaitlistManagementView';
 import { useMypageStore, type MypageTabType } from '@/src/shared/store/useMypageStore';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 import { useState } from 'react';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useRouter } from 'next/navigation';
@@ -30,6 +31,7 @@ export const MyPageContent = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(true);
   const { data, isLoading } = useUserProfile();
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleLogout = async () => {
     try {
@@ -38,7 +40,7 @@ export const MyPageContent = () => {
       window.location.href = '/login';
     } catch (error) {
       console.error('로그아웃 실패:', error);
-      alert('로그아웃 중 오류가 발생했습니다.');
+      showToast('로그아웃 중 오류가 발생했습니다.');
     }
   };
 
