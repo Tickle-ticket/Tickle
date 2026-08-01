@@ -26,7 +26,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const InteractiveToggle = (args: any) => {
+const InteractiveToggle = (args: ComponentProps<typeof PanelToggle>) => {
   const [isFolded, setIsFolded] = useState(false);
   return (
     <div className="relative w-[300px] h-[300px] border border-dashed border-line-strong rounded-lg bg-surface-subtle flex flex-col items-center justify-center gap-4 overflow-hidden">

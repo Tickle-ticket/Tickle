@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PaymentInfoStep } from './PaymentInfoStep';
 import { PayMethodStep } from './PayMethodStep';
 import { useBookStore } from '../../store/useBookStore';
-import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
+import {
+  BookingOptionsResponse,
+  type BookingPreorderResponse,
+  type PreorderOptionSelection,
+} from '@/src/shared/api/types/booking.types';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import { purchaseCancellation } from '@/src/shared/api/cancellationApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
@@ -30,7 +34,12 @@ interface PaymentStepProps {
   onStepChange?: (step: string) => void;
   /** 결제하기 버튼 클릭 시 호출 (SSE 해제 등) */
   onPaymentStart?: () => void;
-  submitPreorder?: (eventId: number, scheduleId: number, seatIds: number[], optionSelections: any[]) => Promise<any>;
+  submitPreorder?: (
+    eventId: number,
+    scheduleId: number,
+    seatIds: number[],
+    optionSelections: PreorderOptionSelection[],
+  ) => Promise<BookingPreorderResponse | undefined>;
   setPreorderBookingId?: (id: number | null) => void;
 }
 

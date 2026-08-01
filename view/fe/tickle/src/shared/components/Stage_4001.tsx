@@ -154,9 +154,9 @@ export const Stage_4001 = ({
     const llStartY = Math.max(ul.h, ur.h) + 48;
     const cH = llStartY + Math.max(ll.h, lr.h);
 
-    const applyOffset = (gridRes: any, dx: number, dy: number) => {
-      gridRes.rects.forEach((r: any) => { r.x += dx; r.y += dy; rects.push(r); });
-      gridRes.labels.forEach((l: any) => { l.x += dx; l.y += dy; textLabels.push(l); });
+    const applyOffset = (gridRes: ReturnType<typeof calcGrid>, dx: number, dy: number) => {
+      gridRes.rects.forEach((r) => { r.x += dx; r.y += dy; rects.push(r); });
+      gridRes.labels.forEach((l) => { l.x += dx; l.y += dy; textLabels.push(l); });
     };
 
     applyOffset(ul, upperOffsetX, 0);

@@ -20,7 +20,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // 인터랙티브한 클릭이 가능하도록 State를 감싸는 Template
-const Template = (args: any) => {
+const Template = (args: ComponentProps<typeof SegmentedControl>) => {
   const [value, setValue] = useState(args.value || args.options[0].value);
   return <SegmentedControl {...args} value={value} onChange={setValue} />;
 };

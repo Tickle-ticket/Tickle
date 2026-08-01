@@ -11,7 +11,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
     () =>
       new QueryClient({
         queryCache: new QueryCache({
-          onError: (error: any, query: any) => {
+          onError: (error, query) => {
             // meta.silent가 설정된 쿼리는 글로벌 에러 로그를 남기지 않음
             if (query?.meta?.silent) return;
             if (error instanceof ApiError) {
@@ -24,7 +24,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           },
         }),
         mutationCache: new MutationCache({
-          onError: (error: any) => {
+          onError: (error) => {
             if (error instanceof ApiError) {
               if (error.status !== 401 && error.status !== 403) {
                 console.error('요청 처리 중 오류가 발생했습니다:', error.message);

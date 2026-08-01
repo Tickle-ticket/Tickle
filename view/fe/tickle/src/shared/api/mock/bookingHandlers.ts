@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import type { PreorderOptionSelection } from '@/src/shared/api/types/booking.types';
 
 const API_BASE_URL = '*/api/v1';
 
@@ -63,11 +64,11 @@ export const bookingHandlers = [
 
   // 2. 예매 초안 생성
   http.post(`${API_BASE_URL}/bookings/preorder`, async ({ request }) => {
-    const requestBody = (await request.json()) as any;
-    const optionSelections = requestBody.optionSelections || [];
+    const requestBody = (await request.json()) as { optionSelections?: PreorderOptionSelection[] };
+    const optionSelections = requestBody.optionSelections ?? [];
     
     // 선택된 옵션 기반으로 응답 동적 생성 (기본 90000, 할인 81000)
-    const seats = optionSelections.map((opt: any, index: number) => {
+    const seats = optionSelections.map((opt, index) => {
       const isDiscount = opt.discountName !== null;
       const ticketPriceAmount = isDiscount ? 81000 : 90000;
       const serviceFeeAmount = ticketPriceAmount * 0.05;
@@ -82,7 +83,7 @@ export const bookingHandlers = [
       };
     });
 
-    const totalPaymentAmount = seats.reduce((acc: number, seat: any) => acc + seat.finalPriceAmount, 0);
+    const totalPaymentAmount = seats.reduce((acc, seat) => acc + seat.finalPriceAmount, 0);
 
     return HttpResponse.json({
       status: 200,
@@ -101,10 +102,10 @@ export const bookingHandlers = [
   }),
 
   http.post(`${API_BASE_URL}/bookings/preorder/mock`, async ({ request }) => {
-    const requestBody = (await request.json()) as any;
-    const optionSelections = requestBody.optionSelections || [];
+    const requestBody = (await request.json()) as { optionSelections?: PreorderOptionSelection[] };
+    const optionSelections = requestBody.optionSelections ?? [];
 
-    const seats = optionSelections.map((opt: any, index: number) => {
+    const seats = optionSelections.map((opt, index) => {
       const isDiscount = opt.discountName !== null;
       const ticketPriceAmount = isDiscount ? 81000 : 90000;
       const serviceFeeAmount = ticketPriceAmount * 0.05;
@@ -119,7 +120,7 @@ export const bookingHandlers = [
       };
     });
 
-    const totalPaymentAmount = seats.reduce((acc: number, seat: any) => acc + seat.finalPriceAmount, 0);
+    const totalPaymentAmount = seats.reduce((acc, seat) => acc + seat.finalPriceAmount, 0);
 
     return HttpResponse.json({
       status: 200,
