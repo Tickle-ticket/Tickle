@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/src/shared/api/authApi';
 import { setAccessToken } from '@/src/shared/api/tokenManager';
-import { ApiError } from '@/src/shared/api/types';
 import { clearKakaoSignUpToken, setKakaoSignUpToken } from '@/src/shared/lib/kakaoSignupToken';
 import { useToast } from '@/src/shared/providers/ToastProvider';
 
@@ -90,7 +90,7 @@ export function KakaoCallbackClient() {
         clearKakaoSignUpToken();
         console.error('Kakao callback failed:', err);
         showToast(
-          err instanceof ApiError && err.status === 404
+          isFailure(err, 'NotFoundError')
             ? '카카오 로그인 API에 연결할 수 없습니다. 인증 서버 주소를 확인해 주세요.'
             : '카카오 로그인 처리에 실패했습니다.'
         );

@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isFailure } from '@/src/shared/api/errors';
 import { fetchMyInfo, updateMyInfo, withdrawMyInfo } from '@/src/shared/api/userApi';
 import { authApi } from '@/src/shared/api/authApi';
 import { clearTokens, getAccessToken } from '@/src/shared/api/tokenManager';
 import type { UpdateMyInfoRequest } from '@/src/shared/api/types/user.types';
-import { ApiError } from './types';
 import { LONG } from './cachePolicy';
 
 export interface UserProfileData {
@@ -24,7 +24,7 @@ export const useUserProfile = () => {
       try {
         response = await fetchMyInfo();
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
+        if (isFailure(error, 'UnauthorizedError')) {
           clearTokens();
           return null;
         }

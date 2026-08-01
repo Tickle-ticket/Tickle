@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/src/shared/api/authApi';
 import { setAccessToken } from '@/src/shared/api/tokenManager';
@@ -214,7 +215,7 @@ export function KakaoSignupPageClient() {
     } catch (error) {
       console.error('verifyPhoneCode failed', error);
 
-      if (error instanceof ApiError && error.status === 401) {
+      if (isFailure(error, 'UnauthorizedError')) {
         handleExpiredSession();
         return;
       }
@@ -261,7 +262,7 @@ export function KakaoSignupPageClient() {
     } catch (error) {
       console.error('kakaoSignup failed', error);
 
-      if (error instanceof ApiError && error.status === 401) {
+      if (isFailure(error, 'UnauthorizedError')) {
         handleExpiredSession();
         return;
       }
