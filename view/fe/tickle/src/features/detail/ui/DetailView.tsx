@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { isNavigatingToPaymentFlow } from '@/src/features/book/lib/paymentNavigation';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
@@ -380,7 +381,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     if (flowState === 'NONE') return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isBlockedNavigation()) return;
-      if ((window as any).__isNavigatingToPayment__) return;
+      if (isNavigatingToPaymentFlow()) return;
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);

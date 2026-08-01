@@ -23,15 +23,15 @@ export const Turnstile: React.FC<TurnstileProps> = ({
   useEffect(() => {
     // 자동(implicit) 렌더링에서 콜백을 받기 위한 전역 함수 등록
     if (onVerify) {
-      (window as any).onTurnstileSuccess = (token: string) => {
+      window.onTurnstileSuccess = (token: string) => {
         onVerify(token);
       };
     }
 
     return () => {
       // 컴포넌트 언마운트 시 전역 콜백 정리
-      if ((window as any).onTurnstileSuccess) {
-        delete (window as any).onTurnstileSuccess;
+      if (window.onTurnstileSuccess) {
+        delete window.onTurnstileSuccess;
       }
     };
   }, [onVerify]);
