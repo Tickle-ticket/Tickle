@@ -3,15 +3,11 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type RefObject } from 'react';
 import {
   AgencySeatPolicyModal,
-  createDefaultAgencySeatPolicy,
   getAgencySeatPolicySummary,
 } from '@/src/shared/components/AgencySeatPolicyModal';
-import { fetchAgencyVenueTemplate, submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
-import { fetchCategories } from '@/src/shared/api/eventApi';
+import { submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
 import type {
-  AgencyVenueTemplate,
 } from '@/src/shared/api/types/agency.types';
-import type { Category } from '@/src/shared/api/types/event.types';
 import { ApiError } from '@/src/shared/api/types';
 import { useVenues } from '@/src/shared/api/useVenues';
 import { Badge } from '@/src/shared/components/Badge';
@@ -21,6 +17,9 @@ import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 import { useScheduleDraft } from '@/src/features/agency/hooks/useScheduleDraft';
 import { useRegistrationImages } from '@/src/features/agency/hooks/useRegistrationImages';
 import { useSeatPricing } from '@/src/features/agency/hooks/useSeatPricing';
+import { useTicketSchedulePreview } from '@/src/features/agency/hooks/useTicketSchedulePreview';
+import { useCategoryOptions } from '@/src/features/agency/hooks/useCategoryOptions';
+import { useSeatTemplate } from '@/src/features/agency/hooks/useSeatTemplate';
 import { getRegistrationStepValidationResult as validateRegistrationStep } from '@/src/features/agency/model/registrationValidation';
 import { buildRegistrationRequest } from '@/src/features/agency/model/buildRegistrationRequest';
 import { ScheduleRegistrationSection } from '@/src/features/agency/ui/ScheduleRegistrationSection';
@@ -34,38 +33,27 @@ import { DateRangeModal } from '@/src/features/agency/ui/DateRangeModal';
 import type {
   RegistrationErrorTarget,
   RegistrationValidationResult,
-  TicketSchedulePreview,
   TicketScheduleRule,
   VenueOption,
 } from '@/src/features/agency/model/registrationTypes';
 import {
   basicInfoErrorTargets,
   buildDateKeysBetween,
-  buildSeatTemplateState,
-  buildSessionEndAt,
-  buildTicketScheduleDate,
   createDefaultPerformanceEndAt,
   createDefaultPerformanceStartAt,
-  createDisabledSeatPolicy,
   fallbackVenueOption,
   formatDateTimeLabel,
-  isValidScheduleTime,
   maxPerformanceHashtagCount,
   normalizeHashtag,
   parseDateKey,
   parseDateTimeLabel,
   registrationStepItems,
-  withSelectedTime,
 } from '@/src/features/agency/model/registrationHelpers';
 
 export default function AgencyRegistrationPage() {
   const { data: venueList = [], isLoading: isVenueListLoading } = useVenues();
   const [activeRegistrationStep, setActiveRegistrationStep] = useState(0);
   const [performanceTitle, setPerformanceTitle] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [isCategoryListLoading, setIsCategoryListLoading] = useState(true);
-  const [categoryListErrorMessage, setCategoryListErrorMessage] = useState<string | null>(null);
   const [selectedVenue, setSelectedVenue] = useState<number | null>(null);
   const [isVenueOpen, setIsVenueOpen] = useState(false);
   const [ticketOpenRule, setTicketOpenRule] = useState<TicketScheduleRule>({
@@ -86,12 +74,6 @@ export default function AgencyRegistrationPage() {
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [isPerformancePreviewOpen, setIsPerformancePreviewOpen] = useState(false);
-  const [seatPolicy, setSeatPolicy] = useState(() => createDefaultAgencySeatPolicy());
-  const [seatPolicyVenueId, setSeatPolicyVenueId] = useState<number | null>(null);
-  const [isSeatPolicyDirty, setIsSeatPolicyDirty] = useState(false);
-  const [seatTemplate, setSeatTemplate] = useState<AgencyVenueTemplate | null>(null);
-  const [isSeatTemplateLoading, setIsSeatTemplateLoading] = useState(false);
-  const [seatTemplateErrorMessage, setSeatTemplateErrorMessage] = useState<string | null>(null);
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [registrationErrorMessage, setRegistrationErrorMessage] = useState<string | null>(null);
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
@@ -121,6 +103,27 @@ export default function AgencyRegistrationPage() {
 
   const pricing = useSeatPricing({ clearFieldError: clearRegistrationFieldError });
   const { seatPrices, seatDiscounts } = pricing;
+  const {
+    categoryOptions,
+    selectedCategoryId,
+    setSelectedCategoryId,
+    selectedCategoryInfo,
+    isCategoryListLoading,
+    categoryListErrorMessage,
+  } = useCategoryOptions();
+  const {
+    seatPolicy,
+    setSeatPolicy,
+    seatPolicyVenueId,
+    setSeatPolicyVenueId,
+    setIsSeatPolicyDirty,
+    seatTemplate,
+    setSeatTemplate,
+    isSeatTemplateLoading,
+    seatTemplateErrorMessage,
+    setSeatTemplateErrorMessage,
+    loadSeatTemplate,
+  } = useSeatTemplate();
   const venueDropdownRef = useRef<HTMLDivElement | null>(null);
   const posterImageInputRef = useRef<HTMLInputElement | null>(null);
   const introImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -152,62 +155,6 @@ export default function AgencyRegistrationPage() {
     seatPrice: seatPriceSectionRef,
     discount: discountBlockRef,
   };
-  const categoryOptions = useMemo(
-    () =>
-      categories.map((category) => ({
-        label: category.categoryName,
-        value: String(category.categoryId),
-      })),
-    [categories],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadCategories = async () => {
-      setIsCategoryListLoading(true);
-      setCategoryListErrorMessage(null);
-
-      try {
-        const response = await fetchCategories();
-        if (cancelled) {
-          return;
-        }
-
-        const nextCategories = Array.from(response.data.categories);
-        setCategories(nextCategories);
-        setSelectedCategoryId((current) => {
-          if (current && nextCategories.some((category) => String(category.categoryId) === current)) {
-            return current;
-          }
-
-          return '';
-        });
-
-        if (nextCategories.length === 0) {
-          setCategoryListErrorMessage('카테고리 목록이 비어 있습니다.');
-        }
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setCategoryListErrorMessage(
-          error instanceof ApiError ? error.message : '카테고리 목록을 불러오지 못했습니다.',
-        );
-      } finally {
-        if (!cancelled) {
-          setIsCategoryListLoading(false);
-        }
-      }
-    };
-
-    void loadCategories();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const venueOptions = useMemo<VenueOption[]>(
     () =>
@@ -250,10 +197,6 @@ export default function AgencyRegistrationPage() {
       fallbackVenueOption,
     [resolvedSelectedVenue, venueOptions],
   );
-  const selectedCategoryInfo = useMemo(
-    () => categories.find((category) => String(category.categoryId) === selectedCategoryId) ?? null,
-    [categories, selectedCategoryId],
-  );
   const performanceDateModalInitialStartAt = useMemo(
     () => performanceOpenAt ?? createDefaultPerformanceStartAt(),
     [performanceOpenAt],
@@ -262,94 +205,21 @@ export default function AgencyRegistrationPage() {
     () => performanceCloseAt ?? createDefaultPerformanceEndAt(performanceDateModalInitialStartAt),
     [performanceCloseAt, performanceDateModalInitialStartAt],
   );
-  const loadSeatTemplate = async (venueId: number) => {
-    setIsSeatTemplateLoading(true);
-    setSeatTemplateErrorMessage(null);
 
-    try {
-      const template = await fetchAgencyVenueTemplate(venueId);
-      const templateState = buildSeatTemplateState(template);
-
-      setSeatTemplate(template);
-
-      if (seatPolicyVenueId !== venueId || !isSeatPolicyDirty) {
-        setSeatPolicy(templateState.seatPolicy ?? createDisabledSeatPolicy());
-        setSeatPolicyVenueId(venueId);
-        setIsSeatPolicyDirty(false);
-      }
-
-      return template;
-    } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : '공연장 좌석 골격을 불러오지 못했습니다.';
-
-      setSeatTemplateErrorMessage(message);
-      throw error;
-    } finally {
-      setIsSeatTemplateLoading(false);
-    }
-  };
-
-  const registeredTicketSchedulePreviews = useMemo<TicketSchedulePreview[]>(
-    () => {
-      if (!performanceCloseAt) {
-        return [];
-      }
-
-      return Object.entries(performanceSchedules)
-        .flatMap(([dateKey, times]) => {
-          const scheduleDate = parseDateKey(dateKey);
-
-          if (!scheduleDate) {
-            return [];
-          }
-
-          return times
-            .filter((timeValue) => isValidScheduleTime(timeValue))
-            .map((timeValue) => {
-              const scheduleAt = withSelectedTime(scheduleDate, timeValue);
-              const sessionEndAt = buildSessionEndAt(scheduleAt, performanceCloseAt);
-
-              return {
-                id: `${dateKey}-${timeValue}`,
-                dateKey,
-                timeValue,
-                scheduleAt,
-                sessionEndAt,
-                ticketOpenAt: buildTicketScheduleDate(scheduleAt, ticketOpenRule),
-                ticketCloseAt: buildTicketScheduleDate(scheduleAt, ticketCloseRule),
-              };
-            });
-        })
-        .sort((left, right) => left.scheduleAt.getTime() - right.scheduleAt.getTime());
-    },
-    [performanceCloseAt, performanceSchedules, ticketCloseRule, ticketOpenRule],
-  );
-  const activeTicketSchedulePreviews = useMemo(
-    () =>
-      selectedScheduleDateKeys.length > 0
-        ? registeredTicketSchedulePreviews.filter((preview) =>
-            selectedScheduleDateKeys.includes(preview.dateKey),
-          )
-        : registeredTicketSchedulePreviews,
-    [registeredTicketSchedulePreviews, selectedScheduleDateKeys],
-  );
-  const ticketSchedulePreviewItems = activeTicketSchedulePreviews.slice(0, 1);
-  const hasInvalidTicketWindow = registeredTicketSchedulePreviews.some(
-    (preview) => preview.ticketOpenAt.getTime() >= preview.ticketCloseAt.getTime(),
-  );
-  const areTicketScheduleRulesComplete =
-    ticketOpenRule.days.trim().length > 0 && ticketCloseRule.days.trim().length > 0;
-  const hasTicketWindowAfterScheduleStart = registeredTicketSchedulePreviews.some(
-    (preview) =>
-      preview.ticketOpenAt.getTime() >= preview.scheduleAt.getTime() ||
-      preview.ticketCloseAt.getTime() > preview.scheduleAt.getTime(),
-  );
-
+  const {
+    registeredTicketSchedulePreviews,
+    activeTicketSchedulePreviews,
+    ticketSchedulePreviewItems,
+    hasInvalidTicketWindow,
+    areTicketScheduleRulesComplete,
+    hasTicketWindowAfterScheduleStart,
+  } = useTicketSchedulePreview({
+    performanceCloseAt,
+    performanceSchedules,
+    ticketOpenRule,
+    ticketCloseRule,
+    selectedScheduleDateKeys,
+  });
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
       if (!venueDropdownRef.current?.contains(event.target as Node)) {
