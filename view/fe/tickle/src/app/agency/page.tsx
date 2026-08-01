@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   AgencySeatPolicyModal,
   getAgencySeatPolicySummary,
@@ -10,7 +10,6 @@ import type {
 } from '@/src/shared/api/types/agency.types';
 import { ApiError } from '@/src/shared/api/types';
 import { useVenues } from '@/src/shared/api/useVenues';
-import { Badge } from '@/src/shared/components/Badge';
 import { Box } from '@/src/shared/components/Box';
 import { Button } from '@/src/shared/components/Button';
 import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
@@ -18,10 +17,12 @@ import { useScheduleDraft } from '@/src/features/agency/hooks/useScheduleDraft';
 import { useRegistrationImages } from '@/src/features/agency/hooks/useRegistrationImages';
 import { useSeatPricing } from '@/src/features/agency/hooks/useSeatPricing';
 import { useTicketSchedulePreview } from '@/src/features/agency/hooks/useTicketSchedulePreview';
+import { usePerformancePeriod } from '@/src/features/agency/hooks/usePerformancePeriod';
 import { useCategoryOptions } from '@/src/features/agency/hooks/useCategoryOptions';
 import { useSeatTemplate } from '@/src/features/agency/hooks/useSeatTemplate';
 import { getRegistrationStepValidationResult as validateRegistrationStep } from '@/src/features/agency/model/registrationValidation';
 import { buildRegistrationRequest } from '@/src/features/agency/model/buildRegistrationRequest';
+import { HashtagSection } from '@/src/features/agency/ui/HashtagSection';
 import { ScheduleRegistrationSection } from '@/src/features/agency/ui/ScheduleRegistrationSection';
 import { PosterContentSection } from '@/src/features/agency/ui/PosterContentSection';
 import { BasicInfoSection } from '@/src/features/agency/ui/BasicInfoSection';
@@ -38,15 +39,10 @@ import type {
 } from '@/src/features/agency/model/registrationTypes';
 import {
   basicInfoErrorTargets,
-  buildDateKeysBetween,
   createDefaultPerformanceEndAt,
   createDefaultPerformanceStartAt,
   fallbackVenueOption,
   formatDateTimeLabel,
-  maxPerformanceHashtagCount,
-  normalizeHashtag,
-  parseDateKey,
-  parseDateTimeLabel,
   registrationStepItems,
 } from '@/src/features/agency/model/registrationHelpers';
 
@@ -62,15 +58,8 @@ export default function AgencyRegistrationPage() {
   const [ticketCloseRule, setTicketCloseRule] = useState<TicketScheduleRule>({
     days: '',
   });
-  const [performanceOpenAt, setPerformanceOpenAt] = useState<Date | null>(null);
-  const [performanceCloseAt, setPerformanceCloseAt] = useState<Date | null>(null);
-  const [performanceOpenInputValue, setPerformanceOpenInputValue] = useState('');
-  const [performanceCloseInputValue, setPerformanceCloseInputValue] = useState('');
-  const [performanceOpenPlaceholder] = useState(() => formatDateTimeLabel(new Date()));
-  const [performanceClosePlaceholder] = useState(() => formatDateTimeLabel(new Date()));
   const [noticeText, setNoticeText] = useState('');
   const [performanceHashtags, setPerformanceHashtags] = useState<string[]>([]);
-  const [hashtagInputValue, setHashtagInputValue] = useState('');
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [isPerformancePreviewOpen, setIsPerformancePreviewOpen] = useState(false);
@@ -84,6 +73,8 @@ export default function AgencyRegistrationPage() {
     setRegistrationFieldErrorTarget((current) => (current === target ? null : current));
   };
 
+  const [performanceOpenAt, setPerformanceOpenAt] = useState<Date | null>(null);
+  const [performanceCloseAt, setPerformanceCloseAt] = useState<Date | null>(null);
   const schedule = useScheduleDraft({
     performanceOpenAt,
     performanceCloseAt,
@@ -98,6 +89,29 @@ export default function AgencyRegistrationPage() {
     setSelectedScheduleDateKeys,
     setPerformanceSchedules,
   } = schedule;
+  const {
+    performanceOpenInputValue,
+    setPerformanceOpenInputValue,
+    performanceCloseInputValue,
+    setPerformanceCloseInputValue,
+    performanceOpenPlaceholder,
+    performanceClosePlaceholder,
+    syncSchedulesToPerformanceRange,
+    handlePerformanceOpenInputChange,
+    handlePerformanceCloseInputChange,
+  } = usePerformancePeriod({
+    performanceSchedules,
+    setPerformanceSchedules,
+    selectedScheduleDateKeys,
+    setSelectedScheduleDateKeys,
+    selectedScheduleDateKey,
+    setSelectedScheduleDate,
+    clearRegistrationFieldError,
+    performanceOpenAt,
+    setPerformanceOpenAt,
+    performanceCloseAt,
+    setPerformanceCloseAt,
+  });
   const images = useRegistrationImages({ clearFieldError: clearRegistrationFieldError });
   const { posterImage, introImages } = images;
 
@@ -242,8 +256,6 @@ export default function AgencyRegistrationPage() {
     [resolvedSelectedVenue, seatPolicy],
   );
   const introImageCountLabel = `${introImages.length}장`;
-  const normalizedHashtagInput = normalizeHashtag(hashtagInputValue);
-  const formattedHashtagInput = normalizedHashtagInput ? `#${normalizedHashtagInput}` : '';
   const isFirstRegistrationStep = activeRegistrationStep === 0;
   const isLastRegistrationStep = activeRegistrationStep === registrationStepItems.length - 1;
   const canSubmitRegistration =
@@ -258,10 +270,6 @@ export default function AgencyRegistrationPage() {
     !hasInvalidTicketWindow &&
     !isVenueListLoading &&
     !isCategoryListLoading;
-  const canAddHashtag =
-    formattedHashtagInput.length > 1 &&
-    performanceHashtags.length < maxPerformanceHashtagCount &&
-    !performanceHashtags.includes(formattedHashtagInput);
 
   const formatSeatPriceInput = (value: string) => {
     if (value.length === 0) {
@@ -281,108 +289,6 @@ export default function AgencyRegistrationPage() {
 
 
 
-  const syncSchedulesToPerformanceRange = (nextOpenAt: Date, nextCloseAt: Date) => {
-    const nextDateKeys = buildDateKeysBetween(nextOpenAt, nextCloseAt);
-    const nextSelectedDateKeys = selectedScheduleDateKeys.filter((dateKey) => nextDateKeys.includes(dateKey));
-    const nextActiveDateKey =
-      selectedScheduleDateKey && nextSelectedDateKeys.includes(selectedScheduleDateKey)
-        ? selectedScheduleDateKey
-        : nextSelectedDateKeys[0] ?? null;
-
-    setSelectedScheduleDateKeys(nextSelectedDateKeys);
-    setSelectedScheduleDate(nextActiveDateKey ? parseDateKey(nextActiveDateKey) : null);
-
-    setPerformanceSchedules((current) => {
-      const availableDateKeys = new Set(nextDateKeys);
-      return Object.fromEntries(
-        Object.entries(current)
-          .filter(([dateKey]) => availableDateKeys.has(dateKey))
-          .map(([dateKey, times]) => [dateKey, [...new Set(times)].sort()]),
-      );
-    });
-  };
-
-  const handlePerformanceOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value;
-    const parsed = parseDateTimeLabel(nextValue);
-
-    setPerformanceOpenInputValue(nextValue);
-    clearRegistrationFieldError('performanceDate');
-
-    if (nextValue.trim().length === 0) {
-      setPerformanceOpenAt(null);
-      setSelectedScheduleDate(null);
-      setSelectedScheduleDateKeys([]);
-      setPerformanceSchedules({});
-      return;
-    }
-
-    if (!parsed) {
-      return;
-    }
-
-    setPerformanceOpenAt(parsed);
-    const nextPerformanceCloseAt =
-      performanceCloseAt && performanceCloseAt.getTime() >= parsed.getTime()
-        ? performanceCloseAt
-        : null;
-
-    if (performanceCloseAt && performanceCloseAt.getTime() < parsed.getTime()) {
-      setPerformanceCloseAt(null);
-      setPerformanceCloseInputValue('');
-    }
-
-    if (nextPerformanceCloseAt) {
-      syncSchedulesToPerformanceRange(parsed, nextPerformanceCloseAt);
-    }
-  };
-
-  const handlePerformanceCloseInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextValue = event.target.value;
-    const parsed = parseDateTimeLabel(nextValue);
-
-    setPerformanceCloseInputValue(nextValue);
-    clearRegistrationFieldError('performanceDate');
-
-    if (nextValue.trim().length === 0) {
-      setPerformanceCloseAt(null);
-      setSelectedScheduleDate(null);
-      setSelectedScheduleDateKeys([]);
-      setPerformanceSchedules({});
-      return;
-    }
-
-    if (!parsed || (performanceOpenAt && parsed.getTime() < performanceOpenAt.getTime())) {
-      return;
-    }
-
-    setPerformanceCloseAt(parsed);
-    if (performanceOpenAt) {
-      syncSchedulesToPerformanceRange(performanceOpenAt, parsed);
-    }
-  };
-
-  const handleHashtagAdd = (rawValue = hashtagInputValue) => {
-    const normalizedValue = normalizeHashtag(rawValue);
-
-    if (!normalizedValue || performanceHashtags.length >= maxPerformanceHashtagCount) {
-      return;
-    }
-
-    const nextHashtag = `#${normalizedValue}`;
-
-    if (performanceHashtags.includes(nextHashtag)) {
-      setHashtagInputValue('');
-      return;
-    }
-
-    setPerformanceHashtags((current) => [...current, nextHashtag]);
-    setHashtagInputValue('');
-  };
-
-  const handleHashtagRemove = (targetHashtag: string) => {
-    setPerformanceHashtags((current) => current.filter((hashtag) => hashtag !== targetHashtag));
-  };
 
   const scrollRegistrationPageToTop = () => {
     window.requestAnimationFrame(() => {
@@ -554,62 +460,7 @@ export default function AgencyRegistrationPage() {
   };
 
   const hashtagSection = (
-    <div className="flex min-h-[268px] flex-col rounded-3xl border border-line bg-surface p-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-content-tertiary">해시태그</span>
-        <Badge color="blue" variant="outline">
-          {performanceHashtags.length}/{maxPerformanceHashtagCount}
-        </Badge>
-      </div>
-
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <label className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="text-xs font-bold tracking-[0.08em] text-content-muted">키워드 입력</span>
-          <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface-subtle px-4 py-3 transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary-light">
-            <span className="text-sm font-black text-primary">#</span>
-            <input
-              type="text"
-              value={hashtagInputValue}
-              onChange={(event) => setHashtagInputValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  handleHashtagAdd();
-                }
-              }}
-              placeholder="초연, OST, 한정공연"
-              disabled={performanceHashtags.length >= maxPerformanceHashtagCount}
-              className="w-full bg-transparent text-sm font-semibold text-content outline-none placeholder:text-content-muted disabled:cursor-not-allowed"
-            />
-          </div>
-        </label>
-
-        <Button
-          color="primary"
-          size="medium"
-          disabled={!canAddHashtag}
-          onClick={() => handleHashtagAdd()}
-        >
-          추가
-        </Button>
-          </div>
-
-          {performanceHashtags.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-          {performanceHashtags.map((hashtag) => (
-            <button
-              key={hashtag}
-              type="button"
-              onClick={() => handleHashtagRemove(hashtag)}
-              className="inline-flex items-center gap-2 rounded-full border border-primary-light bg-primary-subtle px-3 py-2 text-sm font-black text-primary-hover transition hover:border-primary-light hover:bg-primary-light"
-            >
-              <span>{hashtag}</span>
-              <span className="text-xs text-primary">삭제</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <HashtagSection hashtags={performanceHashtags} onChange={setPerformanceHashtags} />
   );
 
   return (
