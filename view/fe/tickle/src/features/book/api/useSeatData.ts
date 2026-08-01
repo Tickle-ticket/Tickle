@@ -44,7 +44,7 @@ export const useSeatData = (
 ) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
   const [venueId, setVenueId] = useState<number | null>(null);
   /**
    * 좌석 실시간 동기화가 끊긴 채 복구되지 않은 상태.

@@ -488,8 +488,8 @@ export class TrialCollector {
   private computeMetricsFromEvents(events: EventRow[], durationMs: number): TrialMetrics {
     const moves = events.filter(e => e.event_type === 'mousemove') as MousemoveEventRow[];
     const clicks = events.filter(e => e.event_type === 'click') as ClickEventRow[];
-    const keydowns = events.filter(e => e.event_type === 'keydown') as any[];
-    const keyups = events.filter(e => e.event_type === 'keyup') as any[];
+    const keydowns = events.filter(e => e.event_type === 'keydown');
+    const keyups = events.filter(e => e.event_type === 'keyup');
 
     return {
       // ── Click/Timing (15) ─────────────────────────────────

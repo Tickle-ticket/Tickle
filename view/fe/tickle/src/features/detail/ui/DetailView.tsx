@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { isNavigatingToPaymentFlow } from '@/src/features/book/lib/paymentNavigation';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
@@ -19,7 +20,7 @@ import { BookButton } from '@/src/shared/components/BookButton';
 import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
 import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
-import { useBookStore } from '@/src/features/book/store/useBookStore';
+import { useBookStore, type BookingStep } from '@/src/features/book/store/useBookStore';
 import { BookView } from '@/src/features/book/ui/BookView';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
@@ -295,7 +296,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
 
         // BookView 내부 단계 간 뒤로가기 처리
         // 각 히스토리 엔트리의 tickleStep 값에 따라 bookingStep을 설정
-        const stepMap: Record<string, string> = {
+        const stepMap: Record<string, BookingStep> = {
           'seat': 'SEAT',
           'book': 'SEAT',         // book = captcha 통과 후 좌석 선택
           'ticket_type': 'TICKET_TYPE',
@@ -304,7 +305,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         };
         const bookingStep = stepMap[targetStep];
         if (bookingStep) {
-          useBookStore.getState().setBookingStep(bookingStep as any);
+          useBookStore.getState().setBookingStep(bookingStep);
         }
       }
     };
@@ -380,7 +381,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     if (flowState === 'NONE') return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isBlockedNavigation()) return;
-      if ((window as any).__isNavigatingToPayment__) return;
+      if (isNavigatingToPaymentFlow()) return;
       e.preventDefault();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);

@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  markNavigatingToPayment,
+  clearNavigatingToPayment,
+} from '@/src/features/book/lib/paymentNavigation';
 import { toErrorCode, toFailureTag } from '@/src/shared/api/errors';
 import { PaymentInfoStep } from './PaymentInfoStep';
 import { PayMethodStep } from './PayMethodStep';
 import { useBookStore } from '../../store/useBookStore';
 import {
   BookingOptionsResponse,
+  type BookingSeatOptionResponse,
   type BookingPreorderResponse,
   type PreorderOptionSelection,
 } from '@/src/shared/api/types/booking.types';
@@ -120,6 +125,17 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     }
   }, [bookingStep, prevStep]);
 
+  // 결제 수단 선택으로 돌아왔다는 것은 결제가 취소·실패했다는 뜻이다.
+  //
+  // 카카오페이 팝업 결제는 페이지를 떠나지 않으므로 "결제 이동 중" 표시가 저절로
+  // 사라지지 않는다. 지우지 않으면 이후 진짜 이탈에서도 좌석 선점이 풀리지 않고
+  // 이탈 경고도 뜨지 않아, 그 좌석이 만료까지 잠긴 채 남는다.
+  useEffect(() => {
+    if (bookingStep === 'PAY_METHOD') {
+      clearNavigatingToPayment();
+    }
+  }, [bookingStep]);
+
   // 결제 폴링은 컴포넌트가 사라져도 멈추지 않는다. 뒤로가기나 라우팅 이탈로
   // 언마운트되면 setInterval만 남아 2초마다 서버를 계속 때린다(사용자는 이미
   // 화면을 떠났고 setState는 아무 데도 반영되지 않는다). 언마운트 시 반드시 정리한다.
@@ -148,7 +164,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     })
   };
 
-  const priceGradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, BookingSeatOptionResponse[]> = {};
   if (optionsData?.seats) {
     optionsData.seats.forEach(seat => {
       if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
@@ -234,7 +250,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         const result = res.data;
         
         if (result.paymentMethod === 'BANK_TRANSFER') {
-          (window as any).__isNavigatingToPayment__ = true;
+          markNavigatingToPayment();
           onPaymentComplete?.();
           router.push(`/payment/success?bookingId=${result.bookingId}&method=vbank`);
           return;
@@ -243,7 +259,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           if (redirectUrl) {
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             if (isMobile) {
-              (window as any).__isNavigatingToPayment__ = true;
+              markNavigatingToPayment();
               onPaymentComplete?.();
               window.location.href = redirectUrl;
             } else {
@@ -281,7 +297,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                         if (statusRes.data?.bookingStatus === 'CONFIRMED' || statusRes.data?.bookingStatus === 'BOOKED') {
                           paymentHandled = true;
                           setIsKakaoPopupOpen(false);
-                          (window as any).__isNavigatingToPayment__ = true;
+                          markNavigatingToPayment();
                           onPaymentComplete?.();
                           router.push(`/payment/success?bookingId=${bookingId}`);
                           return;
@@ -306,7 +322,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                       clearInterval(checkPopupInterval);
                       try { popup.close(); } catch { /* 이미 닫힌 경우 무시 */ }
                       setIsKakaoPopupOpen(false);
-                      (window as any).__isNavigatingToPayment__ = true;
+                      markNavigatingToPayment();
                       onPaymentComplete?.();
                       router.push(`/payment/success?bookingId=${bookingId}`);
                     }
@@ -352,7 +368,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       if (paymentMethod === 'BANK_TRANSFER' && selectRes.data?.bankTransfer) {
         // 1-step 방식: select-method 응답에 이미 무통장 입금 정보가 있는 경우
-        (window as any).__isNavigatingToPayment__ = true;
+        markNavigatingToPayment();
         onPaymentComplete?.();
         router.push(`/payment/success?paymentId=${selectRes.data.bankTransfer.paymentId}&method=vbank`);
       } else if (nextAction === 'PREPARE_BANK_TRANSFER') {
@@ -363,7 +379,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           { bookingId: currentBookingId! }
         );
         if (bankRes.data) {
-          (window as any).__isNavigatingToPayment__ = true;
+          markNavigatingToPayment();
           onPaymentComplete?.();
           router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
         }
@@ -383,7 +399,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
         if (redirectUrl) {
           if (isMobile) {
-            (window as any).__isNavigatingToPayment__ = true;
+            markNavigatingToPayment();
             window.location.href = redirectUrl;
           } else {
             // PC: 새 창으로 띄우고 메시지 리스너 등록
@@ -428,7 +444,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                       if (statusRes.data?.bookingStatus === 'CONFIRMED' || statusRes.data?.paymentStatus === 'PAID') {
                         paymentHandled = true;
                         setIsKakaoPopupOpen(false);
-                        (window as any).__isNavigatingToPayment__ = true;
+                        markNavigatingToPayment();
                         onPaymentComplete?.();
                         router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
                         return;
@@ -462,7 +478,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                     try { popup.close(); } catch (e) { /* 무시 */ }
                     setIsKakaoPopupOpen(false);
 
-                    (window as any).__isNavigatingToPayment__ = true;
+                    markNavigatingToPayment();
                     onPaymentComplete?.();
                     router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
                   } else if (paymentStatus === 'CANCELLED' || paymentStatus === 'FAILED') {
@@ -592,7 +608,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   <div className="flex flex-wrap items-center gap-2.5 ml-5 mt-0.5">
                     <span className="text-[13px] text-content-tertiary leading-none">{seats.map(s => s.seatLabel).join(', ')}</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(counts).filter(([, c]: [string, any]) => (c as number) > 0).map(([typeId, count]: [string, any]) => {
+                      {Object.entries(counts).filter(([, c]) => c > 0).map(([typeId, count]) => {
                         return (
                           <span key={typeId} className="text-[11px] bg-primary-subtle text-primary font-medium px-2 py-0.5 rounded-md">
                             {typeId} {count as number}매

@@ -22,25 +22,27 @@ export const ReverseCAPTCHA = ({ onSuccess, theme = 'light' }: ReverseCAPTCHAPro
 
     // Define the global callback that Clawptcha will call
     // We use a specific name to avoid collisions if multiple widgets exist
-    const callbackName = 'onBotVerifiedCallback_' + Math.random().toString(36).substring(7);
+    // 템플릿 리터럴로 만들어야 window의 인덱스 시그니처와 타입이 맞물린다.
+    // 문자열 덧셈으로 만들면 그냥 string이 되어 어떤 키인지 알 수 없다.
+    const callbackName = `onBotVerifiedCallback_${Math.random().toString(36).substring(7)}` as const;
     
-    (window as any)[callbackName] = (token: string) => {
+    window[callbackName] = (token: string) => {
       onSuccess(token);
     };
 
     const initClawptcha = () => {
-      if ((window as any).Clawptcha && clawptchaRef.current) {
+      if (window.Clawptcha && clawptchaRef.current) {
         // Set the callback dynamically
         clawptchaRef.current.dataset.callback = callbackName;
         try {
-          (window as any).Clawptcha.render(clawptchaRef.current);
+          window.Clawptcha.render(clawptchaRef.current);
         } catch (e) {
           console.error('Clawptcha render error:', e);
         }
       }
     };
 
-    if (!(window as any).Clawptcha) {
+    if (!window.Clawptcha) {
       const script = document.createElement('script');
       script.id = 'clawptcha-script';
       script.src = 'https://clawptcha.com/widget.js';
@@ -52,7 +54,7 @@ export const ReverseCAPTCHA = ({ onSuccess, theme = 'light' }: ReverseCAPTCHAPro
     }
 
     return () => {
-      delete (window as any)[callbackName];
+      delete window[callbackName];
     };
   }, [onSuccess]);
 

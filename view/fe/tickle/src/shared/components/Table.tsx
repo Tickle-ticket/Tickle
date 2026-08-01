@@ -2,7 +2,7 @@ import React from 'react';
 import type { TableProps } from './types';
 import { Text } from './Text';
 
-export function Table<T = any>({
+export function Table<T = unknown>({
   columns,
   data,
   isLoading = false,

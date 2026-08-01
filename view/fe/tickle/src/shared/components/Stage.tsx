@@ -53,7 +53,9 @@ export const Stage = ({
     
     // Fallback letter-spacing if supported by browser canvas
     if ('letterSpacing' in ctx) {
-       (ctx as any).letterSpacing = '4px';
+       // letterSpacing은 Canvas 표준 타입에 아직 없는 실험적 속성이다.
+       // 위에서 in 연산자로 지원 여부를 확인한 뒤에만 대입한다.
+       (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = '4px';
     }
 
     ctx.fillText(label, width / 2, height / 2);

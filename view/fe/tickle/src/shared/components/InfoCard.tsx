@@ -137,7 +137,7 @@ export const InfoCard = React.memo(({
             if (!isWishlisted) {
               setShowLottie(true);
             }
-            onWishlistToggle(e as any);
+            onWishlistToggle(e);
           }}
           whileTap={{ scale: 0.85 }}
           animate={isWishlisted ? { scale: [1, 1.2, 1] } : { scale: 1 }}

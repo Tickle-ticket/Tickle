@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { isNavigatingToPaymentFlow } from '@/src/features/book/lib/paymentNavigation';
 import { isFailure, toFailureTag } from '@/src/shared/api/errors';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
@@ -208,7 +209,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
      */
     const releaseHeldSeat = (isPageClosing = false) => {
       // 결제 성공/카카오페이 리다이렉트 등으로 인한 정상적인 이탈인 경우 방지
-      const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
+      const isNormalNavigation = isNavigatingToPaymentFlow();
       if (isNormalNavigation) return;
 
       const bookingId = preorderBookingIdRef.current;
@@ -236,7 +237,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     };
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
+      const isNormalNavigation = isNavigatingToPaymentFlow();
       const isForceBlockedNavigation = isBlockedNavigation();
       if (isHoldingSeatRef.current && !isNormalNavigation) {
         releaseHeldSeat(true);

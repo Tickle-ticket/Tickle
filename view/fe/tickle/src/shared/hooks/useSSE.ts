@@ -14,7 +14,7 @@ interface UseSSEOptions {
   eventNames?: string[];
 }
 
-export const useSSE = <T = any>(url: string, options: UseSSEOptions = {}) => {
+export const useSSE = <T = unknown>(url: string, options: UseSSEOptions = {}) => {
   const { autoReconnect = true, maxReconnectAttempts = 8, eventNames = [] } = options;
   const eventNamesKey = eventNames.join('\u001F');
   const [data, setData] = useState<T | null>(null);

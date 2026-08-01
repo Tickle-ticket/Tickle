@@ -6,7 +6,7 @@ import { Avatar } from "@/src/shared/components/Avatar";
 import { useUserProfile } from "@/src/shared/api/useUserProfile";
 import { authApi } from "@/src/shared/api/authApi";
 import { clearTokens, getAccessToken } from "@/src/shared/api/tokenManager";
-import { useMypageStore } from "@/src/shared/store/useMypageStore";
+import { useMypageStore, type MypageTabType } from "@/src/shared/store/useMypageStore";
 import { useDetailStore } from "@/src/shared/store/useDetailStore";
 import { useToast } from "@/src/shared/providers/ToastProvider";
 import { InfoCard } from "@/src/shared/components/InfoCard";
@@ -47,7 +47,7 @@ export const Header = ({ className = "" }: HeaderProps) => {
     } else if (view === "mypage") {
       const mypageStore = useMypageStore.getState();
       if (!mypageStore.isMypageOpen || mypageStore.activeTab !== tab) {
-        openMypage((tab as any) || "USER");
+        openMypage((tab as MypageTabType) || "USER");
       }
     }
     setIsInitialSyncDone(true);

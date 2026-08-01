@@ -1,4 +1,8 @@
 import { http, HttpResponse } from 'msw';
+import type {
+  PaymentMethodSelectionRequest,
+  BankTransferPrepareRequest,
+} from '@/src/shared/api/types/payment.types';
 
 const API_BASE_URL = '*/api/v1';
 
@@ -7,7 +11,7 @@ export const paymentHandlers = [
   http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/select-method`, async ({ request }) => {
     const url = new URL(request.url);
     const userId = url.searchParams.get('userId');
-    const requestBody = (await request.json()) as any;
+    const requestBody = (await request.json()) as PaymentMethodSelectionRequest;
     
     if (!userId) {
       return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
@@ -31,7 +35,7 @@ export const paymentHandlers = [
   http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/bank-transfer`, async ({ request }) => {
     const url = new URL(request.url);
     const userId = url.searchParams.get('userId');
-    const requestBody = (await request.json()) as any;
+    const requestBody = (await request.json()) as BankTransferPrepareRequest;
 
     if (!userId) {
       return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
