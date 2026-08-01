@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import type { PaymentStatusResponse } from '@/src/shared/api/types/payment.types';
@@ -95,12 +96,14 @@ function PaymentSuccessContent() {
             action: () => router.push('/')
           });
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to fetch payment status', err);
         setErrorModalConfig({
           isOpen: true,
           title: '결제 정보 조회 실패',
-          message: err.status === 404 ? '결제 정보를 찾을 수 없습니다.' : '결제 정보를 불러오는 중 오류가 발생했습니다.',
+          message: isFailure(err, 'NotFoundError')
+            ? '결제 정보를 찾을 수 없습니다.'
+            : '결제 정보를 불러오는 중 오류가 발생했습니다.',
           action: () => router.push('/')
         });
       } finally {

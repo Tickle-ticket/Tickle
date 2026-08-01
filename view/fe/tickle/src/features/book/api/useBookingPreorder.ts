@@ -24,7 +24,7 @@ export const useBookingPreorder = () => {
         setOptionsData(response.data);
       }
       return response.data;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch booking options:', err);
       throw err;
     } finally {
@@ -50,7 +50,7 @@ export const useBookingPreorder = () => {
         setPreorderBookingId(response.data.bookingId);
       }
       return response.data;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Preorder failed:', err);
       throw err;
     } finally {
@@ -73,7 +73,7 @@ export const useBookingPreorder = () => {
         optionSelections,
       });
       return response.data;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Mock preorder failed:', err);
       throw err;
     } finally {

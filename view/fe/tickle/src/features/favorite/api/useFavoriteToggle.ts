@@ -1,10 +1,10 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { isFailure } from '@/src/shared/api/errors';
 import { createFavorite, deleteFavorite } from '@/src/shared/api/favoriteApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
-import { ApiError } from '@/src/shared/api/types';
 
 /**
  * 찜 등록·해제를 한 곳에서 처리하는 훅입니다.
@@ -28,7 +28,7 @@ const WISHLIST_QUERY_KEY = ['myUpcomingWishlist'];
  * 화면이 서버와 어긋난다.
  */
 const isAlreadyInDesiredState = (error: unknown) =>
-  error instanceof ApiError && (error.status === 404 || error.status === 409);
+  isFailure(error, 'NotFoundError') || isFailure(error, 'ConflictError');
 
 interface UseFavoriteToggleOptions {
   /**
