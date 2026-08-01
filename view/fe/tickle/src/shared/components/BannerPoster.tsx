@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import type { BannerPosterProps } from './types';
-import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
+import { useImageFallback } from '@/src/shared/hooks/useImageFallback';
 
 export const BannerPoster = ({
   src,
@@ -13,12 +13,7 @@ export const BannerPoster = ({
   isLoading = false,
   showGradient = true,
 }: BannerPosterProps) => {
-  const [imgFailed, setImgFailed] = useState(false);
-  const resolvedSrc = resolveImageSrc(src);
-
-  useEffect(() => {
-    setImgFailed(false);
-  }, [resolvedSrc]);
+  const { resolvedSrc, showFallback, onError: handleImageError } = useImageFallback(src);
   
   // 수직 배너 형태 (사진과 같은 포스터 느낌을 위해 가로폭을 제한하고 세로를 길게)
   const defaultDimensions = (!width && !height) ? 'w-full max-w-[340px] md:max-w-[400px] h-[500px] md:h-[600px] mx-auto' : '';
@@ -42,7 +37,7 @@ export const BannerPoster = ({
       className={`relative overflow-hidden shadow-lg ${defaultDimensions} ${className}`}
       style={inlineStyle}
     >
-      {(!resolvedSrc || imgFailed) ? (
+      {showFallback ? (
         <div className="w-full h-full bg-[#f2f4f6] flex flex-col items-center justify-center text-[#8B95A1]">
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-semibold tracking-tight">준비중 입니다</span>
@@ -72,7 +67,7 @@ export const BannerPoster = ({
           unoptimized={true}
           sizes="(max-width: 768px) 100vw, 400px"
           className="object-cover"
-          onError={() => setImgFailed(true)}
+          onError={handleImageError}
         />
       )}
       {/* 어두운 그라데이션 오버레이 (텍스트 가독성을 위해 하단을 더 어둡게) */}
