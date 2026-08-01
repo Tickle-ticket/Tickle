@@ -10,6 +10,7 @@ import { InfoCard } from '@/src/shared/components/InfoCard';
 import { SearchListCard } from '@/src/shared/components/SearchListCard';
 import { Text } from '@/src/shared/components/Text';
 import { ApiErrorView } from '@/src/shared/components/ApiErrorView';
+import { useNow } from '@/src/shared/hooks/useNow';
 
 import { Modal } from '@/src/shared/components/Modal';
 import Button from '@/src/shared/components/Button';
@@ -18,6 +19,10 @@ export const UpcomingWishlistView = () => {
   const { data: upcoming, isLoading, isError, error } = useMyUpcomingWishlist();
   const { wishlistMap, initWishlist } = useWishlistStore();
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', content: '' });
+
+  // 오픈 예정 여부를 시각으로 판정한다. 렌더 중 Date.now()로 읽으면 오픈 시각이
+  // 지나도 리렌더가 없어 카드가 계속 "오픈 예정"으로 남는다.
+  const now = useNow();
 
   // 마이페이지는 로그인 상태를 전제로 하므로 로그인 유도는 두지 않는다.
   // 404·409(이미 원하는 상태)는 훅이 성공으로 처리하고, 그 밖의 실패만 알린다.
@@ -77,6 +82,7 @@ export const UpcomingWishlistView = () => {
         ) : upcoming && upcoming.length > 0 ? (
           upcoming.map((item) => {
             const isRemoved = wishlistMap[item.id] === false;
+            const isUpcomingOpen = item.openDate ? new Date(item.openDate).getTime() > now : false;
             return (
               <div
                 key={item.id}
@@ -92,8 +98,8 @@ export const UpcomingWishlistView = () => {
                   title={item.title}
                   place={item.venue}
                   day={item.date}
-                  disabled={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
-                  showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
+                  disabled={isUpcomingOpen}
+                  showTime={isUpcomingOpen}
                   targetDate={item.openDate}
                   isWishlisted={!isRemoved}
                   onWishlistToggle={(e) => handleToggle(e, item.id)}
@@ -129,6 +135,7 @@ export const UpcomingWishlistView = () => {
         ) : upcoming && upcoming.length > 0 ? (
           upcoming.map((item) => {
             const isRemoved = wishlistMap[item.id] === false;
+            const isUpcomingOpen = item.openDate ? new Date(item.openDate).getTime() > now : false;
             return (
               <div
                 key={item.id}
@@ -145,8 +152,8 @@ export const UpcomingWishlistView = () => {
                   title={item.title}
                   place={item.venue}
                   day={item.date}
-                  disabled={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
-                  showTime={item.openDate ? new Date(item.openDate).getTime() > Date.now() : false}
+                  disabled={isUpcomingOpen}
+                  showTime={isUpcomingOpen}
                   targetDate={item.openDate}
                   isWishlisted={!isRemoved}
                   onWishlistToggle={(e) => handleToggle(e, item.id)}

@@ -62,21 +62,6 @@ export const MyBookingsView = () => {
     setSelectedPaymentId(null);
   };
 
-  // 403·404·5xx는 QueryProvider의 throwOnError가 Error Boundary로 올려보내므로
-  // 여기 도달하는 것은 400·409처럼 화면 맥락이 필요한 에러뿐이다.
-  // 목록은 정상이고 상세만 실패한 상황이라 페이지를 덮지 않고 모달로 알린다.
-  useEffect(() => {
-    if (detailError) {
-      handleCloseDetailModal();
-      setErrorModalConfig({
-        isOpen: true,
-        title: '조회 오류',
-        message:
-          (detailError as Error).message || '상세 정보를 불러오는 중 오류가 발생했습니다.',
-      });
-    }
-  }, [detailError]);
-
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedBarcodeText, setSelectedBarcodeText] = useState<string | null>(null);
 
@@ -123,6 +108,24 @@ export const MyBookingsView = () => {
   };
 
   const [errorModalConfig, setErrorModalConfig] = useState({ isOpen: false, title: '', message: '' });
+
+  // 403·404·5xx는 QueryProvider의 throwOnError가 Error Boundary로 올려보내므로
+  // 여기 도달하는 것은 400·409처럼 화면 맥락이 필요한 에러뿐이다.
+  // 목록은 정상이고 상세만 실패한 상황이라 페이지를 덮지 않고 모달로 알린다.
+  //
+  // handleCloseDetailModal·setErrorModalConfig보다 아래에 두어야 한다. 위에 두면
+  // 호이스팅된 이름을 참조하게 되어 effect가 최신 값을 못 볼 수 있다.
+  useEffect(() => {
+    if (detailError) {
+      handleCloseDetailModal();
+      setErrorModalConfig({
+        isOpen: true,
+        title: '조회 오류',
+        message:
+          (detailError as Error).message || '상세 정보를 불러오는 중 오류가 발생했습니다.',
+      });
+    }
+  }, [detailError]);
 
   const handleConfirmCancel = () => {
     if (selectedBookingForCancel) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
+import { useNow } from '@/src/shared/hooks/useNow';
 import type { EventDetailResponse } from '@/src/features/book/api/useEventDetail';
 import type { Schedule } from '@/src/features/book/store/useBookStore';
 
@@ -68,6 +69,9 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
   onError,
   isSubmitting = false
 }) => {
+  // 회차 버튼의 활성 여부가 시각에 달려 있다. 렌더 중 Date.now()로 읽으면
+  // 판매 시작 시각이 지나도 리렌더가 없어 버튼이 잠긴 채로 남는다.
+  const now = useNow();
 
   return (
     <>
@@ -132,7 +136,6 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
             {selectedDate ? (
               <div className="flex flex-wrap gap-2 animate-fade-in">
                 {eventDetail.schedules.find((s) => s.date === selectedDate)?.times.map((timeObj, idx) => {
-                  const now = Date.now();
                   const isPast = new Date(timeObj.startAt).getTime() < now;
 
                   // 예매: salesOpenAt ~ salesCloseAt 범위 내인지 확인
