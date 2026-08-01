@@ -910,7 +910,11 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
             }}
             onLeaveQueue={() => {
               if (queueTokenRef.current && activeEventId) {
-                leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch(() => { });
+                // 실패해도 서버가 대기열 만료로 정리한다. 다만 조용히 넘기면
+                // 이탈 API가 계속 깨져도 알 수 없어 로그는 남긴다.
+                leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch((err) =>
+                  console.warn('[Queue] 대기열 이탈 요청 실패', err),
+                );
                 queueTokenRef.current = null;
                 setQueueToken(null);
               }
@@ -930,7 +934,11 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           setIsBackExitModalOpen(false);
           // 모달 확인 시 실제로 대기열 이탈 및 플로우 종료
           if (queueTokenRef.current && activeEventId) {
-            leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch(() => { });
+            // 실패해도 서버가 대기열 만료로 정리한다. 다만 조용히 넘기면
+            // 이탈 API가 계속 깨져도 알 수 없어 로그는 남긴다.
+            leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch((err) =>
+              console.warn('[Queue] 대기열 이탈 요청 실패', err),
+            );
             queueTokenRef.current = null;
             setQueueToken(null);
           }
