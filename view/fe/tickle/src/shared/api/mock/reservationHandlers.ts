@@ -51,6 +51,34 @@ export const reservationHandlers = [
     });
   }),
 
+  // 1인당 보유 수량 조회
+  //
+  // 회차를 고르면 useSeatStep이 이 값을 물어보고, 그것으로 선택 가능한 좌석 수를
+  // 정한다. 핸들러가 없으면 MSW가 실제 네트워크로 흘려보내(onUnhandledRequest:
+  // 'bypass') 404가 나고, 회차 선택이 실패한 것처럼 보인다.
+  //
+  // ':reservationId' 핸들러보다 먼저 와야 한다. 뒤에 두면 'ownership-count'를
+  // 예매 번호로 보고 상세 조회가 가로챈다.
+  http.get(`${API_BASE_URL}/reservations/ownership-count`, async ({ request }) => {
+    await delay(150);
+    const url = new URL(request.url);
+
+    return HttpResponse.json({
+      status: 200,
+      code: 'OK',
+      message: 'success',
+      data: {
+        eventId: Number(url.searchParams.get('eventId')) || 0,
+        sessionId: Number(url.searchParams.get('scheduleId')) || 0,
+        // 아직 아무것도 예매하지 않은 상태로 둔다. 값이 있으면 선택 가능
+        // 수량이 줄어 로컬에서 좌석을 여러 장 골라 볼 수 없다.
+        ownedTicketCount: 0,
+        cancellationWaitSeatCount: 0,
+        totalCount: 0,
+      },
+    });
+  }),
+
   // 예매 상세 조회
   http.get(`${API_BASE_URL}/reservations/:reservationId`, async ({ params }) => {
     await delay(300);

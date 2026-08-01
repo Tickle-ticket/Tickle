@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import type { BookingOptionsRequest } from '@/src/shared/api/types/booking.types';
 import type { PreorderOptionSelection } from '@/src/shared/api/types/booking.types';
+import { calculateServiceFee } from '@/src/features/book/api/serviceFee';
 
 const API_BASE_URL = '*/api/v1';
 
@@ -32,8 +33,7 @@ export const bookingHandlers = [
             seatNumber: '1',
             eventPricePolicyId: 11,
             priceGrade: 'VIP',
-            priceAmount: 90000,
-            discountInfo: [
+            priceInfos: [
               {
                 discountName: '조기예매',
                 discountRate: 0.1,
@@ -53,8 +53,7 @@ export const bookingHandlers = [
             seatNumber: '2',
             eventPricePolicyId: 11,
             priceGrade: 'VIP',
-            priceAmount: 90000,
-            discountInfo: [
+            priceInfos: [
               {
                 discountName: '조기예매',
                 discountRate: 0.1,
@@ -76,7 +75,7 @@ export const bookingHandlers = [
     const seats = optionSelections.map((opt, index) => {
       const isDiscount = opt.discountName !== null;
       const ticketPriceAmount = isDiscount ? 81000 : 90000;
-      const serviceFeeAmount = ticketPriceAmount * 0.05;
+      const serviceFeeAmount = calculateServiceFee(ticketPriceAmount);
 
       return {
         sessionSeatId: opt.sessionSeatId,
@@ -113,7 +112,7 @@ export const bookingHandlers = [
     const seats = optionSelections.map((opt, index) => {
       const isDiscount = opt.discountName !== null;
       const ticketPriceAmount = isDiscount ? 81000 : 90000;
-      const serviceFeeAmount = ticketPriceAmount * 0.05;
+      const serviceFeeAmount = calculateServiceFee(ticketPriceAmount);
 
       return {
         sessionSeatId: opt.sessionSeatId,

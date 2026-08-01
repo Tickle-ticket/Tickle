@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { isNavigatingToPaymentFlow } from '@/src/features/book/lib/paymentNavigation';
-import { isFailure, toFailureTag } from '@/src/shared/api/errors';
+import { isFailure } from '@/src/shared/api/errors';
 import { seatApi } from '@/src/shared/api/seatApi';
-import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
-import { reservationApi } from '@/src/shared/api/reservationApi';
 
 import { useEventDetailWithFixtures } from '@/src/features/book/api/useEventDetailWithFixtures';
 import { useBookStore } from '../store/useBookStore';
@@ -15,8 +12,9 @@ import { formatTime, useBookingTimer } from '@/src/features/book/hooks/useBookin
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
 import { useSeatStep } from '../api/useSeatStep';
+import { useSeatHoldRelease } from '@/src/features/book/hooks/useSeatHoldRelease';
+import { useBookingSubmit } from '@/src/features/book/hooks/useBookingSubmit';
 import { releaseSeatHold, cancelPreorder } from '../api/releaseHold';
-import { isBlockedNavigation } from '@/src/shared/utils/blockedNavigation';
 import { CaptchaStep } from './components/CaptchaStep';
 import { TicketTypeStep } from './components/TicketTypeStep';
 import { PaymentStep } from './components/PaymentStep';
@@ -115,10 +113,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
-  const preorderBookingIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    preorderBookingIdRef.current = preorderBookingId;
-  }, [preorderBookingId]);
 
   const {
     venueId, isSeatsLoading, seatError,
@@ -133,12 +127,18 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     scheduleId,
   });
 
-  // 현재 선점 중인 상태를 ref로 추적하여, 렌더링마다 불필요하게 해제되지 않도록 함
-  const isHoldingSeatRef = React.useRef(false);
+  const {
+    preorderBookingIdRef,
+    isHoldingSeatRef,
+    cancelDraftIfAny,
+    releaseSeatsIfHeld,
+  } = useSeatHoldRelease({
+    eventId: eventDetail?.eventId,
+    scheduleId,
+    preorderBookingId,
+    isHoldingSeat: bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId,
+  });
 
-  useEffect(() => {
-    isHoldingSeatRef.current = bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId;
-  }, [bookingStep, mode, eventDetail?.eventId, scheduleId]);
 
   const {
     interceptWaitlistSubmit,
@@ -166,6 +166,36 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     onLeaveQueue,
   });
 
+  const { handleNextStep, handleConfirmExit } = useBookingSubmit({
+    eventDetail,
+    scheduleId,
+    userProfile,
+    flowPolicy,
+    admitToken,
+    isWaitlistMode,
+    bookingStep,
+    selectedSeats,
+    seatsData,
+    getSeatInfo,
+    preorderBookingId,
+    preorderBookingIdRef,
+    isHoldingSeatRef,
+    fetchOptions,
+    flushTrial,
+    interceptWaitlistSubmit,
+    interceptSeatHold,
+    setPriceGradeTicketCounts,
+    setBookingStep,
+    setIsHolding,
+    setIsConflictModalOpen,
+    setIsWaitlistCompleteModalOpen,
+    setIsExitModalOpen,
+    setErrorModalConfig,
+    onStepChange,
+    onClose,
+    onLeaveQueue,
+  });
+
   // 브라우저 뒤로가기(popstate)로 인한 단계 변경 감지 및 cleanup
   const prevBookingStepRef = useRef(bookingStep);
   useEffect(() => {
@@ -178,96 +208,18 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       onStepBack?.('payment');
     } else if ((prevStep === 'PAYMENT' || prevStep === 'PAY_METHOD') && (bookingStep === 'TICKET_TYPE' || bookingStep === 'SEAT')) {
       // 결제 단계에서 돌아올 때: 예약 초안 취소
-      if (preorderBookingIdRef.current) {
-        cancelPreorder(preorderBookingIdRef.current);
+      if (cancelDraftIfAny()) {
         setPreorderBookingId(null);
-        preorderBookingIdRef.current = null;
       }
       onStepBack?.(bookingStep === 'SEAT' ? 'book' : 'ticket_type');
     } else if (prevStep === 'TICKET_TYPE' && bookingStep === 'SEAT') {
       // 가격 선택에서 좌석 선택으로 돌아올 때: 좌석 선점 해제
-      if (eventDetail?.eventId && scheduleId) {
-        releaseSeatHold(eventDetail.eventId, scheduleId);
-        isHoldingSeatRef.current = false;
-      }
+      releaseSeatsIfHeld();
       onStepBack?.('book');
     }
   }, [bookingStep, eventDetail?.eventId, scheduleId, onStepBack]);
 
   // 이탈 시 선점 좌석 자동 해제 로직
-  useEffect(() => {
-    /**
-     * 선점을 되돌린다.
-     *
-     * 이 요청이 서버에 닿지 못하면 좌석이 선점 만료 시각까지 잠긴 채로 남아
-     * 아무도 살 수 없다. 그래서 실패를 조용히 넘기지 않고, 앱 안에 남아 있는
-     * 경우(언마운트)에는 한 번 더 시도한다.
-     *
-     * @param isPageClosing 탭 닫기·주소 이동처럼 문서가 사라지는 중인지.
-     *                      이 경우 일반 fetch는 취소되므로 keepalive 요청을 쓰고,
-     *                      재시도할 시간도 없다.
-     */
-    const releaseHeldSeat = (isPageClosing = false) => {
-      // 결제 성공/카카오페이 리다이렉트 등으로 인한 정상적인 이탈인 경우 방지
-      const isNormalNavigation = isNavigatingToPaymentFlow();
-      if (isNormalNavigation) return;
-
-      const bookingId = preorderBookingIdRef.current;
-      const canReleaseSeat =
-        isHoldingSeatRef.current && !!eventDetail?.eventId && !!scheduleId;
-
-      if (bookingId) {
-        if (isPageClosing) {
-          // 문서가 사라지는 중이라 재시도할 시간도, 로그를 남길 곳도 없다.
-          // keepalive 요청은 브라우저가 이어서 보낸다.
-          void reservationApi.cancelReservationOnExit(bookingId).catch(() => {});
-        } else {
-          cancelPreorder(bookingId);
-        }
-        return;
-      }
-
-      if (!canReleaseSeat) return;
-
-      if (isPageClosing) {
-        void seatApi.releaseSeatOnExit(eventDetail!.eventId, scheduleId!).catch(() => {});
-      } else {
-        releaseSeatHold(eventDetail!.eventId, scheduleId!);
-      }
-    };
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const isNormalNavigation = isNavigatingToPaymentFlow();
-      const isForceBlockedNavigation = isBlockedNavigation();
-      if (isHoldingSeatRef.current && !isNormalNavigation) {
-        releaseHeldSeat(true);
-        if (isForceBlockedNavigation) return;
-        e.preventDefault();
-        e.returnValue = ''; // 표준 브라우저 경고창 표시
-      }
-    };
-
-    // 모바일 브라우저(특히 iOS Safari)는 탭 전환·앱 종료 때 beforeunload를 쏘지
-    // 않는다. pagehide는 그 경우에도 발생하므로 좌석이 잠긴 채 방치되지 않도록
-    // 함께 듣는다. 두 이벤트가 모두 발생해도 서버는 이미 해제된 좌석을 다시
-    // 해제하는 요청을 멱등하게 처리한다.
-    const handlePageHide = () => {
-      if (isHoldingSeatRef.current || preorderBookingIdRef.current) {
-        releaseHeldSeat(true);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pagehide', handlePageHide);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handlePageHide);
-      // 컴포넌트가 언마운트될 때 (사용자가 브라우저 뒤로가기나 모달 닫기를 눌렀을 때)
-      releaseHeldSeat();
-    };
-  }, [eventDetail?.eventId, scheduleId]);
-
   // 공연장 도면 동적 로딩 (Hook 규칙 준수를 위해 컴포넌트 최상단 렌더 영역에 선언)
 
   const StageComponent = React.useMemo(() => {
@@ -327,46 +279,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   const handleCloseClick = () => {
     setIsExitModalOpen(true);
-  };
-
-  const handleConfirmExit = async () => {
-    setIsExitModalOpen(false);
-    let hasError = false;
-
-    // 결제 단계 등에서 예약 초안(DRAFT)이 이미 생성된 경우
-    if (preorderBookingId) {
-      try {
-        await reservationApi.cancelReservation(preorderBookingId);
-        preorderBookingIdRef.current = null; // unmount 시 중복 호출 방지
-      } catch (err) {
-        console.error('Failed to cancel draft reservation on exit', err);
-      }
-    }
-    // 예약 초안 생성 전 좌석 선점만 된 경우
-    else if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
-      try {
-        if (userProfile?.userId) {
-          await seatApi.releaseSeat(eventDetail.eventId, scheduleId);
-          isHoldingSeatRef.current = false; // unmount 시 중복 호출 방지
-        }
-      } catch (err) {
-        console.error('Failed to release seats on exit', err);
-        if (isFailure(err, 'NotFoundError')) {
-          setErrorModalConfig({
-            isOpen: true,
-            title: '정보 없음',
-            message: '공연 또는 회차 정보를 찾을 수 없어 좌석 선점 해제에 실패했습니다.',
-            onConfirm: onClose
-          });
-          hasError = true;
-        }
-      }
-    }
-
-    if (!hasError) {
-      onLeaveQueue?.();
-      onClose();
-    }
   };
 
   const handleCancelExit = () => {
@@ -454,91 +366,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     const result = await rawHandleSeatClick(id, e);
     if (result?.error) {
       setErrorModalConfig({ isOpen: true, title: result.title, message: result.message });
-    }
-  };
-
-  const handleNextStep = async () => {
-    if (selectedSeats.size === 0) return;
-
-    const userId = userProfile?.userId;
-    if (flowPolicy.requiresLogin && !userId) {
-      setErrorModalConfig({
-        isOpen: true,
-        title: '로그인 필요',
-        message: '로그인이 필요한 서비스입니다.',
-        confirmText: '로그인 하기',
-        showCancelButton: true,
-        onConfirm: () => { window.location.href = '/login'; }
-      });
-      return;
-    }
-
-    try {
-      setIsHolding(true);
-
-      // 🔥 인원 선택/대기 버튼을 누르면 무조건 booking event를 전송합니다.
-      // flushTrial은 finalizeTrial과 달리 반복 호출이 가능하여,
-      // 선점 실패(409) 후 재시도 시에도 매번 새 booking event를 전송합니다.
-      await flushTrial();
-
-      const sessionSeatIds = Array.from(selectedSeats)
-        .map(seatId => seatsData[seatId]?.sessionSeatId)
-        .filter(Boolean) as number[];
-
-      if (isWaitlistMode) {
-        if (await interceptWaitlistSubmit()) return;
-
-        if (!admitToken) {
-          throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
-        }
-        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
-        setIsWaitlistCompleteModalOpen(true);
-      } else {
-        if (sessionSeatIds.length > 0 && !flowPolicy.skipsServerCalls) {
-          // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
-          await seatApi.holdSeat(eventDetail.eventId, scheduleId!, admitToken || '', { sessionSeatIds });
-
-          // 선점 성공 시 옵션(권종/할인) 데이터 조회
-          await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), sessionSeatIds);
-        } else if (sessionSeatIds.length > 0 && flowPolicy.skipsServerCalls) {
-          if (await interceptSeatHold()) return;
-        }
-
-        const gradeCounts: Record<string, number> = {};
-        Array.from(selectedSeats).forEach(seatId => {
-          const { priceGrade } = getSeatInfo(seatId);
-          gradeCounts[priceGrade] = (gradeCounts[priceGrade] || 0) + 1;
-        });
-        const initial: Record<string, Record<string, number>> = {};
-        Object.entries(gradeCounts).forEach(([priceGrade]) => {
-          initial[priceGrade] = {};
-        });
-        setPriceGradeTicketCounts(initial);
-
-        setBookingStep('TICKET_TYPE');
-        onStepChange?.('ticket_type');
-      }
-    } catch (err) {
-      switch (toFailureTag(err)) {
-        case 'ConflictError':
-          // 남이 먼저 잡은 좌석. 다른 자리를 고르도록 안내한다.
-          setIsConflictModalOpen(true);
-          break;
-        case 'ValidationError':
-          setErrorModalConfig({ isOpen: true, title: '요청 오류', message: '잘못된 요청입니다. 입력 정보나 세션 상태를 확인해 주세요.' });
-          break;
-        case 'NotFoundError':
-          setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '선택하신 공연, 회차 또는 좌석 정보를 찾을 수 없습니다.' });
-          break;
-        default:
-          setErrorModalConfig({
-            isOpen: true,
-            title: '오류 발생',
-            message: err instanceof Error ? err.message : '좌석 옵션 정보를 불러오는 데 실패했습니다.',
-          });
-      }
-    } finally {
-      setIsHolding(false);
     }
   };
 

@@ -3,6 +3,9 @@ import type { SeatItemResponse } from '@/src/shared/api/types/seat.types';
 
 const seatSocket = ws.link('wss://api.tickle.com/topic/seats/*');
 
+/** 좌석을 잡아 두는 시간. 화면의 결제 제한 시간(10분)과 맞춘다. */
+const SEAT_HOLD_DURATION_MS = 10 * 60 * 1000;
+
 const SEAT_GRADE_MAP: Record<string, string> = {
   // VIP석
   'A1': 'VIP', 'A2': 'VIP', 'A3': 'VIP', 'A4': 'VIP', 'A5': 'VIP', 'A6': 'VIP', 'A7': 'VIP', 'A8': 'VIP', 'A9': 'VIP', 'A10': 'VIP',
@@ -248,14 +251,21 @@ export const seatHandlers = [
   }),
 
   // 좌석 선점 요청
-  http.post('*/api/v1/events/:eventId/schedules/:scheduleId/seats/hold', async () => {
+  // 좌석 선점
+  //
+  // 요청한 좌석을 그대로 잡힌 것으로 돌려준다. 빈 배열을 주면 화면은 선점에
+  // 성공했는데 아무 좌석도 못 잡은 상태가 되어 다음 단계 계산이 어긋난다.
+  http.post('*/api/v1/events/:eventId/schedules/:scheduleId/seats/hold', async ({ request }) => {
+    const body = (await request.json().catch(() => null)) as { sessionSeatIds?: number[] } | null;
+
     return HttpResponse.json({
       status: 200,
       code: 'OK',
       message: 'success',
       data: {
-        heldSeats: []
-      }
+        heldSessionSeatIds: body?.sessionSeatIds ?? [],
+        expiresAt: new Date(Date.now() + SEAT_HOLD_DURATION_MS).toISOString(),
+      },
     });
   }),
 
