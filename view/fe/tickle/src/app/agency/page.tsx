@@ -10,7 +10,6 @@ import {
 import { fetchAgencyVenueTemplate, submitAgencyEventRegistration } from '@/src/shared/api/agencyApi';
 import { fetchCategories } from '@/src/shared/api/eventApi';
 import type {
-  AgencyRegistrationFlowRequest,
   AgencyVenueTemplate,
 } from '@/src/shared/api/types/agency.types';
 import type { Category } from '@/src/shared/api/types/event.types';
@@ -25,6 +24,8 @@ import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 import { useScheduleDraft } from '@/src/features/agency/hooks/useScheduleDraft';
 import { useRegistrationImages } from '@/src/features/agency/hooks/useRegistrationImages';
 import { useSeatPricing } from '@/src/features/agency/hooks/useSeatPricing';
+import { getRegistrationStepValidationResult as validateRegistrationStep } from '@/src/features/agency/model/registrationValidation';
+import { buildRegistrationRequest } from '@/src/features/agency/model/buildRegistrationRequest';
 import { AgencyPerformancePreviewModal } from '@/src/features/agency/ui/AgencyPerformancePreviewModal';
 import { DateRangeModal } from '@/src/features/agency/ui/DateRangeModal';
 import { DateTimeTriggerField } from '@/src/features/agency/ui/DateTimeTriggerField';
@@ -46,7 +47,6 @@ import {
   createDefaultPerformanceEndAt,
   createDefaultPerformanceStartAt,
   createDisabledSeatPolicy,
-  discountPresetNameMap,
   fallbackVenueOption,
   formatDateKey,
   formatDateTimeLabel,
@@ -62,8 +62,6 @@ import {
   registrationStepItems,
   scheduleWeekdayOptions,
   seatGradeFields,
-  seatPolicyGradeToApiGrade,
-  seatPriceGradeToApiGrade,
   withSelectedTime,
 } from '@/src/features/agency/model/registrationHelpers';
 
@@ -622,89 +620,20 @@ export default function AgencyRegistrationPage() {
     moveToRegistrationStep(Math.max(0, activeRegistrationStep - 1));
   };
 
-  const getRegistrationStepValidationResult = (
-    stepIndex: number,
-  ): RegistrationValidationResult | null => {
-    if (stepIndex === 0) {
-      if (isCategoryListLoading || isVenueListLoading) {
-        return {
-          message: '데이터를 아직 불러오는 중입니다. 잠시 후 다시 진행해 주세요.',
-          target: isCategoryListLoading ? 'category' : 'venue',
-          stepIndex,
-        };
-      }
-
-      if (performanceTitle.trim().length === 0) {
-        return {
-          message: '공연명을 입력해 주세요.',
-          target: 'performanceTitle',
-          stepIndex,
-        };
-      }
-
-      if (!performanceOpenAt || !performanceCloseAt) {
-        return {
-          message: '공연 오픈일과 공연 종료일을 입력해 주세요.',
-          target: 'performanceDate',
-          stepIndex,
-        };
-      }
-
-      if (selectedCategoryId.length === 0) {
-        return {
-          message: '카테고리를 선택해 주세요.',
-          target: 'category',
-          stepIndex,
-        };
-      }
-
-      if (resolvedSelectedVenue === null) {
-        return {
-          message: '공연장을 선택해 주세요.',
-          target: 'venue',
-          stepIndex,
-        };
-      }
-
-      if (posterImage === null) {
-        return {
-          message: '포스터 이미지를 등록해 주세요.',
-          target: 'poster',
-          stepIndex,
-        };
-      }
-
-      return null;
-    }
-
-    if (stepIndex === 1) {
-      if (registeredTicketSchedulePreviews.length === 0) {
-        return {
-          message: '공연 일정 등록 전에 최소 1개 이상의 회차를 먼저 추가해 주세요.',
-          target: 'schedule',
-          stepIndex,
-        };
-      }
-
-      if (!areTicketScheduleRulesComplete) {
-        return {
-          message: '티켓 오픈 기준과 종료 기준을 입력해 주세요.',
-          target: 'ticketRule',
-          stepIndex,
-        };
-      }
-
-      if (hasInvalidTicketWindow) {
-        return {
-          message: '티켓 오픈일과 종료일 기준이 올바르지 않습니다. 먼저 일정 기준을 다시 조정해 주세요.',
-          target: 'ticketRule',
-          stepIndex,
-        };
-      }
-    }
-
-    return null;
-  };
+  const getRegistrationStepValidationResult = (stepIndex: number) =>
+    validateRegistrationStep(stepIndex, {
+      isCategoryListLoading,
+      isVenueListLoading,
+      performanceTitle,
+      performanceOpenAt,
+      performanceCloseAt,
+      selectedCategoryId,
+      resolvedSelectedVenue,
+      posterImage,
+      registeredTicketSchedulePreviews,
+      areTicketScheduleRulesComplete,
+      hasInvalidTicketWindow,
+    });
 
   const moveToRegistrationStep = (targetStep: number) => {
     if (targetStep <= activeRegistrationStep) {
@@ -752,262 +681,40 @@ export default function AgencyRegistrationPage() {
   };
 
   const handleRegistrationSubmit = async () => {
-    const normalizedPerformanceTitle = performanceTitle.trim();
-    const resolvedSelectedCategoryId = Number(selectedCategoryId);
-
     setRegistrationErrorMessage(null);
     setRegistrationSuccessMessage(null);
     setRegistrationFieldErrorTarget(null);
 
-    if (!normalizedPerformanceTitle) {
-      showRegistrationError({
-        message: '공연명을 입력해 주세요.',
-        target: 'performanceTitle',
-        stepIndex: 0,
-      });
-      return;
-    }
-
-    if (!performanceOpenAt || !performanceCloseAt) {
-      showRegistrationError({
-        message: '공연 오픈일과 공연 종료일을 입력해 주세요.',
-        target: 'performanceDate',
-        stepIndex: 0,
-      });
-      return;
-    }
-
-    if (registeredTicketSchedulePreviews.length === 0) {
-      showRegistrationError({
-        message: '등록할 회차를 먼저 추가해 주세요.',
-        target: 'schedule',
-        stepIndex: 1,
-      });
-      return;
-    }
-
-    if (!areTicketScheduleRulesComplete) {
-      showRegistrationError({
-        message: '티켓 오픈 기준과 종료 기준을 입력해 주세요.',
-        target: 'ticketRule',
-        stepIndex: 1,
-      });
-      return;
-    }
-
-    if (hasInvalidTicketWindow) {
-      showRegistrationError({
-        message: '티켓 오픈일과 종료일 기준을 먼저 조정해 주세요.',
-        target: 'ticketRule',
-        stepIndex: 1,
-      });
-      return;
-    }
-
-    if (!Number.isInteger(resolvedSelectedCategoryId) || resolvedSelectedCategoryId <= 0) {
-      showRegistrationError({
-        message: '카테고리를 선택해 주세요.',
-        target: 'category',
-        stepIndex: 0,
-      });
-      return;
-    }
-
-    if (resolvedSelectedVenue === null) {
-      showRegistrationError({
-        message: '공연장을 선택해 주세요.',
-        target: 'venue',
-        stepIndex: 0,
-      });
-      return;
-    }
-
-    if (!posterImage) {
-      showRegistrationError({
-        message: '포스터 이미지를 등록해 주세요.',
-        target: 'poster',
-        stepIndex: 0,
-      });
-      return;
-    }
-
-    const venueTemplate =
-      seatTemplate?.venueId === resolvedSelectedVenue
-        ? seatTemplate
-        : await loadSeatTemplate(resolvedSelectedVenue);
-    const templateSeatState = buildSeatTemplateState(venueTemplate);
-    const { seatIdByLabel } = templateSeatState;
-    const effectiveSeatPolicy =
-      seatPolicyVenueId === resolvedSelectedVenue
-        ? seatPolicy
-        : templateSeatState.seatPolicy ?? createDisabledSeatPolicy();
-    const missingSeatLabels = STAGE_4001_SEAT_IDS.filter((seatLabel) => {
-      const assignment = effectiveSeatPolicy[seatLabel];
-
-      return Boolean(assignment && assignment !== 'disabled' && !seatIdByLabel.has(seatLabel));
+    const built = await buildRegistrationRequest({
+      performanceTitle,
+      selectedCategoryId,
+      performanceOpenAt,
+      performanceCloseAt,
+      resolvedSelectedVenue,
+      posterImage,
+      introImages,
+      performanceHashtags,
+      noticeText,
+      registeredTicketSchedulePreviews,
+      areTicketScheduleRulesComplete,
+      hasInvalidTicketWindow,
+      seatTemplate,
+      seatPolicy,
+      seatPolicyVenueId,
+      loadSeatTemplate,
+      seatPrices,
+      seatDiscounts,
     });
 
-    if (missingSeatLabels.length > 0) {
-      const previewLabels = missingSeatLabels.slice(0, 5).join(', ');
-      const suffix = missingSeatLabels.length > 5 ? ' ...' : '';
-
-      showRegistrationError({
-        message: `좌석 등급이 지정된 좌석 중 공연장 좌석 정보와 연결되지 않은 항목이 있습니다. ${previewLabels}${suffix}`,
-        target: 'seatPolicy',
-        stepIndex: 2,
-      });
+    if (built.error) {
+      showRegistrationError(built.error);
       return;
     }
-
-    const seatGroups = (['VIP', 'R', 'S', 'A'] as const)
-      .map((priceGrade) => {
-        const seatIds = STAGE_4001_SEAT_IDS.flatMap((seatLabel) => {
-          const assignment = effectiveSeatPolicy[seatLabel];
-
-          if (!assignment || assignment === 'disabled') {
-            return [];
-          }
-
-          return seatPolicyGradeToApiGrade[assignment] === priceGrade
-            ? [seatIdByLabel.get(seatLabel) ?? -1]
-            : [];
-        }).filter((seatId) => seatId > 0);
-
-        return {
-          priceGrade,
-          seatIds,
-        };
-      })
-      .filter((seatGroup) => seatGroup.seatIds.length > 0);
-
-    if (seatGroups.length === 0) {
-      showRegistrationError({
-        message: '좌석 등급이 지정된 좌석이 없습니다. 먼저 좌석 등급을 설정해 주세요.',
-        target: 'seatPolicy',
-        stepIndex: 2,
-      });
-      return;
-    }
-
-    const usedPriceGrades = new Set(seatGroups.map((seatGroup) => seatGroup.priceGrade));
-    const missingPriceField = seatGradeFields.find(
-      ({ key }) =>
-        usedPriceGrades.has(seatPriceGradeToApiGrade[key]) &&
-        seatPrices[key].trim().length === 0,
-    );
-
-    if (missingPriceField) {
-      showRegistrationError({
-        message: `${missingPriceField.label} 금액을 입력해 주세요.`,
-        target: 'seatPrice',
-        stepIndex: 2,
-      });
-      return;
-    }
-
-    const priceInfos: Array<{ discountName: string; discountRate: number }> = [];
-    const seenDiscountNames = new Set<string>();
-
-    for (let index = 0; index < seatDiscounts.length; index += 1) {
-      const discount = seatDiscounts[index];
-      const discountName =
-        discount.preset === 'custom'
-          ? discount.customDiscountName.trim()
-          : discountPresetNameMap[discount.preset];
-      const discountRateText = discount.discountRate.trim();
-
-      if (discountName.length === 0 && discountRateText.length === 0) {
-        continue;
-      }
-
-      if (discountName.length === 0) {
-        showRegistrationError({
-          message: `할인 ${index + 1}의 이름을 입력해 주세요.`,
-          target: 'discount',
-          stepIndex: 2,
-        });
-        return;
-      }
-
-      if (discountRateText.length === 0) {
-        showRegistrationError({
-          message: `할인 ${index + 1}의 할인율을 입력해 주세요.`,
-          target: 'discount',
-          stepIndex: 2,
-        });
-        return;
-      }
-
-      const discountRate = Number(discountRateText);
-      if (!Number.isFinite(discountRate) || discountRate < 1 || discountRate > 100) {
-        showRegistrationError({
-          message: `할인 ${index + 1}의 할인율은 1부터 100 사이여야 합니다.`,
-          target: 'discount',
-          stepIndex: 2,
-        });
-        return;
-      }
-
-      const normalizedDiscountName = discountName.toLowerCase();
-
-      if (seenDiscountNames.has(normalizedDiscountName)) {
-        showRegistrationError({
-          message: `할인 ${index + 1}의 이름이 중복되었습니다.`,
-          target: 'discount',
-          stepIndex: 2,
-        });
-        return;
-      }
-
-      seenDiscountNames.add(normalizedDiscountName);
-      priceInfos.push({
-        discountName,
-        discountRate,
-      });
-    }
-
-    const pricePolicies = seatGradeFields
-      .filter(({ key }) => usedPriceGrades.has(seatPriceGradeToApiGrade[key]))
-      .map(({ key }, index) => ({
-        priceGrade: seatPriceGradeToApiGrade[key],
-        defaultPriceAmount: Number(seatPrices[key]),
-        priceInfos: [...priceInfos],
-        currencyCode: 'KRW',
-        displayOrder: index,
-      }));
 
     setIsSubmittingRegistration(true);
 
     try {
-      const request: AgencyRegistrationFlowRequest = {
-        basicEvent: {
-          venueId: resolvedSelectedVenue,
-          categoryId: resolvedSelectedCategoryId,
-          title: normalizedPerformanceTitle,
-          eventStartAt: performanceOpenAt.toISOString(),
-          eventEndAt: performanceCloseAt.toISOString(),
-          tags: performanceHashtags,
-          notice: noticeText.trim(),
-        },
-        posterImage: posterImage.file,
-        detailImages: introImages.map((image) => image.file),
-        pricePolicies: {
-          pricePolicies,
-        },
-        sessions: {
-          sessions: registeredTicketSchedulePreviews.map((preview) => ({
-            startAt: preview.scheduleAt.toISOString(),
-            endAt: preview.sessionEndAt.toISOString(),
-            salesOpenAt: preview.ticketOpenAt.toISOString(),
-            salesCloseAt: preview.ticketCloseAt.toISOString(),
-          })),
-        },
-        seats: {
-          seats: seatGroups,
-        },
-      };
-
-      const result = await submitAgencyEventRegistration(request);
+      const result = await submitAgencyEventRegistration(built.request);
       setRegistrationSuccessMessage(`공연 등록이 완료되었습니다. eventId=${result.eventId}`);
     } catch (error) {
       if (error instanceof ApiError) {
