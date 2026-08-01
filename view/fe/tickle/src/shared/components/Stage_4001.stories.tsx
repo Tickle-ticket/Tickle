@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Stage_4001 } from './Stage_4001';
 import type { SeatColor, SeatStatus } from './types';
 import { useState } from 'react';

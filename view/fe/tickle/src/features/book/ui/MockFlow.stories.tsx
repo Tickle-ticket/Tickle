@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { http, HttpResponse } from 'msw';
 import { BookView } from './BookView';
 import { MOCK_BOOKING_COMPLETE_EVENT_ID } from '../../../shared/config/mockEventConfig';

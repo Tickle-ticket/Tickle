@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Seat } from './Seat';
 import type { SeatColor } from './types';
 import React from 'react';

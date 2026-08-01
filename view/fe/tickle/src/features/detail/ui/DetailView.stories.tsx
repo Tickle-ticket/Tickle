@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { http, HttpResponse } from 'msw';
 import { DetailView } from './DetailView';
 import { MobileBottomNav } from '@/src/shared/components/MobileBottomNav';

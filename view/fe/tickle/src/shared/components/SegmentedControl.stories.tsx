@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { SegmentedControl } from './SegmentedControl';
 import { useState } from 'react';
 import React from 'react';

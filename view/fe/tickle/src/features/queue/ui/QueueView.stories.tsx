@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { http, HttpResponse } from 'msw';
 import { QueueView } from './QueueView';
 import { handlers } from '@/src/shared/api/mock/handlers';

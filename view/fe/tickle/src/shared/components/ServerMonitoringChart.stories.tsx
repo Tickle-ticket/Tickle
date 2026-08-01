@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { ServerMonitoringChart } from './ServerMonitoringChart';
 import type { ServerMonitoringPoint } from './ServerMonitoringChart';
 

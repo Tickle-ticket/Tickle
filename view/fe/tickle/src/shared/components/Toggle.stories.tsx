@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Toggle } from './Toggle';
 import { useState } from 'react';
 import React from 'react';
