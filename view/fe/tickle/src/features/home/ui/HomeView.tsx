@@ -259,8 +259,21 @@ export const HomeView = () => {
   const { data: ranking, isLoading: rankingLoading } =
     useHomeRanking(categoryId);
 
-  const rankingCarousel = useCarouselScroll();
-  const upcomingCarousel = useCarouselScroll();
+  // 훅이 돌려주는 객체를 통째로 들고 다니면, 그중 하나를 ref= 로 넘긴 순간
+  // 린트가 객체 전체를 ref로 보고 나머지 접근까지 "렌더 중 ref 접근"으로 잡는다.
+  // 여기서 꺼내두면 그 오해가 사라지고, 두 캐러셀도 이름으로 구분된다.
+  const {
+    scrollRef: rankingScrollRef,
+    canScrollLeft: canScrollRankingLeft,
+    canScrollRight: canScrollRankingRight,
+    scroll: scrollRanking,
+  } = useCarouselScroll();
+  const {
+    scrollRef: upcomingScrollRef,
+    canScrollLeft: canScrollUpcomingLeft,
+    canScrollRight: canScrollUpcomingRight,
+    scroll: scrollUpcoming,
+  } = useCarouselScroll();
 
   const {
     selectedDetailId,
@@ -598,16 +611,16 @@ export const HomeView = () => {
                     ))}
                   </Tab>
                   <CarouselNav
-                    canLeft={rankingCarousel.canScrollLeft}
-                    canRight={rankingCarousel.canScrollRight}
-                    onPrev={() => rankingCarousel.scroll("left")}
-                    onNext={() => rankingCarousel.scroll("right")}
+                    canLeft={canScrollRankingLeft}
+                    canRight={canScrollRankingRight}
+                    onPrev={() => scrollRanking("left")}
+                    onNext={() => scrollRanking("right")}
                   />
                 </div>
 
                 {/* 카드 */}
                 <div
-                  ref={rankingCarousel.scrollRef}
+                  ref={rankingScrollRef}
                   className="overflow-x-auto pb-4 pt-2 px-2 -mx-2"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
@@ -727,16 +740,16 @@ export const HomeView = () => {
                     className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
                   />
                   <CarouselNav
-                    canLeft={upcomingCarousel.canScrollLeft}
-                    canRight={upcomingCarousel.canScrollRight}
-                    onPrev={() => upcomingCarousel.scroll("left")}
-                    onNext={() => upcomingCarousel.scroll("right")}
+                    canLeft={canScrollUpcomingLeft}
+                    canRight={canScrollUpcomingRight}
+                    onPrev={() => scrollUpcoming("left")}
+                    onNext={() => scrollUpcoming("right")}
                   />
                 </div>
 
                 {/* 카드 */}
                 <div
-                  ref={upcomingCarousel.scrollRef}
+                  ref={upcomingScrollRef}
                   className="flex gap-5 overflow-x-auto pb-4 pt-5 px-2 -mx-2"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >

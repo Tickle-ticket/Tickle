@@ -15,8 +15,16 @@ export const CountdownTimer = ({ targetDate, onExpire, variant = 'default', cont
     minutes: 0,
     seconds: 0,
   });
+  // onExpire를 아래 타이머 effect의 의존성에 넣으면, 부모가 인라인 함수를 넘길 때
+  // 매 렌더마다 타이머가 재시작된다. ref로 최신 값만 들고 있는다.
+  //
+  // 갱신을 렌더 본문이 아니라 effect에서 하는 이유: 렌더는 여러 번 실행되거나
+  // 버려질 수 있어(동시성 모드) 그 시점의 쓰기가 화면에 반영된다는 보장이 없다.
   const onExpireRef = React.useRef(onExpire);
-  onExpireRef.current = onExpire;
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  });
+
   const hasExpiredRef = React.useRef(false);
 
   useEffect(() => {

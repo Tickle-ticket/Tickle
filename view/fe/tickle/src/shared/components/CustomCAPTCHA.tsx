@@ -393,11 +393,16 @@ export const CustomCAPTCHA = ({ onSuccess, onClose }: CustomCAPTCHAProps) => {
 
 // --- 추적용 투명 히트박스 컴포넌트 ---
 const TrackedKeybox = ({ trackId, x, y, w, h }: { trackId: string, x: number, y: number, w: number, h: number }) => {
-  const tracker = useTargetTracker({ trackId, isClickable: true });
+  // ref를 객체째 펼치면서 다시 ref= 로도 덮어쓰고 있었다. 꺼내서 각자 넘기면
+  // 중복이 사라지고, 린트가 tracker 전체를 ref로 오해하지도 않는다.
+  const { ref, ...trackerHandlers } = useTargetTracker<HTMLDivElement>({
+    trackId,
+    isClickable: true,
+  });
   return (
     <div
-      {...tracker}
-      ref={tracker.ref as any}
+      {...trackerHandlers}
+      ref={ref}
       className="absolute pointer-events-none"
       style={{
         left: x,
