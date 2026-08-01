@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Toggle } from '@/src/shared/components/Toggle';
+import type { UserProfileData } from '@/src/shared/api/useUserProfile';
 
 interface PaymentInfoStepProps {
-  userProfile: any;
+  userProfile: UserProfileData | null | undefined;
   onCanPay: (canPay: boolean) => void;
 }
 

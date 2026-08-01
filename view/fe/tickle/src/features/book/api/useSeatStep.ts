@@ -6,6 +6,8 @@ import { seatApi } from '@/src/shared/api/seatApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
 import { useQuery } from '@tanstack/react-query';
 import { reservationApi } from '@/src/shared/api/reservationApi';
+import type { EventDetailResponse } from '@/src/features/book/api/useEventDetail';
+import type { UserProfileData } from '@/src/shared/api/useUserProfile';
 import { REALTIME } from '@/src/shared/api/cachePolicy';
 import { createSeatSelectionPolicy } from './seatSelectionPolicy';
 import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
@@ -13,8 +15,8 @@ import { useBookStore } from '../store/useBookStore';
 import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
 
 interface UseSeatStepOptions {
-  eventDetail: any;
-  userProfile: any;
+  eventDetail: EventDetailResponse | undefined;
+  userProfile: UserProfileData | null | undefined;
   mode: 'BOOK' | 'CANCEL' | 'WAITLIST';
   admitToken: string | null;
   initialSeats: string[];
@@ -114,11 +116,11 @@ export function useSeatStep({
       const match = seatId.match(/^[a-zA-Z]+/);
       let priceGrade = match ? match[0].toUpperCase() : 'VIP';
       if (priceGrade === 'V') priceGrade = 'VIP';
-      const price = eventDetail?.zonePrices.find((p: any) => p.priceGrade === priceGrade)?.price || 0;
+      const price = eventDetail?.zonePrices.find((p) => p.priceGrade === priceGrade)?.price || 0;
       return { priceGrade, price, waitingCount: 0 };
     }
     const priceGrade = seatAvailability?.[seatId]?.priceGrade || '일반';
-    const price = eventDetail?.zonePrices.find((p: any) => p.priceGrade === priceGrade)?.price || 0;
+    const price = eventDetail?.zonePrices.find((p) => p.priceGrade === priceGrade)?.price || 0;
     const waitingCount = seatAvailability?.[seatId]?.waitingCount || 0;
     return { priceGrade, price, waitingCount };
   }, [eventDetail, seatAvailability, initialSeats]);

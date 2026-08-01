@@ -18,6 +18,23 @@ export interface SeatStatusData {
 
 export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
 
+/**
+ * 좌석 상태 변경 SSE 메시지.
+ *
+ * 예매(BOOKING)는 여러 좌석이 한꺼번에 바뀌므로 배열로, 취소표 대기(WAITLIST)는
+ * 좌석 하나씩 대기 인원과 함께 온다. 두 모드가 같은 스트림을 쓰지 않아 필드가
+ * 서로 배타적이라, 호출부는 어느 쪽이 있는지 보고 분기한다.
+ */
+export interface SeatUpdateMessage {
+  /** BOOKING 모드. 한 번에 바뀐 좌석들 */
+  sessionSeatIds?: number[];
+  /** WAITLIST 모드. 바뀐 좌석 하나 */
+  sessionSeatId?: number;
+  saleStatus?: string;
+  /** WAITLIST 모드에서만 온다 */
+  waitingCount?: number;
+}
+
 export const useSeatData = (
   eventId: string | null,
   scheduleId: string | null,
@@ -53,7 +70,7 @@ export const useSeatData = (
     let isMounted = true;
     let source: EventSource | null = null;
     let initialSeatsFetched = false;
-    let sseBuffer: any[] = [];
+    let sseBuffer: SeatUpdateMessage[] = [];
     /** 좌석 스트림 연속 실패 횟수. 연결에 성공하면 0으로 되돌린다. */
     let reconnectAttempt = 0;
     let reconnectTimer: NodeJS.Timeout | null = null;
@@ -61,7 +78,10 @@ export const useSeatData = (
     // sessionSeatId를 기반으로 seatLabel(맵의 키)을 찾기 위한 룩업 맵
     const sessionSeatIdToLabelMap: Record<number, string> = {};
 
-    const handleSeatUpdateEvent = (message: any, currentMap: SeatAvailabilityResponse | null) => {
+    const handleSeatUpdateEvent = (
+      message: SeatUpdateMessage,
+      currentMap: SeatAvailabilityResponse | null,
+    ) => {
       if (!currentMap) return currentMap;
 
       const newMap = { ...currentMap };
@@ -193,8 +213,8 @@ export const useSeatData = (
           }
           let initialMap: SeatAvailabilityResponse = {};
 
-          response.data.sections.forEach((section: any) => {
-            section.seats.forEach((seat: any) => {
+          response.data.sections.forEach((section) => {
+            section.seats.forEach((seat) => {
               const priceGrade = seat.priceGrade || '일반';
               const detailedInfo = `${section.sectionName} ${seat.rowLabel}열 ${seat.seatNumber}번`;
               const normalizedSeatLabel = seat.seatLabel.replace('-', '');
