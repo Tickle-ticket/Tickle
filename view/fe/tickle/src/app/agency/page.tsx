@@ -22,6 +22,7 @@ import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
+import { useScheduleDraft } from '@/src/features/agency/hooks/useScheduleDraft';
 import { AgencyPerformancePreviewModal } from '@/src/features/agency/ui/AgencyPerformancePreviewModal';
 import { DateRangeModal } from '@/src/features/agency/ui/DateRangeModal';
 import { DateTimeTriggerField } from '@/src/features/agency/ui/DateTimeTriggerField';
@@ -29,10 +30,8 @@ import { DiscountPresetSelectField } from '@/src/features/agency/ui/DiscountPres
 import { TicketScheduleRuleField } from '@/src/features/agency/ui/TicketScheduleRuleField';
 import type {
   IntroImageItem,
-  PerformanceScheduleMap,
   RegistrationErrorTarget,
   RegistrationValidationResult,
-  ScheduleTimePeriod,
   SeatDiscountDraft,
   SeatGradeKey,
   TicketSchedulePreview,
@@ -65,7 +64,6 @@ import {
   parseDateKey,
   parseDateTimeLabel,
   registrationStepItems,
-  scheduleTimeQuickOptionsByPeriod,
   scheduleWeekdayOptions,
   seatGradeFields,
   seatPolicyGradeToApiGrade,
@@ -109,11 +107,6 @@ export default function AgencyRegistrationPage() {
     a: '',
   });
   const [seatDiscounts, setSeatDiscounts] = useState<SeatDiscountDraft[]>([]);
-  const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null);
-  const [selectedScheduleDateKeys, setSelectedScheduleDateKeys] = useState<string[]>([]);
-  const [performanceSchedules, setPerformanceSchedules] = useState<PerformanceScheduleMap>({});
-  const [scheduleTimeInputValue, setScheduleTimeInputValue] = useState('');
-  const [scheduleTimePeriod, setScheduleTimePeriod] = useState<ScheduleTimePeriod>('pm');
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [isPerformancePreviewOpen, setIsPerformancePreviewOpen] = useState(false);
@@ -128,6 +121,39 @@ export default function AgencyRegistrationPage() {
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
   const [highlightedRegistrationBlock, setHighlightedRegistrationBlock] = useState<RegistrationErrorTarget | null>(null);
   const [registrationFieldErrorTarget, setRegistrationFieldErrorTarget] = useState<RegistrationErrorTarget | null>(null);
+
+  const clearRegistrationFieldError = (target: RegistrationErrorTarget) => {
+    setRegistrationFieldErrorTarget((current) => (current === target ? null : current));
+  };
+
+  const {
+    selectedScheduleDate,
+    setSelectedScheduleDate,
+    selectedScheduleDateKeys,
+    setSelectedScheduleDateKeys,
+    performanceSchedules,
+    setPerformanceSchedules,
+    scheduleTimeInputValue,
+    setScheduleTimeInputValue,
+    scheduleTimePeriod,
+    setScheduleTimePeriod,
+    performanceScheduleDateKeys,
+    selectedScheduleDateKey,
+    selectedScheduleDateLabels,
+    selectedScheduleTimes,
+    visibleScheduleTimeQuickOptions,
+    handleScheduleDateToggle,
+    handleScheduleWeekdayToggle,
+    handleScheduleTimeAdd,
+    handleScheduleQuickTimeSelect,
+    handleAllPerformanceSchedulesClear,
+    handleScheduleTimeRemove,
+    handleSelectedScheduleClear,
+  } = useScheduleDraft({
+    performanceOpenAt,
+    performanceCloseAt,
+    clearFieldError: clearRegistrationFieldError,
+  });
   const venueDropdownRef = useRef<HTMLDivElement | null>(null);
   const posterImageInputRef = useRef<HTMLInputElement | null>(null);
   const posterImageRegistryRef = useRef<IntroImageItem | null>(null);
@@ -248,33 +274,6 @@ export default function AgencyRegistrationPage() {
       weekday: 'short',
     }).format(selectedScheduleDate);
   }, [selectedScheduleDate]);
-
-  const performanceScheduleDateKeys = useMemo(
-    () =>
-      performanceOpenAt && performanceCloseAt
-        ? buildDateKeysBetween(performanceOpenAt, performanceCloseAt)
-        : [],
-    [performanceOpenAt, performanceCloseAt],
-  );
-
-  const selectedScheduleDateKey = selectedScheduleDate ? formatDateKey(selectedScheduleDate) : null;
-  const selectedScheduleDateLabels = useMemo(
-    () =>
-      selectedScheduleDateKeys
-        .map((dateKey) => parseDateKey(dateKey))
-        .filter((value): value is Date => value !== null)
-        .map((value) => formatScheduleDateShortLabel(value)),
-    [selectedScheduleDateKeys],
-  );
-
-  const selectedScheduleTimes = useMemo(() => {
-    if (!selectedScheduleDateKey) {
-      return [];
-    }
-
-    return performanceSchedules[selectedScheduleDateKey] ?? [];
-  }, [performanceSchedules, selectedScheduleDateKey]);
-  const visibleScheduleTimeQuickOptions = scheduleTimeQuickOptionsByPeriod[scheduleTimePeriod];
 
   const registeredPerformanceCount = useMemo(
     () => Object.values(performanceSchedules).reduce((total, times) => total + times.length, 0),
@@ -711,67 +710,6 @@ export default function AgencyRegistrationPage() {
     });
   };
 
-  const handleScheduleDateToggle = (dateKey: string) => {
-    const scheduleDate = parseDateKey(dateKey);
-
-    if (!scheduleDate) {
-      return;
-    }
-
-    const isSelected = selectedScheduleDateKeys.includes(dateKey);
-
-    const nextSelectedDateKeys = isSelected
-      ? selectedScheduleDateKeys.filter((entryDateKey) => entryDateKey !== dateKey)
-      : [...selectedScheduleDateKeys, dateKey].sort();
-
-    clearRegistrationFieldError('schedule');
-    setSelectedScheduleDateKeys(nextSelectedDateKeys);
-
-    if (!isSelected) {
-      setSelectedScheduleDate(scheduleDate);
-      return;
-    }
-
-    if (selectedScheduleDateKey === dateKey) {
-      const fallbackDateKey = nextSelectedDateKeys[0] ?? null;
-      setSelectedScheduleDate(fallbackDateKey ? parseDateKey(fallbackDateKey) : null);
-    }
-  };
-
-  const handleScheduleWeekdayToggle = (weekday: number) => {
-    const targetDateKeys = performanceScheduleDateKeys.filter((dateKey) => {
-      const scheduleDate = parseDateKey(dateKey);
-      return scheduleDate?.getDay() === weekday;
-    });
-
-    if (targetDateKeys.length === 0) {
-      return;
-    }
-
-    const selectedDateKeySet = new Set(selectedScheduleDateKeys);
-    const isEveryTargetSelected = targetDateKeys.every((dateKey) => selectedDateKeySet.has(dateKey));
-
-    if (isEveryTargetSelected) {
-      targetDateKeys.forEach((dateKey) => selectedDateKeySet.delete(dateKey));
-    } else {
-      targetDateKeys.forEach((dateKey) => selectedDateKeySet.add(dateKey));
-    }
-
-    const nextSelectedDateKeys = Array.from(selectedDateKeySet).sort();
-    clearRegistrationFieldError('schedule');
-    setSelectedScheduleDateKeys(nextSelectedDateKeys);
-
-    if (!isEveryTargetSelected) {
-      setSelectedScheduleDate(parseDateKey(targetDateKeys[0]));
-      return;
-    }
-
-    if (selectedScheduleDateKey && !nextSelectedDateKeys.includes(selectedScheduleDateKey)) {
-      const fallbackDateKey = nextSelectedDateKeys[0] ?? null;
-      setSelectedScheduleDate(fallbackDateKey ? parseDateKey(fallbackDateKey) : null);
-    }
-  };
-
   const handlePerformanceOpenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value;
     const parsed = parseDateTimeLabel(nextValue);
@@ -854,105 +792,6 @@ export default function AgencyRegistrationPage() {
     setPerformanceHashtags((current) => current.filter((hashtag) => hashtag !== targetHashtag));
   };
 
-  const handleScheduleTimeAdd = (timeValue = scheduleTimeInputValue) => {
-    if (!isValidScheduleTime(timeValue)) {
-      return;
-    }
-
-    const targetDateKeys = selectedScheduleDateKeys.length > 0
-      ? selectedScheduleDateKeys
-      : selectedScheduleDateKey
-        ? [selectedScheduleDateKey]
-        : [];
-
-    if (targetDateKeys.length === 0) {
-      return;
-    }
-
-    const nextSchedules = { ...performanceSchedules };
-    clearRegistrationFieldError('schedule');
-    targetDateKeys.forEach((dateKey) => {
-      const currentTimes = nextSchedules[dateKey] ?? [];
-
-      if (currentTimes.includes(timeValue)) {
-        return;
-      }
-
-      nextSchedules[dateKey] = [...currentTimes, timeValue].sort();
-    });
-
-    setPerformanceSchedules(nextSchedules);
-  };
-
-  const handleScheduleQuickTimeSelect = (timeValue: string) => {
-    setScheduleTimeInputValue(timeValue);
-    setScheduleTimePeriod(getScheduleTimePeriod(timeValue));
-    clearRegistrationFieldError('schedule');
-
-    if (selectedScheduleDateKeys.length === 0) {
-      return;
-    }
-
-    const isEverySelectedDateRegistered = selectedScheduleDateKeys.every((dateKey) =>
-      (performanceSchedules[dateKey] ?? []).includes(timeValue),
-    );
-
-    if (isEverySelectedDateRegistered) {
-      setPerformanceSchedules((current) => {
-        const nextSchedules = { ...current };
-
-        selectedScheduleDateKeys.forEach((dateKey) => {
-          const nextTimes = (nextSchedules[dateKey] ?? []).filter((entry) => entry !== timeValue);
-
-          if (nextTimes.length === 0) {
-            delete nextSchedules[dateKey];
-            return;
-          }
-
-          nextSchedules[dateKey] = nextTimes;
-        });
-
-        return nextSchedules;
-      });
-      return;
-    }
-
-    handleScheduleTimeAdd(timeValue);
-  };
-
-  const handleAllPerformanceSchedulesClear = () => {
-    setPerformanceSchedules({});
-  };
-
-  const handleScheduleTimeRemove = (dateKey: string, timeValue: string) => {
-    setPerformanceSchedules((current) => {
-      const nextTimes = (current[dateKey] ?? []).filter((entry) => entry !== timeValue);
-
-      if (nextTimes.length === 0) {
-        return Object.fromEntries(
-          Object.entries(current).filter(([entryDateKey]) => entryDateKey !== dateKey),
-        );
-      }
-
-      return {
-        ...current,
-        [dateKey]: nextTimes,
-      };
-    });
-  };
-
-  const handleSelectedScheduleClear = () => {
-    if (!selectedScheduleDateKey) {
-      return;
-    }
-
-    setPerformanceSchedules((current) => {
-      return Object.fromEntries(
-        Object.entries(current).filter(([dateKey]) => dateKey !== selectedScheduleDateKey),
-      );
-    });
-  };
-
   const scrollRegistrationPageToTop = () => {
     window.requestAnimationFrame(() => {
       registrationPageTopRef.current?.scrollIntoView({
@@ -979,10 +818,6 @@ export default function AgencyRegistrationPage() {
 
   const getRegistrationFieldErrorClass = (target: RegistrationErrorTarget) =>
     registrationFieldErrorTarget === target ? '[&_input]:border-danger [&_input]:focus:border-danger' : '';
-
-  const clearRegistrationFieldError = (target: RegistrationErrorTarget) => {
-    setRegistrationFieldErrorTarget((current) => (current === target ? null : current));
-  };
 
   const showRegistrationError = ({
     message,
