@@ -3,11 +3,10 @@
 import React, {
   useState,
   useEffect,
-  useCallback,
   useRef,
   useDeferredValue,
 } from "react";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useHomeBanners,
@@ -31,10 +30,6 @@ import { Header } from "@/src/shared/components/Header";
 import { MobileBottomNav } from "@/src/shared/components/MobileBottomNav";
 import { PullToRefresh } from "@/src/shared/components/PullToRefresh";
 import { Footer } from "@/src/shared/components/Footer";
-import Tab from "@/src/shared/components/Tab";
-import { InfoCard } from "@/src/shared/components/InfoCard";
-import { Title } from "@/src/shared/components/Title";
-import { Box } from "@/src/shared/components/Box";
 import { SearchContent } from "@/src/shared/components/SearchContent";
 import { useMypageStore } from "@/src/shared/store/useMypageStore";
 import { useWishlistStore } from "@/src/shared/store/useWishlistStore";
@@ -46,156 +41,15 @@ import { useDetailDataWithFixtures } from "@/src/features/detail/api/useDetailDa
 import { DetailView } from "@/src/features/detail/ui/DetailView";
 import dynamic from "next/dynamic";
 import loveAnimation from "@/src/shared/lottle/Love.json";
+import { ThumbnailImage } from "@/src/features/home/ui/components/ThumbnailImage";
+import { HomeRankingSection } from "@/src/features/home/ui/components/HomeRankingSection";
+import { HomeUpcomingSection } from "@/src/features/home/ui/components/HomeUpcomingSection";
+import { useCarouselScroll } from "@/src/features/home/ui/useCarouselScroll";
 
 const Lottie = dynamic(
   () => import("lottie-react").then((mod) => mod.default || mod),
   { ssr: false },
 );
-
-const useCarouselScroll = () => {
-  const [node, setNode] = useState<HTMLDivElement | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  const checkScroll = useCallback(() => {
-    if (!node) return;
-    setCanScrollLeft(node.scrollLeft > 4);
-    const maxScroll = node.scrollWidth - node.clientWidth;
-    setCanScrollRight(maxScroll > 0 && node.scrollLeft < maxScroll - 4);
-  }, [node]);
-
-  useEffect(() => {
-    if (!node) return;
-    // 초기 체크 + 스크롤 및 리사이즈 이벤트 리슨
-    const timer = setTimeout(checkScroll, 100);
-    node.addEventListener("scroll", checkScroll, { passive: true });
-    window.addEventListener("resize", checkScroll);
-    return () => {
-      clearTimeout(timer);
-      node.removeEventListener("scroll", checkScroll);
-      window.removeEventListener("resize", checkScroll);
-    };
-  }, [node, checkScroll]);
-
-  const scroll = useCallback(
-    (dir: "left" | "right") => {
-      if (!node) return;
-
-      // scroll-snap이 걸려있을 때 100%를 이동하면 브라우저에 따라 제자리로 튕기는(snapping back) 버그가 있습니다.
-      // 이를 방지하고 자연스럽게 이전/다음 카드로 넘어가도록 이동 거리를 80%로 조정합니다.
-      const amount = node.clientWidth * 0.8;
-      node.scrollBy({
-        left: dir === "right" ? amount : -amount,
-        behavior: "smooth",
-      });
-    },
-    [node],
-  );
-
-  return { scrollRef: setNode, canScrollLeft, canScrollRight, scroll };
-};
-
-const CarouselNav = ({
-  canLeft,
-  canRight,
-  onPrev,
-  onNext,
-}: {
-  canLeft: boolean;
-  canRight: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-}) => (
-  <div className="hidden md:flex items-center gap-1.5 ml-auto">
-    <button
-      onClick={onPrev}
-      disabled={!canLeft}
-      className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-150 ${
-        canLeft
-          ? "border-line-strong text-content-secondary hover:bg-surface-muted hover:border-line-strong active:scale-90"
-          : "border-line text-gray-250 cursor-default"
-      }`}
-      aria-label="이전"
-    >
-      <svg
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={2.5}
-        stroke="currentColor"
-        className="w-4 h-4"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M15.75 19.5L8.25 12l7.5-7.5"
-        />
-      </svg>
-    </button>
-    <button
-      onClick={onNext}
-      disabled={!canRight}
-      className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-150 ${
-        canRight
-          ? "border-line-strong text-content-secondary hover:bg-surface-muted hover:border-line-strong active:scale-90"
-          : "border-line text-gray-250 cursor-default"
-      }`}
-      aria-label="다음"
-    >
-      <svg
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={2.5}
-        stroke="currentColor"
-        className="w-4 h-4"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M8.25 4.5l7.5 7.5-7.5 7.5"
-        />
-      </svg>
-    </button>
-  </div>
-);
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const sectionVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.2, ease: "easeOut" },
-  },
-  exit: {
-    opacity: 0,
-    transition: { duration: 0.08 },
-  },
-};
-
-const ThumbnailImage = ({ src, alt }: { src: string; alt: string }) => {
-  const [hasError, setHasError] = useState(false);
-
-  if (hasError) {
-    return <div className="w-full h-full bg-surface" />;
-  }
-
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className="w-full h-full object-cover bg-surface"
-      onError={() => setHasError(true)}
-    />
-  );
-};
 
 export const HomeView = () => {
   const router = useRouter();
@@ -599,247 +453,32 @@ export const HomeView = () => {
                 </section>
               ) : null}
 
-              {/* Section 1: 랭킹 */}
-              <section className="mt-4">
-                <div className="flex items-center mb-4">
-                  <Title
-                    title="인기 랭킹"
-                    bottomBorder={false}
-                    className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
-                  />
-                </div>
+              <HomeRankingSection
+                ranking={ranking}
+                rankingLoading={rankingLoading}
+                tabItems={tabItems}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                rankingScrollRef={rankingScrollRef}
+                canScrollRankingLeft={canScrollRankingLeft}
+                canScrollRankingRight={canScrollRankingRight}
+                scrollRanking={scrollRanking}
+                wishlistMap={wishlistMap}
+                handleCardClick={handleCardClick}
+                handleWishlistToggle={handleWishlistToggle}
+              />
 
-                {/* Tab Menu + 화살표 */}
-                <div className="flex items-center mb-6">
-                  <Tab onChange={setActiveTab} size="large">
-                    {tabItems.map((item, idx) => (
-                      <Tab.Item key={item} selected={activeTab === idx}>
-                        {item}
-                      </Tab.Item>
-                    ))}
-                  </Tab>
-                  <CarouselNav
-                    canLeft={canScrollRankingLeft}
-                    canRight={canScrollRankingRight}
-                    onPrev={() => scrollRanking("left")}
-                    onNext={() => scrollRanking("right")}
-                  />
-                </div>
-
-                {/* 카드 */}
-                <div
-                  ref={rankingScrollRef}
-                  className="overflow-x-auto pb-4 pt-2 px-2 -mx-2"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                >
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeTab}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="flex gap-5 min-w-max"
-                    >
-                      {rankingLoading ? (
-                        Array.from({ length: 5 }).map((_, idx) => (
-                          <div key={`skeleton-${idx}`} className="shrink-0">
-                            <InfoCard
-                              src=""
-                              title=""
-                              isLoading={true}
-                              showRank={true}
-                              rank={idx + 1}
-                            />
-                          </div>
-                        ))
-                      ) : !ranking || ranking.length === 0 ? (
-                        <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-surface-subtle/50 rounded-2xl border border-dashed border-line mx-2 shrink-0">
-                          <svg
-                            width="48"
-                            height="48"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-content-muted mb-3"
-                          >
-                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="9" y1="15" x2="15" y2="15"></line>
-                          </svg>
-                          <p className="text-content-tertiary font-medium text-sm sm:text-base">
-                            현재 진행 중인 인기 공연이 없습니다.
-                          </p>
-                          <p className="text-content-muted text-xs sm:text-sm mt-1">
-                            곧 새로운 공연이 업데이트될 예정입니다.
-                          </p>
-                        </div>
-                      ) : (
-                        ranking?.map((item, idx) => {
-                          const isWishlisted = !!wishlistMap[item.id];
-                          return (
-                            <div
-                              key={item.id}
-                              className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
-                              onClick={() =>
-                                handleCardClick(
-                                  item.id,
-                                  `poster-ranking-${item.id}`,
-                                )
-                              }
-                            >
-                              <InfoCard
-                                layoutId={`poster-ranking-${item.id}`}
-                                src={item.imageUrl}
-                                title={item.title}
-                                place={item.venue}
-                                day={item.date}
-                                rank={idx + 1}
-                                showRank={true}
-                                isWishlisted={isWishlisted}
-                                onWishlistToggle={(e) =>
-                                  handleWishlistToggle(e, item.id)
-                                }
-                                badges={item.badges}
-                                priority={idx < 3}
-                              />
-                            </div>
-                          );
-                        })
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-
-                {/* 더보기 */}
-                <div className="w-full flex items-center gap-4 mt-6">
-                  <span className="flex-1 h-px bg-surface-active" />
-                  <button
-                    onClick={() =>
-                      router.push(
-                        `/?q=${encodeURIComponent(tabItems[activeTab])}`,
-                      )
-                    }
-                    className="group cursor-pointer"
-                  >
-                    <Box
-                      variant="outline"
-                      padding="none"
-                      className="py-2 px-5 hover:bg-surface-subtle transition-colors flex items-center justify-center"
-                    >
-                      <span className="text-sm text-content-tertiary group-hover:text-content transition-colors whitespace-nowrap font-medium">
-                        더보기
-                      </span>
-                    </Box>
-                  </button>
-                  <span className="flex-1 h-px bg-surface-active" />
-                </div>
-              </section>
-
-              {/* Section 2: 오픈 예정 */}
-              <section className="mt-16 pb-32">
-                <div className="flex items-center mb-6">
-                  <Title
-                    title="오픈 예정"
-                    bottomBorder={false}
-                    className="!bg-transparent [&>div]:!p-0 !text-2xl [&_h1]:!text-2xl"
-                  />
-                  <CarouselNav
-                    canLeft={canScrollUpcomingLeft}
-                    canRight={canScrollUpcomingRight}
-                    onPrev={() => scrollUpcoming("left")}
-                    onNext={() => scrollUpcoming("right")}
-                  />
-                </div>
-
-                {/* 카드 */}
-                <div
-                  ref={upcomingScrollRef}
-                  className="flex gap-5 overflow-x-auto pb-4 pt-5 px-2 -mx-2"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                >
-                  {upcomingLoading ? (
-                    Array.from({ length: 5 }).map((_, idx) => (
-                      <div key={idx} className="shrink-0">
-                        <InfoCard
-                          src=""
-                          title=""
-                          isLoading={true}
-                          showTime={true}
-                        />
-                      </div>
-                    ))
-                  ) : !upcoming || upcoming.length === 0 ? (
-                    <div className="flex-1 w-full flex flex-col items-center justify-center py-16 px-4 bg-surface-subtle/50 rounded-2xl border border-dashed border-line mx-2 shrink-0">
-                      <svg
-                        width="48"
-                        height="48"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-content-muted mb-3"
-                      >
-                        <rect
-                          x="3"
-                          y="4"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          ry="2"
-                        ></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                      </svg>
-                      <p className="text-content-tertiary font-medium text-sm sm:text-base">
-                        현재 오픈 예정인 공연이 없습니다.
-                      </p>
-                      <p className="text-content-muted text-xs sm:text-sm mt-1">
-                        새로운 공연 소식을 기다려주세요!
-                      </p>
-                    </div>
-                  ) : (
-                    upcoming?.map((item, idx) => {
-                      const isWishlisted = !!wishlistMap[item.id];
-                      return (
-                        <div
-                          key={item.id}
-                          className="shrink-0 relative cursor-pointer hover:scale-[1.02] hover:z-10 transition-all duration-200"
-                          onClick={() =>
-                            handleCardClick(
-                              item.id,
-                              `poster-upcoming-${item.id}`,
-                            )
-                          }
-                        >
-                          <InfoCard
-                            layoutId={`poster-upcoming-${item.id}`}
-                            src={item.imageUrl}
-                            title={item.title}
-                            place={item.venue}
-                            day={item.date}
-                            disabled={true}
-                            showTime={true}
-                            targetDate={item.openDate}
-                            isWishlisted={isWishlisted}
-                            onWishlistToggle={(e) =>
-                              handleWishlistToggle(e, item.id)
-                            }
-                            badges={item.badges}
-                            priority={idx < 3}
-                          />
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
+              <HomeUpcomingSection
+                upcoming={upcoming}
+                upcomingLoading={upcomingLoading}
+                upcomingScrollRef={upcomingScrollRef}
+                canScrollUpcomingLeft={canScrollUpcomingLeft}
+                canScrollUpcomingRight={canScrollUpcomingRight}
+                scrollUpcoming={scrollUpcoming}
+                wishlistMap={wishlistMap}
+                handleCardClick={handleCardClick}
+                handleWishlistToggle={handleWishlistToggle}
+              />
             </div>
 
             {/* 알림 모달 */}
