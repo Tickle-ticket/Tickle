@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { isFailure, toFailureTag } from '@/src/shared/api/errors';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
@@ -336,7 +337,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       try {
         await reservationApi.cancelReservation(preorderBookingId);
         preorderBookingIdRef.current = null; // unmount 시 중복 호출 방지
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to cancel draft reservation on exit', err);
       }
     }
@@ -347,9 +348,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           await seatApi.releaseSeat(eventDetail.eventId, scheduleId);
           isHoldingSeatRef.current = false; // unmount 시 중복 호출 방지
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to release seats on exit', err);
-        if (err.status === 404) {
+        if (isFailure(err, 'NotFoundError')) {
           setErrorModalConfig({
             isOpen: true,
             title: '정보 없음',
@@ -411,7 +412,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   useEffect(() => {
     if (seatError) {
-      if (seatError.status === 404) {
+      if (isFailure(seatError, 'NotFoundError')) {
         setErrorModalConfig({
           isOpen: true,
           title: '정보 없음',
@@ -534,15 +535,24 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         setBookingStep('TICKET_TYPE');
         onStepChange?.('ticket_type');
       }
-    } catch (err: any) {
-      if (err.status === 409) {
-        setIsConflictModalOpen(true);
-      } else if (err.status === 400) {
-        setErrorModalConfig({ isOpen: true, title: '요청 오류', message: '잘못된 요청입니다. 입력 정보나 세션 상태를 확인해 주세요. (400)' });
-      } else if (err.status === 404) {
-        setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '선택하신 공연, 회차 또는 좌석 정보를 찾을 수 없습니다. (404)' });
-      } else {
-        setErrorModalConfig({ isOpen: true, title: '오류 발생', message: err.message || '좌석 옵션 정보를 불러오는 데 실패했습니다.' });
+    } catch (err) {
+      switch (toFailureTag(err)) {
+        case 'ConflictError':
+          // 남이 먼저 잡은 좌석. 다른 자리를 고르도록 안내한다.
+          setIsConflictModalOpen(true);
+          break;
+        case 'ValidationError':
+          setErrorModalConfig({ isOpen: true, title: '요청 오류', message: '잘못된 요청입니다. 입력 정보나 세션 상태를 확인해 주세요.' });
+          break;
+        case 'NotFoundError':
+          setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '선택하신 공연, 회차 또는 좌석 정보를 찾을 수 없습니다.' });
+          break;
+        default:
+          setErrorModalConfig({
+            isOpen: true,
+            title: '오류 발생',
+            message: err instanceof Error ? err.message : '좌석 옵션 정보를 불러오는 데 실패했습니다.',
+          });
       }
     } finally {
       setIsHolding(false);

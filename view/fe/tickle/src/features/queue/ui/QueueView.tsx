@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { enterQueue, getQueueToken, leaveQueue, getQueueStreamUrl } from '@/src/shared/api/queueApi';
 import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
@@ -193,9 +194,9 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
         connectStream();
 
-      } catch (err: any) {
+      } catch (err) {
         if (isCancelled) return;
-        if (err.status === 400) {
+        if (isFailure(err, 'ValidationError')) {
           setErrorModalConfig({
             isOpen: true,
             title: '진입 불가',
@@ -204,7 +205,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
           });
           return;
         }
-        if (err.status === 404) {
+        if (isFailure(err, 'NotFoundError')) {
           setErrorModalConfig({
             isOpen: true,
             title: '정보 없음',

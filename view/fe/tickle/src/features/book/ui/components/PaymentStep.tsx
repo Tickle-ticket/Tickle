@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { toErrorCode, toFailureTag } from '@/src/shared/api/errors';
 import { PaymentInfoStep } from './PaymentInfoStep';
 import { PayMethodStep } from './PayMethodStep';
 import { useBookStore } from '../../store/useBookStore';
@@ -510,32 +511,50 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           }
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Payment failed', err);
 
-      // 선점이 풀린 것과 그 밖의 실패는 사용자가 할 일이 다르다. 전자는 좌석부터
-      // 다시 골라야 하고, 후자는 이 화면에서 재시도하면 된다. 둘 다 404라서
-      // status만으로는 나눌 수 없다(services/be PaymentErrorCode).
-      if (err.code === 'PAYMENT_HOLD_NOT_FOUND') {
+      // 서버 code가 있으면 그것부터 본다. 선점 만료와 결제 정보 없음은 둘 다
+      // 404라 태그(NotFoundError)로는 나뉘지 않는데 사용자가 할 일은 다르다 —
+      // 전자는 좌석부터 다시 골라야 하고 후자는 이 화면에서 재시도하면 된다
+      // (services/be PaymentErrorCode).
+      const code = toErrorCode(err);
+
+      if (code === 'PAYMENT_HOLD_NOT_FOUND') {
         onError(
           '선점 시간 만료',
           '좌석 선점 시간이 만료되었습니다.\n좌석을 다시 선택해 주세요.',
         );
         setBookingStep('SEAT');
-      } else if (err.code === 'PAYMENT_ALREADY_PROCESSED') {
+        setIsProcessing(false);
+        return;
+      }
+
+      if (code === 'PAYMENT_ALREADY_PROCESSED') {
         // 이미 결제된 건이라 재시도는 의미가 없다. 결과를 확인하러 보낸다.
         onError(
           '이미 처리된 결제',
           '이미 결제가 완료된 예매입니다.\n마이페이지에서 예매 내역을 확인해 주세요.',
         );
-      } else if (err.status === 400) {
-        onError('요청 오류', '지원하지 않는 결제 수단이거나 잘못된 요청입니다.');
-      } else if (err.status === 404) {
-        onError('정보 없음', '예매 초안 또는 회차 정보를 찾을 수 없습니다.');
-      } else if (err.status === 409) {
-        onError('상태 오류', '현재 예매 상태에서는 해당 결제 요청을 처리할 수 없습니다.');
-      } else {
-        onError('결제 오류', err.message || '결제 처리 중 오류가 발생했습니다.');
+        setIsProcessing(false);
+        return;
+      }
+
+      switch (toFailureTag(err)) {
+        case 'ValidationError':
+          onError('요청 오류', '지원하지 않는 결제 수단이거나 잘못된 요청입니다.');
+          break;
+        case 'NotFoundError':
+          onError('정보 없음', '예매 초안 또는 회차 정보를 찾을 수 없습니다.');
+          break;
+        case 'ConflictError':
+          onError('상태 오류', '현재 예매 상태에서는 해당 결제 요청을 처리할 수 없습니다.');
+          break;
+        default:
+          onError(
+            '결제 오류',
+            err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.',
+          );
       }
 
       setIsProcessing(false);
