@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type RefObject } from 'react';
 import {
   AgencySeatPolicyModal,
   createDefaultAgencySeatPolicy,
@@ -23,17 +23,16 @@ import { Input } from '@/src/shared/components/Input';
 import { SegmentedControl } from '@/src/shared/components/SegmentedControl';
 import { STAGE_4001_SEAT_IDS } from '@/src/shared/components/Stage_4001';
 import { useScheduleDraft } from '@/src/features/agency/hooks/useScheduleDraft';
+import { useRegistrationImages } from '@/src/features/agency/hooks/useRegistrationImages';
+import { useSeatPricing } from '@/src/features/agency/hooks/useSeatPricing';
 import { AgencyPerformancePreviewModal } from '@/src/features/agency/ui/AgencyPerformancePreviewModal';
 import { DateRangeModal } from '@/src/features/agency/ui/DateRangeModal';
 import { DateTimeTriggerField } from '@/src/features/agency/ui/DateTimeTriggerField';
 import { DiscountPresetSelectField } from '@/src/features/agency/ui/DiscountPresetSelectField';
 import { TicketScheduleRuleField } from '@/src/features/agency/ui/TicketScheduleRuleField';
 import type {
-  IntroImageItem,
   RegistrationErrorTarget,
   RegistrationValidationResult,
-  SeatDiscountDraft,
-  SeatGradeKey,
   TicketSchedulePreview,
   TicketScheduleRule,
   VenueOption,
@@ -47,9 +46,6 @@ import {
   createDefaultPerformanceEndAt,
   createDefaultPerformanceStartAt,
   createDisabledSeatPolicy,
-  createImagePreviewItem,
-  createIntroImageKey,
-  createSeatDiscountDraft,
   discountPresetNameMap,
   fallbackVenueOption,
   formatDateKey,
@@ -93,20 +89,9 @@ export default function AgencyRegistrationPage() {
   const [performanceCloseInputValue, setPerformanceCloseInputValue] = useState('');
   const [performanceOpenPlaceholder] = useState(() => formatDateTimeLabel(new Date()));
   const [performanceClosePlaceholder] = useState(() => formatDateTimeLabel(new Date()));
-  const [posterImage, setPosterImage] = useState<IntroImageItem | null>(null);
-  const [isPosterImageDragActive, setIsPosterImageDragActive] = useState(false);
-  const [introImages, setIntroImages] = useState<IntroImageItem[]>([]);
-  const [isIntroImageDragActive, setIsIntroImageDragActive] = useState(false);
   const [noticeText, setNoticeText] = useState('');
   const [performanceHashtags, setPerformanceHashtags] = useState<string[]>([]);
   const [hashtagInputValue, setHashtagInputValue] = useState('');
-  const [seatPrices, setSeatPrices] = useState<Record<SeatGradeKey, string>>({
-    vip: '',
-    r: '',
-    s: '',
-    a: '',
-  });
-  const [seatDiscounts, setSeatDiscounts] = useState<SeatDiscountDraft[]>([]);
   const [isSeatPolicyModalOpen, setIsSeatPolicyModalOpen] = useState(false);
   const [isPerformanceDateModalOpen, setIsPerformanceDateModalOpen] = useState(false);
   const [isPerformancePreviewOpen, setIsPerformancePreviewOpen] = useState(false);
@@ -154,13 +139,39 @@ export default function AgencyRegistrationPage() {
     performanceCloseAt,
     clearFieldError: clearRegistrationFieldError,
   });
+
+  const {
+    posterImage,
+    isPosterImageDragActive,
+    introImages,
+    isIntroImageDragActive,
+    handlePosterImageInputChange,
+    handlePosterImageRemove,
+    handlePosterImageDragEnter,
+    handlePosterImageDragOver,
+    handlePosterImageDragLeave,
+    handlePosterImageDrop,
+    handleIntroImageInputChange,
+    handleIntroImageRemove,
+    handleIntroImageDragEnter,
+    handleIntroImageDragOver,
+    handleIntroImageDragLeave,
+    handleIntroImageDrop,
+  } = useRegistrationImages({ clearFieldError: clearRegistrationFieldError });
+
+  const {
+    seatPrices,
+    seatDiscounts,
+    seatPriceSummary,
+    handleSeatPriceChange,
+    handleSeatDiscountAdd,
+    handleSeatDiscountChange,
+    handleSeatDiscountPresetChange,
+    handleSeatDiscountRemove,
+  } = useSeatPricing({ clearFieldError: clearRegistrationFieldError });
   const venueDropdownRef = useRef<HTMLDivElement | null>(null);
   const posterImageInputRef = useRef<HTMLInputElement | null>(null);
-  const posterImageRegistryRef = useRef<IntroImageItem | null>(null);
-  const posterImageDragDepthRef = useRef(0);
   const introImageInputRef = useRef<HTMLInputElement | null>(null);
-  const introImageRegistryRef = useRef<IntroImageItem[]>([]);
-  const introImageDragDepthRef = useRef(0);
   const registrationPageTopRef = useRef<HTMLDivElement | null>(null);
   const exposureContentBlockRef = useRef<HTMLDivElement | null>(null);
   const basicInfoBlockRef = useRef<HTMLDivElement | null>(null);
@@ -401,52 +412,6 @@ export default function AgencyRegistrationPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const previousImages = introImageRegistryRef.current;
-
-    previousImages
-      .filter((image) => !introImages.some((currentImage) => currentImage.id === image.id))
-      .forEach((image) => {
-        URL.revokeObjectURL(image.previewUrl);
-      });
-
-    introImageRegistryRef.current = introImages;
-  }, [introImages]);
-
-  useEffect(() => {
-    const previousImage = posterImageRegistryRef.current;
-
-    if (previousImage && previousImage.id !== posterImage?.id) {
-      URL.revokeObjectURL(previousImage.previewUrl);
-    }
-
-    posterImageRegistryRef.current = posterImage;
-  }, [posterImage]);
-
-  useEffect(
-    () => () => {
-      if (posterImageRegistryRef.current) {
-        URL.revokeObjectURL(posterImageRegistryRef.current.previewUrl);
-      }
-
-      introImageRegistryRef.current.forEach((image) => {
-        URL.revokeObjectURL(image.previewUrl);
-      });
-    },
-    [],
-  );
-
-  const seatPriceSummary = useMemo(
-    () =>
-      seatGradeFields.map((field) => ({
-        ...field,
-        formattedValue:
-          seatPrices[field.key].length > 0
-            ? new Intl.NumberFormat('ko-KR').format(Number(seatPrices[field.key]))
-            : '0',
-      })),
-    [seatPrices],
-  );
 
   const seatPolicySummary = useMemo(() => getAgencySeatPolicySummary(seatPolicy), [seatPolicy]);
   const seatPolicyModalKey = useMemo(
@@ -492,202 +457,7 @@ export default function AgencyRegistrationPage() {
     posterImageInputRef.current?.click();
   };
 
-  const replacePosterImage = (files: File[]) => {
-    const nextPosterFile = files.find((file) => file.type.startsWith('image/'));
 
-    if (!nextPosterFile) {
-      return;
-    }
-
-    clearRegistrationFieldError('poster');
-    setPosterImage(createImagePreviewItem(nextPosterFile));
-  };
-
-  const appendIntroImages = (files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-
-    if (imageFiles.length === 0) {
-      return;
-    }
-
-    setIntroImages((current) => {
-      const existingKeys = new Set(current.map((image) => image.id));
-      const nextImages = imageFiles
-        .filter((file) => !existingKeys.has(createIntroImageKey(file)))
-        .map((file) => createImagePreviewItem(file));
-
-      return [...current, ...nextImages];
-    });
-  };
-
-  const handlePosterImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    replacePosterImage(Array.from(event.target.files ?? []));
-    event.target.value = '';
-  };
-
-  const handlePosterImageRemove = () => {
-    setPosterImage(null);
-  };
-
-  const handlePosterImageDragEnter = (event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes('Files')) {
-      return;
-    }
-
-    event.preventDefault();
-    posterImageDragDepthRef.current += 1;
-    setIsPosterImageDragActive(true);
-  };
-
-  const handlePosterImageDragOver = (event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes('Files')) {
-      return;
-    }
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-
-    if (!isPosterImageDragActive) {
-      setIsPosterImageDragActive(true);
-    }
-  };
-
-  const handlePosterImageDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes('Files')) {
-      return;
-    }
-
-    event.preventDefault();
-    posterImageDragDepthRef.current = Math.max(0, posterImageDragDepthRef.current - 1);
-
-    if (posterImageDragDepthRef.current === 0) {
-      setIsPosterImageDragActive(false);
-    }
-  };
-
-  const handlePosterImageDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    posterImageDragDepthRef.current = 0;
-    setIsPosterImageDragActive(false);
-    replacePosterImage(Array.from(event.dataTransfer.files));
-  };
-
-  const handleIntroImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    appendIntroImages(Array.from(event.target.files ?? []));
-    event.target.value = '';
-  };
-
-  const handleIntroImageRemove = (imageId: string) => {
-    setIntroImages((current) => current.filter((image) => image.id !== imageId));
-  };
-
-  const handleIntroImageDragEnter = (event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes('Files')) {
-      return;
-    }
-
-    event.preventDefault();
-    introImageDragDepthRef.current += 1;
-    setIsIntroImageDragActive(true);
-  };
-
-  const handleIntroImageDragOver = (event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes('Files')) {
-      return;
-    }
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-
-    if (!isIntroImageDragActive) {
-      setIsIntroImageDragActive(true);
-    }
-  };
-
-  const handleIntroImageDragLeave = (event: DragEvent<HTMLDivElement>) => {
-    if (!event.dataTransfer.types.includes('Files')) {
-      return;
-    }
-
-    event.preventDefault();
-    introImageDragDepthRef.current = Math.max(0, introImageDragDepthRef.current - 1);
-
-    if (introImageDragDepthRef.current === 0) {
-      setIsIntroImageDragActive(false);
-    }
-  };
-
-  const handleIntroImageDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    introImageDragDepthRef.current = 0;
-    setIsIntroImageDragActive(false);
-    appendIntroImages(Array.from(event.dataTransfer.files));
-  };
-
-  const handleSeatPriceChange =
-    (priceGrade: SeatGradeKey) =>
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const digitsOnly = event.target.value.replace(/\D/g, '');
-
-      setSeatPrices((current) => ({
-        ...current,
-        [priceGrade]: digitsOnly,
-      }));
-      clearRegistrationFieldError('seatPrice');
-    };
-
-  const handleSeatDiscountAdd = () => {
-    setSeatDiscounts((current) => [...current, createSeatDiscountDraft()]);
-  };
-
-  const handleSeatDiscountChange =
-    (discountId: string, field: 'customDiscountName' | 'discountRate') =>
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const nextValue = (() => {
-        if (field !== 'discountRate') {
-          return event.target.value;
-        }
-
-        const digitsOnly = event.target.value.replace(/\D/g, '');
-        if (digitsOnly.length === 0) {
-          return '';
-        }
-
-        return String(Math.min(Number(digitsOnly), 100));
-      })();
-
-      setSeatDiscounts((current) =>
-        current.map((discount) =>
-          discount.id === discountId
-            ? {
-                ...discount,
-                [field]: nextValue,
-              }
-            : discount,
-        ),
-      );
-    };
-
-  const handleSeatDiscountPresetChange = (
-    discountId: string,
-    preset: SeatDiscountDraft['preset'],
-  ) => {
-    setSeatDiscounts((current) =>
-      current.map((discount) =>
-        discount.id === discountId
-          ? {
-              ...discount,
-              preset,
-              customDiscountName: preset === 'custom' ? discount.customDiscountName : '',
-            }
-          : discount,
-      ),
-    );
-  };
-
-  const handleSeatDiscountRemove = (discountId: string) => {
-    setSeatDiscounts((current) => current.filter((discount) => discount.id !== discountId));
-  };
 
   const syncSchedulesToPerformanceRange = (nextOpenAt: Date, nextCloseAt: Date) => {
     const nextDateKeys = buildDateKeysBetween(nextOpenAt, nextCloseAt);
