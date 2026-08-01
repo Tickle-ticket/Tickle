@@ -2,19 +2,14 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { isNavigatingToPaymentFlow } from '@/src/features/book/lib/paymentNavigation';
-import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
 import { BannerSubtitle } from '@/src/shared/components/BannerSubtitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
 import { BannerTime } from '@/src/shared/components/BannerTime';
 import Button from '@/src/shared/components/Button';
-import { Text } from '@/src/shared/components/Text';
-import { Table } from '@/src/shared/components/Table';
-import { Box } from '@/src/shared/components/Box';
 import { Badge } from '@/src/shared/components/Badge';
-import { Calendar } from '@/src/shared/components/Calendar';
-import { SectionNav } from '@/src/shared/components/SectionNav';
+import { DetailContentSection } from '@/src/features/detail/ui/components/DetailContentSection';
 import { BookButton } from '@/src/shared/components/BookButton';
 import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
 import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
@@ -30,7 +25,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { useFavoriteToggle } from '@/src/features/favorite/api/useFavoriteToggle';
 import { getAccessToken, clearTokens } from '@/src/shared/api/tokenManager';
-import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
@@ -53,13 +47,6 @@ const navItems = [
   { id: 'schedule', title: '공연 일정' },
   { id: 'details', title: '상세 정보' },
 ];
-
-const formatDateToDot = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}.${month}.${day}`;
-};
 
 interface DetailViewProps {
   isOverlay?: boolean;
@@ -115,7 +102,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       }),
   });
   const isFavorite = activeEventId ? !!wishlistMap[activeEventId] : false;
-  const [detailImageFailed, setDetailImageFailed] = useState(false);
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
   const queryClient = useQueryClient();
   const [isInvalidAccess, setIsInvalidAccess] = useState(false);
@@ -438,16 +424,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     return `${month}.${day}(${dayOfWeek}) ${hours}:${minutes}`;
   };
 
-  const scheduleData = data?.schedules || [];
-  const enabledDates = scheduleData.map((item) => item.date.split(' ')[0].replace(/\./g, '-'));
-  const selectedDateStr = selectedDate ? formatDateToDot(selectedDate) : '';
-  const selectedSchedule = scheduleData.find((item) => item.date.startsWith(selectedDateStr));
-  const detailImageSrc = resolveImageSrc(data?.detailImageUrl);
-
-  useEffect(() => {
-    setDetailImageFailed(false);
-  }, [detailImageSrc]);
-
   // 스크롤 스파이 (Scroll Spy)
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -702,181 +678,14 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         </div>
       </section>
 
-      {/* Content Section with Sticky Timeline */}
-      <section className="mt-16 flex flex-col gap-8 border-t border-black/10 relative items-start">
-        <div className="sticky top-0 z-40 w-full bg-[#f8f8f8]/95 backdrop-blur-md py-3 lg:py-4 px-4 lg:px-0 shadow-[0_4px_10px_-4px_rgba(0,0,0,0.05)] lg:shadow-none">
-          <div className="w-full max-w-3xl mx-auto">
-            <SectionNav
-              items={navItems}
-              activeIndex={activeIndex}
-              onItemClick={(id: string, index: number) => handleScrollTo(id, index)}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-8 w-full max-w-3xl mx-auto">
-          {/* 1. 공연 정보 */}
-          <div id="info" className="scroll-mt-48 w-full">
-            <Box variant="flat" padding="medium" className="w-full border border-black/5">
-              <div className="flex flex-col items-start gap-4">
-                <Title title="공연 정보" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl" />
-                <div className="w-full">
-                  <Table
-                    columns={[
-                      { key: 'label', header: '', align: 'left', width: '90px', render: (row) => row.label },
-                      { key: 'value', header: '', align: 'left', render: (row) => row.value }
-                    ]}
-                    data={[
-                      {
-                        label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">카테고리</Text>,
-                        value: <Text typography="t4" color="primary" fontWeight="bold">{data?.subTitle || ''}</Text>
-                      },
-                      {
-                        label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">공연 기간</Text>,
-                        value: <Text typography="t4" color="primary" fontWeight="bold">{data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''}</Text>
-                      },
-                      {
-                        label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">장소</Text>,
-                        value: (
-                          <div className="flex flex-col">
-                            <Text typography="t4" color="primary" fontWeight="bold">{data?.venue || ''}</Text>
-                            {data?.venueAddress && <Text typography="t5" color="secondary">{data?.venueAddress}</Text>}
-                          </div>
-                        )
-                      },
-                      {
-                        label: <Text typography="t5" color="secondary" fontWeight="medium" className="whitespace-nowrap">공지사항</Text>,
-                        value: (
-                          <div className="flex flex-col gap-0.5">
-                            {data?.notice?.split('\n').map((desc, dIdx) => desc && (
-                              <Text key={dIdx} typography="t4" color="primary" fontWeight="bold">{desc}</Text>
-                            ))}
-                          </div>
-                        )
-                      }
-                    ]}
-                    className="[&_thead]:hidden [&_tbody_tr]:!bg-transparent hover:[&_tbody_tr]:!bg-surface-subtle/50 [&_td]:!py-3 [&_td]:!px-2 [&_td]:!border-b-0 [&_tr:not(:last-child)_td]:border-b [&_tr:not(:last-child)_td]:border-line-subtle"
-                  />
-                </div>
-              </div>
-            </Box>
-          </div>
-
-          <div className="flex flex-col gap-8 w-full">
-            {/* 2. 가격 */}
-            <div id="price" className="scroll-mt-48 transition-all duration-500 ease-in-out w-full">
-              <Box variant="flat" padding="large" className="w-full border border-black/5 flex flex-col gap-4 shadow-sm bg-surface rounded-2xl">
-                <Title title="가격 정보" bottomBorder={false} className="!px-0 !pt-0 !pb-2 mb-0 w-full [&>div]:!px-0 [&_h1]:!text-2xl shrink-0" />
-                <div className="w-full rounded-xl overflow-hidden border border-line-subtle">
-                  <Table
-                    columns={[
-                      {
-                        key: 'seat',
-                        header: '좌석 등급',
-                        align: 'left',
-                        render: (row) => {
-                          const gradeColors: Record<string, string> = {
-                            'VIP': 'var(--seat-vip-top)',
-                            'R': 'var(--seat-r-top)',
-                            'S': 'var(--seat-s-top)',
-                            'A': 'var(--seat-a-top)',
-                          };
-                          return (
-                            <div className="flex items-center gap-3">
-                              <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: gradeColors[row.priceGrade] || 'var(--color-surface-active)' }} />
-                              <Text typography="t5" fontWeight="bold" color="primary">{row.priceGrade}</Text>
-                            </div>
-                          );
-                        }
-                      },
-                      {
-                        key: 'price',
-                        header: '가격',
-                        align: 'right',
-                        render: (row) => (
-                          <Text typography="t5" fontWeight="medium" color="primary">{row.price.toLocaleString()}원</Text>
-                        )
-                      },
-                    ]}
-                    data={data?.zonePrices || []}
-                  />
-                </div>
-              </Box>
-            </div>
-
-            {/* 3. 공연 일정 */}
-            <div id="schedule" className="scroll-mt-48 transition-all duration-500 ease-in-out w-full">
-              <Box variant="flat" padding="medium" className="w-full border border-black/5">
-                <div className="flex flex-col items-start gap-4 w-full">
-                  <Title title="공연 일정" bottomBorder={true} className="!px-0 !pt-0 !pb-4 mb-1 w-full [&>div]:!px-0 [&_h1]:!text-xl shrink-0" />
-                  <div className="flex flex-col gap-8 w-full mt-2">
-                    <div className="w-full flex justify-center">
-                      <Calendar
-                        enabledDates={enabledDates}
-                        selectedDate={selectedDate ? formatDateToDot(selectedDate).replace(/\./g, '-') : null}
-                        onSelect={(date) => {
-                          setSelectedDate(date ? new Date(date) : null);
-                        }}
-                      />
-                    </div>
-
-                    <div className="w-full">
-                      {selectedSchedule ? (
-                        <div className="flex flex-col gap-4">
-                          <Text typography="t5" fontWeight="bold" color="primary">선택하신 날짜의 회차</Text>
-                          <div className="flex flex-wrap gap-3">
-                            {selectedSchedule.times.map((timeObj, idx) => (
-                              <div
-                                key={idx}
-                                className="inline-flex flex-col items-center justify-center px-6 py-3 border border-line rounded-xl bg-surface"
-                              >
-                                <Text typography="t4" fontWeight="bold" color="primary">{timeObj.time}</Text>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-32 border border-dashed border-line-strong rounded-xl bg-surface-subtle/50">
-                          <Text typography="t6" color="tertiary">관람하실 날짜를 캘린더에서 선택해주세요.</Text>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Box>
-            </div>
-          </div>
-
-          {/* 4. 상세 정보 */}
-          <div id="details" className="scroll-mt-48 w-full mt-8">
-            <Box variant="flat" padding="medium" className="w-full border border-black/5 bg-surface-subtle flex flex-col items-center justify-center min-h-[500px] overflow-hidden rounded-xl">
-              {detailImageSrc && !detailImageFailed ? (
-                <Image
-                  src={detailImageSrc}
-                  alt="상세 정보"
-                  width={0}
-                  height={0}
-                  sizes="100vw"
-                  style={{ width: '100%', height: 'auto' }}
-                  className="w-full h-auto object-cover rounded-xl"
-                  unoptimized={true}
-                  onError={() => setDetailImageFailed(true)}
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-4 text-content-muted">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                  <Text typography="t5" color="secondary">상세 이미지 준비 중입니다</Text>
-                </div>
-              )}
-            </Box>
-          </div>
-
-        </div>
-      </section>
+      <DetailContentSection
+        data={data}
+        navItems={navItems}
+        activeIndex={activeIndex}
+        handleScrollTo={handleScrollTo}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+      />
 
       {/* Booking Pipeline Overlays */}
       {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
