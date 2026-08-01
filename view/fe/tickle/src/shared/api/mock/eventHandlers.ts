@@ -57,6 +57,183 @@ const buildRemainingSeats = (date: string, time: string) => {
   return Object.entries(counts).map(([priceGrade, count]) => ({ priceGrade, count }));
 };
 
+/**
+ * 목록·검색에 쓰는 공연 데이터.
+ *
+ * categoryId는 categoryHandlers의 값과 맞춰 둔다. 검색 화면이 카테고리 이름을
+ * 먼저 찾아보고, 맞는 게 있으면 categoryId로 조회하기 때문이다(useSearchData).
+ */
+const SEARCHABLE_EVENTS = [
+  {
+    eventId: 1,
+    title: '오페라의 유령',
+    venueLocation: '샤롯데씨어터',
+    eventStartAt: '2026-07-26T10:00:00.000Z',
+    eventEndAt: '2026-11-16T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster1/800/1200',
+    metadata: { tags: ['뮤지컬', 'HOT'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 2,
+    title: '레미제라블',
+    venueLocation: '블루스퀘어 신한카드홀',
+    eventStartAt: '2026-11-19T10:00:00.000Z',
+    eventEndAt: '2027-05-18T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster2/800/1200',
+    metadata: { tags: ['뮤지컬'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 3,
+    title: '위키드',
+    venueLocation: '충무아트센터 대극장',
+    eventStartAt: '2027-01-09T10:00:00.000Z',
+    eventEndAt: '2027-06-01T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster3/800/1200',
+    metadata: { tags: ['뮤지컬', 'NEW'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 4,
+    title: '시카고',
+    venueLocation: 'D-CUBE 링크아트센터',
+    eventStartAt: '2026-12-05T10:00:00.000Z',
+    eventEndAt: '2027-03-02T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster4/800/1200',
+    metadata: { tags: ['뮤지컬'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 5,
+    title: '알라딘',
+    venueLocation: '예술의전당 오페라극장',
+    eventStartAt: '2027-02-01T10:00:00.000Z',
+    eventEndAt: '2027-06-30T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster5/800/1200',
+    metadata: { tags: ['뮤지컬', 'BEST'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 6,
+    title: 'SSAFY 18기 밴드 공연',
+    venueLocation: '서울캠퍼스 대강당',
+    eventStartAt: '2026-09-01T10:00:00.000Z',
+    eventEndAt: '2026-09-02T12:00:00.000Z',
+    categoryName: '콘서트',
+    categoryId: 2,
+    thumbnailUrl: 'https://picsum.photos/seed/poster6/800/1200',
+    metadata: { tags: ['밴드', 'SSAFY', '공연'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 7,
+    title: '서울시향 신년음악회',
+    venueLocation: '예술의전당 콘서트홀',
+    eventStartAt: '2027-01-03T10:00:00.000Z',
+    eventEndAt: '2027-01-05T12:00:00.000Z',
+    categoryName: '클래식',
+    categoryId: 4,
+    thumbnailUrl: 'https://picsum.photos/seed/poster7/800/1200',
+    metadata: { tags: ['클래식', '오케스트라'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 8,
+    title: '연극 라이어',
+    venueLocation: '대학로 예술극장',
+    eventStartAt: '2026-08-10T10:00:00.000Z',
+    eventEndAt: '2026-12-20T12:00:00.000Z',
+    categoryName: '연극',
+    categoryId: 3,
+    thumbnailUrl: 'https://picsum.photos/seed/poster8/800/1200',
+    metadata: { tags: ['연극', '코미디'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 9,
+    title: '프로야구 올스타전',
+    venueLocation: '잠실야구장',
+    eventStartAt: '2026-07-18T10:00:00.000Z',
+    eventEndAt: '2026-07-18T12:00:00.000Z',
+    categoryName: '스포츠',
+    categoryId: 5,
+    thumbnailUrl: 'https://picsum.photos/seed/poster9/800/1200',
+    metadata: { tags: ['스포츠', '야구'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 10,
+    title: '캣츠',
+    venueLocation: '세종문화회관 대극장',
+    eventStartAt: '2026-08-01T10:00:00.000Z',
+    eventEndAt: '2026-10-31T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster10/800/1200',
+    metadata: { tags: ['뮤지컬'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 11,
+    title: '맘마미아',
+    venueLocation: 'LG아트센터 서울',
+    eventStartAt: '2026-09-15T10:00:00.000Z',
+    eventEndAt: '2026-12-28T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster11/800/1200',
+    metadata: { tags: ['뮤지컬', 'NEW'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 12,
+    title: '지킬 앤 하이드',
+    venueLocation: '충무아트센터 대극장',
+    eventStartAt: '2026-07-20T10:00:00.000Z',
+    eventEndAt: '2026-10-19T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster12/800/1200',
+    metadata: { tags: ['뮤지컬', 'HOT'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 13,
+    title: '킹키부츠',
+    venueLocation: 'D-CUBE 링크아트센터',
+    eventStartAt: '2026-10-01T10:00:00.000Z',
+    eventEndAt: '2026-12-31T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster13/800/1200',
+    metadata: { tags: ['뮤지컬'] },
+    isFavorite: false,
+  },
+  {
+    eventId: 14,
+    title: '헤드윅',
+    venueLocation: '대학로 유니플렉스',
+    eventStartAt: '2026-11-15T10:00:00.000Z',
+    eventEndAt: '2027-02-28T12:00:00.000Z',
+    categoryName: '뮤지컬',
+    categoryId: 1,
+    thumbnailUrl: 'https://picsum.photos/seed/poster14/800/1200',
+    metadata: { tags: ['뮤지컬', 'NEW'] },
+    isFavorite: false,
+  },
+];
+
 export const eventHandlers = [
   // 공연장 목록 조회
   http.get('*/api/v1/venues', async () => {
@@ -73,38 +250,51 @@ export const eventHandlers = [
     });
   }),
   // 공연 목록 조회 / 검색 API
+  // 공연 목록·검색
+  //
+  // 검색 화면은 이 API에 keyword나 categoryId를 붙여 호출한다(useSearchData).
+  // 예전에는 어떤 조건이 와도 고정된 한 건만 돌려주고 제목에 검색어만 끼워
+  // 넣어서, 검색어를 바꿔도 결과가 그대로인 것처럼 보였다.
   http.get('*/api/v1/events', async ({ request }) => {
     await delay(500);
     const url = new URL(request.url);
-    const keyword = url.searchParams.get('keyword');
-    const page = url.searchParams.get('page') || '0';
+    const keyword = url.searchParams.get('keyword')?.trim().toLowerCase() ?? '';
+    const categoryId = url.searchParams.get('categoryId');
+    const page = Number(url.searchParams.get('page') ?? '0');
+    const size = Number(url.searchParams.get('size') ?? '20');
+
+    const matched = SEARCHABLE_EVENTS.filter((event) => {
+      if (categoryId && String(event.categoryId) !== categoryId) {
+        return false;
+      }
+
+      if (!keyword) {
+        return true;
+      }
+
+      return (
+        event.title.toLowerCase().includes(keyword) ||
+        event.venueLocation.toLowerCase().includes(keyword) ||
+        event.categoryName.toLowerCase().includes(keyword) ||
+        event.metadata.tags.some((tag) => tag.toLowerCase().includes(keyword))
+      );
+    });
+
+    const start = page * size;
+    const items = matched.slice(start, start + size);
 
     return HttpResponse.json({
-      status: 200, // or 0 based on backend success code, Swagger said 0
+      status: 200,
       code: 'OK',
       message: 'success',
       data: {
-        items: [
-          {
-            eventId: 1,
-            title: keyword ? `[검색됨] ${keyword}` : "SSAFY 18기 밴드 공연",
-            venueLocation: "서울캠퍼스 대강당",
-            eventStartAt: "2026-04-27T10:49:28.431Z",
-            eventEndAt: "2026-04-27T12:49:28.431Z",
-            categoryName: "콘서트",
-            thumbnailUrl: "https://picsum.photos/seed/poster0/800/1200",
-            metadata: {
-              tags: ["밴드", "SSAFY", "공연"]
-            },
-            isFavorite: true
-          }
-        ],
-        page: Number(page),
-        size: 20,
-        totalElements: 1,
-        totalPages: 1,
-        hasNext: false
-      }
+        items,
+        page,
+        size,
+        totalElements: matched.length,
+        totalPages: Math.max(1, Math.ceil(matched.length / size)),
+        hasNext: start + size < matched.length,
+      },
     });
   }),
 
