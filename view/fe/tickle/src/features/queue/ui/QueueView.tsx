@@ -241,7 +241,11 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     isExitModalOpenRef.current = false;
     isLeavingRef.current = true;
     if (queueTokenRef.current) {
-      leaveQueue(eventId, queueTokenRef.current, scope).catch(() => { });
+      // 실패해도 서버가 대기열 만료로 정리한다. 다만 조용히 넘기면 이탈 API가
+      // 계속 깨져도 알 수 없어 로그는 남긴다.
+      leaveQueue(eventId, queueTokenRef.current, scope).catch((err) =>
+        console.warn('[Queue] 대기열 이탈 요청 실패', err),
+      );
     }
     onClose();
   };

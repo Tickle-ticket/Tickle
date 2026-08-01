@@ -12,6 +12,7 @@ import { createBookFlowPolicy } from '../api/bookFlowPolicy';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
 import { useSeatStep } from '../api/useSeatStep';
+import { releaseSeatHold, cancelPreorder } from '../api/releaseHold';
 import { isBlockedNavigation } from '@/src/shared/utils/blockedNavigation';
 import { CaptchaStep } from './components/CaptchaStep';
 import { TicketTypeStep } from './components/TicketTypeStep';
@@ -176,7 +177,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     } else if ((prevStep === 'PAYMENT' || prevStep === 'PAY_METHOD') && (bookingStep === 'TICKET_TYPE' || bookingStep === 'SEAT')) {
       // 결제 단계에서 돌아올 때: 예약 초안 취소
       if (preorderBookingIdRef.current) {
-        reservationApi.cancelReservation(preorderBookingIdRef.current).catch(console.error);
+        cancelPreorder(preorderBookingIdRef.current);
         setPreorderBookingId(null);
         preorderBookingIdRef.current = null;
       }
@@ -184,7 +185,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     } else if (prevStep === 'TICKET_TYPE' && bookingStep === 'SEAT') {
       // 가격 선택에서 좌석 선택으로 돌아올 때: 좌석 선점 해제
       if (eventDetail?.eventId && scheduleId) {
-        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
+        releaseSeatHold(eventDetail.eventId, scheduleId);
         isHoldingSeatRef.current = false;
       }
       onStepBack?.('book');
@@ -193,20 +194,43 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   // 이탈 시 선점 좌석 자동 해제 로직
   useEffect(() => {
-    const releaseHeldSeat = () => {
+    /**
+     * 선점을 되돌린다.
+     *
+     * 이 요청이 서버에 닿지 못하면 좌석이 선점 만료 시각까지 잠긴 채로 남아
+     * 아무도 살 수 없다. 그래서 실패를 조용히 넘기지 않고, 앱 안에 남아 있는
+     * 경우(언마운트)에는 한 번 더 시도한다.
+     *
+     * @param isPageClosing 탭 닫기·주소 이동처럼 문서가 사라지는 중인지.
+     *                      이 경우 일반 fetch는 취소되므로 keepalive 요청을 쓰고,
+     *                      재시도할 시간도 없다.
+     */
+    const releaseHeldSeat = (isPageClosing = false) => {
       // 결제 성공/카카오페이 리다이렉트 등으로 인한 정상적인 이탈인 경우 방지
       const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
+      if (isNormalNavigation) return;
 
-      if (!isNormalNavigation) {
-        if (preorderBookingIdRef.current) {
-          reservationApi.cancelReservation(preorderBookingIdRef.current).catch(err => {
-            console.error('Failed to cancel draft reservation on unmount:', err);
-          });
-        } else if (isHoldingSeatRef.current && eventDetail?.eventId && scheduleId) {
-          seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch((err) => {
-            console.error('Failed to release seat on exit:', err);
-          });
+      const bookingId = preorderBookingIdRef.current;
+      const canReleaseSeat =
+        isHoldingSeatRef.current && !!eventDetail?.eventId && !!scheduleId;
+
+      if (bookingId) {
+        if (isPageClosing) {
+          // 문서가 사라지는 중이라 재시도할 시간도, 로그를 남길 곳도 없다.
+          // keepalive 요청은 브라우저가 이어서 보낸다.
+          void reservationApi.cancelReservationOnExit(bookingId).catch(() => {});
+        } else {
+          cancelPreorder(bookingId);
         }
+        return;
+      }
+
+      if (!canReleaseSeat) return;
+
+      if (isPageClosing) {
+        void seatApi.releaseSeatOnExit(eventDetail!.eventId, scheduleId!).catch(() => {});
+      } else {
+        releaseSeatHold(eventDetail!.eventId, scheduleId!);
       }
     };
 
@@ -214,17 +238,29 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
       const isForceBlockedNavigation = isBlockedNavigation();
       if (isHoldingSeatRef.current && !isNormalNavigation) {
-        releaseHeldSeat();
+        releaseHeldSeat(true);
         if (isForceBlockedNavigation) return;
         e.preventDefault();
         e.returnValue = ''; // 표준 브라우저 경고창 표시
       }
     };
 
+    // 모바일 브라우저(특히 iOS Safari)는 탭 전환·앱 종료 때 beforeunload를 쏘지
+    // 않는다. pagehide는 그 경우에도 발생하므로 좌석이 잠긴 채 방치되지 않도록
+    // 함께 듣는다. 두 이벤트가 모두 발생해도 서버는 이미 해제된 좌석을 다시
+    // 해제하는 요청을 멱등하게 처리한다.
+    const handlePageHide = () => {
+      if (isHoldingSeatRef.current || preorderBookingIdRef.current) {
+        releaseHeldSeat(true);
+      }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
       // 컴포넌트가 언마운트될 때 (사용자가 브라우저 뒤로가기나 모달 닫기를 눌렀을 때)
       releaseHeldSeat();
     };
@@ -351,9 +387,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   useEffect(() => {
     if (timeLeft === 0 && bookingStep !== 'SEAT' && !isModifyModeActive) {
       if (preorderBookingId) {
-        reservationApi.cancelReservation(preorderBookingId).catch(console.error);
+        cancelPreorder(preorderBookingId);
       } else if (scheduleId && eventDetail && userProfile?.userId) {
-        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
+        releaseSeatHold(eventDetail.eventId, scheduleId);
       }
       setErrorModalConfig({
         isOpen: true,
