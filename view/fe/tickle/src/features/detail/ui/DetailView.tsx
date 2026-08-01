@@ -439,9 +439,9 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   };
 
   const scheduleData = data?.schedules || [];
-  const enabledDates = scheduleData.map((item: any) => item.date.split(' ')[0].replace(/\./g, '-'));
+  const enabledDates = scheduleData.map((item) => item.date.split(' ')[0].replace(/\./g, '-'));
   const selectedDateStr = selectedDate ? formatDateToDot(selectedDate) : '';
-  const selectedSchedule = scheduleData.find((item: any) => item.date.startsWith(selectedDateStr));
+  const selectedSchedule = scheduleData.find((item) => item.date.startsWith(selectedDateStr));
   const detailImageSrc = resolveImageSrc(data?.detailImageUrl);
 
   useEffect(() => {
@@ -774,7 +774,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                         key: 'seat',
                         header: '좌석 등급',
                         align: 'left',
-                        render: (row: any) => {
+                        render: (row) => {
                           const gradeColors: Record<string, string> = {
                             'VIP': 'var(--seat-vip-top)',
                             'R': 'var(--seat-r-top)',
@@ -793,7 +793,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                         key: 'price',
                         header: '가격',
                         align: 'right',
-                        render: (row: any) => (
+                        render: (row) => (
                           <Text typography="t5" fontWeight="medium" color="primary">{row.price.toLocaleString()}원</Text>
                         )
                       },
@@ -825,7 +825,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
                         <div className="flex flex-col gap-4">
                           <Text typography="t5" fontWeight="bold" color="primary">선택하신 날짜의 회차</Text>
                           <div className="flex flex-wrap gap-3">
-                            {selectedSchedule.times.map((timeObj: any, idx: number) => (
+                            {selectedSchedule.times.map((timeObj, idx) => (
                               <div
                                 key={idx}
                                 className="inline-flex flex-col items-center justify-center px-6 py-3 border border-line rounded-xl bg-surface"

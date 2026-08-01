@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchEventList, fetchCategories } from '@/src/shared/api/eventApi';
+import type { EventListRequestParams } from '@/src/shared/api/types/event.types';
 
 export interface SearchPerformance {
   id: string;
@@ -17,7 +18,7 @@ export const useSearchData = (query: string) => {
     queryFn: async () => {
       if (!query.trim()) return [];
       
-      const params: any = { size: 20, page: 0 };
+      const params: EventListRequestParams = { size: 20, page: 0 };
       if (query !== '전체') {
         try {
           const categoryRes = await fetchCategories();

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ApiError } from '@/src/shared/api/types';
 import { useMyBookings, useCancelBooking, useBookingDetail, usePaymentStatus } from '@/src/features/mypage/api/useMyPageData';
 import { Text } from '@/src/shared/components/Text';
 import { Table } from '@/src/shared/components/Table';
@@ -129,15 +130,19 @@ export const MyBookingsView = () => {
         onSuccess: () => {
           handleCloseCancelModal();
         },
-        onError: (err: any) => {
+        onError: (err) => {
           handleCloseCancelModal();
-          if (err.status === 400) {
+          // react-query는 Error로 넘겨주므로 status를 보려면 좁혀야 한다.
+          // apiClient가 던지는 것은 항상 ApiError지만 타입이 그것을 모른다.
+          const status = err instanceof ApiError ? err.status : undefined;
+
+          if (status === 400) {
             setErrorModalConfig({ isOpen: true, title: '취소 불가', message: '현재 취소할 수 없는 예매 상태입니다.' });
-          } else if (err.status === 403) {
+          } else if (status === 403) {
             setErrorModalConfig({ isOpen: true, title: '권한 없음', message: '해당 예매 내역을 취소할 권한이 없습니다.' });
-          } else if (err.status === 404) {
+          } else if (status === 404) {
             setErrorModalConfig({ isOpen: true, title: '예매 없음', message: '취소하려는 예매 내역을 찾을 수 없습니다.' });
-          } else if (err.status === 409) {
+          } else if (status === 409) {
             setErrorModalConfig({ isOpen: true, title: '이미 취소됨', message: '이미 취소 처리된 예매 내역입니다.' });
           } else {
             setErrorModalConfig({ isOpen: true, title: '취소 오류', message: err.message || '예매 취소 중 알 수 없는 오류가 발생했습니다.' });
