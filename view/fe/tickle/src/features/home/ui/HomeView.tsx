@@ -20,6 +20,7 @@ import { getFavoriteEvents } from "@/src/shared/api/favoriteApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/src/shared/api/tokenManager";
 import { getAccessTokenRoles } from "@/src/shared/api/tokenClaims";
+import { useAuth } from "@/src/shared/providers/AuthProvider";
 import { BannerPoster } from "@/src/shared/components/BannerPoster";
 import { BannerTitle } from "@/src/shared/components/BannerTitle";
 import { BannerPlace } from "@/src/shared/components/BannerPlace";
@@ -286,9 +287,12 @@ export const HomeView = () => {
   const { data: detailData, isLoading: detailLoading } = useDetailDataWithFixtures(
     activeDetailId || undefined,
   );
+  // 부팅 복구가 끝나기 전에는 토큰이 아직 없어 역할도 비어 있다. isResolved를 같이
+  // 봐야 로그인한 기획사·관리자에게 버튼이 잠깐 사라졌다 나타나는 일이 없다.
+  const { isResolved: isAuthResolved } = useAuth();
   const accessRoles = getAccessTokenRoles();
-  const canEnterAgency = accessRoles.includes("ORGANIZER");
-  const canEnterAdmin = accessRoles.includes("ADMIN");
+  const canEnterAgency = isAuthResolved && accessRoles.includes("ORGANIZER");
+  const canEnterAdmin = isAuthResolved && accessRoles.includes("ADMIN");
 
   useEffect(() => {
     const handleLoveAnimation = (e: Event) => {
@@ -338,7 +342,11 @@ export const HomeView = () => {
   }, [isSearchMode, isMypageOpen, activeDetailId]);
 
   // 로그인된 사용자만 찜 목록을 조회 (비로그인 시 불필요한 401 에러 및 강제 리디렉트 방지)
+  //
+  // 부팅 복구가 끝난 뒤에 판단해야 한다. 마운트 시점에는 로그인한 사용자도 아직
+  // 토큰이 없어, 그대로 두면 찜 목록을 건너뛴 채 화면이 굳는다.
   useEffect(() => {
+    if (!isAuthResolved) return;
     if (!getAccessToken()) return;
     getFavoriteEvents()
       .then((res) => {
@@ -351,7 +359,7 @@ export const HomeView = () => {
       .catch((err) => {
         // API 실패 시 무시 (토큰 만료 등)
       });
-  }, []);
+  }, [isAuthResolved]);
 
   const totalBanners = banners?.length || 0;
   const activeBanner = activeDetailId
