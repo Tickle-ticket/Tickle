@@ -48,7 +48,7 @@ export const useEventDetail = (eventId?: string) => {
       const response = await fetchEventDetail(eventId);
       const data = response.data;
 
-      const scheduleMap = new Map<string, { scheduleId: string, sessionNo: number, time: string, startAt: string, status: string, salesOpenAt: string, salesCloseAt: string, cancellationWaitOpenAt: string, remainingSeats: any[] }[]>();
+      const scheduleMap = new Map<string, { scheduleId: string, sessionNo: number, time: string, startAt: string, status: string, salesOpenAt: string, salesCloseAt: string, cancellationWaitOpenAt: string, remainingSeats: RemainingSeat[] }[]>();
       data.sessions.forEach(session => {
         const dateObj = new Date(session.startAt);
         const date = `${dateObj.getFullYear()}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${String(dateObj.getDate()).padStart(2, '0')}`;

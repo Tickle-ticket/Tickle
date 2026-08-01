@@ -20,7 +20,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // 인터랙티브 클릭용 템플릿
-const Template = (args: any) => {
+const Template = (args: ComponentProps<typeof Toggle>) => {
   const [checked, setChecked] = useState(args.checked || false);
   return <Toggle {...args} checked={checked} onChange={setChecked} />;
 };

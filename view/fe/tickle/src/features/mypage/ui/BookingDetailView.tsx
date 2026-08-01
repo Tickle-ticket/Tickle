@@ -46,7 +46,7 @@ export const BookingDetailView = ({ bookingId, onBack, bookingData }: BookingDet
         handleCloseCancelModal();
         handleBack();
       },
-      onError: (err: any) => {
+      onError: (err) => {
         handleCloseCancelModal();
         setErrorModalConfig({ isOpen: true, title: '취소 오류', message: err.message || '오류가 발생했습니다.' });
       }

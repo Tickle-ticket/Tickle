@@ -17,7 +17,7 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
   const { data, isLoading, error } = useCancellationDetail(cancellationId);
   const { data: userProfile } = useUserProfile();
   const { showToast } = useToast();
-  const setBookingStep = useBookStore((s: any) => s.setBookingStep);
+  const setBookingStep = useBookStore((s) => s.setBookingStep);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string}>({

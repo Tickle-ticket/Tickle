@@ -144,7 +144,7 @@ export const BookingCard = ({
               <span className="text-[7px] sm:text-[10px] font-bold text-content-muted tracking-wider">SEAT ({item.ticketCount}매)</span>
               {detail?.tickets && detail.tickets.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
-                  {detail.tickets.slice(0, 3).map((t: any, i: number) => (
+                  {detail.tickets.slice(0, 3).map((t, i) => (
                     <span key={i} className="text-[8px] sm:text-[11px] font-semibold text-content-secondary bg-surface px-1 py-0.5 sm:px-1.5 sm:py-0.5 rounded border border-line whitespace-nowrap shadow-sm">
                       {t.sectionName} {t.rowLabel}열 {t.seatNumber}번
                     </span>

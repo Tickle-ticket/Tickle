@@ -41,22 +41,40 @@ const PersonIcon = ({ highlighted, color }: { highlighted?: boolean; color?: str
   </svg>
 );
 
-export interface WaitlistSeatCardProps {
-  seat: {
-    id: string; // cancellationCandidateId
-    waitlistNumber: number; // currentRank
-    info: string;
-    eventTitle: string;
-    eventDate: string;
-    status?: 'WAITING' | 'OFFERED' | string;
-    cancellationOfferId?: number | null;
-  };
+/**
+ * 카드가 그리는 데 필요한 좌석 정보.
+ *
+ * 호출부는 이보다 많은 필드를 가진 객체를 넘기지만(공연 그룹 참조 등), 카드는
+ * 여기 적힌 것만 쓴다. 구조적 타이핑이라 초과 필드는 그대로 통과한다.
+ */
+export interface WaitlistSeatCardSeat {
+  id: string; // cancellationCandidateId
+  waitlistNumber: number; // currentRank
+  info: string;
+  eventTitle: string;
+  eventDate: string;
+  status?: 'WAITING' | 'OFFERED' | string;
+  cancellationOfferId?: number | null;
+}
+
+/**
+ * @typeParam TSeat 호출부가 넘기는 좌석 타입. 카드가 쓰는 필드만 만족하면
+ *                  무엇이든 되고, onCancel으로 같은 타입이 그대로 되돌아온다.
+ */
+export interface WaitlistSeatCardProps<TSeat extends WaitlistSeatCardSeat = WaitlistSeatCardSeat> {
+  seat: TSeat;
   onSelectOffer: (id: string) => void;
-  onCancel: (seat: any) => void;
+  /** 취소 버튼을 눌렀을 때, 받았던 좌석 객체를 그대로 되돌려준다. */
+  onCancel: (seat: TSeat) => void;
   onPassOffer?: (cancellationId: string) => void;
 }
 
-export const WaitlistSeatCard = ({ seat, onSelectOffer, onCancel, onPassOffer }: WaitlistSeatCardProps) => {
+export const WaitlistSeatCard = <TSeat extends WaitlistSeatCardSeat>({
+  seat,
+  onSelectOffer,
+  onCancel,
+  onPassOffer,
+}: WaitlistSeatCardProps<TSeat>) => {
   // 백워드 호환을 위해 status가 없으면 waitlistNumber로 판단
   const isOffered = seat.status === 'OFFERED' || (!seat.status && seat.waitlistNumber <= 0);
   const rank = seat.waitlistNumber;

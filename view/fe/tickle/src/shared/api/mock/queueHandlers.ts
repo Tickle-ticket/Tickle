@@ -48,7 +48,7 @@ export const queueHandlers = [
         let isClosed = false;
         
         // Helper to send SSE event
-        const sendEvent = (event: string, data: any) => {
+        const sendEvent = (event: string, data: unknown) => {
           if (isClosed) return;
           try {
             controller.enqueue(encoder.encode(`event: ${event}\n`));

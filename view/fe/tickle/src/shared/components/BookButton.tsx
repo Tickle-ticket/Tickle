@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { TargetTrackerProps } from '@/src/shared/tracking/useTargetTracker';
 import Button from './Button';
 import { Box } from './Box';
 import type { ButtonProps } from './types';
@@ -9,7 +10,8 @@ interface BookButtonProps extends Omit<ButtonProps, 'onClick'> {
   targetDate?: string;
   onTimerExpire?: () => void;
   onClick?: (e?: React.MouseEvent<HTMLElement>) => void;
-  trackerProps?: any;
+  /** useTargetTracker가 돌려주는 ref·핸들러 묶음. 버튼 요소에 그대로 펼친다. */
+  trackerProps?: TargetTrackerProps;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');

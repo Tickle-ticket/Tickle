@@ -40,7 +40,7 @@ export const MobileWaitlistCard = ({ item, onOpenDetail, setSelectedOfferId }: M
 
       {/* 하단: 내 좌석 대기열 그리드 (Queue Number Cards) */}
       <div className="grid grid-cols-2 gap-2.5">
-        {item.seats && item.seats.map((seat: any) => {
+        {item.seats && item.seats.map((seat) => {
           const isOffered = seat.waitlistNumber <= 0;
           
           let numColor = '';
