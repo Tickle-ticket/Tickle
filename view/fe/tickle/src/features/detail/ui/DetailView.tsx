@@ -15,7 +15,6 @@ import { Box } from '@/src/shared/components/Box';
 import { Badge } from '@/src/shared/components/Badge';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { SectionNav } from '@/src/shared/components/SectionNav';
-import { CountdownTimer } from '@/src/shared/components/CountdownTimer';
 import { BookButton } from '@/src/shared/components/BookButton';
 import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
 import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
