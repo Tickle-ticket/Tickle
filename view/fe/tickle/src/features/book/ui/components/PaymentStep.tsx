@@ -9,6 +9,7 @@ import { PayMethodStep } from './PayMethodStep';
 import { useBookStore } from '../../store/useBookStore';
 import {
   BookingOptionsResponse,
+  type BookingSeatOptionResponse,
   type BookingPreorderResponse,
   type PreorderOptionSelection,
 } from '@/src/shared/api/types/booking.types';
@@ -163,7 +164,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     })
   };
 
-  const priceGradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, BookingSeatOptionResponse[]> = {};
   if (optionsData?.seats) {
     optionsData.seats.forEach(seat => {
       if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
@@ -607,7 +608,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   <div className="flex flex-wrap items-center gap-2.5 ml-5 mt-0.5">
                     <span className="text-[13px] text-content-tertiary leading-none">{seats.map(s => s.seatLabel).join(', ')}</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(counts).filter(([, c]: [string, any]) => (c as number) > 0).map(([typeId, count]: [string, any]) => {
+                      {Object.entries(counts).filter(([, c]) => c > 0).map(([typeId, count]) => {
                         return (
                           <span key={typeId} className="text-[11px] bg-primary-subtle text-primary font-medium px-2 py-0.5 rounded-md">
                             {typeId} {count as number}매

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useBookStore } from '../../store/useBookStore';
 import { Accordion } from '@/src/shared/components/Accordion';
-import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
+import {
+  BookingOptionsResponse,
+  type BookingSeatOptionResponse,
+} from '@/src/shared/api/types/booking.types';
 import { resolvePriceInfos, findBasePrice, calculateGradeTotal } from '../../api/priceInfo';
 
 interface TicketTypeStepProps {
@@ -33,7 +36,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   const setPriceGradeTicketCounts = useBookStore((s) => s.setPriceGradeTicketCounts);
 
   // Group seats by grade from the backend optionsData
-  const priceGradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, BookingSeatOptionResponse[]> = {};
   optionsData.seats.forEach(seat => {
     if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
     priceGradeSeats[seat.priceGrade].push(seat);
@@ -113,7 +116,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       const counts = priceGradeTicketCounts[priceGrade] || {};
       let seatIndex = 0;
 
-      Object.entries(counts).forEach(([discountName, count]: [string, any]) => {
+      Object.entries(counts).forEach(([discountName, count]) => {
         for (let i = 0; i < (count as number); i++) {
           if (seatIndex < seats.length) {
             optionSelections.push({

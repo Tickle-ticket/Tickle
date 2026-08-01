@@ -459,10 +459,9 @@ export const HomeView = () => {
                     {/* 하단: 타이틀 등 정보 표시 */}
                     {!activeDetailId && (
                       <div className="mt-auto w-full max-w-4xl flex flex-col items-start gap-1 pb-2">
-                        {"subtitle" in (activeBanner || {}) &&
-                          (activeBanner as any).subtitle && (
+                        {activeBanner?.subtitle && (
                             <span className="inline-flex items-center rounded bg-primary/90 px-2 py-0.5 text-[11px] md:text-xs font-bold tracking-wider text-white mb-1 shadow-sm">
-                              {(activeBanner as any).subtitle}
+                              {activeBanner.subtitle}
                             </span>
                           )}
                         <BannerTitle

@@ -60,7 +60,7 @@ const PRICE_BY_GRADE: Record<string, number> = { VIP: 170000, R: 140000, S: 1100
  */
 const buildSeatMap = (scheduleId: string, mode: 'BOOKING' | 'WAITLIST') => {
   const currentMockSeats = getMockSeatsForSchedule(scheduleId);
-  const sectionsRecord: Record<string, any[]> = {};
+  const sectionsRecord: Record<string, unknown[]> = {};
 
   Object.entries(currentMockSeats).forEach(([seatLabel, info], index) => {
     const rowLabel = seatLabel.match(/^[a-zA-Z]+/)?.[0] || 'A';

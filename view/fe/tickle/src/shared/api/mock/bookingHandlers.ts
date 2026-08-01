@@ -6,7 +6,7 @@ const API_BASE_URL = '*/api/v1';
 export const bookingHandlers = [
   // 1. 예약 옵션 조회
   http.post(`${API_BASE_URL}/bookings/options`, async ({ request }) => {
-    const requestBody = (await request.json()) as any;
+    const requestBody = (await request.json()) as Record<string, unknown>;
     
     // 명세서 예제 응답 반환
     return HttpResponse.json({

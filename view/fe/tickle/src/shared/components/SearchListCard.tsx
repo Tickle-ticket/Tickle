@@ -57,7 +57,7 @@ export const SearchListCard = ({
             {displayBadges.map((badge, idx) => {
               if (typeof badge === 'string') {
                 return (
-                  <Badge key={idx} color={getBadgeColor(idx) as any} variant="fill" className="text-[10px] px-1.5 py-0.5">
+                  <Badge key={idx} color={getBadgeColor(idx)} variant="fill" className="text-[10px] px-1.5 py-0.5">
                     {badge}
                   </Badge>
                 );
