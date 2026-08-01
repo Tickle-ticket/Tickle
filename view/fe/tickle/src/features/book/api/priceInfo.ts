@@ -73,11 +73,29 @@ export const findBasePrice = (priceInfos: readonly PriceInfoResponse[]): number 
 export const calculateGradeTotal = (
   priceInfos: readonly PriceInfoResponse[],
   counts: Record<string, number>,
-): number => {
+): number =>
+  listGradeTicketPrices(priceInfos, counts).reduce((sum, price) => sum + price, 0);
+
+/**
+ * 한 등급에서 선택된 티켓들의 가격을 장당 하나씩 나열합니다.
+ *
+ * <p>수수료는 서버가 좌석마다 따로 계산해 버림하므로, 합계만으로는 같은 값을 낼 수
+ * 없습니다. 장당 가격이 필요해서 {@link calculateGradeTotal}에서 이 부분을
+ * 떼어냈습니다.</p>
+ *
+ * @param priceInfos 권종 목록
+ * @param counts     권종 이름별 선택 매수
+ * @return 티켓 한 장당 가격 목록
+ */
+export const listGradeTicketPrices = (
+  priceInfos: readonly PriceInfoResponse[],
+  counts: Record<string, number>,
+): number[] => {
   const basePrice = findBasePrice(priceInfos);
 
-  return Object.entries(counts).reduce((sum, [discountName, count]) => {
+  return Object.entries(counts).flatMap(([discountName, count]) => {
     const matched = priceInfos.find((info) => info.discountName === discountName);
-    return sum + (matched?.ticketPriceAmount ?? basePrice) * count;
-  }, 0);
+    const price = matched?.ticketPriceAmount ?? basePrice;
+    return Array.from({ length: Math.max(0, count) }, () => price);
+  });
 };

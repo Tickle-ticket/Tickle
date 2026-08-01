@@ -19,7 +19,12 @@ import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
-import { resolvePriceInfos, calculateGradeTotal } from '@/src/features/book/api/priceInfo';
+import {
+  resolvePriceInfos,
+  calculateGradeTotal,
+  listGradeTicketPrices,
+} from '@/src/features/book/api/priceInfo';
+import { sumServiceFees, inferTicketPrice } from '@/src/features/book/api/serviceFee';
 import { pollPaymentResult, type PaymentPollVerdict } from '@/src/features/book/lib/paymentPolling';
 import type { UserProfileData } from '@/src/shared/api/useUserProfile';
 
@@ -196,16 +201,26 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     });
   }
 
-  const ticketPrice = cancellationTotalAmount 
-    ? Math.round(cancellationTotalAmount / 1.05) // 역산하여 티켓 가격 산출
-    : Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
-    const types = resolvePriceInfos(seats[0], optionsData);
-    const counts = priceGradeTicketCounts[priceGrade] || {};
-    return sum + calculateGradeTotal(types, counts);
-  }, 0);
+  // 선택된 티켓을 장당 가격으로 펼친다. 수수료를 좌석마다 계산해야 서버와 맞는다.
+  const selectedTicketPrices = Object.entries(priceGradeSeats).flatMap(([priceGrade, seats]) =>
+    listGradeTicketPrices(
+      resolvePriceInfos(seats[0], optionsData),
+      priceGradeTicketCounts[priceGrade] || {},
+    ),
+  );
 
-  const finalPrice = cancellationTotalAmount || Math.round(ticketPrice * 1.05); // 5% 예매 수수료 포함
-  const bookingFee = finalPrice - ticketPrice;
+  // 취소표는 서버가 총액만 내려준다. 총액을 나눠 티켓가를 되짚으면 서버가 버린
+  // 1원 단위를 되살릴 수 없어 어긋나므로, 총액은 서버 값을 그대로 쓰고 수수료만
+  // 같은 규칙으로 다시 구한다.
+  const isCancellationPurchase = cancellationTotalAmount != null;
+  const finalPrice = isCancellationPurchase
+    ? cancellationTotalAmount
+    : selectedTicketPrices.reduce((sum, price) => sum + price, 0) +
+      sumServiceFees(selectedTicketPrices);
+  const bookingFee = isCancellationPurchase
+    ? finalPrice - inferTicketPrice(finalPrice)
+    : sumServiceFees(selectedTicketPrices);
+  const ticketPrice = finalPrice - bookingFee;
 
 
 
