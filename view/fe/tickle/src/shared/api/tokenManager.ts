@@ -84,15 +84,21 @@ export const clearWaitQueue = (reason?: unknown) => {
 };
 
 // Token Storage Management
-export const getAccessToken = () => {
-  if (typeof window !== "undefined") return localStorage.getItem("accessToken");
-  return null;
-};
+//
+// 액세스 토큰은 메모리에만 둔다.
+//
+// localStorage에 두면 XSS 스크립트가 localStorage.getItem("accessToken") 한 줄로
+// 토큰을 꺼내 외부로 보낼 수 있다. 모듈 변수는 같은 XSS로도 값을 꺼내갈 수 없어,
+// 토큰을 유출해 두고두고 재사용하는 것을 막는다.
+//
+// 대신 새로고침하면 사라진다. 리프레시 토큰이 HttpOnly 쿠키로 남아 있으므로
+// 부팅 시 restoreSession()으로 되살린다(로그인은 풀리지 않는다).
+let accessTokenInMemory: string | null = null;
+
+export const getAccessToken = () => accessTokenInMemory;
 
 export const setAccessToken = (accessToken: string) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("accessToken", normalizeToken(accessToken));
-  }
+  accessTokenInMemory = normalizeToken(accessToken);
 };
 
 export const setTokens = (accessToken: string) => {
@@ -100,9 +106,32 @@ export const setTokens = (accessToken: string) => {
 };
 
 export const clearTokens = () => {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("accessToken");
-  }
+  accessTokenInMemory = null;
+};
+
+/**
+ * 새로고침으로 날아간 액세스 토큰을 리프레시 쿠키로 되살립니다.
+ *
+ * <p>토큰이 메모리에만 있어 새로고침하면 사라집니다. 리프레시 토큰은 HttpOnly
+ * 쿠키라 그대로 남아 있으므로, 부팅할 때 한 번 재발급을 시도해 로그인 상태를
+ * 이어 갑니다. 비로그인 사용자는 쿠키가 없어 실패하는데 이는 정상입니다.</p>
+ *
+ * <p>여러 번 불려도 실제 요청은 한 번만 나갑니다. StrictMode의 이중 마운트나
+ * 컴포넌트 여럿이 동시에 부르는 경우를 위해 진행 중인 프로미스를 재사용합니다.</p>
+ *
+ * @return 로그인 상태를 되살렸으면 true
+ */
+let restorePromise: Promise<boolean> | null = null;
+
+export const restoreSession = (): Promise<boolean> => {
+  if (restorePromise) return restorePromise;
+
+  restorePromise = refreshAccessToken().finally(() => {
+    // 다음 부팅(로그아웃 후 재로그인 등)에서 다시 시도할 수 있게 풀어 준다.
+    restorePromise = null;
+  });
+
+  return restorePromise;
 };
 
 // Refresh API Call
