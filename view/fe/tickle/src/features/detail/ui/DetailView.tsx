@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { isNavigatingToPaymentFlow } from '@/src/features/book/lib/paymentNavigation';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Title } from '@/src/shared/components/Title';
 import { BannerSubtitle } from '@/src/shared/components/BannerSubtitle';
@@ -14,7 +13,7 @@ import { BookButton } from '@/src/shared/components/BookButton';
 import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
 import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
-import { useBookStore, type BookingStep } from '@/src/features/book/store/useBookStore';
+import { useBookStore } from '@/src/features/book/store/useBookStore';
 import { BookView } from '@/src/features/book/ui/BookView';
 import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
@@ -29,13 +28,13 @@ import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 import { createDetailFlowPolicy } from '../api/detailFlowPolicy';
-import { isBlockedNavigation, navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
-import { leaveQueue } from '@/src/shared/api/queueApi';
+import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 import dynamic from 'next/dynamic';
 import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
 import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
 import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
 import { useEventFlowStart } from '@/src/features/detail/hooks/useEventFlowStart';
+import { useBookingFlow } from '@/src/features/detail/hooks/useBookingFlow';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
 const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
@@ -82,11 +81,21 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [isWaitlistUpcoming, setIsWaitlistUpcoming] = useState(false);
   const [isMoreThanOneDayLeft, setIsMoreThanOneDayLeft] = useState(false);
   const [isWaitlistMoreThanOneDayLeft, setIsWaitlistMoreThanOneDayLeft] = useState(false);
-  const [flowState, setFlowState] = useState<'NONE' | 'QUEUE' | 'BOOK' | 'WAITLIST_QUEUE' | 'WAITLIST_BOOK'>('NONE');
-  const [admitToken, setAdmitToken] = useState<string | null>(null);
-  const [queueToken, setQueueToken] = useState<string | null>(null);
-  const queueTokenRef = useRef<string | null>(null);
-  const flowScopeRef = useRef<'BOOKING' | 'CANCELLATION_WAIT'>('BOOKING');
+  const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
+  const handleBackAttempt = useCallback(() => setIsBackExitModalOpen(true), []);
+
+  const {
+    flowState,
+    admitToken,
+    startFlow,
+    exitFlow,
+    leaveQueueOnly,
+    handleQueueAdmitted,
+    updateQueueToken,
+    handleBookStepChange,
+    handleBookStepBack,
+  } = useBookingFlow({ activeEventId, onBackAttempt: handleBackAttempt });
+
   const [isBannerFolded, setIsBannerFolded] = useState(false);
   const { wishlistMap, addWishlist, removeWishlist } = useWishlistStore();
 
@@ -105,8 +114,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; title: string; content: string; onConfirm?: () => void; confirmText?: string; showCancelButton?: boolean }>({ isOpen: false, title: '', content: '' });
   const queryClient = useQueryClient();
   const [isInvalidAccess, setIsInvalidAccess] = useState(false);
-  const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
-  const currentStepRef = useRef<string>('detail');
   const [playLoveAnimation, setPlayLoveAnimation] = useState(false);
 
   // ── 봇 탐지 CAPTCHA 상태 ──────────────────────────────────
@@ -208,101 +215,13 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     setStage('detail');
   }, [setStage]);
 
-  const handleQueueAdmitted = useCallback((token: string, qToken?: string) => {
-    setAdmitToken(token);
-    if (qToken) {
-      setQueueToken(qToken);
-      queueTokenRef.current = qToken;
-    }
-    // 대기열은 한번 넘어가면 뒤로가기로 돌아갈 수 없으므로 queue 엔트리를 book으로 교체
-    currentStepRef.current = 'book';
-    window.history.replaceState({ tickleStep: 'book' }, '');
-    setFlowState((prev) => (prev === 'QUEUE' ? 'BOOK' : 'WAITLIST_BOOK'));
-  }, []);
-
-  const continueFlowStart = (state: 'QUEUE' | 'WAITLIST_QUEUE') => {
-    flowScopeRef.current = state === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING';
-    setFlowState(state);
-
-    // 뒤로가기 감지를 위해 히스토리 엔트리 추가 (대기열 단계 플래그)
-    currentStepRef.current = 'queue';
-    window.history.pushState({ tickleStep: 'queue' }, '');
-  };
-
   const { handleFlowStart } = useEventFlowStart({
     activeEventId,
     policy: detailPolicy,
-    continueFlowStart,
+    continueFlowStart: startFlow,
     setModalConfig,
     finalize
   });
-
-  const flowStateRef = useRef(flowState);
-  useEffect(() => {
-    flowStateRef.current = flowState;
-  }, [flowState]);
-
-  // BookView에서 단계 전환 시 히스토리 엔트리 추가하는 콜백
-  const handleBookStepChange = useCallback((step: string) => {
-    currentStepRef.current = step;
-    window.history.pushState({ tickleStep: step }, '');
-  }, []);
-
-  // BookView에서 뒤로가기로 이전 단계로 이동할 때 호출되는 콜백
-  const handleBookStepBack = useCallback((targetStep: string) => {
-    currentStepRef.current = targetStep;
-  }, []);
-
-  // 대기열 활성 상태에서 브라우저 뒤로가기/새로고침 시 leaveQueue 호출
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (queueTokenRef.current && activeEventId) {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
-        const scope = flowScopeRef.current;
-        const url = `${baseUrl}/api/v1/queues/${activeEventId}/leave?queueToken=${queueTokenRef.current}&scope=${scope}`;
-        navigator.sendBeacon(url);
-      }
-    };
-
-    const handlePopState = (e: PopStateEvent) => {
-      // 플로우가 활성 상태일 때만 처리
-      if (flowStateRef.current === 'NONE') return;
-
-      const targetStep = e.state?.tickleStep || null;
-
-      if (!targetStep) {
-        // targetStep이 없으면 detail로 돌아가는 상황 → 경고 모달 표시
-        // 뒤로가기를 막기 위해 히스토리 상태를 다시 추가
-        window.history.pushState({ tickleStep: currentStepRef.current }, '');
-        setIsBackExitModalOpen(true);
-      } else {
-        // 플로우 내 이전 단계로 이동
-        currentStepRef.current = targetStep;
-
-        // BookView 내부 단계 간 뒤로가기 처리
-        // 각 히스토리 엔트리의 tickleStep 값에 따라 bookingStep을 설정
-        const stepMap: Record<string, BookingStep> = {
-          'seat': 'SEAT',
-          'book': 'SEAT',         // book = captcha 통과 후 좌석 선택
-          'ticket_type': 'TICKET_TYPE',
-          'payment': 'PAYMENT',
-          'pay_method': 'PAY_METHOD',
-        };
-        const bookingStep = stepMap[targetStep];
-        if (bookingStep) {
-          useBookStore.getState().setBookingStep(bookingStep);
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [activeEventId]);
 
   useEffect(() => {
     if (data && activeEventId) {
@@ -360,18 +279,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     await toggleFavorite(activeEventId, isFavorite);
   };
 
-
-  // 예매 플로우 진행 중 새로고침/탭 닫기 방지
-  useEffect(() => {
-    if (flowState === 'NONE') return;
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isBlockedNavigation()) return;
-      if (isNavigatingToPaymentFlow()) return;
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [flowState]);
 
   useEffect(() => {
     if (data?.openDate) {
@@ -694,15 +601,8 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
             eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
             scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
             onAdmitted={handleQueueAdmitted}
-            onClose={() => {
-              setFlowState('NONE');
-              queueTokenRef.current = null;
-              setQueueToken(null);
-            }}
-            onTokenFetched={(token) => {
-              queueTokenRef.current = token;
-              setQueueToken(token);
-            }}
+            onClose={() => exitFlow({ notifyServer: false })}
+            onTokenFetched={updateQueueToken}
           />
         </div>
       )}
@@ -712,22 +612,8 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
             eventId={activeEventId}
             mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'}
             admitToken={admitToken || undefined}
-            onClose={() => {
-              setFlowState('NONE');
-              queueTokenRef.current = null;
-              setQueueToken(null);
-            }}
-            onLeaveQueue={() => {
-              if (queueTokenRef.current && activeEventId) {
-                // 실패해도 서버가 대기열 만료로 정리한다. 다만 조용히 넘기면
-                // 이탈 API가 계속 깨져도 알 수 없어 로그는 남긴다.
-                leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch((err) =>
-                  console.warn('[Queue] 대기열 이탈 요청 실패', err),
-                );
-                queueTokenRef.current = null;
-                setQueueToken(null);
-              }
-            }}
+            onClose={() => exitFlow({ notifyServer: false })}
+            onLeaveQueue={leaveQueueOnly}
             onStepChange={handleBookStepChange}
             onStepBack={handleBookStepBack}
             onPaymentStart={disconnect}
@@ -742,17 +628,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         onConfirm={() => {
           setIsBackExitModalOpen(false);
           // 모달 확인 시 실제로 대기열 이탈 및 플로우 종료
-          if (queueTokenRef.current && activeEventId) {
-            // 실패해도 서버가 대기열 만료로 정리한다. 다만 조용히 넘기면
-            // 이탈 API가 계속 깨져도 알 수 없어 로그는 남긴다.
-            leaveQueue(activeEventId, queueTokenRef.current, flowScopeRef.current).catch((err) =>
-              console.warn('[Queue] 대기열 이탈 요청 실패', err),
-            );
-            queueTokenRef.current = null;
-            setQueueToken(null);
-          }
-          currentStepRef.current = 'detail';
-          setFlowState('NONE');
+          exitFlow();
           // pushState로 추가된 히스토리 엔트리를 정리 (뒤로가기 실행)
           // flowState를 NONE으로 설정했으므로 popstate 핸들러가 무시함
           window.history.back();
@@ -806,15 +682,13 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         isOpen={captchaDenied}
         onClose={() => {
           setCaptchaDenied(false);
-          setFlowState('NONE');
-          queueTokenRef.current = null;
-          setQueueToken(null);
+          // 봇 판정으로 끊긴 경우라 서버에 이탈을 따로 알리지 않는다.
+          exitFlow({ notifyServer: false });
         }}
         onConfirm={() => {
           setCaptchaDenied(false);
-          setFlowState('NONE');
-          queueTokenRef.current = null;
-          setQueueToken(null);
+          // 봇 판정으로 끊긴 경우라 서버에 이탈을 따로 알리지 않는다.
+          exitFlow({ notifyServer: false });
         }}
         title="보안 검증 실패"
         description="CAPTCHA 인증에 실패하여 예매를 진행할 수 없습니다. 다시 시도해 주세요."
