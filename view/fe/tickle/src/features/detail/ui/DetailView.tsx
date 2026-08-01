@@ -35,6 +35,8 @@ import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
 import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
 import { useEventFlowStart } from '@/src/features/detail/hooks/useEventFlowStart';
 import { useBookingFlow } from '@/src/features/detail/hooks/useBookingFlow';
+import { useOpenSchedule } from '@/src/features/detail/hooks/useOpenSchedule';
+import { ScrollToButtons } from '@/src/features/detail/ui/components/ScrollToButtons';
 import loveAnimation from '@/src/shared/lottle/Love.json';
 
 const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
@@ -77,10 +79,12 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const { data, isLoading, isError } = useDetailDataWithFixtures(activeEventId);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [isUpcoming, setIsUpcoming] = useState(false);
-  const [isWaitlistUpcoming, setIsWaitlistUpcoming] = useState(false);
-  const [isMoreThanOneDayLeft, setIsMoreThanOneDayLeft] = useState(false);
-  const [isWaitlistMoreThanOneDayLeft, setIsWaitlistMoreThanOneDayLeft] = useState(false);
+  const {
+    isUpcoming,
+    isMoreThanOneDayLeft,
+    isWaitlistUpcoming,
+    isWaitlistMoreThanOneDayLeft,
+  } = useOpenSchedule(data?.openDate, data?.waitlistOpenDate);
   const [isBackExitModalOpen, setIsBackExitModalOpen] = useState(false);
   const handleBackAttempt = useCallback(() => setIsBackExitModalOpen(true), []);
 
@@ -280,46 +284,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   };
 
 
-  useEffect(() => {
-    if (data?.openDate) {
-      const openTime = new Date(data.openDate).getTime();
-      const waitlistOpenTime = data.waitlistOpenDate ? new Date(data.waitlistOpenDate).getTime() : 0;
-
-      const checkTime = () => {
-        const now = Date.now();
-        setIsUpcoming(openTime > now);
-        setIsWaitlistUpcoming(waitlistOpenTime > 0 && waitlistOpenTime > now);
-        setIsMoreThanOneDayLeft(openTime - now > 24 * 60 * 60 * 1000);
-        setIsWaitlistMoreThanOneDayLeft(waitlistOpenTime > 0 && (waitlistOpenTime - now > 24 * 60 * 60 * 1000));
-      };
-
-      checkTime();
-
-      // 1초 간격으로 일반 표시 업데이트
-      const timer = setInterval(checkTime, 1000);
-
-      // openTime 도달 시 즉시 활성화하는 정밀 타이머
-      const timeUntilOpen = openTime - Date.now();
-      let openTimeout: ReturnType<typeof setTimeout> | null = null;
-      if (timeUntilOpen > 0) {
-        openTimeout = setTimeout(checkTime, timeUntilOpen);
-      }
-
-      // waitlistOpenTime 도달 시 즉시 활성화
-      const timeUntilWaitlist = waitlistOpenTime - Date.now();
-      let waitlistTimeout: ReturnType<typeof setTimeout> | null = null;
-      if (waitlistOpenTime > 0 && timeUntilWaitlist > 0) {
-        waitlistTimeout = setTimeout(checkTime, timeUntilWaitlist);
-      }
-
-      return () => {
-        clearInterval(timer);
-        if (openTimeout) clearTimeout(openTimeout);
-        if (waitlistTimeout) clearTimeout(waitlistTimeout);
-      };
-    }
-  }, [data?.openDate]);
-
   const formatOpenDate = (dateString: string) => {
     const date = new Date(dateString);
     const month = date.getMonth() + 1;
@@ -383,26 +347,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     }
   };
 
-  const scrollToTop = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      const mainEl = document.querySelector('main');
-      if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-      else window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-    } else {
-      const mainEl = document.querySelector('main');
-      if (mainEl) mainEl.scrollTo({ top: mainEl.scrollHeight, behavior: 'smooth' });
-      else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    }
-  };
-
   // 에러 발생 시 (예: 404) 스토어를 초기화하여 빈 오버레이에 갇히지 않도록 방어
   useEffect(() => {
     if (isError && isOverlay) {
@@ -458,7 +402,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           isUpcoming={isUpcoming}
           isMoreThanOneDayLeft={isMoreThanOneDayLeft}
           targetDate={data?.openDate || undefined}
-          onTimerExpire={() => setIsUpcoming(false)}
           onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
           isLoading={isLoading}
         />
@@ -469,7 +412,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
           isUpcoming={isWaitlistUpcoming}
           isMoreThanOneDayLeft={isWaitlistMoreThanOneDayLeft}
           targetDate={data?.openDate ? new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString() : undefined}
-          onTimerExpire={() => setIsWaitlistUpcoming(false)}
           onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
           isLoading={isLoading}
         />
@@ -698,30 +640,11 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     </div>
   );
 
-  const renderScrollButtons = () => (
-    <div className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 flex flex-col gap-3 z-[100]">
-      <button
-        onClick={scrollToTop}
-        className="w-12 h-12 flex items-center justify-center bg-surface/90 backdrop-blur-sm border border-line rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-surface transition-all text-content-tertiary hover:text-primary group"
-        aria-label="맨 위로"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-y-0.5 transition-transform"><polyline points="18 15 12 9 6 15"></polyline></svg>
-      </button>
-      <button
-        onClick={scrollToBottom}
-        className="w-12 h-12 flex items-center justify-center bg-surface/90 backdrop-blur-sm border border-line rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:bg-surface transition-all text-content-tertiary hover:text-primary group"
-        aria-label="맨 아래로"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-    </div>
-  );
-
   if (isOverlay) {
     return (
       <>
         {renderContent()}
-        {flowState === 'NONE' && renderScrollButtons()}
+        {flowState === 'NONE' && <ScrollToButtons scrollRef={scrollRef} />}
       </>
     );
   }
@@ -770,7 +693,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
       </main>
 
       {/* Floating Scroll Buttons */}
-      {flowState === 'NONE' && renderScrollButtons()}
+      {flowState === 'NONE' && <ScrollToButtons scrollRef={scrollRef} />}
     </div>
   );
 };
