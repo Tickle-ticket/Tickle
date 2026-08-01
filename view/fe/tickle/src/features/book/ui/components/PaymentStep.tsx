@@ -9,6 +9,7 @@ import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
+import { resolvePriceInfos, calculateGradeTotal } from '@/src/features/book/api/priceInfo';
 
 interface PaymentStepProps {
   optionsData?: BookingOptionsResponse;
@@ -146,22 +147,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   const ticketPrice = cancellationTotalAmount 
     ? Math.round(cancellationTotalAmount / 1.05) // 역산하여 티켓 가격 산출
     : Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
-    const baseSeat = seats[0];
-    let types = baseSeat.priceInfos || [];
-    
-    if (types.length === 0 && optionsData) {
-      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-    }
-    
-    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
-
+    const types = resolvePriceInfos(seats[0], optionsData);
     const counts = priceGradeTicketCounts[priceGrade] || {};
-    return sum + Object.entries(counts).reduce((s, [typeId, count]: [string, any]) => {
-      const type = types.find((t: any) => t.discountName === typeId);
-      const typePrice = type ? type.ticketPriceAmount : basePrice;
-      return s + typePrice * count;
-    }, 0);
+    return sum + calculateGradeTotal(types, counts);
   }, 0);
 
   const finalPrice = cancellationTotalAmount || Math.round(ticketPrice * 1.05); // 5% 예매 수수료 포함
@@ -558,22 +546,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           ) : Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
             const dotClass = priceGradeDotColors[priceGrade] || 'bg-surface-active';
             const counts = priceGradeTicketCounts[priceGrade] || {};
-            let priceGradeTotalPrice = 0;
-
-            const baseSeat = seats[0];
-            let types = baseSeat.priceInfos || [];
-            
-            if (types.length === 0 && optionsData) {
-              const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-              types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-            }
-
-            Object.entries(counts).forEach(([typeId, count]: [string, any]) => {
-              const typeInfo = types.find((t: any) => t.discountName === typeId);
-              if (typeInfo) {
-                priceGradeTotalPrice += (count as number) * typeInfo.ticketPriceAmount;
-              }
-            });
+            const types = resolvePriceInfos(seats[0], optionsData);
+            // 이전에는 권종 이름이 목록에 없으면 이 합계에서만 빠져, 같은 상황에서
+            // 권종 선택 화면과 다른 금액이 나왔다. calculateGradeTotal이 두 화면의
+            // 계산을 하나로 맞춘다.
+            const priceGradeTotalPrice = calculateGradeTotal(types, counts);
 
             return (
               <div key={priceGrade} className="px-5 py-4 flex items-center justify-between">
