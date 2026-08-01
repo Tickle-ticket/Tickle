@@ -94,6 +94,8 @@ export const paymentHandlers = [
       code: 'OK',
       message: '성공',
       data: {
+        // 결제 상태 폴링이 이 값으로 조회하므로 아래 리다이렉트 주소와 같아야 한다.
+        paymentId: 2,
         tid: 'T1234567890123456789',
         nextRedirectPcUrl: '/payment/success?paymentId=2&method=kakaopay',
         createdAt: new Date().toISOString(),
