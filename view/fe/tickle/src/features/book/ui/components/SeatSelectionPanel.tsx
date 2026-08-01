@@ -1,11 +1,13 @@
 import React from 'react';
 import { Calendar } from '@/src/shared/components/Calendar';
 import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
+import type { EventDetailResponse } from '@/src/features/book/api/useEventDetail';
+import type { Schedule } from '@/src/features/book/store/useBookStore';
 
 interface SeatSelectionPanelProps {
-  eventDetail: any;
-  confirmedSchedule: any;
-  setConfirmedSchedule: (schedule: any) => void;
+  eventDetail: EventDetailResponse;
+  confirmedSchedule: Schedule | null;
+  setConfirmedSchedule: (schedule: Schedule | null) => void;
   isModifyingSchedule: boolean;
   setIsModifyingSchedule: (val: boolean) => void;
   selectedDate: string | null;
@@ -21,7 +23,8 @@ interface SeatSelectionPanelProps {
   selectedSeatsToCancel: Set<string>;
   setSelectedSeatsToCancel: (seats: Set<string>) => void;
   initialSeats: string[];
-  initialSchedule: any;
+  /** 재예매·좌석 변경으로 진입했을 때의 기존 회차. 신규 예매면 없다. */
+  initialSchedule?: Schedule | null;
   isWaitlistMode: boolean;
   maxSelectable: number;
   getSeatInfo: (seatId: string) => { priceGrade: string; price: number; waitingCount?: number };
@@ -101,7 +104,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
             <div className="flex justify-center w-full">
               <div className="w-full flex justify-center scale-[0.82] sm:scale-[0.93] origin-top -mb-[40px] sm:-mb-[25px]">
                 <Calendar
-                  enabledDates={eventDetail.schedules.map((s: any) => s.date.replace(/\./g, '-'))}
+                  enabledDates={eventDetail.schedules.map((s) => s.date.replace(/\./g, '-'))}
                   selectedDate={selectedDate ? selectedDate.replace(/\./g, '-') : null}
                   onSelect={(date: Date, e?: React.MouseEvent) => {
                     if (e && !e.isTrusted) {
@@ -128,7 +131,7 @@ export const SeatSelectionPanel: React.FC<SeatSelectionPanelProps> = ({
             </h3>
             {selectedDate ? (
               <div className="flex flex-wrap gap-2 animate-fade-in">
-                {eventDetail.schedules.find((s: any) => s.date === selectedDate)?.times.map((timeObj: any, idx: number) => {
+                {eventDetail.schedules.find((s) => s.date === selectedDate)?.times.map((timeObj, idx) => {
                   const now = Date.now();
                   const isPast = new Date(timeObj.startAt).getTime() < now;
 

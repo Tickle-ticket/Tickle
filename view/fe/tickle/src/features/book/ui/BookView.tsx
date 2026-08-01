@@ -108,8 +108,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       eventDate: toBehaviorEventDate(confirmedSchedule?.date),
     },
   });
-  const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
-  const setPendingOptionSelections = useBookStore((s: any) => s.setPendingOptionSelections);
+  const setPriceGradeTicketCounts = useBookStore((s) => s.setPriceGradeTicketCounts);
+  const setPendingOptionSelections = useBookStore((s) => s.setPendingOptionSelections);
 
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);

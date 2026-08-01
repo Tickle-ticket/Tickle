@@ -29,8 +29,8 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   isSubmitting = false,
   submitButtonText = '다음 단계',
 }) => {
-  const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
-  const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
+  const priceGradeTicketCounts = useBookStore((s) => s.priceGradeTicketCounts);
+  const setPriceGradeTicketCounts = useBookStore((s) => s.setPriceGradeTicketCounts);
 
   // Group seats by grade from the backend optionsData
   const priceGradeSeats: Record<string, any[]> = {};
@@ -46,7 +46,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
 
   const getPriceGradeTotal = (priceGrade: string) => {
     const counts = priceGradeTicketCounts[priceGrade] || {};
-    return Object.values(counts).reduce((s: number, n: any) => s + (n as number), 0);
+    return Object.values(counts).reduce((sum, count) => sum + count, 0);
   };
 
   const getPriceGradePrice = (priceGrade: string) => {
@@ -69,7 +69,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   const handleCount = (priceGrade: string, typeId: string, delta: number) => {
     let becameFull = false;
 
-    setPriceGradeTicketCounts((prev: any) => {
+    setPriceGradeTicketCounts((prev) => {
       const priceGradeCounts = { ...(prev[priceGrade] || {}) };
       const current = priceGradeCounts[typeId] || 0;
       const newVal = Math.max(0, current + delta);
@@ -77,7 +77,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
 
       const otherTotal = Object.entries(priceGradeCounts)
         .filter(([id]) => id !== typeId)
-        .reduce((s: number, [, n]: [string, any]) => s + (n as number), 0);
+        .reduce((sum, [, count]) => sum + count, 0);
 
       if (otherTotal + newVal > maxForPriceGrade) return prev;
 

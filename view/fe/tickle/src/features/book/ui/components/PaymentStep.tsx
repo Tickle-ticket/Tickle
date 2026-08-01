@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
 import { resolvePriceInfos, calculateGradeTotal } from '@/src/features/book/api/priceInfo';
+import type { UserProfileData } from '@/src/shared/api/useUserProfile';
 
 interface PaymentStepProps {
   optionsData?: BookingOptionsResponse;
@@ -17,7 +18,8 @@ interface PaymentStepProps {
   eventId: string;
   scheduleId?: string | null;
   userId: number | undefined;
-  userProfile: any;
+  /** 구매자 정보 자동 입력에 쓴다. 조회 전이거나 비회원이면 없다. */
+  userProfile: UserProfileData | null | undefined;
   onCancel: () => void;
   onConflictError: () => void;
   onError: (title: string, message: string) => void;
@@ -81,10 +83,10 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 }) => {
   const paymentPolicy = createBookFlowPolicy('BOOK', eventId);
 
-  const bookingStep = useBookStore((s: any) => s.bookingStep);
-  const setBookingStep = useBookStore((s: any) => s.setBookingStep);
-  const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
-  const pendingOptionSelections = useBookStore((s: any) => s.pendingOptionSelections);
+  const bookingStep = useBookStore((s) => s.bookingStep);
+  const setBookingStep = useBookStore((s) => s.setBookingStep);
+  const priceGradeTicketCounts = useBookStore((s) => s.priceGradeTicketCounts);
+  const pendingOptionSelections = useBookStore((s) => s.pendingOptionSelections);
 
   const router = useRouter();
   const [isKakaoPopupOpen, setIsKakaoPopupOpen] = useState(false);
