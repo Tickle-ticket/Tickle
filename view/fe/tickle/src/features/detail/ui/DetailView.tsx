@@ -2,15 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Title } from '@/src/shared/components/Title';
 import { BannerSubtitle } from '@/src/shared/components/BannerSubtitle';
 import { BannerPlace } from '@/src/shared/components/BannerPlace';
-import { BannerTime } from '@/src/shared/components/BannerTime';
 import Button from '@/src/shared/components/Button';
-import { Badge } from '@/src/shared/components/Badge';
 import { DetailContentSection } from '@/src/features/detail/ui/components/DetailContentSection';
-import { BookButton } from '@/src/shared/components/BookButton';
-import { WaitlistButton } from '@/src/shared/components/WaitlistButton';
 import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useBookStore } from '@/src/features/book/store/useBookStore';
@@ -23,23 +18,21 @@ import { Footer } from '@/src/shared/components/Footer';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlistStore } from '@/src/shared/store/useWishlistStore';
 import { useFavoriteToggle } from '@/src/features/favorite/api/useFavoriteToggle';
-import { getAccessToken, clearTokens } from '@/src/shared/api/tokenManager';
+import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { Modal } from '@/src/shared/components/Modal';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { useTargetTracker } from '@/src/shared/tracking/useTargetTracker';
 import { createDetailFlowPolicy } from '../api/detailFlowPolicy';
-import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
-import dynamic from 'next/dynamic';
-import { useBotDetectionSSE } from '@/src/shared/hooks/useBotDetectionSSE';
-import { verifyCaptcha } from '@/src/shared/api/botDetectionApi';
-import { ReCaptcha } from '@/src/shared/components/ReCaptcha';
 import { useEventFlowStart } from '@/src/features/detail/hooks/useEventFlowStart';
 import { useBookingFlow } from '@/src/features/detail/hooks/useBookingFlow';
 import { useOpenSchedule } from '@/src/features/detail/hooks/useOpenSchedule';
+import { useSectionNav } from '@/src/features/detail/hooks/useSectionNav';
+import { useCaptchaGate } from '@/src/features/detail/hooks/useCaptchaGate';
 import { ScrollToButtons } from '@/src/features/detail/ui/components/ScrollToButtons';
-import loveAnimation from '@/src/shared/lottle/Love.json';
+import { DetailActionButtons } from '@/src/features/detail/ui/components/DetailActionButtons';
+import { CaptchaGate } from '@/src/features/detail/ui/components/CaptchaGate';
+import { DetailHeroSection } from '@/src/features/detail/ui/components/DetailHeroSection';
 
-const Lottie = dynamic(() => import('lottie-react').then((mod) => mod.default || mod), { ssr: false });
 
 
 const navItems = [
@@ -77,7 +70,7 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   // error 객체는 구독하지 않는다 — 403·404·5xx는 throwOnError로 Error Boundary가 처리하고,
   // 여기서는 오버레이를 닫기 위한 isError 신호만 필요하다.
   const { data, isLoading, isError } = useDetailDataWithFixtures(activeEventId);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const { activeIndex, scrollToSection } = useSectionNav(navItems, !isLoading);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const {
     isUpcoming,
@@ -120,63 +113,14 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   const [isInvalidAccess, setIsInvalidAccess] = useState(false);
   const [playLoveAnimation, setPlayLoveAnimation] = useState(false);
 
-  // ── 봇 탐지 CAPTCHA 상태 ──────────────────────────────────
-  const [showCaptchaOverlay, setShowCaptchaOverlay] = useState(false);
-  const [captchaDenied, setCaptchaDenied] = useState(false);
-  const [captchaRecordId, setCaptchaRecordId] = useState<string>('');
-
-  const { disconnect } = useBotDetectionSSE({
-    enabled: flowState !== 'NONE',
-    onRetryCaptcha: (recordId: string) => {
-      setCaptchaRecordId(recordId);
-      setCaptchaDenied(false);
-      setShowCaptchaOverlay(true);
-    },
-    onSuccessClose: () => {
-      setShowCaptchaOverlay(false);
-      setCaptchaDenied(false);
-    },
-    onDenyClose: () => {
-      setShowCaptchaOverlay(false);
-      setCaptchaDenied(true);
-    },
-    onBotBlocked: () => {
-      // 즉시 강제 로그아웃 (토큰 삭제) 후 차단 안내 페이지로 이동
-      clearTokens();
-      navigateToBlocked('blacklist');
-    },
-  });
-
-  const handleCaptchaSuccess = useCallback(async (token: string) => {
-    try {
-      await verifyCaptcha({
-        recordId: captchaRecordId,
-        success: true,
-        token,
-        type: 'CAPTCHA_RETRY',
-        eventId: activeEventId ? Number(activeEventId) : undefined,
-        createdAt: new Date().toISOString(),
-      });
-      // SSE에서 SUCCESS_CLOSE를 받으면 자동으로 닫힘
-    } catch (e) {
-      console.error('[CAPTCHA] verifyCaptcha 호출 실패:', e);
-    }
-  }, [activeEventId, captchaRecordId]);
-
-  const handleCaptchaFailure = useCallback(async () => {
-    try {
-      await verifyCaptcha({
-        recordId: captchaRecordId,
-        success: false,
-        token: 'captcha-failed',
-        type: 'CAPTCHA_RETRY',
-        eventId: activeEventId ? Number(activeEventId) : undefined,
-        createdAt: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.error('[CAPTCHA] verifyCaptcha failure 호출 실패:', e);
-    }
-  }, [activeEventId, captchaRecordId]);
+  const {
+    showOverlay: showCaptchaOverlay,
+    isDenied: captchaDenied,
+    handleSuccess: handleCaptchaSuccess,
+    handleFailure: handleCaptchaFailure,
+    dismissDenied: dismissCaptchaDenied,
+    disconnect,
+  } = useCaptchaGate({ activeEventId, enabled: flowState !== 'NONE' });
 
   const bookBtnTracker = useTargetTracker({ trackId: 'detail-book-btn', isClickable: !isUpcoming });
   const waitlistBtnTracker = useTargetTracker({ trackId: 'detail-waitlist-btn', isClickable: !isWaitlistUpcoming });
@@ -295,58 +239,6 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
     return `${month}.${day}(${dayOfWeek}) ${hours}:${minutes}`;
   };
 
-  // 스크롤 스파이 (Scroll Spy)
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = navItems.findIndex((item) => item.id === entry.target.id);
-            if (index !== -1) setActiveIndex(index);
-          }
-        });
-      },
-      { rootMargin: '-20% 0px -70% 0px' }
-    );
-    navItems.forEach((item) => {
-      const element = document.getElementById(item.id);
-      if (element) observer.observe(element);
-    });
-    return () => observer.disconnect();
-  }, [isLoading]);
-
-  const handleScrollTo = (id: string, index: number) => {
-    setActiveIndex(index);
-    const element = document.getElementById(id);
-    if (element) {
-      // 모바일 중첩 스크롤러(PullToRefresh 등) 환경에서도 안전하게 스크롤되도록 수동 계산
-      const getScrollParent = (node: HTMLElement | null): HTMLElement => {
-        if (!node) return document.documentElement;
-        if (node.scrollHeight > node.clientHeight) {
-          const overflowY = window.getComputedStyle(node).overflowY;
-          if (overflowY === 'auto' || overflowY === 'scroll') return node;
-        }
-        return getScrollParent(node.parentElement);
-      };
-
-      const scrollParent = getScrollParent(element);
-      const isWindow = scrollParent === document.documentElement;
-
-      const elementRect = element.getBoundingClientRect();
-      const parentRect = isWindow ? { top: 0 } : scrollParent.getBoundingClientRect();
-      const scrollTop = isWindow ? window.pageYOffset : scrollParent.scrollTop;
-
-      const offset = 80; // sticky header offset
-      const targetY = elementRect.top - parentRect.top + scrollTop - offset;
-
-      if (isWindow) {
-        window.scrollTo({ top: targetY, behavior: 'smooth' });
-      } else {
-        scrollParent.scrollTo({ top: targetY, behavior: 'smooth' });
-      }
-    }
-  };
-
   // 에러 발생 시 (예: 404) 스토어를 초기화하여 빈 오버레이에 갇히지 않도록 방어
   useEffect(() => {
     if (isError && isOverlay) {
@@ -392,146 +284,44 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
   }
 
   const renderActionButtons = () => (
-    <div className="flex items-center gap-3 w-full">
-      {/* 예약 버튼 묶음 */}
-      <div className="flex items-center flex-1 gap-2">
-
-        {/* 예매하기 버튼 */}
-        <BookButton
-          trackerProps={bookBtnTracker}
-          isUpcoming={isUpcoming}
-          isMoreThanOneDayLeft={isMoreThanOneDayLeft}
-          targetDate={data?.openDate || undefined}
-          onClick={() => !isUpcoming && handleFlowStart('QUEUE')}
-          isLoading={isLoading}
-        />
-
-        {/* 취소표 대기하기 버튼 */}
-        <WaitlistButton
-          trackerProps={waitlistBtnTracker}
-          isUpcoming={isWaitlistUpcoming}
-          isMoreThanOneDayLeft={isWaitlistMoreThanOneDayLeft}
-          targetDate={data?.openDate ? new Date(new Date(data.openDate).getTime() + 10 * 60 * 1000).toISOString() : undefined}
-          onClick={() => !isWaitlistUpcoming && handleFlowStart('WAITLIST_QUEUE')}
-          isLoading={isLoading}
-        />
-
-      </div>
-
-      {/* 찜하기 버튼 */}
-      <button
-        onClick={handleFavoriteToggle}
-        className={`w-14 h-14 flex items-center justify-center rounded-xl border transition-colors shadow-sm shrink-0 ${isFavorite ? 'border-danger-light bg-danger-subtle' : 'border-line bg-surface hover:bg-surface-subtle'}`}
-        aria-label={isFavorite ? '찜 해제' : '찜 추가'}
-      >
-        {isFavorite ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-          </svg>
-        ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
-          </svg>
-        )}
-      </button>
-    </div>
+    <DetailActionButtons
+      openDate={data?.openDate}
+      isUpcoming={isUpcoming}
+      isMoreThanOneDayLeft={isMoreThanOneDayLeft}
+      isWaitlistUpcoming={isWaitlistUpcoming}
+      isWaitlistMoreThanOneDayLeft={isWaitlistMoreThanOneDayLeft}
+      isFavorite={isFavorite}
+      isLoading={isLoading}
+      bookBtnTracker={bookBtnTracker}
+      waitlistBtnTracker={waitlistBtnTracker}
+      onStartBooking={() => handleFlowStart('QUEUE')}
+      onStartWaitlist={() => handleFlowStart('WAITLIST_QUEUE')}
+      onToggleFavorite={handleFavoriteToggle}
+    />
   );
 
   const renderContent = () => (
     <div className="w-full min-h-full pb-20 lg:pb-32 pt-0 lg:pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-      {/* Mobile/Tablet Header (Transparent Floating) */}
-      <div className="lg:hidden fixed top-0 left-0 z-[60] p-4 pointer-events-none">
-        <button
-          onClick={() => {
-            if (isOverlay) {
-              useDetailStore.getState().closeDetail();
-            } else {
-              router.push('/');
-            }
-          }}
-          className="w-10 h-10 flex items-center justify-center text-white bg-black/20 hover:bg-black/30 backdrop-blur-md rounded-full transition-colors pointer-events-auto shadow-sm"
-          aria-label="뒤로 가기"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Mobile/Tablet Hero Poster (Hidden on Desktop) */}
-      <div className="w-[100vw] ml-[calc(50%-50vw)] h-[40vh] min-h-[300px] sm:h-[400px] md:h-[380px] lg:hidden mb-6 relative shrink-0">
-        <BannerPoster
-          src={data?.imageUrl || ''}
-          alt="Detail Banner"
-          isLoading={isLoading}
-          width="100%"
-          height="100%"
-          showGradient={false}
-          className="w-full h-full rounded-none"
-        >
-          {/* 하트 애니메이션 (상단 오버레이 레이어 - Mobile) */}
-          {playLoveAnimation && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-              <Lottie
-                animationData={loveAnimation}
-                loop={false}
-                onComplete={() => setPlayLoveAnimation(false)}
-                className="w-[60%] max-w-[300px] h-auto"
-              />
-            </div>
-          )}
-          {/* 포스터 하단 그라데이션 오버레이 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-        </BannerPoster>
-      </div>
-
-      {/* Hero Section */}
-      <section className="w-full lg:mt-3 flex flex-col items-start px-2 lg:px-0">
-        <div className="flex w-full flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className={`flex w-full max-w-full flex-col items-start`}>
-            <Title
-              title={data?.title || ''}
-              textColor="black"
-              className="!bg-transparent [&>div]:!p-0 !text-3xl sm:!text-4xl md:!text-5xl lg:[&_h1]:!text-6xl [&_h1]:!font-serif [&_h1]:!tracking-tight [&_h1]:!leading-[1.15] [&_h1]:whitespace-pre-line"
-              bottomBorder={false}
-              isLoading={isLoading}
-            />
-
-            {(data?.subTitle || (data?.tags && data.tags.length > 0)) && (
-              <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
-                {data?.subTitle && (
-                  <Badge variant="fill" color="grey" size="medium" className="px-3 py-1 font-bold shadow-sm bg-black/5 border-none ring-0">
-                    {data.subTitle}
-                  </Badge>
-                )}
-                {data?.tags?.map((tag, idx) => {
-                  const displayTag = tag.startsWith('#') ? tag.slice(1) : tag;
-                  return (
-                    <Badge key={idx} variant="fill" color="grey" size="medium" className="px-3 py-1 font-bold shadow-sm bg-black/5 border-none ring-0">
-                      {displayTag}
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5 mt-3 sm:mt-4">
-              <BannerTime time={data?.startDate ? `${data?.startDate} ~ ${data?.endDate}` : ''} color="black" className="!text-sm sm:!text-base md:!text-[17px] opacity-90" isLoading={isLoading} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 mt-8 w-full max-w-[540px]">
-          {/* 예약 버튼 그룹 + 찜하기 버튼 */}
-          {renderActionButtons()}
-        </div>
-      </section>
+      <DetailHeroSection
+        data={data}
+        isLoading={isLoading}
+        playLoveAnimation={playLoveAnimation}
+        onLoveAnimationEnd={() => setPlayLoveAnimation(false)}
+        onBack={() => {
+          if (isOverlay) {
+            useDetailStore.getState().closeDetail();
+          } else {
+            router.push('/');
+          }
+        }}
+        actionButtons={renderActionButtons()}
+      />
 
       <DetailContentSection
         data={data}
         navItems={navItems}
         activeIndex={activeIndex}
-        handleScrollTo={handleScrollTo}
+        handleScrollTo={scrollToSection}
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
       />
@@ -596,46 +386,16 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         showCancelButton={modalConfig.showCancelButton ?? false}
       />
 
-      {/* 봇 탐지 CAPTCHA 오버레이 */}
-      {showCaptchaOverlay && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="w-full max-w-[440px] mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            <ReCaptcha
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY as string}
-              theme="light"
-              title="보안 검증이 필요합니다"
-              description="봇이 아닌지 확인하기 위해 아래 인증을 완료해 주세요."
-              buttonText="인증 완료"
-              showButton={true}
-              onSuccess={handleCaptchaSuccess}
-              onError={handleCaptchaFailure}
-              onExpire={handleCaptchaFailure}
-              onConfirm={handleCaptchaSuccess}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* CAPTCHA 실패(DENY_CLOSE) 안내 모달 */}
-      <Modal
-        isOpen={captchaDenied}
-        onClose={() => {
-          setCaptchaDenied(false);
+      <CaptchaGate
+        isOpen={showCaptchaOverlay}
+        isDenied={captchaDenied}
+        onSuccess={handleCaptchaSuccess}
+        onFailure={handleCaptchaFailure}
+        onDenyClose={() => {
+          dismissCaptchaDenied();
           // 봇 판정으로 끊긴 경우라 서버에 이탈을 따로 알리지 않는다.
           exitFlow({ notifyServer: false });
         }}
-        onConfirm={() => {
-          setCaptchaDenied(false);
-          // 봇 판정으로 끊긴 경우라 서버에 이탈을 따로 알리지 않는다.
-          exitFlow({ notifyServer: false });
-        }}
-        title="보안 검증 실패"
-        description="CAPTCHA 인증에 실패하여 예매를 진행할 수 없습니다. 다시 시도해 주세요."
-        confirmText="확인"
-        showCancelButton={false}
       />
     </div>
   );
