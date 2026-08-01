@@ -1,4 +1,5 @@
 import { Data } from 'effect';
+import { ApiError } from './types';
 
 /**
  * API 실패를 태그로 구분한 에러 타입.
@@ -332,3 +333,57 @@ export const toDisplayStatus = (error: ApiFailure): number | undefined => {
       return undefined;
   }
 };
+
+/** 태그드 에러의 종류를 나타내는 이름. */
+export type ApiFailureTag = ApiFailure['_tag'];
+
+/**
+ * 던져진 값이 어떤 실패인지 태그로 판별합니다.
+ *
+ * <p>apiClient는 태그드 에러를 그대로 던지지 않고 {@link ApiError}에 실어 보냅니다
+ * (호출부 대부분이 `err.status`로 분기하고 있어 한 번에 바꿀 수 없었습니다).
+ * 그래서 화면이 잡는 것은 `unknown`이거나 `ApiError`이고, 태그를 보려면 두 겹을
+ * 벗겨야 합니다. 이 함수가 그 과정을 감춥니다.</p>
+ *
+ * <p>status 숫자로 분기하는 것과 달리, 같은 상태 코드 안의 서로 다른 사유를
+ * 구분할 수 있습니다 — 403의 블랙리스트와 권한 부족, 4xx 중 스키마 불일치처럼
+ * HTTP 상태만으로는 나눌 수 없는 경우입니다.</p>
+ *
+ * @param error 잡은 예외
+ * @param tag   확인할 태그
+ * @example
+ * try { ... } catch (err) {
+ *   if (isFailure(err, 'NotFoundError')) return showEmptyState();
+ *   throw err;
+ * }
+ */
+export const isFailure = (error: unknown, tag: ApiFailureTag): boolean =>
+  toFailureTag(error) === tag;
+
+/**
+ * 던져진 값에서 실패 태그를 꺼냅니다.
+ *
+ * <p>여러 갈래로 분기할 때 씁니다. 태그가 없는 예외(코드 버그 등)는 undefined라
+ * switch의 default로 흘러갑니다.</p>
+ *
+ * @param error 잡은 예외
+ * @return 태그. ApiError가 아니거나 태그가 실려 있지 않으면 undefined
+ */
+export const toFailureTag = (error: unknown): ApiFailureTag | undefined => {
+  if (!(error instanceof ApiError)) {
+    return undefined;
+  }
+  return error.failure?._tag as ApiFailureTag | undefined;
+};
+
+/**
+ * 던져진 값에서 서버 에러코드를 꺼냅니다.
+ *
+ * <p>{@link getFailureCode}는 태그드 에러를 직접 받지만, 화면은 ApiError를
+ * 잡으므로 이쪽을 씁니다.</p>
+ *
+ * @param error 잡은 예외
+ * @return 서버가 실은 code (예: PAYMENT_HOLD_NOT_FOUND). 없으면 undefined
+ */
+export const toErrorCode = (error: unknown): string | undefined =>
+  error instanceof ApiError ? error.code : undefined;

@@ -1,6 +1,7 @@
 'use client';
 
 import { ApiError } from '@/src/shared/api/types';
+import { isFailure } from '@/src/shared/api/errors';
 
 /**
  * 403 Forbidden 안내 화면.
@@ -22,9 +23,14 @@ export const getForbiddenMessage = (error: unknown): string => {
   return FALLBACK_MESSAGE;
 };
 
-/** 에러가 403인지 판별한다. */
+/**
+ * 권한 부족으로 막힌 것인지 판별한다.
+ *
+ * 같은 403이라도 블랙리스트 차단은 이 화면이 아니라 /blocked로 보내야 하므로
+ * (client가 이미 그렇게 한다) 태그로 구분한다. status만 보면 둘이 섞인다.
+ */
 export const isForbiddenError = (error: unknown): boolean =>
-  error instanceof ApiError && error.status === 403;
+  isFailure(error, 'ForbiddenError');
 
 interface ForbiddenViewProps {
   /** 서버에서 받은 에러. message를 그대로 문구로 사용한다. */
