@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import type { BookingOptionsRequest } from '@/src/shared/api/types/booking.types';
 import type { PreorderOptionSelection } from '@/src/shared/api/types/booking.types';
 
 const API_BASE_URL = '*/api/v1';
@@ -6,7 +7,7 @@ const API_BASE_URL = '*/api/v1';
 export const bookingHandlers = [
   // 1. 예약 옵션 조회
   http.post(`${API_BASE_URL}/bookings/options`, async ({ request }) => {
-    const requestBody = (await request.json()) as Record<string, unknown>;
+    const requestBody = (await request.json()) as BookingOptionsRequest;
     
     // 명세서 예제 응답 반환
     return HttpResponse.json({
@@ -16,7 +17,11 @@ export const bookingHandlers = [
       data: {
         eventId: requestBody.eventId || 3001,
         sessionId: requestBody.sessionId || 3001,
-        userId: requestBody.userId || 1001,
+        // userId는 요청 본문에 없다. 서버는 인증 토큰에서 사용자를 알아내
+        // 응답에만 실어 보낸다(reservation/presentation/dto/BookingOptionsRequest).
+        // 타입을 붙이기 전에는 requestBody.userId를 읽고 있었고, 항상 undefined라
+        // 폴백만 쓰이고 있었다.
+        userId: 1001,
         currencyCode: 'KRW',
         totalTicketPriceAmount: 180000,
         seats: [
