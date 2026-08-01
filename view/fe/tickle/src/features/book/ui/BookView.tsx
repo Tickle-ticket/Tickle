@@ -11,6 +11,7 @@ import { useEventDetailWithFixtures } from '@/src/features/book/api/useEventDeta
 import { useBookStore } from '../store/useBookStore';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
 import { createBookFlowPolicy } from '../api/bookFlowPolicy';
+import { formatTime, useBookingTimer } from '@/src/features/book/hooks/useBookingTimer';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
 import { useSeatStep } from '../api/useSeatStep';
@@ -66,7 +67,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const setConfirmedSchedule = useBookStore(s => s.setConfirmedSchedule);
   const isModifyModeActive = useBookStore(s => s.isModifyModeActive);
   const setIsModifyModeActive = useBookStore(s => s.setIsModifyModeActive);
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   const scheduleId = confirmedSchedule
     ? confirmedSchedule.scheduleId
     ?? eventDetail?.schedules
@@ -373,21 +373,9 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     setIsExitModalOpen(false);
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (timeLeft === 0 && bookingStep !== 'SEAT' && !isModifyModeActive) {
+  const { timeLeft } = useBookingTimer({
+    isActive: bookingStep !== 'SEAT' && !isModifyModeActive,
+    onExpire: () => {
       if (preorderBookingId) {
         cancelPreorder(preorderBookingId);
       } else if (scheduleId && eventDetail && userProfile?.userId) {
@@ -400,16 +388,10 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         onConfirm: () => {
           onLeaveQueue?.();
           onClose();
-        }
+        },
       });
-    }
-  }, [timeLeft, bookingStep, isModifyModeActive, scheduleId, eventDetail, userProfile, onClose, preorderBookingId, onLeaveQueue]);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+    },
+  });
 
   useEffect(() => {
     if (seatError) {
