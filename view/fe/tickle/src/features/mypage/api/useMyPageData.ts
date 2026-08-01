@@ -6,6 +6,7 @@ import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { getCancellationWaitCandidates, cancelCancellationWaitCandidate, passCancellationOffer } from '@/src/shared/api/cancellationApi';
+import type { CancellationWaitCandidateSummaryResponse } from '@/src/shared/api/types/cancellation.types';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
 import { REALTIME, SHORT, LONG } from '@/src/shared/api/cachePolicy';
 
@@ -58,6 +59,20 @@ export interface WaitlistSeatData {
   waitlistNumber: number;
   cancellationOfferId?: number | null;
   status?: string;
+}
+
+/**
+ * 좌석 하나를 공연 정보와 함께 펼친 형태.
+ *
+ * 대기 관리 화면은 공연별 그룹이 아니라 좌석 단위로 순번을 나열하므로,
+ * 카드가 필요로 하는 공연 정보를 좌석에 붙여 평평하게 만든다.
+ */
+export interface FlatWaitlistSeat extends WaitlistSeatData {
+  eventTitle: string;
+  eventDate: string;
+  eventImage: string;
+  /** 취소 시 어느 공연의 좌석인지 되짚기 위한 원본 그룹. */
+  parentItem: WaitlistBookingData;
 }
 
 export interface WaitlistBookingData {
@@ -151,7 +166,7 @@ export const useWaitlistBookings = () => {
       const token = getAccessToken();
       if (!token) return [] as WaitlistBookingData[];
       
-      let candidates: any[];
+      let candidates: CancellationWaitCandidateSummaryResponse[];
       try {
         const response = await getCancellationWaitCandidates();
         candidates = response.data.candidates;
@@ -162,7 +177,7 @@ export const useWaitlistBookings = () => {
       }
       
       // Group by scheduleId
-      const grouped = candidates.reduce((acc: any, curr: any) => {
+      const grouped = candidates.reduce<Record<string, WaitlistBookingData>>((acc, curr) => {
         if (!acc[curr.scheduleId]) {
           acc[curr.scheduleId] = {
             id: String(curr.scheduleId), // Use scheduleId as grouped waitlist ID
@@ -192,10 +207,10 @@ export const useWaitlistBookings = () => {
         return acc;
       }, {});
 
-      const groupedArray = Object.values(grouped) as WaitlistBookingData[];
-      
-      groupedArray.forEach((group: any) => {
-        group.seats.sort((a: any, b: any) => {
+      const groupedArray = Object.values(grouped);
+
+      groupedArray.forEach((group) => {
+        group.seats.sort((a, b) => {
           const aOffered = a.status === 'OFFERED' ? 1 : 0;
           const bOffered = b.status === 'OFFERED' ? 1 : 0;
           if (aOffered !== bOffered) return bOffered - aOffered;
@@ -204,7 +219,7 @@ export const useWaitlistBookings = () => {
       });
 
       // 그룹 자체도 가장 대기 순번이 빠른 것이 먼저 오도록 정렬
-      groupedArray.sort((a: any, b: any) => {
+      groupedArray.sort((a, b) => {
         const aMin = a.seats[0]?.status === 'OFFERED' ? -1 : (a.seats[0]?.waitlistNumber || 999);
         const bMin = b.seats[0]?.status === 'OFFERED' ? -1 : (b.seats[0]?.waitlistNumber || 999);
         return aMin - bMin;
