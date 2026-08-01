@@ -97,3 +97,4 @@ export const BookingOptionsResponseSchema = Schema.Struct({
 
 export type BookingOptionsResponse = Schema.Schema.Type<typeof BookingOptionsResponseSchema>;
 export type BookingSeatOptionResponse = Schema.Schema.Type<typeof BookingSeatOptionResponseSchema>;
+export type PriceInfoResponse = Schema.Schema.Type<typeof PriceInfoResponseSchema>;
