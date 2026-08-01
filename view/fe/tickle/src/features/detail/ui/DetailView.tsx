@@ -9,8 +9,6 @@ import { DetailContentSection } from '@/src/features/detail/ui/components/Detail
 import { useDetailDataWithFixtures } from '@/src/features/detail/api/useDetailDataWithFixtures';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 import { useBookStore } from '@/src/features/book/store/useBookStore';
-import { BookView } from '@/src/features/book/ui/BookView';
-import { QueueView } from '@/src/features/queue/ui/QueueView';
 import { BannerPoster } from '@/src/shared/components/BannerPoster';
 import { Header } from '@/src/shared/components/Header';
 import { PanelToggle } from '@/src/shared/components/PanelToggle';
@@ -32,6 +30,7 @@ import { ScrollToButtons } from '@/src/features/detail/ui/components/ScrollToBut
 import { DetailActionButtons } from '@/src/features/detail/ui/components/DetailActionButtons';
 import { CaptchaGate } from '@/src/features/detail/ui/components/CaptchaGate';
 import { DetailHeroSection } from '@/src/features/detail/ui/components/DetailHeroSection';
+import { BookingFlowOverlay } from '@/src/features/detail/ui/components/BookingFlowOverlay';
 
 
 
@@ -326,32 +325,18 @@ export const DetailView = ({ isOverlay = false }: DetailViewProps) => {
         setSelectedDate={setSelectedDate}
       />
 
-      {/* Booking Pipeline Overlays */}
-      {(flowState === 'QUEUE' || flowState === 'WAITLIST_QUEUE') && (
-        <div className="fixed inset-0 z-[70] bg-surface overflow-y-auto">
-          <QueueView
-            eventId={activeEventId ? activeEventId.toString() : (data?.eventId?.toString() ?? '')}
-            scope={flowState === 'WAITLIST_QUEUE' ? 'CANCELLATION_WAIT' : 'BOOKING'}
-            onAdmitted={handleQueueAdmitted}
-            onClose={() => exitFlow({ notifyServer: false })}
-            onTokenFetched={updateQueueToken}
-          />
-        </div>
-      )}
-      {(flowState === 'BOOK' || flowState === 'WAITLIST_BOOK') && (
-        <div className="fixed inset-0 z-[70] bg-surface overflow-y-auto">
-          <BookView
-            eventId={activeEventId}
-            mode={flowState === 'WAITLIST_BOOK' ? 'WAITLIST' : 'BOOK'}
-            admitToken={admitToken || undefined}
-            onClose={() => exitFlow({ notifyServer: false })}
-            onLeaveQueue={leaveQueueOnly}
-            onStepChange={handleBookStepChange}
-            onStepBack={handleBookStepBack}
-            onPaymentStart={disconnect}
-          />
-        </div>
-      )}
+      <BookingFlowOverlay
+        flowState={flowState}
+        eventId={activeEventId ?? data?.eventId?.toString()}
+        admitToken={admitToken}
+        onQueueAdmitted={handleQueueAdmitted}
+        onTokenFetched={updateQueueToken}
+        onExit={() => exitFlow({ notifyServer: false })}
+        onLeaveQueue={leaveQueueOnly}
+        onStepChange={handleBookStepChange}
+        onStepBack={handleBookStepBack}
+        onPaymentStart={disconnect}
+      />
 
       {/* 뒤로가기 경고 모달 */}
       <Modal
