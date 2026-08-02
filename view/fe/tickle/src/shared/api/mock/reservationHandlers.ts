@@ -80,25 +80,50 @@ export const reservationHandlers = [
   }),
 
   // 예매 상세 조회
+  // 예매 상세 조회
+  //
+  // 예매 초안(preorder)이 만드는 bookingId는 목록 데이터에 없다. 그때 404를
+  // 주면 결제 완료 화면이 예매를 못 찾는다. 목록에 없으면 그 번호로 하나
+  // 만들어 돌려준다.
   http.get(`${API_BASE_URL}/reservations/:reservationId`, async ({ params }) => {
     await delay(300);
-    const { reservationId } = params;
-    const reservation = mockReservations.find((r) => String(r.bookingId) === reservationId);
+    const bookingId = Number(params.reservationId);
+    const known = mockReservations.find((r) => r.bookingId === bookingId);
 
-    if (!reservation) {
-      return HttpResponse.json({
-        status: 404,
-        code: 'BOOKING_NOT_FOUND',
-        message: '예매를 찾을 수 없습니다.',
-        data: null,
-      }, { status: 404 });
-    }
+    const ticketCount = known?.seats.length ?? 2;
+    const ticketPriceAmount = 90000;
+    const serviceFeeAmount = Math.floor(ticketPriceAmount * 0.05);
 
     return HttpResponse.json({
       status: 200,
       code: 'OK',
       message: 'success',
-      data: reservation,
+      data: {
+        bookingId,
+        paymentId: null,
+        bookingNo: known?.bookingNo ?? `BK-${bookingId}`,
+        bookingStatus: 'CONFIRMED',
+        eventTitle: known?.eventName ?? '오페라의 유령',
+        sessionNo: 1,
+        sessionStartAt: known?.eventStartAt ?? '2026-09-15T19:30:00Z',
+        venueName: known?.venueName ?? '샤롯데씨어터',
+        ticketCount,
+        totalPaymentAmount:
+          known?.totalPaymentAmount ?? (ticketPriceAmount + serviceFeeAmount) * ticketCount,
+        createdAt: known?.createdAt ?? new Date().toISOString(),
+        tickets: Array.from({ length: ticketCount }, (_, index) => ({
+          ticketId: bookingId * 100 + index,
+          ticketNo: `TK-${bookingId}-${index + 1}`,
+          ticketStatus: 'ISSUED',
+          sectionName: 'VIP석',
+          rowLabel: 'A',
+          seatNumber: String(index + 1),
+          seatLabel: `A-${index + 1}`,
+          ticketPriceAmount,
+          serviceFeeAmount,
+          finalPriceAmount: ticketPriceAmount + serviceFeeAmount,
+        })),
+      },
     });
   }),
 
