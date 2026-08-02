@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useRouter } from 'next/navigation';
+import { Modal } from '@/src/shared/components/Modal';
 import {
   AgencySeatPolicyModal,
   getAgencySeatPolicySummary,
@@ -47,6 +49,7 @@ import {
 } from '@/src/features/agency/model/registrationHelpers';
 
 export default function AgencyRegistrationPage() {
+  const router = useRouter();
   const { data: venueList = [], isLoading: isVenueListLoading } = useVenues();
   const [activeRegistrationStep, setActiveRegistrationStep] = useState(0);
   const [performanceTitle, setPerformanceTitle] = useState('');
@@ -65,7 +68,7 @@ export default function AgencyRegistrationPage() {
   const [isPerformancePreviewOpen, setIsPerformancePreviewOpen] = useState(false);
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
   const [registrationErrorMessage, setRegistrationErrorMessage] = useState<string | null>(null);
-  const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState<string | null>(null);
+  const [isRegistrationDoneModalOpen, setIsRegistrationDoneModalOpen] = useState(false);
   const [highlightedRegistrationBlock, setHighlightedRegistrationBlock] = useState<RegistrationErrorTarget | null>(null);
   const [registrationFieldErrorTarget, setRegistrationFieldErrorTarget] = useState<RegistrationErrorTarget | null>(null);
 
@@ -322,7 +325,6 @@ export default function AgencyRegistrationPage() {
     target,
     stepIndex,
   }: RegistrationValidationResult) => {
-    setRegistrationSuccessMessage(null);
     setRegistrationErrorMessage(message);
     setHighlightedRegistrationBlock(null);
     setRegistrationFieldErrorTarget(target);
@@ -368,7 +370,6 @@ export default function AgencyRegistrationPage() {
   const moveToRegistrationStep = (targetStep: number) => {
     if (targetStep <= activeRegistrationStep) {
       setRegistrationErrorMessage(null);
-      setRegistrationSuccessMessage(null);
       setRegistrationFieldErrorTarget(null);
       setActiveRegistrationStep(targetStep);
       scrollRegistrationPageToTop();
@@ -385,7 +386,6 @@ export default function AgencyRegistrationPage() {
     }
 
     setRegistrationErrorMessage(null);
-    setRegistrationSuccessMessage(null);
     setRegistrationFieldErrorTarget(null);
     setActiveRegistrationStep(targetStep);
     scrollRegistrationPageToTop();
@@ -405,14 +405,12 @@ export default function AgencyRegistrationPage() {
     }
 
     setRegistrationErrorMessage(null);
-    setRegistrationSuccessMessage(null);
     setRegistrationFieldErrorTarget(null);
     setIsPerformancePreviewOpen(true);
   };
 
   const handleRegistrationSubmit = async () => {
     setRegistrationErrorMessage(null);
-    setRegistrationSuccessMessage(null);
     setRegistrationFieldErrorTarget(null);
 
     const built = await buildRegistrationRequest({
@@ -444,8 +442,10 @@ export default function AgencyRegistrationPage() {
     setIsSubmittingRegistration(true);
 
     try {
-      const result = await submitAgencyEventRegistration(built.request);
-      setRegistrationSuccessMessage(`공연 등록이 완료되었습니다. eventId=${result.eventId}`);
+      await submitAgencyEventRegistration(built.request);
+      // eventId는 내부 식별자라 사용자에게 알려 줄 이유가 없다. 등록한 공연을
+      // 바로 확인할 수 있도록 목록으로 보낸다.
+      setIsRegistrationDoneModalOpen(true);
     } catch (error) {
       if (error instanceof ApiError) {
         setRegistrationErrorMessage(error.message);
@@ -711,12 +711,6 @@ export default function AgencyRegistrationPage() {
                 {registrationErrorMessage}
               </div>
             ) : null}
-
-            {registrationSuccessMessage ? (
-              <div className="rounded-2xl border border-success-light bg-success-subtle px-4 py-3 text-sm font-medium leading-6 text-success-hover">
-                {registrationSuccessMessage}
-              </div>
-            ) : null}
           </Box>
         </div>
       </section>
@@ -776,6 +770,20 @@ export default function AgencyRegistrationPage() {
           }}
         />
       ) : null}
+
+      <Modal
+        isOpen={isRegistrationDoneModalOpen}
+        onClose={() => setIsRegistrationDoneModalOpen(false)}
+        onConfirm={() => {
+          setIsRegistrationDoneModalOpen(false);
+          router.push('/agency/performances');
+        }}
+        title="공연 등록이 완료되었습니다"
+        description="등록한 공연은 공연 관리에서 확인하고 수정할 수 있습니다."
+        confirmText="공연 관리로 이동"
+        showCancelButton={false}
+      />
+
 
     </div>
   );
