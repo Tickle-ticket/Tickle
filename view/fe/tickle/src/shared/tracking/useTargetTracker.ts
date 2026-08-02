@@ -9,6 +9,19 @@ interface UseTargetTrackerProps {
  * 봇/매크로 탐지를 위해 타겟 요소에 무부하(Zero-load) 트래킹 데이터를 수집하는 훅입니다.
  * React 상태(State) 대신 요소의 data-* 속성에 타임스탬프를 기록하여 렌더링 부하를 없앱니다.
  */
+/**
+ * 추적 대상 요소에 그대로 펼치는 props 묶음.
+ *
+ * ref와 마우스 핸들러, 식별용 data 속성으로 이뤄진다. 버튼 같은 컴포넌트가
+ * 받아서 실제 DOM 요소에 전달한다.
+ */
+export interface TargetTrackerProps {
+  ref: React.RefObject<HTMLElement | null>;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  'data-track-id': string;
+}
+
 export const useTargetTracker = <T extends HTMLElement = any>({ trackId, isClickable = true }: UseTargetTrackerProps) => {
   const ref = useRef<T>(null);
 

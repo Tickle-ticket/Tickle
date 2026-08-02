@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import type { InfoPosterProps } from './types';
-import { resolveImageSrc } from '@/src/shared/utils/resolveImageSrc';
+import { useImageFallback } from '@/src/shared/hooks/useImageFallback';
 
 export const InfoPoster = ({
   src,
@@ -13,12 +13,7 @@ export const InfoPoster = ({
   isLoading = false,
   priority = false,
 }: InfoPosterProps) => {
-  const [imgFailed, setImgFailed] = useState(false);
-  const resolvedSrc = resolveImageSrc(src);
-
-  useEffect(() => {
-    setImgFailed(false);
-  }, [resolvedSrc]);
+  const { resolvedSrc, showFallback, onError: handleImageError } = useImageFallback(src);
 
   const inlineStyle: React.CSSProperties = {
     ...(width !== undefined ? { width } : {}),
@@ -44,7 +39,7 @@ export const InfoPoster = ({
       className={`relative overflow-hidden rounded-2xl shadow-md ${defaultDimensions} ${className}`}
       style={inlineStyle}
     >
-      {(!resolvedSrc || imgFailed) ? (
+      {showFallback ? (
         <div className={`absolute inset-0 w-full h-full bg-[#f2f4f6] flex flex-col items-center justify-center text-[#8B95A1] transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`}>
           <div className="flex items-baseline gap-1">
             <span className="text-xs font-semibold tracking-tight">준비중 입니다</span>
@@ -74,7 +69,7 @@ export const InfoPoster = ({
           unoptimized={true}
           sizes="(max-width: 768px) 240px, 280px"
           className={`object-cover transition-all duration-300 ${disabled ? 'grayscale opacity-50' : 'grayscale-0 opacity-100'}`} 
-          onError={() => setImgFailed(true)}
+          onError={handleImageError}
         />
       )}
       

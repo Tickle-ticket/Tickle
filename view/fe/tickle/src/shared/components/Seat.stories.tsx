@@ -33,7 +33,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // 템플릿: Interactive Seat
-const InteractiveSeat = (args: any) => {
+const InteractiveSeat = (args: ComponentProps<typeof Seat>) => {
   const [selected, setSelected] = useState(args.isSelected || false);
   return (
     <Seat

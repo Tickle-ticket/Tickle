@@ -17,7 +17,8 @@ export const trialHandlers = [
       console.error('%c[MSW] Trial 데이터 검증 실패:', 'color: red;', error);
       return HttpResponse.json({
         status: 400,
-        message: 'Invalid Trial JSON payload',
+        code: 'INVALID_INPUT_VALUE',
+        message: '행동 데이터 형식이 올바르지 않습니다.',
         data: null
       }, { status: 400 });
     }
@@ -38,6 +39,7 @@ export const trialHandlers = [
 
     return HttpResponse.json({
       status: 201,
+      code: 'CREATED',
       message: 'success',
       data: {
         trialId: trial.trialId,
@@ -53,6 +55,7 @@ export const trialHandlers = [
     
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: null
     });

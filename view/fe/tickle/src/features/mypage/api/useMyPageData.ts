@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { http } from '@/src/shared/api/http';
-import { ApiResponse } from '@/src/shared/api/types';
+import { ApiError, ApiResponse } from '@/src/shared/api/types';
+import { isAlreadyCancelled } from '@/src/shared/api/errors';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { getCancellationWaitCandidates, cancelCancellationWaitCandidate, passCancellationOffer } from '@/src/shared/api/cancellationApi';
+import type { CancellationWaitCandidateSummaryResponse } from '@/src/shared/api/types/cancellation.types';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
+import { REALTIME, SHORT, LONG } from '@/src/shared/api/cachePolicy';
+
 export const useMyUpcomingWishlist = () => {
   return useQuery({
     queryKey: ['myUpcomingWishlist'],
@@ -29,7 +33,8 @@ export const useMyUpcomingWishlist = () => {
         isWishlisted: item.isFavorite
       })) as PerformanceData[];
     },
-    staleTime: 0,
+    // 찜 토글이 이 목록을 직접 갱신한다(useFavoriteToggle).
+    staleTime: SHORT,
   });
 };
 export interface BookingData {
@@ -54,6 +59,20 @@ export interface WaitlistSeatData {
   waitlistNumber: number;
   cancellationOfferId?: number | null;
   status?: string;
+}
+
+/**
+ * 좌석 하나를 공연 정보와 함께 펼친 형태.
+ *
+ * 대기 관리 화면은 공연별 그룹이 아니라 좌석 단위로 순번을 나열하므로,
+ * 카드가 필요로 하는 공연 정보를 좌석에 붙여 평평하게 만든다.
+ */
+export interface FlatWaitlistSeat extends WaitlistSeatData {
+  eventTitle: string;
+  eventDate: string;
+  eventImage: string;
+  /** 취소 시 어느 공연의 좌석인지 되짚기 위한 원본 그룹. */
+  parentItem: WaitlistBookingData;
 }
 
 export interface WaitlistBookingData {
@@ -88,10 +107,12 @@ export const useMyBookings = () => {
         status: r.bookingStatus,
         bookingNo: r.bookingNo,
         totalPaymentAmount: r.totalPaymentAmount,
-        paymentId: (r as any).paymentId, // 백엔드에서 추가될 필드
+        // paymentId는 목록 응답에 없다(ReservationSummaryResponse). 상세를 열 때
+        // 받아 오므로 MyBookingsView가 bookingDetail에서 채운다.
       })) as BookingData[];
     },
-    staleTime: 0,
+    // 예매 취소가 이 목록을 invalidate한다(useCancelBooking).
+    staleTime: SHORT,
   });
 };
 
@@ -107,7 +128,8 @@ export const usePaymentStatus = (paymentId: number | null) => {
       return res.data;
     },
     enabled: !!paymentId,
-    staleTime: 0,
+    // PG 승인은 우리 앱 밖에서 확정되므로 언제 바뀌는지 알 수 없다. 매번 확인한다.
+    staleTime: REALTIME,
   });
 };
 
@@ -121,7 +143,8 @@ export const useBookingDetail = (bookingId: string | null) => {
     },
     enabled: !!bookingId,
     retry: false,
-    staleTime: 0,
+    // 결제 진행 중에 상태(입금 대기 → 확정)가 서버에서 바뀔 수 있다.
+    staleTime: REALTIME,
   });
 };
 
@@ -132,7 +155,8 @@ export const usePastBookings = () => {
       const response = await http.get<ApiResponse<BookingData[]>>('/api/v1/mypage/bookings/past');
       return response.data;
     },
-    staleTime: 0,
+    // 이미 끝난 공연 목록이라 세션 중에 바뀌지 않는다.
+    staleTime: LONG,
   });
 };
 
@@ -143,7 +167,7 @@ export const useWaitlistBookings = () => {
       const token = getAccessToken();
       if (!token) return [] as WaitlistBookingData[];
       
-      let candidates: any[];
+      let candidates: CancellationWaitCandidateSummaryResponse[];
       try {
         const response = await getCancellationWaitCandidates();
         candidates = response.data.candidates;
@@ -154,7 +178,7 @@ export const useWaitlistBookings = () => {
       }
       
       // Group by scheduleId
-      const grouped = candidates.reduce((acc: any, curr: any) => {
+      const grouped = candidates.reduce<Record<string, WaitlistBookingData>>((acc, curr) => {
         if (!acc[curr.scheduleId]) {
           acc[curr.scheduleId] = {
             id: String(curr.scheduleId), // Use scheduleId as grouped waitlist ID
@@ -184,10 +208,10 @@ export const useWaitlistBookings = () => {
         return acc;
       }, {});
 
-      const groupedArray = Object.values(grouped) as WaitlistBookingData[];
-      
-      groupedArray.forEach((group: any) => {
-        group.seats.sort((a: any, b: any) => {
+      const groupedArray = Object.values(grouped);
+
+      groupedArray.forEach((group) => {
+        group.seats.sort((a, b) => {
           const aOffered = a.status === 'OFFERED' ? 1 : 0;
           const bOffered = b.status === 'OFFERED' ? 1 : 0;
           if (aOffered !== bOffered) return bOffered - aOffered;
@@ -196,7 +220,7 @@ export const useWaitlistBookings = () => {
       });
 
       // 그룹 자체도 가장 대기 순번이 빠른 것이 먼저 오도록 정렬
-      groupedArray.sort((a: any, b: any) => {
+      groupedArray.sort((a, b) => {
         const aMin = a.seats[0]?.status === 'OFFERED' ? -1 : (a.seats[0]?.waitlistNumber || 999);
         const bMin = b.seats[0]?.status === 'OFFERED' ? -1 : (b.seats[0]?.waitlistNumber || 999);
         return aMin - bMin;
@@ -204,17 +228,29 @@ export const useWaitlistBookings = () => {
 
       return groupedArray;
     },
-    staleTime: 0,
+    // 취소표 배정(OFFERED 전환)은 서버가 다른 사용자의 취소를 받아 일으키므로
+    // 우리 쪽 mutation과 무관하게 바뀐다. 대기 순번도 같은 이유로 움직인다.
+    staleTime: REALTIME,
   });
 };
 
 export const useCancelBooking = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ bookingId }: { bookingId: number | string }) => {
-      const response = await reservationApi.cancelReservation(bookingId);
-      return response.data;
+      try {
+        const response = await reservationApi.cancelReservation(bookingId);
+        return response.data;
+      } catch (error) {
+        // 이미 취소된 예매는 사용자가 원한 상태에 도달해 있다. 실패로 되던지면
+        // 취소가 안 된 것처럼 보이므로 성공과 같게 흘려보낸다(onSuccess가 목록을
+        // 갱신하면서 실제 상태가 화면에 반영된다).
+        if (error instanceof ApiError && isAlreadyCancelled(error.code)) {
+          return null;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
@@ -224,13 +260,20 @@ export const useCancelBooking = () => {
 
 export const useCancelWaitlist = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (candidateId: string) => {
       const token = getAccessToken();
       if (!token) throw new Error('로그인이 필요합니다.');
-      const response = await cancelCancellationWaitCandidate(candidateId);
-      return response.data;
+      try {
+        const response = await cancelCancellationWaitCandidate(candidateId);
+        return response.data;
+      } catch (error) {
+        if (error instanceof ApiError && isAlreadyCancelled(error.code)) {
+          return null;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['waitlistBookings'] });

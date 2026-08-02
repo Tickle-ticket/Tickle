@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HomeView } from './HomeView';
 import { useEffect } from 'react';
-import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 
 const mockUserProfile = {
@@ -116,7 +115,6 @@ export const WithData: Story = {
   decorators: [
     (Story) => {
       useEffect(() => {
-        useSearchStore.getState().clearSearch();
         useMypageStore.getState().openMypage();
       }, []);
       return (
@@ -132,7 +130,6 @@ export const Empty: Story = {
   decorators: [
     (Story) => {
       useEffect(() => {
-        useSearchStore.getState().clearSearch();
         useMypageStore.getState().openMypage();
       }, []);
       return (

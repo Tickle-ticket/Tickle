@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Toggle } from '@/src/shared/components/Toggle';
+import type { UserProfileData } from '@/src/shared/api/useUserProfile';
 
 interface PaymentInfoStepProps {
-  userProfile: any;
+  userProfile: UserProfileData | null | undefined;
   onCanPay: (canPay: boolean) => void;
 }
 
@@ -24,13 +25,19 @@ export const PaymentInfoStep: React.FC<PaymentInfoStepProps> = ({
   const [termExpand1, setTermExpand1] = useState(false);
   const [termExpand2, setTermExpand2] = useState(false);
 
-  React.useEffect(() => {
-    if (userProfile) {
-      setBuyerName(userProfile.name || '');
-      setBuyerEmail(userProfile.email || '');
-      setBuyerPhone(userProfile.phoneNumber || '');
-    }
-  }, [userProfile]);
+  // 프로필이 늦게 오면 그때 한 번 채운다.
+  //
+  // 예전에는 userProfile이 바뀔 때마다 다시 채웠다. 이 세 칸은 사용자가 고칠 수
+  // 있는 입력란인데, 프로필 쿼리가 무효화되면(useUserProfile이 invalidate한다)
+  // 새 객체가 내려와 effect가 다시 돌고 사용자가 적어 둔 값을 덮어썼다.
+  // 처음 도착했을 때만 채우고, 이후에는 건드리지 않는다.
+  const [isPrefilled, setIsPrefilled] = useState(!!userProfile);
+  if (!isPrefilled && userProfile) {
+    setIsPrefilled(true);
+    setBuyerName(userProfile.name || '');
+    setBuyerEmail(userProfile.email || '');
+    setBuyerPhone(userProfile.phoneNumber || '');
+  }
 
   const canPay = !!(buyerName.trim() && buyerEmail.trim() && buyerPhone.trim() && agreeTerm1 && agreeTerm2);
 

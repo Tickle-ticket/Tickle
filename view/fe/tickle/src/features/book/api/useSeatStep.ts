@@ -1,22 +1,24 @@
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
-import { useSeatData } from '@/src/features/book/api/useSeatData';
+import { useSeatDataWithFixtures } from '@/src/features/book/api/useSeatDataWithFixtures';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
 import { useQuery } from '@tanstack/react-query';
 import { reservationApi } from '@/src/shared/api/reservationApi';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import type { EventDetailResponse } from '@/src/features/book/api/useEventDetail';
+import type { UserProfileData } from '@/src/shared/api/useUserProfile';
+import { REALTIME } from '@/src/shared/api/cachePolicy';
+import { createSeatSelectionPolicy } from './seatSelectionPolicy';
 import { navigateToBlocked } from '@/src/shared/utils/blockedNavigation';
 import { useBookStore } from '../store/useBookStore';
 import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
 
 interface UseSeatStepOptions {
-  eventDetail: any;
-  userProfile: any;
+  eventDetail: EventDetailResponse | undefined;
+  userProfile: UserProfileData | null | undefined;
   mode: 'BOOK' | 'CANCEL' | 'WAITLIST';
   admitToken: string | null;
-  storyMode: boolean;
   initialSeats: string[];
   scheduleId: string | null;
 }
@@ -30,13 +32,11 @@ export function useSeatStep({
   userProfile,
   mode,
   admitToken,
-  storyMode,
   initialSeats,
   scheduleId,
 }: UseSeatStepOptions) {
-  const isShadowModeActive = isShadowMode(eventDetail?.eventId);
-  const isWaitlistMode = mode === 'WAITLIST' || isShadowModeActive;
-  const isCancelMode = mode === 'CANCEL';
+  const policy = createSeatSelectionPolicy(mode, eventDetail?.eventId);
+  const { isShadow: isShadowModeActive, isWaitlistMode, isCancelMode } = policy;
 
   const selectedSeats = useBookStore(s => s.selectedSeats);
   const toggleSeat = useBookStore(s => s.toggleSeat);
@@ -47,29 +47,31 @@ export function useSeatStep({
 
   const enableWs = !isCancelMode || isModifyModeActive;
 
-  const { data: seatAvailability, venueId, isLoading: isSeatsLoading, error: seatError } = useSeatData(
+  const { data: seatAvailability, venueId, isLoading: isSeatsLoading, error: seatError } = useSeatDataWithFixtures(
     eventDetail?.eventId || null,
     scheduleId,
     enableWs,
     mode === 'WAITLIST' ? 'WAITLIST' : 'BOOKING',
-    admitToken,
-    storyMode
+    admitToken
   );
 
   const { data: ownershipCountResponse } = useQuery({
     queryKey: ['ownershipCount', eventDetail?.eventId, scheduleId, userProfile?.userId],
     queryFn: async () => {
       if (!eventDetail?.eventId || !scheduleId || !userProfile?.userId) return null;
-      if (isShadowMode(eventDetail.eventId)) return { totalCount: 0 };
       const res = await reservationApi.getOwnershipCount(eventDetail.eventId, scheduleId, userProfile.userId);
       return res.data;
     },
-    enabled: !!eventDetail?.eventId && !!scheduleId && !!userProfile?.userId,
-    staleTime: 0,
+    enabled:
+      policy.needsOwnershipCount &&
+      !!eventDetail?.eventId && !!scheduleId && !!userProfile?.userId,
+    // 1인당 예매 가능 수량은 다른 기기·탭에서의 예매로도 줄어든다. 좌석을
+    // 고르는 시점의 값이 아니면 선점 단계에서 서버 거절로 이어진다.
+    staleTime: REALTIME,
     gcTime: 0,
   });
 
-  const maxSelectable = isShadowModeActive ? 99 : Math.max(0, 4 - (ownershipCountResponse?.totalCount || 0));
+  const maxSelectable = policy.maxSelectable(ownershipCountResponse?.totalCount || 0);
 
   // 좌석 데이터 가공
   const seatsData = useMemo(() => {
@@ -83,7 +85,7 @@ export function useSeatStep({
     } else if (seatAvailability) {
       Object.entries(seatAvailability).forEach(([seatId, info]) => {
         const isMyInitialSeat = initialSeats.includes(seatId);
-        const isSelectable = isShadowModeActive ? info.isAvailable : isWaitlistMode ? !!info.waitable : (info.isAvailable || isMyInitialSeat);
+        const isSelectable = policy.isSelectable(info, isMyInitialSeat);
         const isSelected = isMyInitialSeat ? selectedSeatsToCancel.has(seatId) : selectedSeats.has(seatId);
         const reachedMax = selectedSeats.size >= maxSelectable;
         const canToggle = !reachedMax || isSelected || isMyInitialSeat;
@@ -100,7 +102,7 @@ export function useSeatStep({
         if (bookingStep === 'TICKET_TYPE' && !isSelected) {
           result[seatId] = { status: 'disabled' as SeatStatus, isSelected: false, color: 'disabled' as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
         } else {
-          const gradeColor = isMyInitialSeat ? 'vip' : ((!isSelectable && isWaitlistMode && !isShadowModeActive) ? 'disabled' : (info.priceGrade?.toLowerCase() || '일반'));
+          const gradeColor = isMyInitialSeat ? 'vip' : (policy.showsDisabledColor(isSelectable) ? 'disabled' : (info.priceGrade?.toLowerCase() || '일반'));
           result[seatId] = { status, isSelected, color: gradeColor as SeatColor, congestion, sessionSeatId: info.sessionSeatId, detailedInfo: info.detailedInfo };
         }
       });
@@ -114,11 +116,11 @@ export function useSeatStep({
       const match = seatId.match(/^[a-zA-Z]+/);
       let priceGrade = match ? match[0].toUpperCase() : 'VIP';
       if (priceGrade === 'V') priceGrade = 'VIP';
-      const price = eventDetail?.zonePrices.find((p: any) => p.priceGrade === priceGrade)?.price || 0;
+      const price = eventDetail?.zonePrices.find((p) => p.priceGrade === priceGrade)?.price || 0;
       return { priceGrade, price, waitingCount: 0 };
     }
     const priceGrade = seatAvailability?.[seatId]?.priceGrade || '일반';
-    const price = eventDetail?.zonePrices.find((p: any) => p.priceGrade === priceGrade)?.price || 0;
+    const price = eventDetail?.zonePrices.find((p) => p.priceGrade === priceGrade)?.price || 0;
     const waitingCount = seatAvailability?.[seatId]?.waitingCount || 0;
     return { priceGrade, price, waitingCount };
   }, [eventDetail, seatAvailability, initialSeats]);
@@ -134,7 +136,7 @@ export function useSeatStep({
     }
     const isMyInitialSeat = initialSeats.includes(id);
     if (!selectedSeats.has(id) && !isMyInitialSeat && selectedSeats.size >= maxSelectable) {
-      if (!isShadowModeActive) {
+      if (policy.warnsOnLimitExceeded()) {
         return { error: true, title: '선택 제한', message: `최대 ${maxSelectable}개까지 선택 가능합니다.` };
       }
       return;
@@ -149,7 +151,7 @@ export function useSeatStep({
     const seatData = seatsData[id];
     if (!scheduleId || !seatData || seatData.status !== 'selectable' || !seatData.sessionSeatId) return;
     toggleSeat(id);
-  }, [initialSeats, selectedSeats, maxSelectable, isShadowModeActive, bookingStep, isCancelMode, isModifyModeActive, toggleCancelSeat, seatsData, scheduleId, toggleSeat]);
+  }, [initialSeats, selectedSeats, maxSelectable, policy, bookingStep, isCancelMode, isModifyModeActive, toggleCancelSeat, seatsData, scheduleId, toggleSeat]);
 
   return {
     seatAvailability,

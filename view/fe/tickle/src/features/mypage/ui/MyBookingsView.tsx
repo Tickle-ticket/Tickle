@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ApiError } from '@/src/shared/api/types';
 import { useMyBookings, useCancelBooking, useBookingDetail, usePaymentStatus } from '@/src/features/mypage/api/useMyPageData';
 import { Text } from '@/src/shared/components/Text';
 import { Table } from '@/src/shared/components/Table';
@@ -11,6 +12,7 @@ import { MobileBookingCard } from '@/src/shared/components/MobileBookingCard';
 import { BookingDetailCard } from '@/src/shared/components/BookingDetailCard';
 import { Box } from '@/src/shared/components/Box';
 import { Badge } from '@/src/shared/components/Badge';
+import { ForbiddenView, isForbiddenError } from '@/src/shared/components/ForbiddenView';
 import { useRouter } from 'next/navigation';
 import { BookingDetailView } from './BookingDetailView';
 
@@ -60,20 +62,6 @@ export const MyBookingsView = () => {
     setSelectedPaymentId(null);
   };
 
-  useEffect(() => {
-    if (detailError) {
-      handleCloseDetailModal();
-      const err = detailError as any;
-      if (err.status === 403) {
-        setErrorModalConfig({ isOpen: true, title: '권한 없음', message: '해당 예매 상세 정보를 볼 권한이 없습니다.' });
-      } else if (err.status === 404) {
-        setErrorModalConfig({ isOpen: true, title: '예매 없음', message: '존재하지 않는 예매 내역입니다.' });
-      } else {
-        setErrorModalConfig({ isOpen: true, title: '조회 오류', message: err.message || '상세 정보를 불러오는 중 오류가 발생했습니다.' });
-      }
-    }
-  }, [detailError]);
-
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedBarcodeText, setSelectedBarcodeText] = useState<string | null>(null);
 
@@ -121,21 +109,43 @@ export const MyBookingsView = () => {
 
   const [errorModalConfig, setErrorModalConfig] = useState({ isOpen: false, title: '', message: '' });
 
+  // 403·404·5xx는 QueryProvider의 throwOnError가 Error Boundary로 올려보내므로
+  // 여기 도달하는 것은 400·409처럼 화면 맥락이 필요한 에러뿐이다.
+  // 목록은 정상이고 상세만 실패한 상황이라 페이지를 덮지 않고 모달로 알린다.
+  //
+  // handleCloseDetailModal·setErrorModalConfig보다 아래에 두어야 한다. 위에 두면
+  // 호이스팅된 이름을 참조하게 되어 effect가 최신 값을 못 볼 수 있다.
+  useEffect(() => {
+    if (detailError) {
+      handleCloseDetailModal();
+      setErrorModalConfig({
+        isOpen: true,
+        title: '조회 오류',
+        message:
+          (detailError as Error).message || '상세 정보를 불러오는 중 오류가 발생했습니다.',
+      });
+    }
+  }, [detailError]);
+
   const handleConfirmCancel = () => {
     if (selectedBookingForCancel) {
       cancelBooking({ bookingId: selectedBookingForCancel.id }, {
         onSuccess: () => {
           handleCloseCancelModal();
         },
-        onError: (err: any) => {
+        onError: (err) => {
           handleCloseCancelModal();
-          if (err.status === 400) {
+          // react-query는 Error로 넘겨주므로 status를 보려면 좁혀야 한다.
+          // apiClient가 던지는 것은 항상 ApiError지만 타입이 그것을 모른다.
+          const status = err instanceof ApiError ? err.status : undefined;
+
+          if (status === 400) {
             setErrorModalConfig({ isOpen: true, title: '취소 불가', message: '현재 취소할 수 없는 예매 상태입니다.' });
-          } else if (err.status === 403) {
+          } else if (status === 403) {
             setErrorModalConfig({ isOpen: true, title: '권한 없음', message: '해당 예매 내역을 취소할 권한이 없습니다.' });
-          } else if (err.status === 404) {
+          } else if (status === 404) {
             setErrorModalConfig({ isOpen: true, title: '예매 없음', message: '취소하려는 예매 내역을 찾을 수 없습니다.' });
-          } else if (err.status === 409) {
+          } else if (status === 409) {
             setErrorModalConfig({ isOpen: true, title: '이미 취소됨', message: '이미 취소 처리된 예매 내역입니다.' });
           } else {
             setErrorModalConfig({ isOpen: true, title: '취소 오류', message: err.message || '예매 취소 중 알 수 없는 오류가 발생했습니다.' });
@@ -295,6 +305,16 @@ export const MyBookingsView = () => {
                 </Badge>
               </div>
             </div>
+          ) : detailError ? (
+            // 에러를 로딩보다 먼저 판정한다. 실패 시 bookingDetail이 undefined라
+            // 로딩 조건(!bookingDetail)이 앞서면 "불러오는 중"이 고착된다.
+            isForbiddenError(detailError) ? (
+              <ForbiddenView error={detailError} compact />
+            ) : (
+              <div className="py-10 flex justify-center text-content-secondary font-bold">
+                상세 정보를 불러오지 못했습니다.
+              </div>
+            )
           ) : isDetailLoading || !bookingDetail ? (
             <div className="py-10 flex justify-center text-content-tertiary">불러오는 중...</div>
           ) : (

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { useBookStore } from '../../store/useBookStore';
 import { Accordion } from '@/src/shared/components/Accordion';
-import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
+import {
+  BookingOptionsResponse,
+  type BookingSeatOptionResponse,
+} from '@/src/shared/api/types/booking.types';
+import { resolvePriceInfos, findBasePrice, calculateGradeTotal } from '../../api/priceInfo';
 
 interface TicketTypeStepProps {
   optionsData: BookingOptionsResponse;
   onSubmitPreorder: (
     seatIds: number[],
     optionSelections: { sessionSeatId: number; discountName: string }[]
-  ) => Promise<any>;
+  ) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
   submitButtonText?: string;
@@ -28,11 +32,11 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
   isSubmitting = false,
   submitButtonText = '다음 단계',
 }) => {
-  const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
-  const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
+  const priceGradeTicketCounts = useBookStore((s) => s.priceGradeTicketCounts);
+  const setPriceGradeTicketCounts = useBookStore((s) => s.setPriceGradeTicketCounts);
 
   // Group seats by grade from the backend optionsData
-  const priceGradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, BookingSeatOptionResponse[]> = {};
   optionsData.seats.forEach(seat => {
     if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
     priceGradeSeats[seat.priceGrade].push(seat);
@@ -45,7 +49,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
 
   const getPriceGradeTotal = (priceGrade: string) => {
     const counts = priceGradeTicketCounts[priceGrade] || {};
-    return Object.values(counts).reduce((s: number, n: any) => s + (n as number), 0);
+    return Object.values(counts).reduce((sum, count) => sum + count, 0);
   };
 
   const getPriceGradePrice = (priceGrade: string) => {
@@ -53,40 +57,22 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
     if (seatsInGrade.length === 0) return 0;
 
     // We assume all seats in the same grade share the same base price and discounts
-    const baseSeat = seatsInGrade[0];
-    let types = baseSeat.priceInfos || [];
-    
-    if (types.length === 0) {
-      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-    }
-    
-    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
-
+    const types = resolvePriceInfos(seatsInGrade[0], optionsData);
     const counts = priceGradeTicketCounts[priceGrade] || {};
-    return Object.entries(counts).reduce((sum, [typeId, count]: [string, any]) => {
-      const type = types.find((t: any) => t.discountName === typeId);
-      const typePrice = type ? type.ticketPriceAmount : basePrice;
-      return sum + typePrice * (count as number);
-    }, 0);
+    return calculateGradeTotal(types, counts);
   };
 
   const totalPrice = Object.keys(priceGradeSeats).reduce((sum, priceGrade) => sum + getPriceGradePrice(priceGrade), 0);
-  const originalPrice = optionsData.seats.reduce((sum, seat) => {
-    let types = seat.priceInfos || [];
-    if (types.length === 0) {
-      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-    }
-    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
-    return sum + basePrice;
-  }, 0);
+  const originalPrice = optionsData.seats.reduce(
+    (sum, seat) => sum + findBasePrice(resolvePriceInfos(seat, optionsData)),
+    0,
+  );
   const discountAmount = originalPrice - totalPrice;
 
   const handleCount = (priceGrade: string, typeId: string, delta: number) => {
     let becameFull = false;
 
-    setPriceGradeTicketCounts((prev: any) => {
+    setPriceGradeTicketCounts((prev) => {
       const priceGradeCounts = { ...(prev[priceGrade] || {}) };
       const current = priceGradeCounts[typeId] || 0;
       const newVal = Math.max(0, current + delta);
@@ -94,7 +80,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
 
       const otherTotal = Object.entries(priceGradeCounts)
         .filter(([id]) => id !== typeId)
-        .reduce((s: number, [, n]: [string, any]) => s + (n as number), 0);
+        .reduce((sum, [, count]) => sum + count, 0);
 
       if (otherTotal + newVal > maxForPriceGrade) return prev;
 
@@ -130,7 +116,7 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
       const counts = priceGradeTicketCounts[priceGrade] || {};
       let seatIndex = 0;
 
-      Object.entries(counts).forEach(([discountName, count]: [string, any]) => {
+      Object.entries(counts).forEach(([discountName, count]) => {
         for (let i = 0; i < (count as number); i++) {
           if (seatIndex < seats.length) {
             optionSelections.push({
@@ -200,15 +186,9 @@ export const TicketTypeStep: React.FC<TicketTypeStepProps> = ({
                 >
                   <div className="flex flex-col gap-2 px-1">
                     {(() => {
-                      const baseSeat = seats[0];
-                      let types = baseSeat.priceInfos || [];
-                      
-                      if (types.length === 0) {
-                        const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-                        types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-                      }
+                      const types = resolvePriceInfos(seats[0], optionsData);
 
-                      return types.map((type: any) => {
+                      return types.map((type) => {
                         const count = priceGradeTicketCounts[priceGrade]?.[type.discountName] || 0;
                         const typePrice = type.ticketPriceAmount;
                         const canAdd = currentTotal < maxCount;

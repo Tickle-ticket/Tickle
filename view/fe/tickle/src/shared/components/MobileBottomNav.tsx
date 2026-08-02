@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { HomeIcon, MagnifyingGlassIcon, UserIcon } from '@heroicons/react/24/outline';
 import { HomeIcon as HomeSolid, MagnifyingGlassIcon as SearchSolid, UserIcon as UserSolid } from '@heroicons/react/24/solid';
-import { useRouter, usePathname } from 'next/navigation';
-import { useSearchStore } from '@/src/shared/store/useSearchStore';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
 import { useDetailStore } from '@/src/shared/store/useDetailStore';
 
 export const MobileBottomNav = () => {
   const router = useRouter();
-  const { searchValue, setSearchValue, clearSearch } = useSearchStore();
+  const searchParams = useSearchParams();
+  const isSearchMode = searchParams.get('q') !== null;
   const { isMypageOpen, openMypage, closeMypage } = useMypageStore();
   const { closeDetail } = useDetailStore();
   const [isVisible, setIsVisible] = useState(true);
@@ -27,9 +27,17 @@ export const MobileBottomNav = () => {
   }, []);
 
   const pathname = usePathname();
-  const isHome = !searchValue && !isMypageOpen && pathname === '/';
-  const isSearch = !!searchValue;
+  const isHome = !isSearchMode && !isMypageOpen && pathname === '/';
+  const isSearch = isSearchMode;
   const isMypage = isMypageOpen;
+
+  // q만 제거하고 나머지 쿼리는 유지
+  const removeQuery = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('q');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  };
 
   const navItems = [
     {
@@ -39,10 +47,9 @@ export const MobileBottomNav = () => {
       activeIcon: HomeSolid,
       isActive: isHome,
       onClick: () => {
-        clearSearch();
         closeMypage();
         closeDetail();
-        router.push('/');
+        router.push('/'); // q 없는 홈으로 → 검색 해제
       }
     },
     {
@@ -54,7 +61,7 @@ export const MobileBottomNav = () => {
       onClick: () => {
         closeMypage();
         closeDetail();
-        if (!searchValue) setSearchValue(' '); 
+        if (!isSearchMode) router.push('/?q='); // 빈 검색모드 진입
       }
     },
     {
@@ -64,9 +71,9 @@ export const MobileBottomNav = () => {
       activeIcon: UserSolid,
       isActive: isMypage,
       onClick: () => {
-        clearSearch();
         closeDetail();
         openMypage('USER');
+        if (isSearchMode) removeQuery(); // 검색 중이었다면 q 제거
       }
     }
   ];

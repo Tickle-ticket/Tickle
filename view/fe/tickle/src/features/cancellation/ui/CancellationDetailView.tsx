@@ -5,6 +5,7 @@ import { useCancellationDetail } from '../api/useCancellationDetail';
 import { PaymentStep } from '@/src/features/book/ui/components/PaymentStep';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { Modal } from '@/src/shared/components/Modal';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 import { useBookStore } from '@/src/features/book/store/useBookStore';
 
 interface CancellationDetailViewProps {
@@ -15,7 +16,8 @@ interface CancellationDetailViewProps {
 export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ cancellationId, onClose }) => {
   const { data, isLoading, error } = useCancellationDetail(cancellationId);
   const { data: userProfile } = useUserProfile();
-  const setBookingStep = useBookStore((s: any) => s.setBookingStep);
+  const { showToast } = useToast();
+  const setBookingStep = useBookStore((s) => s.setBookingStep);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
   const [showBackConfirm, setShowBackConfirm] = useState(false);
   const [errorModalConfig, setErrorModalConfig] = useState<{isOpen: boolean; title: string; message: string}>({
@@ -24,10 +26,12 @@ export const CancellationDetailView: React.FC<CancellationDetailViewProps> = ({ 
 
   useEffect(() => {
     if (error) {
-      alert(`조회 실패: ${error.message}`);
+      // 여기서 바로 닫으므로 이 화면에는 메시지를 띄울 자리가 없다. 토스트는
+      // 닫힌 뒤에도 남아 사용자가 사유를 읽을 수 있다(alert처럼 흐름을 막지도 않는다).
+      showToast(`조회 실패: ${error.message}`);
       onClose();
     }
-  }, [error, onClose]);
+  }, [error, onClose, showToast]);
 
   // 결제 오버레이가 열렸을 때 브라우저 뒤로가기 버튼을 가로채서 확인 모달을 표시
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/src/shared/api/authApi';
 import { setAccessToken } from '@/src/shared/api/tokenManager';
@@ -9,6 +10,7 @@ import { Button } from '@/src/shared/components/Button';
 import { Input } from '@/src/shared/components/Input';
 import { type AuthNavigationItem, UserAuthFrame } from '@/src/shared/components/UserAuthFrame';
 import { clearKakaoSignUpToken, getKakaoSignUpToken } from '@/src/shared/lib/kakaoSignupToken';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 
 type ErrorState = {
   name: string;
@@ -83,6 +85,7 @@ const authTabs: AuthNavigationItem[] = [
 
 export function KakaoSignupPageClient() {
   const router = useRouter();
+  const { showToast } = useToast();
   const todayDate = useMemo(() => getTodayDate(), []);
   const [signUpToken, setSignUpToken] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -113,7 +116,7 @@ export function KakaoSignupPageClient() {
 
   const handleExpiredSession = () => {
     clearKakaoSignUpToken();
-    alert('카카오 가입 세션이 만료되었습니다. 다시 로그인해 주세요.');
+    showToast('카카오 가입 세션이 만료되었습니다. 다시 로그인해 주세요.');
     router.replace('/login');
   };
 
@@ -212,7 +215,7 @@ export function KakaoSignupPageClient() {
     } catch (error) {
       console.error('verifyPhoneCode failed', error);
 
-      if (error instanceof ApiError && error.status === 401) {
+      if (isFailure(error, 'UnauthorizedError')) {
         handleExpiredSession();
         return;
       }
@@ -259,7 +262,7 @@ export function KakaoSignupPageClient() {
     } catch (error) {
       console.error('kakaoSignup failed', error);
 
-      if (error instanceof ApiError && error.status === 401) {
+      if (isFailure(error, 'UnauthorizedError')) {
         handleExpiredSession();
         return;
       }

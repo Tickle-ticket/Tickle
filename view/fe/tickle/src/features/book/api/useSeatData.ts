@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { seatApi } from '@/src/shared/api/seatApi';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
-import { isShadowMode, generateShadowMockSeats } from '@/src/shared/utils/shadowMode';
+import {
+  getReconnectDelay,
+  shouldRetry,
+  SEAT_MAX_RECONNECT_ATTEMPTS,
+} from '@/src/shared/lib/sseReconnect';
 
 export interface SeatStatusData {
   priceGrade: string;
@@ -14,18 +18,41 @@ export interface SeatStatusData {
 
 export type SeatAvailabilityResponse = Record<string, SeatStatusData>;
 
+/**
+ * 좌석 상태 변경 SSE 메시지.
+ *
+ * 예매(BOOKING)는 여러 좌석이 한꺼번에 바뀌므로 배열로, 취소표 대기(WAITLIST)는
+ * 좌석 하나씩 대기 인원과 함께 온다. 두 모드가 같은 스트림을 쓰지 않아 필드가
+ * 서로 배타적이라, 호출부는 어느 쪽이 있는지 보고 분기한다.
+ */
+export interface SeatUpdateMessage {
+  /** BOOKING 모드. 한 번에 바뀐 좌석들 */
+  sessionSeatIds?: number[];
+  /** WAITLIST 모드. 바뀐 좌석 하나 */
+  sessionSeatId?: number;
+  saleStatus?: string;
+  /** WAITLIST 모드에서만 온다 */
+  waitingCount?: number;
+}
+
 export const useSeatData = (
   eventId: string | null,
   scheduleId: string | null,
   enableWs: boolean = true,
   mode: 'BOOKING' | 'WAITLIST' = 'BOOKING',
-  admitToken: string | null = null,
-  storyMode: boolean = false
+  admitToken: string | null = null
 ) => {
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<unknown>(null);
   const [venueId, setVenueId] = useState<number | null>(null);
+  /**
+   * 좌석 실시간 동기화가 끊긴 채 복구되지 않은 상태.
+   *
+   * 화면에 보이는 좌석 상태가 더 이상 갱신되지 않는다는 뜻이라, 호출부가
+   * 사용자에게 새로고침을 안내할 근거로 쓴다.
+   */
+  const [isStreamDisconnected, setIsStreamDisconnected] = useState(false);
 
   useEffect(() => {
     if (!eventId || !scheduleId) {
@@ -34,34 +61,27 @@ export const useSeatData = (
       return;
     }
 
-    if (!enableWs && !isShadowMode(eventId)) {
+    if (!enableWs) {
       setSeatAvailability({});
       setIsLoading(false);
       return;
     }
 
-    if (isShadowMode(eventId)) {
-      setVenueId(4001);
-
-      setSeatAvailability(generateShadowMockSeats());
-      setIsLoading(false);
-
-      const interval = setInterval(() => {
-        setSeatAvailability(generateShadowMockSeats());
-      }, 2500);
-
-      return () => clearInterval(interval);
-    }
-
     let isMounted = true;
     let source: EventSource | null = null;
     let initialSeatsFetched = false;
-    let sseBuffer: any[] = [];
+    let sseBuffer: SeatUpdateMessage[] = [];
+    /** 좌석 스트림 연속 실패 횟수. 연결에 성공하면 0으로 되돌린다. */
+    let reconnectAttempt = 0;
+    let reconnectTimer: NodeJS.Timeout | null = null;
 
     // sessionSeatId를 기반으로 seatLabel(맵의 키)을 찾기 위한 룩업 맵
     const sessionSeatIdToLabelMap: Record<number, string> = {};
 
-    const handleSeatUpdateEvent = (message: any, currentMap: SeatAvailabilityResponse | null) => {
+    const handleSeatUpdateEvent = (
+      message: SeatUpdateMessage,
+      currentMap: SeatAvailabilityResponse | null,
+    ) => {
       if (!currentMap) return currentMap;
 
       const newMap = { ...currentMap };
@@ -120,6 +140,13 @@ export const useSeatData = (
 
       source = new EventSource(finalUrl);
 
+      source.onopen = () => {
+        // 붙었으면 이전 실패는 흘려보낸다. 좌석 선택은 오래 머무는 화면이라
+        // 누적해두면 띄엄띄엄 끊긴 것만으로 재연결을 포기하게 된다.
+        reconnectAttempt = 0;
+        setIsStreamDisconnected(false);
+      };
+
       const processEvent = (event: MessageEvent) => {
         try {
           const message = JSON.parse(event.data);
@@ -142,8 +169,27 @@ export const useSeatData = (
       // BOOKING 모드는 백엔드에서 'seat-update'라는 명시적 이벤트 이름으로 전송함
       source.addEventListener('seat-update', processEvent as EventListener);
 
-      source.onerror = (error) => {
-        console.warn('Seat SSE connection error, browser will attempt to auto-reconnect...', error);
+      source.onerror = () => {
+        // EventSource는 스스로도 재연결하지만, 몇 번을 시도했는지·결국 실패했는지를
+        // 알려주지 않는다. 그대로 두면 좌석 동기화가 끊긴 채 화면만 멀쩡해 보여서
+        // 남이 이미 잡은 자리를 계속 고르게 된다. 직접 관리해 상태를 노출한다.
+        source?.close();
+        source = null;
+
+        if (!isMounted) return;
+
+        if (!shouldRetry(reconnectAttempt, SEAT_MAX_RECONNECT_ATTEMPTS)) {
+          console.error(`[Seat SSE] 재연결 포기 (${reconnectAttempt}회 실패)`);
+          setIsStreamDisconnected(true);
+          return;
+        }
+
+        const delay = getReconnectDelay(reconnectAttempt);
+        reconnectAttempt += 1;
+        console.warn(
+          `[Seat SSE] 연결 끊김. ${delay}ms 후 재연결 (${reconnectAttempt}/${SEAT_MAX_RECONNECT_ATTEMPTS})`,
+        );
+        reconnectTimer = setTimeout(connectSSE, delay);
       };
     };
 
@@ -151,25 +197,6 @@ export const useSeatData = (
       setIsLoading(true);
       try {
         let response;
-
-        if (storyMode) {
-          const mockMap: SeatAvailabilityResponse = {
-            'A1': { priceGrade: 'VIP', isAvailable: mode !== 'WAITLIST', sessionSeatId: 1, detailedInfo: 'A구역 A열 1번', waitingCount: 12, waitable: true },
-            'B2': { priceGrade: 'R', isAvailable: mode !== 'WAITLIST', sessionSeatId: 2, detailedInfo: 'B구역 B열 2번', waitingCount: 5, waitable: true },
-            'D10': { priceGrade: 'S', isAvailable: true, sessionSeatId: 3, detailedInfo: 'C구역 D열 10번', waitingCount: 0, waitable: false },
-            'E15': { priceGrade: 'S', isAvailable: false, sessionSeatId: 4, detailedInfo: 'D구역 E열 15번', waitingCount: 3, waitable: true },
-            'J8': { priceGrade: 'A', isAvailable: mode !== 'WAITLIST', sessionSeatId: 5, detailedInfo: 'E구역 J열 8번', waitingCount: 20, waitable: true },
-          };
-          // 룩업 맵 채우기
-          Object.entries(mockMap).forEach(([label, info]) => {
-            if (info.sessionSeatId) sessionSeatIdToLabelMap[info.sessionSeatId] = label;
-          });
-          setVenueId(4001);
-          setSeatAvailability(mockMap);
-          initialSeatsFetched = true;
-          setIsLoading(false);
-          return;
-        }
 
         if (mode === 'WAITLIST') {
           if (!admitToken) {
@@ -186,8 +213,8 @@ export const useSeatData = (
           }
           let initialMap: SeatAvailabilityResponse = {};
 
-          response.data.sections.forEach((section: any) => {
-            section.seats.forEach((seat: any) => {
+          response.data.sections.forEach((section) => {
+            section.seats.forEach((seat) => {
               const priceGrade = seat.priceGrade || '일반';
               const detailedInfo = `${section.sectionName} ${seat.rowLabel}열 ${seat.seatNumber}번`;
               const normalizedSeatLabel = seat.seatLabel.replace('-', '');
@@ -240,8 +267,11 @@ export const useSeatData = (
       if (source) {
         source.close();
       }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
     };
   }, [eventId, scheduleId, enableWs]);
 
-  return { data: seatAvailability, venueId, isLoading, error };
+  return { data: seatAvailability, venueId, isLoading, error, isStreamDisconnected };
 };

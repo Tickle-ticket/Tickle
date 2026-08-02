@@ -42,6 +42,13 @@ export interface CancellationWaitCandidateCreateResponse {
 
 export interface CancellationWaitCandidateSummaryResponse {
   cancellationCandidateId: number;
+  /**
+   * 취소표 제안 식별자. 아직 배정되지 않았으면 없다.
+   *
+   * 마이페이지가 이 값으로 결제 화면을 열기 때문에 필수다. 서버는 예전부터
+   * 내려주고 있었는데 이 타입에만 빠져 있었다(호출부가 any라 드러나지 않았다).
+   */
+  cancellationOfferId?: number | null;
   eventId: number;
   eventTitle: string;
   scheduleId: number;

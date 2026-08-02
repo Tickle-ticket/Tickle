@@ -98,70 +98,87 @@ const rankingDataExhibition = {
 };
 
 // BE: GET /api/v1/events/opening-soon → OpeningSoonEventsResponse
-const openingSoonData = {
-  events: [
-    {
-      eventId: 10,
-      eventName: '캣츠',
-      venueName: '세종문화회관 대극장',
-      eventStartAt: '2025-08-01T19:30:00Z',
-      eventEndAt: '2025-10-31T21:30:00Z',
-      salesStartAt: '2026-05-10T12:00:00Z',
-      salesEndAt: '2025-10-30T23:59:59Z',
-      thumbnailUrl: 'https://picsum.photos/seed/poster36/800/1200',
-      tags: ['뮤지컬'],
-      isFavorite: false
-    },
-    {
-      eventId: 11,
-      eventName: '맘마미아',
-      venueName: 'LG아트센터 서울',
-      eventStartAt: '2025-09-15T19:30:00Z',
-      eventEndAt: '2025-12-28T21:30:00Z',
-      salesStartAt: '2026-05-15T10:00:00Z',
-      salesEndAt: '2025-12-27T23:59:59Z',
-      thumbnailUrl: 'https://picsum.photos/seed/poster37/800/1200',
-      tags: ['뮤지컬', 'NEW'],
-      isFavorite: false
-    },
-    {
-      eventId: 12,
-      eventName: '지킬 앤 하이드',
-      venueName: '충무아트센터 대극장',
-      eventStartAt: '2025-07-20T19:30:00Z',
-      eventEndAt: '2025-10-19T21:30:00Z',
-      salesStartAt: '2026-05-20T14:00:00Z',
-      salesEndAt: '2025-10-18T23:59:59Z',
-      thumbnailUrl: 'https://picsum.photos/seed/poster38/800/1200',
-      tags: ['뮤지컬', 'HOT'],
-      isFavorite: false
-    },
-    {
-      eventId: 13,
-      eventName: '킹키부츠',
-      venueName: 'D-CUBE 링크아트센터',
-      eventStartAt: '2025-10-01T19:30:00Z',
-      eventEndAt: '2025-12-31T21:30:00Z',
-      salesStartAt: '2026-06-01T10:00:00Z',
-      salesEndAt: '2025-12-30T23:59:59Z',
-      thumbnailUrl: 'https://picsum.photos/seed/poster39/800/1200',
-      tags: ['뮤지컬'],
-      isFavorite: false
-    },
-    {
-      eventId: 14,
-      eventName: '헤드윅',
-      venueName: '대학로 유니플렉스',
-      eventStartAt: '2025-11-15T19:30:00Z',
-      eventEndAt: '2026-02-28T21:30:00Z',
-      salesStartAt: '2026-06-10T12:00:00Z',
-      salesEndAt: '2026-02-27T23:59:59Z',
-      thumbnailUrl: 'https://picsum.photos/seed/poster40/800/1200',
-      tags: ['뮤지컬', 'NEW'],
-      isFavorite: false
-    },
-  ]
-};
+//
+// 오픈 예정 카드는 salesStartAt까지 남은 시간으로 카운트다운을 그린다. 고정 날짜를
+// 쓰면 그 시각이 지난 뒤부터 전부 00:00:00으로 죽으므로, 현재 시각 기준 상대값으로
+// 만든다. 카드마다 남은 시간을 다르게 두어 표시 분기를 한 화면에서 확인한다.
+const secondsFromNow = (seconds: number) =>
+  new Date(Date.now() + seconds * 1000).toISOString();
+
+const hoursFromNow = (hours: number) =>
+  new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
+const daysFromNowIso = (days: number) =>
+  new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+const buildOpeningSoonEvents = () => [
+  {
+    eventId: 10,
+    eventName: '캣츠',
+    venueName: '세종문화회관 대극장',
+    eventStartAt: daysFromNowIso(40),
+    eventEndAt: daysFromNowIso(130),
+    // 15초 뒤 — 곧 오픈하는 공연. 화면을 열면 타이머가 0에 닿아 카드가 전환되는
+    // 순간을 바로 확인할 수 있다. 요청 시점 기준이라 새로고침하면 다시 15초가 된다.
+    salesStartAt: secondsFromNow(15),
+    salesEndAt: daysFromNowIso(129),
+    thumbnailUrl: 'https://picsum.photos/seed/poster36/800/1200',
+    tags: ['뮤지컬', '곧오픈'],
+    isFavorite: false
+  },
+  {
+    eventId: 11,
+    eventName: '맘마미아',
+    venueName: 'LG아트센터 서울',
+    eventStartAt: daysFromNowIso(45),
+    eventEndAt: daysFromNowIso(150),
+    // 3시간 뒤 — 시:분:초가 모두 도는 일반적인 카운트다운.
+    salesStartAt: hoursFromNow(3),
+    salesEndAt: daysFromNowIso(149),
+    thumbnailUrl: 'https://picsum.photos/seed/poster37/800/1200',
+    tags: ['뮤지컬', 'NEW'],
+    isFavorite: false
+  },
+  {
+    eventId: 12,
+    eventName: '지킬 앤 하이드',
+    venueName: '충무아트센터 대극장',
+    eventStartAt: daysFromNowIso(35),
+    eventEndAt: daysFromNowIso(120),
+    // 12시간 뒤 — 두 자리 시간 표시.
+    salesStartAt: hoursFromNow(12),
+    salesEndAt: daysFromNowIso(119),
+    thumbnailUrl: 'https://picsum.photos/seed/poster38/800/1200',
+    tags: ['뮤지컬', 'HOT'],
+    isFavorite: false
+  },
+  {
+    eventId: 13,
+    eventName: '킹키부츠',
+    venueName: 'D-CUBE 링크아트센터',
+    eventStartAt: daysFromNowIso(60),
+    eventEndAt: daysFromNowIso(160),
+    // 3일 뒤 — 24시간을 넘겨 카운트다운 대신 날짜를 보여주는 경우.
+    salesStartAt: daysFromNowIso(3),
+    salesEndAt: daysFromNowIso(159),
+    thumbnailUrl: 'https://picsum.photos/seed/poster39/800/1200',
+    tags: ['뮤지컬'],
+    isFavorite: false
+  },
+  {
+    eventId: 14,
+    eventName: '헤드윅',
+    venueName: '대학로 유니플렉스',
+    eventStartAt: daysFromNowIso(75),
+    eventEndAt: daysFromNowIso(180),
+    // 30일 뒤 — 먼 미래.
+    salesStartAt: daysFromNowIso(30),
+    salesEndAt: daysFromNowIso(179),
+    thumbnailUrl: 'https://picsum.photos/seed/poster40/800/1200',
+    tags: ['뮤지컬', 'NEW'],
+    isFavorite: false
+  },
+];
 
 // 마이페이지: 취소표 대기 내역 상태 관리 (모의 데이터)
 const mockWaitlistBookings = [
@@ -225,6 +242,7 @@ export const homeHandlers = [
     await delay(800);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: banners,
     });
@@ -245,6 +263,7 @@ export const homeHandlers = [
     await delay(600);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: data,
     });
@@ -255,8 +274,10 @@ export const homeHandlers = [
     await delay(700);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
-      data: openingSoonData,
+      // 요청 시점 기준으로 만들어야 카운트다운이 항상 살아 있다.
+      data: { events: buildOpeningSoonEvents() },
     });
   }),
 
@@ -265,6 +286,7 @@ export const homeHandlers = [
   http.get('*/api/v1/mypage/bookings/past', () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: mockPastBookings,
     });
@@ -274,6 +296,7 @@ export const homeHandlers = [
   http.get('*/api/v1/mypage/waitlist', () => {
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: mockWaitlistBookings,
     });

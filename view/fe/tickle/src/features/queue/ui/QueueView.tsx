@@ -1,12 +1,18 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { enterQueue, getQueueToken, leaveQueue, getQueueStreamUrl, getQueueStatus } from '@/src/shared/api/queueApi';
+import { isFailure } from '@/src/shared/api/errors';
+import { enterQueue, getQueueToken, leaveQueue, getQueueStreamUrl } from '@/src/shared/api/queueApi';
 import { Box } from '@/src/shared/components/Box';
 import { Text } from '@/src/shared/components/Text';
 import { Modal } from '@/src/shared/components/Modal';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
+import {
+  getReconnectDelay,
+  shouldRetry,
+  QUEUE_MAX_RECONNECT_ATTEMPTS,
+} from '@/src/shared/lib/sseReconnect';
 
 interface QueueViewProps {
   eventId: string;
@@ -14,11 +20,13 @@ interface QueueViewProps {
   onClose: () => void;
   fastMode?: boolean;
   scope?: 'BOOKING' | 'CANCELLATION_WAIT';
-  storyMode?: boolean;
   onTokenFetched?: (queueToken: string) => void;
 }
 
-export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', storyMode, onTokenFetched }: QueueViewProps) => {
+export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOOKING', onTokenFetched }: QueueViewProps) => {
+  // Storybook은 MSW 핸들러로 실제 대기열 흐름을 그대로 태우므로 예외를 두지 않는다.
+  const queuePolicy = createBookFlowPolicy('BOOK', eventId);
+
   const [status, setStatus] = useState<'PENDING' | 'WAITING' | 'ERROR'>('PENDING');
   const [rank, setRank] = useState<number | null>(null);
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
@@ -42,7 +50,9 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     if (isUserProfileLoading) return;
 
     const userId = userProfile?.userId;
-    if (!userId && !isShadowMode(eventId)) {
+    // 가상 공연은 비회원으로도 대기열 시나리오를 진행한다.
+    // (Storybook은 아래 skipsServerCalls 분기에서 걸러지므로 여기서는 shadow만 본다)
+    if (!queuePolicy.isShadow && !userId) {
       setErrorModalConfig({
         isOpen: true,
         title: '로그인 필요',
@@ -59,12 +69,13 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
 
     let isCancelled = false;
     let source: EventSource | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
 
     const startQueue = async (): Promise<void> => {
       if (isCancelled) return;
       if (!eventId || eventId === 'undefined') return;
 
-      if (storyMode || isShadowMode(eventId)) {
+      if (queuePolicy.skipsServerCalls) {
         setStatus('WAITING');
         setRank(1);
         setWaitingCount(0);
@@ -112,51 +123,80 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
         setStatus('WAITING');
 
         // 3. SSE 연결
-        let sseErrorCount = 0;
-
         const streamUrl = getQueueStreamUrl(eventId, queueToken, scope);
-        source = new EventSource(streamUrl);
-        
-        source.onopen = () => {
-          sseErrorCount = 0;
-        };
 
-        source.addEventListener('queue-status', (event) => {
-          try {
-            const data = JSON.parse(event.data);
+        // 서버가 순번을 밀어주는 통로다. 끊긴 채로 두면 화면의 순번이 멈춘 줄
+        // 모르고 계속 기다리게 되므로, 끊기면 다시 붙는다.
+        let reconnectAttempt = 0;
+        // 서버가 대기열에서 내보냈거나(LEFT·EXPIRED) 입장이 확정된 경우처럼
+        // 다시 붙을 이유가 없는 종료를 재연결과 구분한다.
+        let isStreamFinished = false;
 
-            if (data.status === 'WAITING') {
-              setRank(data.rank);
-              setWaitingCount(data.waitingCount);
-              setEstimatedWaitSeconds(data.estimatedWaitSeconds);
-            } else if (data.status === 'ADMITTED') {
-              source?.close();
-              if (isExitModalOpenRef.current) {
-                pendingAdmitTokenRef.current = data.admitToken;
-              } else {
-                onAdmitted(data.admitToken, queueTokenRef.current || undefined);
+        const connectStream = () => {
+          if (isCancelled || isStreamFinished) return;
+
+          source = new EventSource(streamUrl);
+
+          source.onopen = () => {
+            // 붙었으면 이전 실패는 흘려보낸다. 누적해두면 오래 대기하는 동안
+            // 띄엄띄엄 끊긴 것만으로도 재연결을 포기하게 된다.
+            reconnectAttempt = 0;
+          };
+
+          source.addEventListener('queue-status', (event) => {
+            try {
+              const data = JSON.parse(event.data);
+
+              if (data.status === 'WAITING') {
+                setRank(data.rank);
+                setWaitingCount(data.waitingCount);
+                setEstimatedWaitSeconds(data.estimatedWaitSeconds);
+              } else if (data.status === 'ADMITTED') {
+                isStreamFinished = true;
+                source?.close();
+                if (isExitModalOpenRef.current) {
+                  pendingAdmitTokenRef.current = data.admitToken;
+                } else {
+                  onAdmitted(data.admitToken, queueTokenRef.current || undefined);
+                }
+              } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
+                isStreamFinished = true;
+                setStatus('ERROR');
+                source?.close();
               }
-            } else if (data.status === 'LEFT' || data.status === 'EXPIRED') {
-              setStatus('ERROR');
-              source?.close();
+            } catch (parseError) {
+              // 형식이 어긋난 이벤트 하나로 대기열을 끊지는 않는다. 다만 조용히
+              // 넘기면 서버 계약이 바뀐 것을 알 수 없어 로그는 남긴다.
+              console.warn('[Queue SSE] 이벤트 파싱 실패', parseError);
             }
-          } catch {
-            // SSE 파싱 실패 시 무시
-          }
-        });
+          });
 
-        source.onerror = () => {
-          sseErrorCount++;
-          if (sseErrorCount >= 3) {
+          source.onerror = () => {
             source?.close();
             source = null;
-            setStatus('ERROR');
-          }
+
+            if (isCancelled || isStreamFinished) return;
+
+            if (!shouldRetry(reconnectAttempt, QUEUE_MAX_RECONNECT_ATTEMPTS)) {
+              console.error(`[Queue SSE] 재연결 포기 (${reconnectAttempt}회 실패)`);
+              setStatus('ERROR');
+              return;
+            }
+
+            const delay = getReconnectDelay(reconnectAttempt);
+            reconnectAttempt += 1;
+            console.warn(
+              `[Queue SSE] 연결 끊김. ${delay}ms 후 재연결 (${reconnectAttempt}/${QUEUE_MAX_RECONNECT_ATTEMPTS})`,
+            );
+            reconnectTimer = setTimeout(connectStream, delay);
+          };
         };
 
-      } catch (err: any) {
+        connectStream();
+
+      } catch (err) {
         if (isCancelled) return;
-        if (err.status === 400) {
+        if (isFailure(err, 'ValidationError')) {
           setErrorModalConfig({
             isOpen: true,
             title: '진입 불가',
@@ -165,7 +205,7 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
           });
           return;
         }
-        if (err.status === 404) {
+        if (isFailure(err, 'NotFoundError')) {
           setErrorModalConfig({
             isOpen: true,
             title: '정보 없음',
@@ -186,6 +226,9 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
       if (source) {
         source.close();
       }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
     };
   }, [eventId, onAdmitted, isUserProfileLoading]);
 
@@ -199,7 +242,11 @@ export const QueueView = ({ eventId, onAdmitted, onClose, fastMode, scope = 'BOO
     isExitModalOpenRef.current = false;
     isLeavingRef.current = true;
     if (queueTokenRef.current) {
-      leaveQueue(eventId, queueTokenRef.current, scope).catch(() => { });
+      // 실패해도 서버가 대기열 만료로 정리한다. 다만 조용히 넘기면 이탈 API가
+      // 계속 깨져도 알 수 없어 로그는 남긴다.
+      leaveQueue(eventId, queueTokenRef.current, scope).catch((err) =>
+        console.warn('[Queue] 대기열 이탈 요청 실패', err),
+      );
     }
     onClose();
   };

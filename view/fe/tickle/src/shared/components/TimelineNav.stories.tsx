@@ -42,7 +42,7 @@ const navItems = [
   { id: 'details', title: '상세 정보' },
 ];
 
-const InteractiveTimelineNav = (args: any) => {
+const InteractiveTimelineNav = (args: ComponentProps<typeof TimelineNav>) => {
   const [activeIndex, setActiveIndex] = useState(0);
   return (
     <div className="w-[300px] h-[300px] p-8 border border-dashed border-line-strong rounded-lg bg-surface overflow-y-auto">

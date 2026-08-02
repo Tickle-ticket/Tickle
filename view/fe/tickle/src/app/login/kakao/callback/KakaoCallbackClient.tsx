@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/src/shared/api/authApi';
 import { setAccessToken } from '@/src/shared/api/tokenManager';
-import { ApiError } from '@/src/shared/api/types';
 import { clearKakaoSignUpToken, setKakaoSignUpToken } from '@/src/shared/lib/kakaoSignupToken';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 
 const readTokensFromHash = () => {
   if (typeof window === 'undefined') {
@@ -28,6 +29,7 @@ const readTokensFromHash = () => {
 export function KakaoCallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const processed = useRef(false);
 
   useEffect(() => {
@@ -52,7 +54,9 @@ export function KakaoCallbackClient() {
     if (error) {
       clearKakaoSignUpToken();
       console.error('Kakao login error:', error, errorDescription);
-      alert(errorDescription || '카카오 로그인 중 오류가 발생했습니다.');
+      // 토스트는 루트 레이아웃에 있어 클라이언트 라우팅을 넘어 유지된다.
+      // 이동한 로그인 화면에서 사유를 읽을 수 있다.
+      showToast(errorDescription || '카카오 로그인 중 오류가 발생했습니다.');
       router.replace('/login');
       return;
     }
@@ -79,13 +83,14 @@ export function KakaoCallbackClient() {
 
         clearKakaoSignUpToken();
         setAccessToken(response.data.accessToken);
-        const targetUrl = state && state.startsWith('/') ? state : '/';
-        router.replace(targetUrl);
+        // state는 CSRF 방어용 난수라 경로가 아니다. 이동 경로는 로그인 시작 때
+        // 서버가 쿠키에 담아둔 값을 응답으로 돌려준다(api/v1/auth/kakao/login).
+        router.replace(response.data.redirectPath ?? '/');
       } catch (err) {
         clearKakaoSignUpToken();
         console.error('Kakao callback failed:', err);
-        alert(
-          err instanceof ApiError && err.status === 404
+        showToast(
+          isFailure(err, 'NotFoundError')
             ? '카카오 로그인 API에 연결할 수 없습니다. 인증 서버 주소를 확인해 주세요.'
             : '카카오 로그인 처리에 실패했습니다.'
         );
@@ -94,7 +99,7 @@ export function KakaoCallbackClient() {
     };
 
     void processLogin();
-  }, [router, searchParams]);
+  }, [router, searchParams, showToast]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-subtle">

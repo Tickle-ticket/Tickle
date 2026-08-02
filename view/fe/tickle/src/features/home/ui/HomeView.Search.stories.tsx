@@ -2,8 +2,16 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HomeView } from './HomeView';
 import { useEffect } from 'react';
-import { useSearchStore } from '@/src/shared/store/useSearchStore';
 import { useMypageStore } from '@/src/shared/store/useMypageStore';
+
+/**
+ * 검색 모드 스토리입니다.
+ *
+ * HomeView는 검색어를 스토어가 아니라 URL 쿼리(`?q=`)에서 읽는다(HomeView#rawQ).
+ * 따라서 스토리도 nextjs 애드온의 라우터 파라미터로 검색어를 주입한다.
+ */
+
+const SEARCH_KEYWORD = '임영웅';
 
 const mockSearchResults = [
   {
@@ -13,55 +21,58 @@ const mockSearchResults = [
     venue: 'KSPO DOME',
     date: '2026.05.15 ~ 2026.05.17',
     badges: ['단독', '콘서트'],
-  }
+  },
 ];
 
-const createQueryClient = (withData: boolean) => {
+const createQueryClient = (results: typeof mockSearchResults) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  if (withData) {
-    client.setQueryData(['search', '임영웅'], mockSearchResults);
-  } else {
-    client.setQueryData(['search', '임영웅'], []);
-  }
+  client.setQueryData(['search', SEARCH_KEYWORD], results);
   return client;
 };
 
 const meta: Meta<typeof HomeView> = {
   title: 'user/HomeView/Search',
   component: HomeView,
-  parameters: { layout: 'fullscreen', nextjs: { appDirectory: true } },
+  parameters: {
+    layout: 'fullscreen',
+    nextjs: {
+      appDirectory: true,
+      // HomeView가 useSearchParams로 읽는 검색어를 여기서 주입한다.
+      navigation: { query: { q: SEARCH_KEYWORD } },
+    },
+  },
 };
 export default meta;
 type Story = StoryObj<typeof HomeView>;
 
+/** 검색 결과가 있는 상태. */
 export const WithData: Story = {
   decorators: [
     (Story) => {
       useEffect(() => {
-        useSearchStore.getState().setSearchValue('임영웅');
         useMypageStore.getState().closeMypage();
       }, []);
       return (
-        <QueryClientProvider client={createQueryClient(true)}>
+        <QueryClientProvider client={createQueryClient(mockSearchResults)}>
           <Story />
         </QueryClientProvider>
       );
-    }
-  ]
+    },
+  ],
 };
 
+/** 검색 결과가 없는 상태(빈 화면 UI 확인용). */
 export const Empty: Story = {
   decorators: [
     (Story) => {
       useEffect(() => {
-        useSearchStore.getState().setSearchValue('임영웅');
         useMypageStore.getState().closeMypage();
       }, []);
       return (
-        <QueryClientProvider client={createQueryClient(false)}>
+        <QueryClientProvider client={createQueryClient([])}>
           <Story />
         </QueryClientProvider>
       );
-    }
-  ]
+    },
+  ],
 };

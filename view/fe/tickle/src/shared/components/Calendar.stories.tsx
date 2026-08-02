@@ -18,7 +18,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // 템플릿: 선택 상태를 Storybook에서 바로 확인할 수 있도록 래퍼 제공
-const InteractiveCalendar = (args: any) => {
+const InteractiveCalendar = (args: ComponentProps<typeof Calendar>) => {
   const [selected, setSelected] = useState<Date | string | null>(null);
   
   return (

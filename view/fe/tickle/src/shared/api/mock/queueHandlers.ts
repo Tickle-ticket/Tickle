@@ -6,6 +6,7 @@ export const queueHandlers = [
     await delay(500);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         requestId: 'f6f4c4aa-mock-request-id',
@@ -19,6 +20,7 @@ export const queueHandlers = [
     await delay(300);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         queueToken: 'qt-mock-queue-token',
@@ -32,6 +34,7 @@ export const queueHandlers = [
     await delay(200);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: null
     });
@@ -45,7 +48,7 @@ export const queueHandlers = [
         let isClosed = false;
         
         // Helper to send SSE event
-        const sendEvent = (event: string, data: any) => {
+        const sendEvent = (event: string, data: unknown) => {
           if (isClosed) return;
           try {
             controller.enqueue(encoder.encode(`event: ${event}\n`));
@@ -112,6 +115,7 @@ export const queueHandlers = [
     await delay(300);
     return HttpResponse.json({
       status: 200,
+      code: 'OK',
       message: 'success',
       data: {
         queueToken: 'qt-mock-queue-token',

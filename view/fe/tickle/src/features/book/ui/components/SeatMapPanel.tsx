@@ -1,15 +1,15 @@
 import React from 'react';
 import { InteractiveMapViewer } from '@/src/shared/components/InteractiveMapViewer';
 import { Toggle } from '@/src/shared/components/Toggle';
-import { PriceLegend } from '@/src/shared/components/PriceLegend';
-import type { SeatColor, SeatStatus, CongestionLevel } from '@/src/shared/components/types';
+import { PriceLegend, type GradePrice } from '@/src/shared/components/PriceLegend';
+import type { SeatColor, SeatStatus, CongestionLevel, StageComponentProps } from '@/src/shared/components/types';
 
 interface SeatMapPanelProps {
   scheduleId: string | null;
   isModifyingSchedule: boolean;
   isSeatsLoading: boolean;
   venueId?: string | number | null;
-  StageComponent: React.ComponentType<any> | null;
+  StageComponent: React.ComponentType<StageComponentProps> | null;
   seatsData: Record<string, {
     color?: SeatColor;
     status: SeatStatus;
@@ -22,7 +22,7 @@ interface SeatMapPanelProps {
   isWaitlistMode: boolean;
   viewMode: 'grade' | 'congestion';
   setViewMode: (mode: 'grade' | 'congestion') => void;
-  seatPrices: any[];
+  seatPrices: GradePrice[];
   maxSelectable?: number;
   selectedCount?: number;
 }

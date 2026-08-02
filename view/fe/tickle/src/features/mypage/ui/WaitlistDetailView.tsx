@@ -1,20 +1,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCancelWaitlist } from '@/src/features/mypage/api/useMyPageData';
+import { useCancelWaitlist, type WaitlistBookingData } from '@/src/features/mypage/api/useMyPageData';
 import { Modal } from '@/src/shared/components/Modal';
+import { useToast } from '@/src/shared/providers/ToastProvider';
 import { useRouter } from 'next/navigation';
 import { InfoPoster } from '@/src/shared/components/InfoPoster';
 import { Text } from '@/src/shared/components/Text';
 
 export interface WaitlistDetailViewProps {
-  item: any;
+  item: WaitlistBookingData;
   onBack?: () => void;
   onOpenPayment?: (offerId: string) => void;
 }
 
 export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDetailViewProps) => {
   const router = useRouter();
+  const { showToast } = useToast();
   const handleBack = () => {
     if (onBack) onBack();
     else router.back();
@@ -32,7 +34,7 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
   const handleExecuteCancel = async () => {
     setIsCanceling(true);
     try {
-      const cancelPromises = item.seats.map((seat: any) =>
+      const cancelPromises = item.seats.map((seat) =>
         cancelWaitlistMutation.mutateAsync(seat.id)
       );
       await Promise.all(cancelPromises);
@@ -42,7 +44,7 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
       handleBack();
     } catch (err) {
       console.error(err);
-      alert('취소 처리 중 오류가 발생했습니다.');
+      showToast('취소 처리 중 오류가 발생했습니다.');
       setIsCanceling(false);
       setIsWarningModalOpen(false);
     }
@@ -86,7 +88,7 @@ export const WaitlistDetailView = ({ item, onBack, onOpenPayment }: WaitlistDeta
         <div className="bg-surface/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3">
           <Text typography="t6" fontWeight="bold" className="text-content-muted">대기중인 좌석 목록</Text>
           <div className="flex flex-col gap-2">
-            {item.seats && item.seats.map((seat: any) => {
+            {item.seats && item.seats.map((seat) => {
               const progress = Math.max(5, 100 - (seat.waitlistNumber * 2));
               let badgeClass = '';
               let barClass = '';

@@ -1,17 +1,15 @@
 import { http, HttpResponse } from 'msw';
+import type {
+  PaymentMethodSelectionRequest,
+  BankTransferPrepareRequest,
+} from '@/src/shared/api/types/payment.types';
 
 const API_BASE_URL = '*/api/v1';
 
 export const paymentHandlers = [
   // 1. 결제 수단 선택
   http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/select-method`, async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-    const requestBody = (await request.json()) as any;
-    
-    if (!userId) {
-      return HttpResponse.json({ status: 400, message: 'userId is required' }, { status: 400 });
-    }
+    const requestBody = (await request.json()) as PaymentMethodSelectionRequest;
 
     const isKakao = requestBody.paymentMethod === 'KAKAOPAY';
 
@@ -29,13 +27,7 @@ export const paymentHandlers = [
 
   // 2. 무통장 입금 확정
   http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/bank-transfer`, async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-    const requestBody = (await request.json()) as any;
-
-    if (!userId) {
-      return HttpResponse.json({ status: 400, message: 'userId is required' }, { status: 400 });
-    }
+    const requestBody = (await request.json()) as BankTransferPrepareRequest;
 
     return HttpResponse.json({
       status: 200,
@@ -77,19 +69,14 @@ export const paymentHandlers = [
   }),
 
   // 3. 카카오페이 준비
-  http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/kakaopay/ready`, async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-    
-    if (!userId) {
-      return HttpResponse.json({ status: 400, message: 'userId is required' }, { status: 400 });
-    }
-
+  http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/kakaopay/ready`, async () => {
     return HttpResponse.json({
       status: 200,
       code: 'OK',
       message: '성공',
       data: {
+        // 결제 상태 폴링이 이 값으로 조회하므로 아래 리다이렉트 주소와 같아야 한다.
+        paymentId: 2,
         tid: 'T1234567890123456789',
         nextRedirectPcUrl: '/payment/success?paymentId=2&method=kakaopay',
         createdAt: new Date().toISOString(),
@@ -110,8 +97,10 @@ export const paymentHandlers = [
         bookingId: 5001,
         bookingNo: 'BK-17484F8CF0074271',
         paymentMethodType: isKakao ? 'KAKAOPAY' : 'BANK_TRANSFER',
-        paymentStatus: isKakao ? 'COMPLETED' : 'PENDING',
-        bookingStatus: isKakao ? 'BOOKED' : 'PENDING_PAYMENT',
+        // 서버 enum과 같은 값을 쓴다(Payment.Status). 다른 값을 주면 결제 성공을
+        // 감지하지 못해 폴링이 상한까지 돈다.
+        paymentStatus: isKakao ? 'APPROVED' : 'PENDING',
+        bookingStatus: isKakao ? 'CONFIRMED' : 'PENDING_PAYMENT',
         orderAmount: 186300,
         currencyCode: 'KRW',
         depositDeadline: '2026-05-03T14:59:59Z',

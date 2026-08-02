@@ -1,25 +1,29 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { isFailure } from '@/src/shared/api/errors';
 import { seatApi } from '@/src/shared/api/seatApi';
-import { createCancellationWaitCandidates } from '@/src/shared/api/cancellationApi';
-import { reservationApi } from '@/src/shared/api/reservationApi';
+import type { StageComponentProps } from '@/src/shared/components/types';
 
-import { useEventDetail } from '@/src/features/book/api/useEventDetail';
+import { useEventDetailWithFixtures } from '@/src/features/book/api/useEventDetailWithFixtures';
 import { useBookStore } from '../store/useBookStore';
 import { useTrialCollector } from '@/src/shared/tracking/useTrialCollector';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { createBookFlowPolicy } from '../api/bookFlowPolicy';
+import { formatTime, useBookingTimer } from '@/src/features/book/hooks/useBookingTimer';
 import { useUserProfile } from '@/src/shared/api/useUserProfile';
 import { useBookingPreorder } from '../api/useBookingPreorder';
 import { useSeatStep } from '../api/useSeatStep';
-import { isBlockedNavigation } from '@/src/shared/utils/blockedNavigation';
+import { useSeatHoldRelease } from '@/src/features/book/hooks/useSeatHoldRelease';
+import { useBookingSubmit } from '@/src/features/book/hooks/useBookingSubmit';
+import { releaseSeatHold, cancelPreorder } from '../api/releaseHold';
 import { CaptchaStep } from './components/CaptchaStep';
 import { TicketTypeStep } from './components/TicketTypeStep';
 import { PaymentStep } from './components/PaymentStep';
 import { SeatSelectionPanel } from './components/SeatSelectionPanel';
 import { SeatMapPanel } from './components/SeatMapPanel';
 import { BookingModals } from './components/BookingModals';
-import { useBookFlowExceptions } from '../hooks/useBookFlowExceptions';
+import { useShadowScenario } from '../hooks/useShadowScenario';
+import { useTicketingCampaign } from '../hooks/useTicketingCampaign';
 
 interface BookViewProps {
   onClose: () => void;
@@ -30,7 +34,6 @@ interface BookViewProps {
   initialModifyModeActive?: boolean;
   initialModifyingSchedule?: boolean;
   admitToken?: string;
-  storyMode?: boolean;
   onLeaveQueue?: () => void;
   onStepChange?: (step: string) => void;
   onStepBack?: (targetStep: string) => void;
@@ -40,13 +43,14 @@ interface BookViewProps {
 
 const toBehaviorEventDate = (date?: string | null) => date?.replace(/\./g, '-') ?? null;
 
-export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, storyMode = false, onLeaveQueue, onStepChange, onStepBack, onPaymentStart }: BookViewProps) => {
-  const isShadowModeActive = isShadowMode(eventId);
-  const isWaitlistMode = mode === 'WAITLIST' || (isShadowModeActive && eventId === '404');
+export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, initialSeats = [], initialModifyModeActive = false, initialModifyingSchedule = false, admitToken, onLeaveQueue, onStepChange, onStepBack, onPaymentStart }: BookViewProps) => {
+  // Storybook은 MSW 핸들러로 실제 예매 흐름을 그대로 태우므로 예외를 두지 않는다.
+  const flowPolicy = createBookFlowPolicy(mode, eventId);
+  const { isShadow: isShadowModeActive, isWaitlistMode } = flowPolicy;
   const isCancelMode = mode === 'CANCEL';
 
   const { data: userProfile } = useUserProfile();
-  const { data: eventDetail, isLoading: isEventLoading, isError: isEventError } = useEventDetail(eventId); // 이벤트 ID 연동
+  const { data: eventDetail, isLoading: isEventLoading, isError: isEventError } = useEventDetailWithFixtures(eventId); // 이벤트 ID 연동
 
   const selectedDate = useBookStore(s => s.selectedDate);
   const setSelectedDate = useBookStore(s => s.setSelectedDate);
@@ -62,7 +66,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const setConfirmedSchedule = useBookStore(s => s.setConfirmedSchedule);
   const isModifyModeActive = useBookStore(s => s.isModifyModeActive);
   const setIsModifyModeActive = useBookStore(s => s.setIsModifyModeActive);
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   const scheduleId = confirmedSchedule
     ? confirmedSchedule.scheduleId
     ?? eventDetail?.schedules
@@ -73,7 +76,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     : null;
 
   // Clawptcha State
-  const [isBotVerified, setIsBotVerified] = useState(false);
+  const isBotVerified = useBookStore(s => s.isBotVerified);
+  const setIsBotVerified = useBookStore(s => s.setIsBotVerified);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isWaitlistCompleteModalOpen, setIsWaitlistCompleteModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
@@ -105,15 +109,11 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       eventDate: toBehaviorEventDate(confirmedSchedule?.date),
     },
   });
-  const setPriceGradeTicketCounts = useBookStore((s: any) => s.setPriceGradeTicketCounts);
-  const setPendingOptionSelections = useBookStore((s: any) => s.setPendingOptionSelections);
+  const setPriceGradeTicketCounts = useBookStore((s) => s.setPriceGradeTicketCounts);
+  const setPendingOptionSelections = useBookStore((s) => s.setPendingOptionSelections);
 
   // 예약 번호 보관용
   const [preorderBookingId, setPreorderBookingId] = useState<number | null>(null);
-  const preorderBookingIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    preorderBookingIdRef.current = preorderBookingId;
-  }, [preorderBookingId]);
 
   const {
     venueId, isSeatsLoading, seatError,
@@ -124,45 +124,77 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     userProfile,
     mode,
     admitToken: admitToken || null,
-    storyMode,
     initialSeats,
     scheduleId,
   });
 
-  // 현재 선점 중인 상태를 ref로 추적하여, 렌더링마다 불필요하게 해제되지 않도록 함
-  const isHoldingSeatRef = React.useRef(false);
+  const {
+    preorderBookingIdRef,
+    isHoldingSeatRef,
+    cancelDraftIfAny,
+    releaseSeatsIfHeld,
+  } = useSeatHoldRelease({
+    eventId: eventDetail?.eventId,
+    scheduleId,
+    preorderBookingId,
+    isHoldingSeat: bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId,
+  });
 
-  useEffect(() => {
-    isHoldingSeatRef.current = bookingStep !== 'SEAT' && mode === 'BOOK' && !!eventDetail?.eventId && !!scheduleId;
-  }, [bookingStep, mode, eventDetail?.eventId, scheduleId]);
 
   const {
-    handleWaitlistShadowException,
-    handleSeatShadowException,
-    generateStoryModeOptionsData,
-    handleTicketTypeSubmitException,
-    submitButtonText,
-    ExceptionModalsElement
-  } = useBookFlowExceptions({
-    eventId: eventDetail?.eventId || '',
-    storyMode: storyMode || false,
-    isShadowModeActive,
+    interceptWaitlistSubmit,
+    interceptSeatHold,
+  } = useShadowScenario({
+    isShadow: isShadowModeActive,
     seatsData,
     selectedSeats,
-    getSeatInfo,
-    getDetailedSeatInfo,
     setErrorModalConfig,
     setIsWaitlistCompleteModalOpen,
     setIsConflictModalOpen,
     setIsHolding,
-    setPreorderBookingId,
-    setBookingStep,
+    onClose,
+  });
+
+  const {
+    interceptPreorder: interceptCampaignPreorder,
+    submitButtonText,
+    ResultModal,
+  } = useTicketingCampaign({
+    eventId: eventDetail?.eventId || '',
+    submitCampaignEntry: submitMockPreorder,
+    isHoldingSeatRef,
     onClose,
     onLeaveQueue,
-    submitMockPreorder,
+  });
+
+  const { handleNextStep, handleConfirmExit } = useBookingSubmit({
+    eventDetail,
+    scheduleId,
+    userProfile,
+    flowPolicy,
+    admitToken,
+    isWaitlistMode,
+    bookingStep,
+    selectedSeats,
+    seatsData,
+    getSeatInfo,
+    preorderBookingId,
+    preorderBookingIdRef,
     isHoldingSeatRef,
+    fetchOptions,
+    flushTrial,
+    interceptWaitlistSubmit,
+    interceptSeatHold,
+    setPriceGradeTicketCounts,
+    setBookingStep,
+    setIsHolding,
+    setIsConflictModalOpen,
+    setIsWaitlistCompleteModalOpen,
+    setIsExitModalOpen,
+    setErrorModalConfig,
     onStepChange,
-    finalizeTrial
+    onClose,
+    onLeaveQueue,
   });
 
   // 브라우저 뒤로가기(popstate)로 인한 단계 변경 감지 및 cleanup
@@ -177,66 +209,23 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
       onStepBack?.('payment');
     } else if ((prevStep === 'PAYMENT' || prevStep === 'PAY_METHOD') && (bookingStep === 'TICKET_TYPE' || bookingStep === 'SEAT')) {
       // 결제 단계에서 돌아올 때: 예약 초안 취소
-      if (preorderBookingIdRef.current) {
-        reservationApi.cancelReservation(preorderBookingIdRef.current).catch(console.error);
+      if (cancelDraftIfAny()) {
         setPreorderBookingId(null);
-        preorderBookingIdRef.current = null;
       }
       onStepBack?.(bookingStep === 'SEAT' ? 'book' : 'ticket_type');
     } else if (prevStep === 'TICKET_TYPE' && bookingStep === 'SEAT') {
       // 가격 선택에서 좌석 선택으로 돌아올 때: 좌석 선점 해제
-      if (eventDetail?.eventId && scheduleId) {
-        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
-        isHoldingSeatRef.current = false;
-      }
+      releaseSeatsIfHeld();
       onStepBack?.('book');
     }
   }, [bookingStep, eventDetail?.eventId, scheduleId, onStepBack]);
 
   // 이탈 시 선점 좌석 자동 해제 로직
-  useEffect(() => {
-    const releaseHeldSeat = () => {
-      // 결제 성공/카카오페이 리다이렉트 등으로 인한 정상적인 이탈인 경우 방지
-      const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
-
-      if (!isNormalNavigation) {
-        if (preorderBookingIdRef.current) {
-          reservationApi.cancelReservation(preorderBookingIdRef.current).catch(err => {
-            console.error('Failed to cancel draft reservation on unmount:', err);
-          });
-        } else if (isHoldingSeatRef.current && eventDetail?.eventId && scheduleId) {
-          seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch((err) => {
-            console.error('Failed to release seat on exit:', err);
-          });
-        }
-      }
-    };
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const isNormalNavigation = (window as any).__isNavigatingToPayment__ === true;
-      const isForceBlockedNavigation = isBlockedNavigation();
-      if (isHoldingSeatRef.current && !isNormalNavigation) {
-        releaseHeldSeat();
-        if (isForceBlockedNavigation) return;
-        e.preventDefault();
-        e.returnValue = ''; // 표준 브라우저 경고창 표시
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      // 컴포넌트가 언마운트될 때 (사용자가 브라우저 뒤로가기나 모달 닫기를 눌렀을 때)
-      releaseHeldSeat();
-    };
-  }, [eventDetail?.eventId, scheduleId]);
-
   // 공연장 도면 동적 로딩 (Hook 규칙 준수를 위해 컴포넌트 최상단 렌더 영역에 선언)
 
   const StageComponent = React.useMemo(() => {
     if (!venueId) return null;
-    return React.lazy<React.ComponentType<any>>(() =>
+    return React.lazy<React.ComponentType<StageComponentProps>>(() =>
       import(`../../../shared/components/Stage_${venueId}.tsx`)
         .then(module => ({ default: module[`Stage_${venueId}`] }))
         .catch((err) => {
@@ -293,69 +282,17 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     setIsExitModalOpen(true);
   };
 
-  const handleConfirmExit = async () => {
-    setIsExitModalOpen(false);
-    let hasError = false;
-
-    // 결제 단계 등에서 예약 초안(DRAFT)이 이미 생성된 경우
-    if (preorderBookingId) {
-      try {
-        await reservationApi.cancelReservation(preorderBookingId);
-        preorderBookingIdRef.current = null; // unmount 시 중복 호출 방지
-      } catch (err: any) {
-        console.error('Failed to cancel draft reservation on exit', err);
-      }
-    }
-    // 예약 초안 생성 전 좌석 선점만 된 경우
-    else if (bookingStep !== 'SEAT' && scheduleId && eventDetail) {
-      try {
-        if (userProfile?.userId) {
-          await seatApi.releaseSeat(eventDetail.eventId, scheduleId);
-          isHoldingSeatRef.current = false; // unmount 시 중복 호출 방지
-        }
-      } catch (err: any) {
-        console.error('Failed to release seats on exit', err);
-        if (err.status === 404) {
-          setErrorModalConfig({
-            isOpen: true,
-            title: '정보 없음',
-            message: '공연 또는 회차 정보를 찾을 수 없어 좌석 선점 해제에 실패했습니다.',
-            onConfirm: onClose
-          });
-          hasError = true;
-        }
-      }
-    }
-
-    if (!hasError) {
-      onLeaveQueue?.();
-      onClose();
-    }
-  };
-
   const handleCancelExit = () => {
     setIsExitModalOpen(false);
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (timeLeft === 0 && bookingStep !== 'SEAT' && !isModifyModeActive) {
+  const { timeLeft } = useBookingTimer({
+    isActive: bookingStep !== 'SEAT' && !isModifyModeActive,
+    onExpire: () => {
       if (preorderBookingId) {
-        reservationApi.cancelReservation(preorderBookingId).catch(console.error);
+        cancelPreorder(preorderBookingId);
       } else if (scheduleId && eventDetail && userProfile?.userId) {
-        seatApi.releaseSeat(eventDetail.eventId, scheduleId).catch(console.error);
+        releaseSeatHold(eventDetail.eventId, scheduleId);
       }
       setErrorModalConfig({
         isOpen: true,
@@ -364,20 +301,14 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
         onConfirm: () => {
           onLeaveQueue?.();
           onClose();
-        }
+        },
       });
-    }
-  }, [timeLeft, bookingStep, isModifyModeActive, scheduleId, eventDetail, userProfile, onClose, preorderBookingId, onLeaveQueue]);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+    },
+  });
 
   useEffect(() => {
     if (seatError) {
-      if (seatError.status === 404) {
+      if (isFailure(seatError, 'NotFoundError')) {
         setErrorModalConfig({
           isOpen: true,
           title: '정보 없음',
@@ -436,89 +367,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
     const result = await rawHandleSeatClick(id, e);
     if (result?.error) {
       setErrorModalConfig({ isOpen: true, title: result.title, message: result.message });
-    }
-  };
-
-  const handleNextStep = async () => {
-    if (selectedSeats.size === 0) return;
-
-    const isShadow = storyMode || isShadowModeActive;
-    const userId = userProfile?.userId;
-    if (!isShadow && !userId) {
-      setErrorModalConfig({
-        isOpen: true,
-        title: '로그인 필요',
-        message: '로그인이 필요한 서비스입니다.',
-        confirmText: '로그인 하기',
-        showCancelButton: true,
-        onConfirm: () => { window.location.href = '/login'; }
-      });
-      return;
-    }
-
-    try {
-      setIsHolding(true);
-
-      // 🔥 인원 선택/대기 버튼을 누르면 무조건 booking event를 전송합니다.
-      // flushTrial은 finalizeTrial과 달리 반복 호출이 가능하여,
-      // 선점 실패(409) 후 재시도 시에도 매번 새 booking event를 전송합니다.
-      await flushTrial();
-
-      const sessionSeatIds = Array.from(selectedSeats)
-        .map(seatId => seatsData[seatId]?.sessionSeatId)
-        .filter(Boolean) as number[];
-
-      if (isWaitlistMode) {
-        if (await handleWaitlistShadowException()) return;
-
-        if (!admitToken) {
-          throw new Error('대기열 인증 토큰이 유효하지 않습니다.');
-        }
-        await createCancellationWaitCandidates(eventDetail.eventId, scheduleId!, admitToken, { sessionSeatIds });
-        setIsWaitlistCompleteModalOpen(true);
-      } else {
-        if (sessionSeatIds.length > 0 && !storyMode && !isShadowModeActive) {
-          // [Batch Hold] '다음 단계' 진입 시 일괄 검증 및 선점 요청
-          await seatApi.holdSeat(eventDetail.eventId, scheduleId!, admitToken || '', { sessionSeatIds });
-
-          // 선점 성공 시 옵션(권종/할인) 데이터 조회
-          await fetchOptions(parseInt(eventDetail.eventId, 10), parseInt(scheduleId!, 10), sessionSeatIds);
-        } else if (sessionSeatIds.length > 0 && (storyMode || isShadowModeActive)) {
-          if (await handleSeatShadowException()) return;
-
-          // storyMode일 경우 가격 옵션 목데이터 주입
-          const mockedOptionsData = generateStoryModeOptionsData(scheduleId!);
-          if (mockedOptionsData) {
-            setOptionsData(mockedOptionsData as any);
-          }
-        }
-
-        const gradeCounts: Record<string, number> = {};
-        Array.from(selectedSeats).forEach(seatId => {
-          const { priceGrade } = getSeatInfo(seatId);
-          gradeCounts[priceGrade] = (gradeCounts[priceGrade] || 0) + 1;
-        });
-        const initial: Record<string, Record<string, number>> = {};
-        Object.entries(gradeCounts).forEach(([priceGrade]) => {
-          initial[priceGrade] = {};
-        });
-        setPriceGradeTicketCounts(initial);
-
-        setBookingStep('TICKET_TYPE');
-        onStepChange?.('ticket_type');
-      }
-    } catch (err: any) {
-      if (err.status === 409) {
-        setIsConflictModalOpen(true);
-      } else if (err.status === 400) {
-        setErrorModalConfig({ isOpen: true, title: '요청 오류', message: '잘못된 요청입니다. 입력 정보나 세션 상태를 확인해 주세요. (400)' });
-      } else if (err.status === 404) {
-        setErrorModalConfig({ isOpen: true, title: '정보 없음', message: '선택하신 공연, 회차 또는 좌석 정보를 찾을 수 없습니다. (404)' });
-      } else {
-        setErrorModalConfig({ isOpen: true, title: '오류 발생', message: err.message || '좌석 옵션 정보를 불러오는 데 실패했습니다.' });
-      }
-    } finally {
-      setIsHolding(false);
     }
   };
 
@@ -638,9 +486,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
               isSubmitting={isPreorderLoading}
               submitButtonText={submitButtonText}
               onSubmitPreorder={async (seatIds, optionSelections) => {
-                const isShadow = storyMode || isShadowModeActive;
                 const userId = userProfile?.userId;
-                if (!isShadow && !userId) {
+                if (flowPolicy.requiresLogin && !userId) {
                   setErrorModalConfig({
                     isOpen: true,
                     title: '로그인 필요',
@@ -652,8 +499,8 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
                   return;
                 }
 
-                if (await handleTicketTypeSubmitException(scheduleId!, seatIds, optionSelections)) {
-                  if (storyMode) onStepChange?.('payment');
+                // 체험 행사 공연이면 예매 초안 대신 참여로 집계한다.
+                if (await interceptCampaignPreorder(scheduleId!, seatIds, optionSelections)) {
                   return;
                 }
 
@@ -695,7 +542,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
           onConflictError={() => setIsConflictModalOpen(true)}
           onError={(title, message) => setErrorModalConfig({ isOpen: true, title, message })}
           onPaymentComplete={() => onLeaveQueue?.()}
-          storyMode={storyMode}
           onStepChange={onStepChange}
           onPaymentStart={onPaymentStart}
         />
@@ -703,7 +549,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
 
 
-      {ExceptionModalsElement}
+      {ResultModal}
       <BookingModals
         isExitModalOpen={isExitModalOpen}
         isWaitlistCompleteModalOpen={isWaitlistCompleteModalOpen}

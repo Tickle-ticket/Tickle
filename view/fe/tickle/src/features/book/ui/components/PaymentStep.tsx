@@ -1,14 +1,32 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  markNavigatingToPayment,
+  clearNavigatingToPayment,
+} from '@/src/features/book/lib/paymentNavigation';
+import { toErrorCode, toFailureTag } from '@/src/shared/api/errors';
 import { PaymentInfoStep } from './PaymentInfoStep';
 import { PayMethodStep } from './PayMethodStep';
 import { useBookStore } from '../../store/useBookStore';
-import { BookingOptionsResponse } from '@/src/shared/api/types/booking.types';
+import {
+  BookingOptionsResponse,
+  type BookingSeatOptionResponse,
+  type BookingPreorderResponse,
+  type PreorderOptionSelection,
+} from '@/src/shared/api/types/booking.types';
 import { paymentApi } from '@/src/shared/api/paymentApi';
 import { purchaseCancellation } from '@/src/shared/api/cancellationApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isShadowMode } from '@/src/shared/utils/shadowMode';
+import { createBookFlowPolicy } from '@/src/features/book/api/bookFlowPolicy';
+import {
+  resolvePriceInfos,
+  calculateGradeTotal,
+  listGradeTicketPrices,
+} from '@/src/features/book/api/priceInfo';
+import { sumServiceFees, inferTicketPrice } from '@/src/features/book/api/serviceFee';
+import { pollPaymentResult, type PaymentPollVerdict } from '@/src/features/book/lib/paymentPolling';
+import type { UserProfileData } from '@/src/shared/api/useUserProfile';
 
 interface PaymentStepProps {
   optionsData?: BookingOptionsResponse;
@@ -16,11 +34,11 @@ interface PaymentStepProps {
   eventId: string;
   scheduleId?: string | null;
   userId: number | undefined;
-  userProfile: any;
+  /** 구매자 정보 자동 입력에 쓴다. 조회 전이거나 비회원이면 없다. */
+  userProfile: UserProfileData | null | undefined;
   onCancel: () => void;
   onConflictError: () => void;
   onError: (title: string, message: string) => void;
-  storyMode?: boolean;
   cancellationId?: number;
   cancellationTotalAmount?: number;
   onPaymentComplete?: () => void;
@@ -28,7 +46,12 @@ interface PaymentStepProps {
   onStepChange?: (step: string) => void;
   /** 결제하기 버튼 클릭 시 호출 (SSE 해제 등) */
   onPaymentStart?: () => void;
-  submitPreorder?: (eventId: number, scheduleId: number, seatIds: number[], optionSelections: any[]) => Promise<any>;
+  submitPreorder?: (
+    eventId: number,
+    scheduleId: number,
+    seatIds: number[],
+    optionSelections: PreorderOptionSelection[],
+  ) => Promise<BookingPreorderResponse | undefined>;
   setPreorderBookingId?: (id: number | null) => void;
 }
 
@@ -49,7 +72,6 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   onCancel,
   onConflictError,
   onError,
-  storyMode = false,
   cancellationId,
   cancellationTotalAmount,
   onPaymentComplete,
@@ -59,16 +81,17 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   submitPreorder,
   setPreorderBookingId,
 }) => {
-  const bookingStep = useBookStore((s: any) => s.bookingStep);
-  const setBookingStep = useBookStore((s: any) => s.setBookingStep);
-  const priceGradeTicketCounts = useBookStore((s: any) => s.priceGradeTicketCounts);
-  const pendingOptionSelections = useBookStore((s: any) => s.pendingOptionSelections);
+  const paymentPolicy = createBookFlowPolicy('BOOK', eventId);
+
+  const bookingStep = useBookStore((s) => s.bookingStep);
+  const setBookingStep = useBookStore((s) => s.setBookingStep);
+  const priceGradeTicketCounts = useBookStore((s) => s.priceGradeTicketCounts);
+  const pendingOptionSelections = useBookStore((s) => s.pendingOptionSelections);
 
   const router = useRouter();
   const [isKakaoPopupOpen, setIsKakaoPopupOpen] = useState(false);
-  const [isStorybookMockOpen, setIsStorybookMockOpen] = useState(false);
-  const popupRef = useRef<Window | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // 폴링을 멈추면 팝업도 같이 닫힌다. 둘을 따로 들고 있으면 한쪽만 정리되기 쉽다.
+  const cancelPollingRef = useRef<(() => void) | null>(null);
 
   // 약관 동의 상태 (PaymentInfoStep에서 관리, canPay로 보고받음)
   const [canPay, setCanPay] = useState(false);
@@ -87,6 +110,73 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     }
   }, [bookingStep, prevStep]);
 
+  // 결제 수단 선택으로 돌아왔다는 것은 결제가 취소·실패했다는 뜻이다.
+  //
+  // 카카오페이 팝업 결제는 페이지를 떠나지 않으므로 "결제 이동 중" 표시가 저절로
+  // 사라지지 않는다. 지우지 않으면 이후 진짜 이탈에서도 좌석 선점이 풀리지 않고
+  // 이탈 경고도 뜨지 않아, 그 좌석이 만료까지 잠긴 채 남는다.
+  useEffect(() => {
+    if (bookingStep === 'PAY_METHOD') {
+      clearNavigatingToPayment();
+    }
+  }, [bookingStep]);
+
+  // 결제 폴링은 컴포넌트가 사라져도 멈추지 않는다. 뒤로가기나 라우팅 이탈로
+  // 언마운트되면 setInterval만 남아 2초마다 서버를 계속 때린다(사용자는 이미
+  // 화면을 떠났고 setState는 아무 데도 반영되지 않는다). 언마운트 시 반드시 정리한다.
+  useEffect(() => {
+    return () => {
+      cancelPollingRef.current?.();
+      cancelPollingRef.current = null;
+    };
+  }, []);
+
+  /**
+   * 카카오페이 팝업을 띄우고 결과가 날 때까지 기다린 뒤 화면을 정리합니다.
+   *
+   * <p>일반 예매와 취소표 구매가 이 뒷정리를 각자 갖고 있었습니다. 성공·실패·중단
+   * 어느 쪽이든 해야 할 일이 같아서 여기로 모읍니다.</p>
+   *
+   * @param redirectUrl 카카오페이 결제창 주소
+   * @param checkStatus 서버 결제 상태를 조회하고 판정하는 함수
+   * @param label       실패 로그에 남길 이름
+   */
+  const runKakaoPopupPayment = async (
+    redirectUrl: string,
+    checkStatus: () => Promise<PaymentPollVerdict>,
+    label: string,
+  ) => {
+    const popup = window.open(redirectUrl, 'kakaopay', 'width=500,height=700,scrollbars=yes');
+    if (!popup) {
+      setIsProcessing(false);
+      onError('결제창 차단', '팝업이 차단되었습니다.\n브라우저 설정에서 팝업을 허용해 주세요.');
+      setBookingStep('PAY_METHOD');
+      return;
+    }
+
+    setIsKakaoPopupOpen(true);
+    const { promise, cancel } = pollPaymentResult({ popup, checkStatus, label });
+    cancelPollingRef.current = cancel;
+
+    const outcome = await promise;
+    cancelPollingRef.current = null;
+    setIsKakaoPopupOpen(false);
+
+    if (outcome.kind === 'SUCCESS') {
+      markNavigatingToPayment();
+      onPaymentComplete?.();
+      router.push(outcome.successUrl);
+      return;
+    }
+
+    // 강제 취소 버튼이 이미 안내를 띄웠으므로 여기서 또 띄우지 않는다.
+    if (outcome.kind === 'ABORTED') return;
+
+    setIsProcessing(false);
+    onError(outcome.title, outcome.message);
+    setBookingStep('PAY_METHOD');
+  };
+
   const slideDirection = bookingStep === 'PAYMENT' && prevStep === 'PAY_METHOD' ? -1 : 1;
   const slideVariants = {
     enter: (direction: number) => ({
@@ -103,7 +193,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     })
   };
 
-  const priceGradeSeats: Record<string, any[]> = {};
+  const priceGradeSeats: Record<string, BookingSeatOptionResponse[]> = {};
   if (optionsData?.seats) {
     optionsData.seats.forEach(seat => {
       if (!priceGradeSeats[seat.priceGrade]) priceGradeSeats[seat.priceGrade] = [];
@@ -111,35 +201,32 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
     });
   }
 
-  const ticketPrice = cancellationTotalAmount 
-    ? Math.round(cancellationTotalAmount / 1.05) // 역산하여 티켓 가격 산출
-    : Object.entries(priceGradeSeats).reduce((sum, [priceGrade, seats]) => {
-    const baseSeat = seats[0];
-    let types = baseSeat.priceInfos || [];
-    
-    if (types.length === 0 && optionsData) {
-      const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-      types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-    }
-    
-    const basePrice = types.find((t: any) => t.discountRate === 0)?.ticketPriceAmount || types[0]?.ticketPriceAmount || 0;
+  // 선택된 티켓을 장당 가격으로 펼친다. 수수료를 좌석마다 계산해야 서버와 맞는다.
+  const selectedTicketPrices = Object.entries(priceGradeSeats).flatMap(([priceGrade, seats]) =>
+    listGradeTicketPrices(
+      resolvePriceInfos(seats[0], optionsData),
+      priceGradeTicketCounts[priceGrade] || {},
+    ),
+  );
 
-    const counts = priceGradeTicketCounts[priceGrade] || {};
-    return sum + Object.entries(counts).reduce((s, [typeId, count]: [string, any]) => {
-      const type = types.find((t: any) => t.discountName === typeId);
-      const typePrice = type ? type.ticketPriceAmount : basePrice;
-      return s + typePrice * count;
-    }, 0);
-  }, 0);
-
-  const finalPrice = cancellationTotalAmount || Math.round(ticketPrice * 1.05); // 5% 예매 수수료 포함
-  const bookingFee = finalPrice - ticketPrice;
+  // 취소표는 서버가 총액만 내려준다. 총액을 나눠 티켓가를 되짚으면 서버가 버린
+  // 1원 단위를 되살릴 수 없어 어긋나므로, 총액은 서버 값을 그대로 쓰고 수수료만
+  // 같은 규칙으로 다시 구한다.
+  const isCancellationPurchase = cancellationTotalAmount != null;
+  const finalPrice = isCancellationPurchase
+    ? cancellationTotalAmount
+    : selectedTicketPrices.reduce((sum, price) => sum + price, 0) +
+      sumServiceFees(selectedTicketPrices);
+  const bookingFee = isCancellationPurchase
+    ? finalPrice - inferTicketPrice(finalPrice)
+    : sumServiceFees(selectedTicketPrices);
+  const ticketPrice = finalPrice - bookingFee;
 
 
 
 
   const handlePayment = async () => {
-    const isShadow = storyMode || isShadowMode(eventId);
+    const isShadow = paymentPolicy.skipsServerCalls;
 
     if (!isShadow && !cancellationId && (!scheduleId || !selectedPayMethod)) {
       console.error('Missing required payment parameters:', { scheduleId, selectedPayMethod });
@@ -186,13 +273,13 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       const paymentMethod = selectedPayMethod === 'kakaopay' ? 'KAKAOPAY' : 'BANK_TRANSFER';
 
+      // shadow 공연은 서버에 결제 대상이 없다. 결제 수단과 무관하게 완료 화면으로
+      // 보내 시나리오를 끝맺는다(카카오페이 외부 팝업도 띄우지 않는다).
       if (isShadow) {
-        if (paymentMethod === 'KAKAOPAY') {
-          setIsStorybookMockOpen(true);
-        } else {
-          onPaymentComplete?.();
-          router.push(`/payment/success?paymentId=mock_vbank_123&method=vbank`);
-        }
+        onPaymentComplete?.();
+        router.push(
+          `/payment/success?paymentId=mock_${paymentMethod === 'KAKAOPAY' ? 'kakaopay' : 'vbank'}_123&method=${paymentMethod === 'KAKAOPAY' ? 'kakaopay' : 'vbank'}`,
+        );
         setIsProcessing(false);
         return;
       }
@@ -202,7 +289,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         const result = res.data;
         
         if (result.paymentMethod === 'BANK_TRANSFER') {
-          (window as any).__isNavigatingToPayment__ = true;
+          markNavigatingToPayment();
           onPaymentComplete?.();
           router.push(`/payment/success?bookingId=${result.bookingId}&method=vbank`);
           return;
@@ -211,58 +298,25 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           if (redirectUrl) {
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             if (isMobile) {
-              (window as any).__isNavigatingToPayment__ = true;
+              markNavigatingToPayment();
               onPaymentComplete?.();
               window.location.href = redirectUrl;
             } else {
-              setIsKakaoPopupOpen(true);
-              const popup = window.open(redirectUrl, 'kakaopay', 'width=500,height=700,scrollbars=yes');
-              
+              // 취소표는 예매 상세의 bookingStatus로 결제 완료를 판정한다.
               const bookingId = result.bookingId;
-              let paymentHandled = false;
-              const checkPopupInterval = setInterval(async () => {
-                if (!popup || paymentHandled) return;
-                
-                if (popup.closed) {
-                  clearInterval(checkPopupInterval);
-                  if (!paymentHandled) {
-                    if (bookingId) {
-                      try {
-                        const statusRes = await reservationApi.getReservationDetail(bookingId.toString());
-                        if (statusRes.data?.bookingStatus === 'CONFIRMED' || statusRes.data?.bookingStatus === 'BOOKED') {
-                          paymentHandled = true;
-                          setIsKakaoPopupOpen(false);
-                          (window as any).__isNavigatingToPayment__ = true;
-                          onPaymentComplete?.();
-                          router.push(`/payment/success?bookingId=${bookingId}`);
-                          return;
-                        }
-                      } catch (e) {}
-                    }
-                    setIsKakaoPopupOpen(false);
-                    setIsProcessing(false);
-                    onError('결제 중단', '결제 창이 닫혔습니다.\n결제를 다시 시도해주세요.');
-                    setBookingStep('PAY_METHOD');
+              await runKakaoPopupPayment(
+                redirectUrl,
+                async () => {
+                  if (!bookingId) return { kind: 'PENDING' };
+                  const statusRes = await reservationApi.getReservationDetail(bookingId.toString());
+                  const bookingStatus = statusRes.data?.bookingStatus;
+                  if (bookingStatus === 'CONFIRMED' || bookingStatus === 'BOOKED') {
+                    return { kind: 'SUCCESS', successUrl: `/payment/success?bookingId=${bookingId}` };
                   }
-                  return;
-                }
-
-                if (bookingId) {
-                  try {
-                    const statusRes = await reservationApi.getReservationDetail(bookingId.toString());
-                    const bookingStatus = statusRes.data?.bookingStatus;
-                    if (bookingStatus === 'CONFIRMED' || bookingStatus === 'BOOKED') {
-                      paymentHandled = true;
-                      clearInterval(checkPopupInterval);
-                      try { popup.close(); } catch (e) {}
-                      setIsKakaoPopupOpen(false);
-                      (window as any).__isNavigatingToPayment__ = true;
-                      onPaymentComplete?.();
-                      router.push(`/payment/success?bookingId=${bookingId}`);
-                    }
-                  } catch (e) {}
-                }
-              }, 2000);
+                  return { kind: 'PENDING' };
+                },
+                '취소표',
+              );
             }
           }
           return;
@@ -281,7 +335,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
       if (paymentMethod === 'BANK_TRANSFER' && selectRes.data?.bankTransfer) {
         // 1-step 방식: select-method 응답에 이미 무통장 입금 정보가 있는 경우
-        (window as any).__isNavigatingToPayment__ = true;
+        markNavigatingToPayment();
         onPaymentComplete?.();
         router.push(`/payment/success?paymentId=${selectRes.data.bankTransfer.paymentId}&method=vbank`);
       } else if (nextAction === 'PREPARE_BANK_TRANSFER') {
@@ -292,16 +346,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           { bookingId: currentBookingId! }
         );
         if (bankRes.data) {
-          (window as any).__isNavigatingToPayment__ = true;
+          markNavigatingToPayment();
           onPaymentComplete?.();
           router.push(`/payment/success?paymentId=${bankRes.data.paymentId}&method=vbank`);
         }
       } else if (nextAction === 'PREPARE_KAKAOPAY' || paymentMethod === 'KAKAOPAY') {
-        if (storyMode) {
-          setIsStorybookMockOpen(true);
-          return;
-        }
-
         const kakaoRes = await paymentApi.readyKakaoPay(
           eventId,
           scheduleId!,
@@ -317,106 +366,85 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
 
         if (redirectUrl) {
           if (isMobile) {
-            (window as any).__isNavigatingToPayment__ = true;
+            markNavigatingToPayment();
             window.location.href = redirectUrl;
           } else {
-            // PC: 새 창으로 띄우고 메시지 리스너 등록
-            setIsKakaoPopupOpen(true);
-            const popup = window.open(redirectUrl, 'kakaopay', 'width=500,height=700,scrollbars=yes');
-            popupRef.current = popup;
-
-            // 부모 창에서 백엔드 결제 상태를 폴링하여 결제 완료를 감지
-            // (카카오페이 리다이렉트가 다른 도메인으로 가므로 팝업 URL을 직접 읽을 수 없음)
+            // 일반 예매는 결제 상태(paymentStatus)로 판정한다. 취소표와 달리
+            // 실패·취소도 서버가 알려주므로 그대로 안내한다.
             const kakaoPaymentId = kakaoRes.data?.paymentId;
-            let paymentHandled = false;
+            await runKakaoPopupPayment(
+              redirectUrl,
+              async () => {
+                if (!kakaoPaymentId) return { kind: 'PENDING' };
+                const statusRes = await paymentApi.getPaymentStatus(kakaoPaymentId);
+                const paymentStatus = statusRes.data?.paymentStatus;
+                const bookingStatus = statusRes.data?.bookingStatus;
 
-            const checkPopupInterval = setInterval(async () => {
-              if (!popup || paymentHandled) return;
-
-              // 팝업이 닫힌 경우 (사용자가 직접 닫음)
-              if (popup.closed) {
-                clearInterval(checkPopupInterval);
-                if (!paymentHandled) {
-                  // 팝업이 닫혔지만 결제가 완료되었을 수 있으므로 한 번 더 확인
-                  if (kakaoPaymentId) {
-                    try {
-                      const statusRes = await paymentApi.getPaymentStatus(kakaoPaymentId);
-                      if (statusRes.data?.bookingStatus === 'CONFIRMED' || statusRes.data?.paymentStatus === 'PAID') {
-                        paymentHandled = true;
-                        setIsKakaoPopupOpen(false);
-                        (window as any).__isNavigatingToPayment__ = true;
-                        onPaymentComplete?.();
-                        router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
-                        return;
-                      }
-                    } catch (e) {
-                      // 상태 확인 실패 시 그냥 결제 중단 처리
-                    }
-                  }
-                  setIsKakaoPopupOpen(false);
-                  setIsProcessing(false);
-                  onError('결제 중단', '결제 창이 닫혔습니다.\n결제를 다시 시도해주세요.');
-                  setBookingStep('PAY_METHOD');
+                // 서버는 결제 승인을 APPROVED로 알려준다(Payment.Status).
+                // 'PAID'는 어떤 경로로도 오지 않아 판정에 쓰이지 않았다.
+                if (paymentStatus === 'APPROVED' || bookingStatus === 'CONFIRMED') {
+                  return {
+                    kind: 'SUCCESS',
+                    successUrl: `/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`,
+                  };
                 }
-                return;
-              }
-
-              // 백엔드에 결제 상태 폴링
-              if (kakaoPaymentId) {
-                try {
-                  const statusRes = await paymentApi.getPaymentStatus(kakaoPaymentId);
-                  const paymentStatus = statusRes.data?.paymentStatus;
-                  const bookingStatus = statusRes.data?.bookingStatus;
-
-                  if (paymentStatus === 'PAID' || bookingStatus === 'CONFIRMED') {
-                    // 결제 성공!
-                    paymentHandled = true;
-                    clearInterval(checkPopupInterval);
-                    
-                    // 팝업 닫기 시도
-                    try { popup.close(); } catch (e) { /* 무시 */ }
-                    setIsKakaoPopupOpen(false);
-
-                    (window as any).__isNavigatingToPayment__ = true;
-                    onPaymentComplete?.();
-                    router.push(`/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`);
-                  } else if (paymentStatus === 'CANCELLED' || paymentStatus === 'FAILED') {
-                    // 결제 실패/취소
-                    paymentHandled = true;
-                    clearInterval(checkPopupInterval);
-                    
-                    try { popup.close(); } catch (e) { /* 무시 */ }
-                    setIsKakaoPopupOpen(false);
-                    setIsProcessing(false);
-                    
-                    if (paymentStatus === 'CANCELLED') {
-                      onError('결제 취소', '결제가 취소되었습니다.\n다시 시도해주세요.');
-                    } else {
-                      onError('결제 실패', '결제 중 오류가 발생했습니다.\n다시 시도해주세요.');
-                    }
-                    setBookingStep('PAY_METHOD');
-                  }
-                  // PENDING/READY 등 아직 결제 진행 중이면 계속 폴링
-                } catch (e) {
-                  // 폴링 실패 시 무시 (다음 interval에서 재시도)
+                if (paymentStatus === 'CANCELLED') {
+                  return { kind: 'FAILED', title: '결제 취소', message: '결제가 취소되었습니다.\n다시 시도해주세요.' };
                 }
-              }
-            }, 2000);
-            pollingIntervalRef.current = checkPopupInterval;
+                if (paymentStatus === 'FAILED') {
+                  return { kind: 'FAILED', title: '결제 실패', message: '결제 중 오류가 발생했습니다.\n다시 시도해주세요.' };
+                }
+                return { kind: 'PENDING' };
+              },
+              '일반',
+            );
           }
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Payment failed', err);
 
-      if (err.status === 400) {
-        onError('요청 오류', '지원하지 않는 결제 수단이거나 잘못된 요청입니다.');
-      } else if (err.status === 404) {
-        onError('정보 없음', '예매 초안 또는 회차 정보를 찾을 수 없습니다.');
-      } else if (err.status === 409) {
-        onError('상태 오류', '현재 예매 상태에서는 해당 결제 요청을 처리할 수 없습니다.');
-      } else {
-        onError('결제 오류', err.message || '결제 처리 중 오류가 발생했습니다.');
+      // 서버 code가 있으면 그것부터 본다. 선점 만료와 결제 정보 없음은 둘 다
+      // 404라 태그(NotFoundError)로는 나뉘지 않는데 사용자가 할 일은 다르다 —
+      // 전자는 좌석부터 다시 골라야 하고 후자는 이 화면에서 재시도하면 된다
+      // (services/be PaymentErrorCode).
+      const code = toErrorCode(err);
+
+      if (code === 'PAYMENT_HOLD_NOT_FOUND') {
+        onError(
+          '선점 시간 만료',
+          '좌석 선점 시간이 만료되었습니다.\n좌석을 다시 선택해 주세요.',
+        );
+        setBookingStep('SEAT');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (code === 'PAYMENT_ALREADY_PROCESSED') {
+        // 이미 결제된 건이라 재시도는 의미가 없다. 결과를 확인하러 보낸다.
+        onError(
+          '이미 처리된 결제',
+          '이미 결제가 완료된 예매입니다.\n마이페이지에서 예매 내역을 확인해 주세요.',
+        );
+        setIsProcessing(false);
+        return;
+      }
+
+      switch (toFailureTag(err)) {
+        case 'ValidationError':
+          onError('요청 오류', '지원하지 않는 결제 수단이거나 잘못된 요청입니다.');
+          break;
+        case 'NotFoundError':
+          onError('정보 없음', '예매 초안 또는 회차 정보를 찾을 수 없습니다.');
+          break;
+        case 'ConflictError':
+          onError('상태 오류', '현재 예매 상태에서는 해당 결제 요청을 처리할 수 없습니다.');
+          break;
+        default:
+          onError(
+            '결제 오류',
+            err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.',
+          );
       }
 
       setIsProcessing(false);
@@ -438,22 +466,11 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           ) : Object.entries(priceGradeSeats).map(([priceGrade, seats]) => {
             const dotClass = priceGradeDotColors[priceGrade] || 'bg-surface-active';
             const counts = priceGradeTicketCounts[priceGrade] || {};
-            let priceGradeTotalPrice = 0;
-
-            const baseSeat = seats[0];
-            let types = baseSeat.priceInfos || [];
-            
-            if (types.length === 0 && optionsData) {
-              const fallbackPrice = Math.floor(optionsData.totalTicketPriceAmount / Math.max(1, optionsData.seats.length));
-              types = [{ discountName: '일반', discountRate: 0, ticketPriceAmount: fallbackPrice }];
-            }
-
-            Object.entries(counts).forEach(([typeId, count]: [string, any]) => {
-              const typeInfo = types.find((t: any) => t.discountName === typeId);
-              if (typeInfo) {
-                priceGradeTotalPrice += (count as number) * typeInfo.ticketPriceAmount;
-              }
-            });
+            const types = resolvePriceInfos(seats[0], optionsData);
+            // 이전에는 권종 이름이 목록에 없으면 이 합계에서만 빠져, 같은 상황에서
+            // 권종 선택 화면과 다른 금액이 나왔다. calculateGradeTotal이 두 화면의
+            // 계산을 하나로 맞춘다.
+            const priceGradeTotalPrice = calculateGradeTotal(types, counts);
 
             return (
               <div key={priceGrade} className="px-5 py-4 flex items-center justify-between">
@@ -465,7 +482,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                   <div className="flex flex-wrap items-center gap-2.5 ml-5 mt-0.5">
                     <span className="text-[13px] text-content-tertiary leading-none">{seats.map(s => s.seatLabel).join(', ')}</span>
                     <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(counts).filter(([, c]: [string, any]) => (c as number) > 0).map(([typeId, count]: [string, any]) => {
+                      {Object.entries(counts).filter(([, c]) => c > 0).map(([typeId, count]) => {
                         return (
                           <span key={typeId} className="text-[11px] bg-primary-subtle text-primary font-medium px-2 py-0.5 rounded-md">
                             {typeId} {count as number}매
@@ -572,14 +589,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
           </p>
           <button
             onClick={() => {
-              if (popupRef.current) {
-                try { popupRef.current.close(); } catch (e) { /* 무시 */ }
-                popupRef.current = null;
-              }
-              if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-              }
+              // 폴링을 멈추면 팝업도 같이 닫힌다.
+              cancelPollingRef.current?.();
+              cancelPollingRef.current = null;
               setIsKakaoPopupOpen(false);
               setIsProcessing(false);
               onError('결제 취소', '결제가 강제로 취소되었습니다.\n결제 수단을 다시 선택해주세요.');

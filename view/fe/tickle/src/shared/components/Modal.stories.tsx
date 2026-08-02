@@ -30,7 +30,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // 템플릿: Storybook 내에서 모달을 켜고 끄기 위한 인터랙티브 래퍼
-const InteractiveModal = (args: any) => {
+const InteractiveModal = (args: ComponentProps<typeof Modal>) => {
   // 모달을 바로 보여주기 위해 초기값을 true로 설정하고, 
   // Storybook Controls에서 isOpen 옵션이 넘어오면 그걸 우선적으로 사용합니다.
   const [isOpen, setIsOpen] = useState(args.isOpen ?? true);

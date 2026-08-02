@@ -1,3 +1,4 @@
+import { categoryHandlers } from './categoryHandlers';
 import { eventHandlers } from './eventHandlers';
 import { userHandlers } from './userHandlers';
 import { seatHandlers } from './seatHandlers';
@@ -11,7 +12,12 @@ import { agencyHandlers } from './agencyHandlers';
 import { authHandlers } from './authHandlers';
 import { reservationHandlers } from './reservationHandlers';
 import { bookingHandlers } from './bookingHandlers';
+import { paymentHandlers } from './paymentHandlers';
+import { botDetectionHandlers } from './botDetectionHandlers';
+import { cancellationHandlers } from './cancellationHandlers';
+import { uploadHandlers } from './uploadHandlers';
 export const handlers = [
+  ...categoryHandlers,
   ...trialHandlers,
   ...homeHandlers,
   ...searchHandlers,
@@ -25,4 +31,8 @@ export const handlers = [
   ...authHandlers,
   ...reservationHandlers,
   ...bookingHandlers,
+  ...paymentHandlers,
+  ...botDetectionHandlers,
+  ...cancellationHandlers,
+  ...uploadHandlers,
 ];

@@ -1,34 +1,38 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { BookView } from './BookView';
 import { MOCK_BOOKING_COMPLETE_EVENT_ID } from '../../../shared/config/mockEventConfig';
+import { handlers } from '@/src/shared/api/mock/handlers';
 
-// Mock Data for the event and user so BookView can render properly
-const mockedEventDetail = {
-  eventId: MOCK_BOOKING_COMPLETE_EVENT_ID || '6025',
-  title: '[Mock] 커피 쿠폰 당첨 이벤트',
-  venue: '가상 이벤트 홀',
-  date: '2026.05.15',
-  zonePrices: [
-    { priceGrade: 'VIP', price: 90000 },
-  ],
-  schedules: [
-    {
-      date: '2026.05.15',
-      times: [{ scheduleId: '1', sessionNo: 1, time: '19:30', startAt: '2026-05-15T19:30:00Z', remainingSeats: [] }],
-    },
-  ],
-  notice: '이것은 커피쿠폰 테스트를 위한 목데이터입니다.',
-};
+/**
+ * 티켓팅 체험 행사(커피 쿠폰) 플로우 스토리입니다.
+ *
+ * 이전에는 window.fetch를 직접 덮어써서 참여 API 응답을 바꿨는데, MSW가 같은 일을
+ * 더 안전하게 한다(요청 매칭·정리까지 애드온이 담당). 이제 핸들러만 갈아끼운다.
+ */
 
-const mockedUserProfile = {
-  userId: 1,
-  name: '테스터',
-  nickname: '테스터',
-  realName: '테스터',
-  email: 'test@tickle.com',
-  phoneNumber: '010-1234-5678',
-};
+const CAMPAIGN_EVENT_ID = MOCK_BOOKING_COMPLETE_EVENT_ID || '6025';
+
+/** 체험 참여 응답을 만든다. win 값에 따라 당첨/미당첨 화면이 갈린다. */
+const campaignPreorderHandler = (win: boolean) =>
+  http.post('*/api/v1/bookings/preorder/mock', () =>
+    HttpResponse.json({
+      status: 200,
+      code: 'OK',
+      message: '성공',
+      data: {
+        bookingId: 9999,
+        bookingNo: 'TEST-MOCK',
+        bookingStatus: 'CONFIRMED',
+        currencyCode: 'KRW',
+        totalPaymentAmount: 90000,
+        holdExpiresAt: new Date(Date.now() + 600_000).toISOString(),
+        seats: [],
+        win,
+        winCount: win ? 1 : 0,
+      },
+    }),
+  );
 
 const meta: Meta<typeof BookView> = {
   title: 'Mock/MockFlow',
@@ -39,81 +43,30 @@ const meta: Meta<typeof BookView> = {
       appDirectory: true,
     },
   },
-  decorators: [
-    (Story, context) => {
-      const isWin = context.parameters?.mockWin !== false;
-
-      // Store original fetch
-      const originalFetch = window.fetch;
-
-      // Override fetch to intercept the mock API call
-      window.fetch = async (input, init) => {
-        const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
-
-        if (url.includes('/api/v1/bookings/preorder/mock')) {
-          return new Response(
-            JSON.stringify({
-              status: 200,
-              code: 'OK',
-              message: '성공',
-              data: {
-                bookingId: 9999,
-                bookingNo: 'TEST-MOCK',
-                bookingStatus: 'CONFIRMED',
-                currencyCode: 'KRW',
-                totalPaymentAmount: 90000,
-                holdExpiresAt: new Date(Date.now() + 600000).toISOString(),
-                seats: [],
-                win: isWin,
-                winCount: isWin ? 1 : 0
-              }
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-        return originalFetch(input, init);
-      };
-
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-      const eventId = MOCK_BOOKING_COMPLETE_EVENT_ID || '6025';
-
-      queryClient.setQueryData(['eventDetail', eventId], mockedEventDetail);
-      queryClient.setQueryData(['seatData', eventId, '1', false, 'BOOKING', null], {});
-      queryClient.setQueryData(['userProfile'], mockedUserProfile);
-
-      return (
-        <QueryClientProvider client={queryClient}>
-          <Story />
-        </QueryClientProvider>
-      );
-    }
-  ],
+  args: {
+    onClose: () => {},
+    eventId: CAMPAIGN_EVENT_ID,
+    mode: 'BOOK',
+  },
   tags: ['autodocs'],
 };
 
 export default meta;
 type Story = StoryObj<typeof BookView>;
 
+// parameters.msw는 기본 핸들러를 덮어쓴다. MSW는 먼저 등록된 핸들러가 우선하므로,
+// 이 스토리의 예외를 앞에 두고 나머지는 앱 핸들러가 받도록 뒤에 펼친다.
+
+/** 커피 쿠폰에 당첨된 경우. */
 export const SuccessMockFlow: Story = {
-  args: {
-    onClose: () => { },
-    eventId: MOCK_BOOKING_COMPLETE_EVENT_ID || '6025',
-    mode: 'BOOK',
-    storyMode: true,
-  },
   parameters: {
-    mockWin: true,
-  }
+    msw: [campaignPreorderHandler(true), ...handlers],
+  },
 };
 
+/** 당첨되지 않은 경우. */
 export const FailMockFlow: Story = {
-  args: {
-    onClose: () => { },
-    eventId: MOCK_BOOKING_COMPLETE_EVENT_ID || '6025',
-    mode: 'BOOK',
-    storyMode: true,
-  },
   parameters: {
-    mockWin: false,
-  }
+    msw: [campaignPreorderHandler(false), ...handlers],
+  },
 };
