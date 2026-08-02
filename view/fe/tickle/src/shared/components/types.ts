@@ -309,6 +309,32 @@ export type SeatStatus = 'selectable' | 'disabled';
 export type SeatColor = 'pink' | 'yellow' | 'mint' | 'red' | 'green' | 'blue' | 'purple' | 'gray' | 'orange' | 'cyan' | 'high' | 'medium' | 'low';
 export type CongestionLevel = 'high' | 'medium' | 'low' | 'none';
 
+/**
+ * 좌석 배치도 한 칸의 표시 상태입니다.
+ *
+ * <p>공연장 도면(Stage_*)과 이를 감싸는 좌석 패널이 함께 쓰는 값이라
+ * 여기에 둡니다.</p>
+ */
+export interface SeatViewState {
+  color?: SeatColor;
+  status?: SeatStatus;
+  isSelected?: boolean;
+  congestion?: CongestionLevel;
+}
+
+/**
+ * 공연장별 좌석 도면 컴포넌트(Stage_4001 등)가 받는 props입니다.
+ *
+ * <p>도면은 venueId로 동적 import하므로 컴파일 시점에 어떤 구현이 올지
+ * 알 수 없습니다. 그래도 좌석 데이터와 클릭 콜백이라는 계약은 공통이라
+ * 이 타입으로 좁혀 둡니다.</p>
+ */
+export interface StageComponentProps {
+  seatsData?: Record<string, SeatViewState>;
+  onSeatClick?: (seatId: string, e: React.MouseEvent<HTMLCanvasElement>) => void;
+  className?: string;
+}
+
 export interface SeatProps extends Omit<React.CanvasHTMLAttributes<HTMLCanvasElement>, 'onClick'> {
   status?: SeatStatus;
   color?: SeatColor;
