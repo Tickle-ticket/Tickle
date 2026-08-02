@@ -380,7 +380,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
                 const paymentStatus = statusRes.data?.paymentStatus;
                 const bookingStatus = statusRes.data?.bookingStatus;
 
-                if (paymentStatus === 'PAID' || bookingStatus === 'CONFIRMED') {
+                // 서버는 결제 승인을 APPROVED로 알려준다(Payment.Status).
+                // 'PAID'는 어떤 경로로도 오지 않아 판정에 쓰이지 않았다.
+                if (paymentStatus === 'APPROVED' || bookingStatus === 'CONFIRMED') {
                   return {
                     kind: 'SUCCESS',
                     successUrl: `/payment/success?bookingId=${statusRes.data.bookingId}&paymentId=${kakaoPaymentId}`,

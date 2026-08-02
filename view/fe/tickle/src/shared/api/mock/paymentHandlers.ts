@@ -116,8 +116,10 @@ export const paymentHandlers = [
         bookingId: 5001,
         bookingNo: 'BK-17484F8CF0074271',
         paymentMethodType: isKakao ? 'KAKAOPAY' : 'BANK_TRANSFER',
-        paymentStatus: isKakao ? 'COMPLETED' : 'PENDING',
-        bookingStatus: isKakao ? 'BOOKED' : 'PENDING_PAYMENT',
+        // 서버 enum과 같은 값을 쓴다(Payment.Status). 다른 값을 주면 결제 성공을
+        // 감지하지 못해 폴링이 상한까지 돈다.
+        paymentStatus: isKakao ? 'APPROVED' : 'PENDING',
+        bookingStatus: isKakao ? 'CONFIRMED' : 'PENDING_PAYMENT',
         orderAmount: 186300,
         currencyCode: 'KRW',
         depositDeadline: '2026-05-03T14:59:59Z',
