@@ -101,7 +101,6 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
   const { setStage: setTrialStage, setSelectedSeats: setTrialSeats, finalize: finalizeTrial, flush: flushTrial } = useTrialCollector({
     // 인원 선택 버튼을 누르기 전(CAPTCHA, SEAT)까지만 활성화
     enabled: (mode === 'BOOK' || mode === 'WAITLIST') && (!isBotVerified || bookingStep === 'SEAT'),
-    userId: userProfile?.userId,
     initialStage: 'captcha',
     behaviorEvent: {
       eventId: Number(eventId),
