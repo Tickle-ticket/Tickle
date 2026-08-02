@@ -3,6 +3,7 @@ import { fetchEventList, fetchOpeningSoonEvents, fetchRanking, fetchCategories }
 import type { EventItem, EventRankingItem } from '@/src/shared/api/types/event.types';
 import { http } from '@/src/shared/api/http';
 import { ApiResponse } from '@/src/shared/api/types';
+import { useCategories } from '@/src/shared/api/useCategories';
 
 export interface BannerData {
   id: string;
@@ -126,13 +127,10 @@ export const useHomeUpcoming = () => {
   });
 };
 
-export const useHomeCategories = () => {
-  return useQuery({
-    queryKey: ['homeCategories'],
-    queryFn: async () => {
-      const response = await fetchCategories();
-      return response.data.categories;
-    },
-    staleTime: 1000 * 60 * 60, // 1시간
-  });
-};
+/**
+ * 홈 화면 카테고리 목록.
+ *
+ * <p>공용 {@link useCategories}를 그대로 쓴다. 홈·검색·기획사가 같은 목록을
+ * 보므로 캐시를 나눌 이유가 없다.</p>
+ */
+export const useHomeCategories = useCategories;

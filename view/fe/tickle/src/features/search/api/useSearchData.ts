@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchEventList, fetchCategories } from '@/src/shared/api/eventApi';
+import { fetchEventList } from '@/src/shared/api/eventApi';
+import { useCategories } from '@/src/shared/api/useCategories';
 import type { EventListRequestParams } from '@/src/shared/api/types/event.types';
 
 export interface SearchPerformance {
@@ -13,28 +14,28 @@ export interface SearchPerformance {
 }
 
 export const useSearchData = (query: string) => {
+  // 카테고리는 공용 쿼리로 받는다. queryFn 안에서 부르면 검색할 때마다 같은
+  // 목록을 다시 가져온다.
+  const { data: categories } = useCategories();
+
   return useQuery({
-    queryKey: ['search', query],
+    queryKey: ['search', query, categories?.length ?? 0],
     queryFn: async () => {
       if (!query.trim()) return [];
-      
+
       const params: EventListRequestParams = { size: 20, page: 0 };
       if (query !== '전체') {
-        try {
-          const categoryRes = await fetchCategories();
-          const matchedCategory = categoryRes.data?.categories?.find(c => c.categoryName === query);
-          
-          if (matchedCategory) {
-            params.categoryId = matchedCategory.categoryId;
-          } else {
-            params.keyword = query;
-          }
-        } catch (error) {
-          // 에러 발생 시 fallback으로 키워드 검색 사용
+        // 검색어가 카테고리 이름과 정확히 같으면 카테고리 검색, 아니면 키워드
+        // 검색으로 넘긴다. 목록을 못 받았을 때도 키워드로 떨어진다.
+        const matchedCategory = categories?.find((c) => c.categoryName === query);
+
+        if (matchedCategory) {
+          params.categoryId = matchedCategory.categoryId;
+        } else {
           params.keyword = query;
         }
       }
-      
+
       const res = await fetchEventList(params);
       
       return res.data.items.map((item) => {
