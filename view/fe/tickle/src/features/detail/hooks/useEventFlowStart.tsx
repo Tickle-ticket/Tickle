@@ -1,5 +1,6 @@
 import React from 'react';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
+import type { TrialJSON } from '@/src/shared/utils/schema';
 import type { DetailFlowPolicy } from '../api/detailFlowPolicy';
 
 interface UseEventFlowStartParams {
@@ -15,7 +16,7 @@ interface UseEventFlowStartParams {
     confirmText?: string;
     showCancelButton?: boolean;
   }) => void;
-  finalize: () => Promise<any>;
+  finalize: () => Promise<TrialJSON | null>;
 }
 
 export const useEventFlowStart = ({

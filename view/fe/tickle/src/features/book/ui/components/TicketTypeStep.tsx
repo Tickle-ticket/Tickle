@@ -12,7 +12,7 @@ interface TicketTypeStepProps {
   onSubmitPreorder: (
     seatIds: number[],
     optionSelections: { sessionSeatId: number; discountName: string }[]
-  ) => Promise<any>;
+  ) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
   submitButtonText?: string;

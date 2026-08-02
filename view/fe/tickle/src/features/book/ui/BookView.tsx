@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { isFailure } from '@/src/shared/api/errors';
 import { seatApi } from '@/src/shared/api/seatApi';
+import type { StageComponentProps } from '@/src/shared/components/types';
 
 import { useEventDetailWithFixtures } from '@/src/features/book/api/useEventDetailWithFixtures';
 import { useBookStore } from '../store/useBookStore';
@@ -224,7 +225,7 @@ export const BookView = ({ onClose, eventId, mode = 'BOOK', initialSchedule, ini
 
   const StageComponent = React.useMemo(() => {
     if (!venueId) return null;
-    return React.lazy<React.ComponentType<any>>(() =>
+    return React.lazy<React.ComponentType<StageComponentProps>>(() =>
       import(`../../../shared/components/Stage_${venueId}.tsx`)
         .then(module => ({ default: module[`Stage_${venueId}`] }))
         .catch((err) => {

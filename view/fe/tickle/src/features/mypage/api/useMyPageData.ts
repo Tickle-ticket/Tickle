@@ -107,7 +107,8 @@ export const useMyBookings = () => {
         status: r.bookingStatus,
         bookingNo: r.bookingNo,
         totalPaymentAmount: r.totalPaymentAmount,
-        paymentId: (r as any).paymentId, // 백엔드에서 추가될 필드
+        // paymentId는 목록 응답에 없다(ReservationSummaryResponse). 상세를 열 때
+        // 받아 오므로 MyBookingsView가 bookingDetail에서 채운다.
       })) as BookingData[];
     },
     // 예매 취소가 이 목록을 invalidate한다(useCancelBooking).
