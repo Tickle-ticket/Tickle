@@ -13,6 +13,7 @@ import { authHandlers } from './authHandlers';
 import { reservationHandlers } from './reservationHandlers';
 import { bookingHandlers } from './bookingHandlers';
 import { paymentHandlers } from './paymentHandlers';
+import { botDetectionHandlers } from './botDetectionHandlers';
 export const handlers = [
   ...categoryHandlers,
   ...trialHandlers,
@@ -29,4 +30,5 @@ export const handlers = [
   ...reservationHandlers,
   ...bookingHandlers,
   ...paymentHandlers,
+  ...botDetectionHandlers,
 ];

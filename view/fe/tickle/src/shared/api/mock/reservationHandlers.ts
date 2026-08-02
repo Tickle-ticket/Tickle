@@ -2,38 +2,39 @@ import { http, HttpResponse, delay } from 'msw';
 
 const API_BASE_URL = '*/api/v1';
 
+/**
+ * 예매 목록·상세에 쓰는 데이터.
+ *
+ * ReservationItemSchema와 같은 키를 쓴다. 예전에는 eventName·status·seats로
+ * 두어 목록 조회가 스키마 검증에서 막혔다.
+ */
 let mockReservations = [
   {
     bookingId: 1,
     bookingNo: 'BK-123456',
-    eventId: 1,
-    eventName: '맘마미아',
+    bookingStatus: 'CONFIRMED',
+    eventTitle: '맘마미아',
+    thumbnailImageUrl: 'https://picsum.photos/seed/poster45/800/1200',
+    sessionNo: 1,
+    sessionStartAt: '2026-09-15T19:30:00Z',
     venueName: 'LG아트센터 서울',
-    eventStartAt: '2025-09-15T19:30:00Z',
+    ticketCount: 2,
     totalPaymentAmount: 340000,
-    status: 'COMPLETED',
-    seats: [
-      { sessionSeatId: 101, seatLabel: 'VIP석 1층 B구역 12열 14번' },
-      { sessionSeatId: 102, seatLabel: 'VIP석 1층 B구역 12열 15번' }
-    ],
-    createdAt: '2025-03-20T10:00:00Z',
-    thumbnailUrl: 'https://picsum.photos/seed/poster45/800/1200',
+    createdAt: '2026-03-20T10:00:00Z',
   },
   {
     bookingId: 2,
     bookingNo: 'BK-654321',
-    eventId: 2,
-    eventName: '오페라의 유령',
+    bookingStatus: 'CONFIRMED',
+    eventTitle: '오페라의 유령',
+    thumbnailImageUrl: 'https://picsum.photos/seed/poster46/800/1200',
+    sessionNo: 2,
+    sessionStartAt: '2026-08-20T14:00:00Z',
     venueName: '샤롯데씨어터',
-    eventStartAt: '2025-08-20T14:00:00Z',
+    ticketCount: 1,
     totalPaymentAmount: 140000,
-    status: 'COMPLETED',
-    seats: [
-      { sessionSeatId: 201, seatLabel: 'R석 2층 A구역 5열 2번' }
-    ],
-    createdAt: '2025-04-01T15:30:00Z',
-    thumbnailUrl: 'https://picsum.photos/seed/poster46/800/1200',
-  }
+    createdAt: '2026-04-01T15:30:00Z',
+  },
 ];
 
 export const reservationHandlers = [
@@ -90,7 +91,7 @@ export const reservationHandlers = [
     const bookingId = Number(params.reservationId);
     const known = mockReservations.find((r) => r.bookingId === bookingId);
 
-    const ticketCount = known?.seats.length ?? 2;
+    const ticketCount = known?.ticketCount ?? 2;
     const ticketPriceAmount = 90000;
     const serviceFeeAmount = Math.floor(ticketPriceAmount * 0.05);
 
@@ -103,9 +104,9 @@ export const reservationHandlers = [
         paymentId: null,
         bookingNo: known?.bookingNo ?? `BK-${bookingId}`,
         bookingStatus: 'CONFIRMED',
-        eventTitle: known?.eventName ?? '오페라의 유령',
-        sessionNo: 1,
-        sessionStartAt: known?.eventStartAt ?? '2026-09-15T19:30:00Z',
+        eventTitle: known?.eventTitle ?? '오페라의 유령',
+        sessionNo: known?.sessionNo ?? 1,
+        sessionStartAt: known?.sessionStartAt ?? '2026-09-15T19:30:00Z',
         venueName: known?.venueName ?? '샤롯데씨어터',
         ticketCount,
         totalPaymentAmount:
