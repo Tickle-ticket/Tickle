@@ -54,7 +54,6 @@ export const sendBehaviorEvent = async ({
   // 토큰이 없으면 전송하지 않는다. 익명 수집이 필요해지면 서버가 토큰 없는
   // 요청을 받도록 먼저 합의해야 한다.
   if (!accessToken) {
-    // TODO: 인증 저장소가 localStorage 외 방식으로 변경되면 tokenManager 연동을 갱신합니다.
     console.warn('[BehaviorEvent] skipped: access-token is missing');
     return null;
   }
@@ -92,7 +91,9 @@ export const sendBehaviorEvent = async ({
 
     return data as BehaviorEventResponse;
   } catch (error) {
-    // 봇 탐지 서버(AI)가 다운되어 있거나 연결할 수 없는 경우 에러 로그를 남기지 않고 조용히 무시합니다.
+    // AI 서버가 죽어도 예매를 막지 않는다. 다만 완전히 침묵하면 수집이 끊긴 것을
+    // 알 수 없어 로그는 남긴다.
+    console.warn('[BehaviorEvent] submit error:', error);
     return null;
   }
 };

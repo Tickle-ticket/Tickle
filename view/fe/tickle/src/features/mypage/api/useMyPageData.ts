@@ -5,6 +5,7 @@ import { isAlreadyCancelled } from '@/src/shared/api/errors';
 import { PerformanceData } from '@/src/features/home/api/useHomeData';
 import { getFavoriteEvents } from '@/src/shared/api/favoriteApi';
 import { reservationApi } from '@/src/shared/api/reservationApi';
+import { paymentApi } from '@/src/shared/api/paymentApi';
 import { getCancellationWaitCandidates, cancelCancellationWaitCandidate, passCancellationOffer } from '@/src/shared/api/cancellationApi';
 import type { CancellationWaitCandidateSummaryResponse } from '@/src/shared/api/types/cancellation.types';
 import { getAccessToken } from '@/src/shared/api/tokenManager';
@@ -121,9 +122,6 @@ export const usePaymentStatus = (paymentId: number | null) => {
     queryKey: ['paymentStatus', paymentId],
     queryFn: async () => {
       if (!paymentId) return null;
-      // paymentApi import가 파일 상단에 없으므로, 여기서 동적으로 가져오거나 위에서 추가해야 합니다.
-      // 파일 최상단에 import { paymentApi } from '@/src/shared/api/paymentApi'; 를 추가하겠습니다.
-      const { paymentApi } = await import('@/src/shared/api/paymentApi');
       const res = await paymentApi.getPaymentStatus(paymentId);
       return res.data;
     },

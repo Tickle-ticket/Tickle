@@ -7,8 +7,6 @@ import type { TrialStage, TrialJSON } from '../utils/schema';
 interface UseTrialCollectorOptions {
   /** 수집 활성화 여부 */
   enabled: boolean;
-  /** 사용자 ID */
-  userId?: number | null;
   /** 초기 단계 (기본값: captcha) */
   initialStage?: TrialStage;
   /** AI Ingest Server 행동 이벤트 전송용 메타데이터 */
@@ -19,7 +17,7 @@ interface UseTrialCollectorOptions {
   };
 }
 
-export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent }: UseTrialCollectorOptions) => {
+export const useTrialCollector = ({ enabled, initialStage, behaviorEvent }: UseTrialCollectorOptions) => {
   const collectorRef = useRef<TrialCollector | null>(null);
   const behaviorEventRef = useRef(behaviorEvent);
 
@@ -51,7 +49,7 @@ export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent
   useEffect(() => {
     if (!enabled) return;
 
-    const collector = new TrialCollector({ userId, initialStage });
+    const collector = new TrialCollector({ initialStage });
     collectorRef.current = collector;
 
     // ── Event Handlers ──────────────────────────────────────

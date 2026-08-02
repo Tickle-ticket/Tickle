@@ -63,7 +63,6 @@ const {
 export class TrialCollector {
   // ─── Identity ─────────────────────────────────────────────
   private trialId: number;
-  private userId: number | null = null;
   private sessionId: string;
   private label: TrialLabel = 'none';
   private startTs: number;
@@ -107,9 +106,8 @@ export class TrialCollector {
   // ─── Stage Flush Tracking ────────────────────────────────
   private stageStartTs: number;
 
-  constructor(options?: { trialId?: number; userId?: number | null; initialStage?: TrialStage }) {
+  constructor(options?: { trialId?: number; initialStage?: TrialStage }) {
     this.trialId = options?.trialId ?? Date.now();
-    this.userId = options?.userId ?? null;
     this.stage = options?.initialStage ?? 'captcha';
     this.sessionId = this.stage;
     this.startTs = Date.now();
@@ -393,7 +391,6 @@ export class TrialCollector {
 
     const rawTrial = {
       trialId: this.trialId,
-      userId: this.userId,
       sessionId: this.sessionId,
       label: this.label,
       summary,
@@ -433,7 +430,6 @@ export class TrialCollector {
 
     const rawTrial = {
       trialId: this.trialId,
-      userId: this.userId,
       sessionId: currentStage,
       label: this.label,
       summary,
