@@ -35,4 +35,21 @@ export const botDetectionHandlers = [
       data: null,
     });
   }),
+
+  // WebDriver 탐지 결과 등록(BotDetector)
+  //
+  // 서버 간 통신 경로라 X-Internal-Secret을 요구한다. 로컬에서는 값을 검사하지
+  // 않는다 — 헤더가 붙는지는 실제 서버에서만 확인할 수 있고, mock이 막으면
+  // 차단 화면 확인이 오히려 어려워진다.
+  http.post('*/internal/v1/blacklist', async () => {
+    return HttpResponse.json(
+      {
+        status: 201,
+        code: 'CREATED',
+        message: 'success',
+        data: null,
+      },
+      { status: 201 },
+    );
+  }),
 ];
