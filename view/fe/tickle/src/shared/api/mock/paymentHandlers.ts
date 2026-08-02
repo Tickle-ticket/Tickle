@@ -9,13 +9,7 @@ const API_BASE_URL = '*/api/v1';
 export const paymentHandlers = [
   // 1. 결제 수단 선택
   http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/select-method`, async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
     const requestBody = (await request.json()) as PaymentMethodSelectionRequest;
-    
-    if (!userId) {
-      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
-    }
 
     const isKakao = requestBody.paymentMethod === 'KAKAOPAY';
 
@@ -33,13 +27,7 @@ export const paymentHandlers = [
 
   // 2. 무통장 입금 확정
   http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/bank-transfer`, async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
     const requestBody = (await request.json()) as BankTransferPrepareRequest;
-
-    if (!userId) {
-      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
-    }
 
     return HttpResponse.json({
       status: 200,
@@ -81,14 +69,7 @@ export const paymentHandlers = [
   }),
 
   // 3. 카카오페이 준비
-  http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/kakaopay/ready`, async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-    
-    if (!userId) {
-      return HttpResponse.json({ status: 400, code: 'INVALID_REQUEST', message: 'userId가 필요합니다.' }, { status: 400 });
-    }
-
+  http.post(`${API_BASE_URL}/events/:eventId/schedules/:scheduleId/payments/kakaopay/ready`, async () => {
     return HttpResponse.json({
       status: 200,
       code: 'OK',

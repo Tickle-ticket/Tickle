@@ -101,6 +101,15 @@ export const authHandlers = [
     return HttpResponse.json({ status: 200, code: 'OK', message: '카카오 로그인 리다이렉트 URL 요청' });
   }),
 
+  // 카카오 신규 가입 완료
+  //
+  // 카카오로 처음 들어온 사용자가 전화번호 등을 채우면 호출된다. 로컬에서는
+  // 흐름만 이어지도록 바로 토큰을 발급한다.
+  http.post(`${API_BASE_URL}/kakao/signup`, async () => {
+    await delay(300);
+    return authSuccess(createMockJwt('USER'), 201, 'CREATED');
+  }),
+
   // 카카오 로그인 콜백
   http.get(`${API_BASE_URL}/kakao/callback`, async ({ request }) => {
     await delay(500);
