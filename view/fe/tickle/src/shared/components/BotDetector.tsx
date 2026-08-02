@@ -38,6 +38,12 @@ export const BotDetector = ({ children }: { children: React.ReactNode }) => {
           if (userProfile?.userId) {
             await apiClient('/internal/v1/blacklist', {
               method: 'POST',
+              // /internal/** 는 서버 간 통신 경로라 InternalSecretInterceptor가
+              // X-Internal-Secret을 요구한다. apiClient는 Authorization만 붙이므로
+              // 여기서 직접 넘긴다.
+              headers: {
+                'X-Internal-Secret': process.env.NEXT_PUBLIC_INTERNAL_SECRET || '',
+              },
               body: {
                 userId: userProfile.userId,
                 reason: "MACRO_DETECTED_FE",

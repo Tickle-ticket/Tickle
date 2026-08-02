@@ -25,7 +25,7 @@ const getAiBaseUrl = (): string => {
  * EventSource는 Authorization 헤더를 직접 설정하기 어렵기 때문에
  * accessToken을 query parameter `token`으로 전달합니다.
  *
- * @param tokenOverride accessToken을 명시적으로 지정할 경우 사용 (없으면 localStorage에서 가져옴)
+ * @param tokenOverride accessToken을 명시적으로 지정할 경우 사용 (없으면 tokenManager에서 가져옴)
  * @returns 완전한 SSE URL 또는 토큰이 없을 경우 null
  */
 export const buildBotDetectionStreamUrl = (tokenOverride?: string): string | null => {

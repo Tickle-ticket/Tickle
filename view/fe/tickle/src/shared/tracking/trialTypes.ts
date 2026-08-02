@@ -145,7 +145,6 @@ export interface WindowRow {
 // ─── Trial JSON (최상위) ────────────────────────────────────
 export interface TrialJSON {
   trialId: number;
-  userId: number | null;
   sessionId: string;
   label: TrialLabel;
   summary: TrialSummary;
