@@ -136,8 +136,6 @@ export const useTrialCollector = ({ enabled, userId, initialStage, behaviorEvent
 
     const flushed = collectorRef.current.setStage(stage);
     if (flushed) {
-      // (legacy) submitTrial was removed because the backend doesn't have /api/v1/trials
-
       sendBehaviorEventFromTrial(flushed);
     }
   }, [sendBehaviorEventFromTrial]);
