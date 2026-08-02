@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# 실제 값이 없는 템플릿이라 커밋한다. 받는 사람이 복사만 하면 실행된다.
+!.env.example
 
 # vercel
 .vercel
